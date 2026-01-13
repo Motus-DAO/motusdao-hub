@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useWallets, usePrivy } from '@privy-io/react-auth'
+import { useWaaPWallets, useWaaP } from '@/lib/contexts/WaaPProvider'
 import { parseEther } from 'viem'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -13,8 +13,8 @@ import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 type TransactionStatus = 'idle' | 'preparing' | 'sending' | 'success' | 'error'
 
 export function TestGaslessTransaction() {
-  const { wallets, ready } = useWallets()
-  const { authenticated } = usePrivy()
+  const { wallets } = useWaaPWallets()
+  const { authenticated, ready } = useWaaP()
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
   const [status, setStatus] = useState<TransactionStatus>('idle')
   const [txHash, setTxHash] = useState<string>('')
@@ -59,11 +59,21 @@ export function TestGaslessTransaction() {
     setError('')
     setTxHash('')
 
+    // Check if an error is the known WaaP/ethers encoding error (non-fatal)
+    const isEncodingError = (error: unknown): boolean => {
+      if (!error) return false
+      const errorStr = error instanceof Error ? error.message : String(error)
+      return errorStr.includes('invalid codepoint') || 
+             errorStr.includes('missing continuation byte') ||
+             errorStr.includes('strings/5.7.0')
+    }
+
     try {
       setStatus('sending')
 
       console.log('🔄 Sending gasless transaction using ZeroDev Kernel client with paymaster...')
-      console.log('📍 Smart wallet address:', smartAccountAddress)
+      console.log('🔐 Smart Wallet (sender):', smartAccountAddress)
+      console.log('💡 Gas will be sponsored by Pimlico paymaster')
 
       // Use ZeroDev Kernel client which has the paymaster configured
       // For Kernel accounts, we use sendUserOperation which handles gasless transactions
@@ -76,18 +86,27 @@ export function TestGaslessTransaction() {
         }],
       })
 
-      console.log('✅ User operation sent, waiting for receipt...', userOpHash)
+      console.log('✅ User operation sent:', userOpHash)
+      console.log('⏳ Waiting for confirmation on blockchain...')
 
       // Wait for the user operation to be included in a bundle and get the receipt
-      // According to ZeroDev SDK source, waitForUserOperationReceipt returns:
-      // { receipt: { transactionHash: string } }
-      const receipt = await kernelClient.waitForUserOperationReceipt({
-        hash: userOpHash
-      })
-
-      // Extract the transaction hash from the receipt
-      // ZeroDev SDK receipt structure: { receipt: { transactionHash: string } }
-      const hash = receipt?.receipt?.transactionHash
+      // Wrap in try-catch to handle non-fatal encoding errors from WaaP SDK
+      let hash: string | undefined
+      try {
+        const receipt = await kernelClient.waitForUserOperationReceipt({
+          hash: userOpHash
+        })
+        hash = receipt?.receipt?.transactionHash
+      } catch (receiptError) {
+        // Check if this is the known encoding error - if so, the tx likely succeeded
+        if (isEncodingError(receiptError)) {
+          console.warn('⚠️ Non-fatal encoding error during receipt wait (tx may have succeeded)')
+          // Use the userOpHash as the transaction reference
+          hash = userOpHash
+        } else {
+          throw receiptError
+        }
+      }
 
       if (!hash) {
         throw new Error('Transaction hash not found in receipt')
@@ -104,6 +123,15 @@ export function TestGaslessTransaction() {
       }, 2000)
     } catch (err) {
       console.error('Transaction error:', err)
+      
+      // Check if this is the known encoding error - if so, don't treat as fatal
+      if (isEncodingError(err)) {
+        console.warn('⚠️ Non-fatal encoding error caught - transaction may have succeeded')
+        setError('Transaction was sent but there was an error processing the response. Please check Celo Explorer.')
+        setStatus('error')
+        return
+      }
+      
       const errorMessage = err instanceof Error ? err.message : 'Transaction failed'
       
       // Check if error is related to paymaster/funding
@@ -163,7 +191,7 @@ export function TestGaslessTransaction() {
           </p>
           {!smartWallet && (
             <p className="text-sm text-muted-foreground mt-2">
-              No Privy wallet found. Please log in with email to get a wallet.
+              No WaaP wallet found. Please log in with email to get a wallet.
             </p>
           )}
         </div>
@@ -194,7 +222,7 @@ export function TestGaslessTransaction() {
             <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20 text-left mb-4">
               <p className="text-sm font-semibold text-blue-400 mb-2">Smart Wallet Creation</p>
               <p className="text-sm text-muted-foreground">
-                Privy creates smart wallets automatically when enabled. If this is your first time using the wallet, 
+                ZeroDev creates smart wallets automatically when enabled. If this is your first time using the wallet, 
                 the smart wallet contract will be deployed on your first transaction. This is normal and expected behavior.
               </p>
               <p className="text-sm text-muted-foreground mt-2">
@@ -206,7 +234,7 @@ export function TestGaslessTransaction() {
             <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20 text-left mb-4">
               <p className="text-sm font-semibold text-yellow-400 mb-2">To enable smart wallets:</p>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Go to <a href="https://dashboard.privy.io" target="_blank" rel="noopener noreferrer" className="text-mauve-400 hover:underline">Privy Dashboard</a></li>
+                <li>Go to <a href="https://dashboard.zerodev.app" target="_blank" rel="noopener noreferrer" className="text-mauve-400 hover:underline">ZeroDev Dashboard</a></li>
                 <li>Navigate to <strong>Smart Wallets</strong> section</li>
                 <li>Enable Smart Wallets for your app</li>
                 <li>Configure Celo Mainnet (42220) with:

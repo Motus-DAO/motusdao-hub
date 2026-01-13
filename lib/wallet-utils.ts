@@ -1,169 +1,116 @@
-import type { ConnectedWallet } from '@privy-io/react-auth'
+/**
+ * Wallet utilities - Compatible with WaaP wallet types
+ * 
+ * Migrated from Privy's ConnectedWallet type to WaaP wallet structure
+ */
+
+/**
+ * WaaP wallet structure (mirrors the WaaPWallet interface from WaaPProvider)
+ */
+export interface WaaPWallet {
+  address: `0x${string}`
+  walletClientType: 'waap' | 'external'
+  chainId: string
+  connected: boolean
+}
+
+/**
+ * Legacy type alias for backwards compatibility with code that used ConnectedWallet
+ */
+export type ConnectedWallet = WaaPWallet
 
 /**
  * Wallet type identification
  */
-export type WalletType = 'smart-wallet' | 'embedded' | 'external'
+export type WalletType = 'smart-wallet' | 'embedded' | 'external' | 'waap'
 
 /**
- * Identifies the smart wallet from a list of Privy wallets.
+ * Identifies the smart wallet from a list of WaaP wallets.
  * 
- * Smart wallets are contract accounts created automatically by Privy when enabled.
- * They have different addresses from embedded wallets (EOAs).
+ * Note: With WaaP + ZeroDev architecture, smart wallets are created by ZeroDev
+ * using the WaaP EOA as the owner/signer. This function now identifies the
+ * WaaP wallet which will be used to create the smart wallet.
  * 
- * IMPORTANT: We ALWAYS prefer smart wallet over EOA to ensure gasless transactions work.
- * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
- * @returns The smart wallet if found, null otherwise
+ * @param wallets - Array of WaaP wallets
+ * @returns The WaaP wallet if found, null otherwise
  */
-export function identifySmartWallet(wallets: ConnectedWallet[]): ConnectedWallet | null {
-  const privyWallets = wallets.filter(wallet => wallet.walletClientType === 'privy')
+export function identifySmartWallet(wallets: WaaPWallet[]): WaaPWallet | null {
+  // With WaaP, we don't have separate smart wallets in the wallet list
+  // Smart wallets are created by ZeroDev using the WaaP EOA as signer
+  // For backwards compatibility, return the primary WaaP wallet
+  const waapWallet = wallets.find(wallet => wallet.walletClientType === 'waap')
   
-  if (privyWallets.length === 0) {
-    console.log('🔍 No Privy wallets found')
-    return null
+  if (waapWallet) {
+    console.log('✅ WaaP wallet found (smart wallet created by ZeroDev):', waapWallet.address)
+    return waapWallet
   }
 
-  // Log all wallets for debugging
-  console.log('🔍 All Privy wallets:', privyWallets.map(w => ({
-    address: w.address,
-    chainId: w.chainId,
-    walletClientType: w.walletClientType
-  })))
-
-  // When smart wallets are enabled, Privy creates:
-  // 1. Embedded wallet (EOA) - address typically starts with 0x1F93... (Privy's deterministic prefix)
-  // 2. Smart wallet (contract) - different address, not starting with 0x1F93...
-  
-  // Smart wallet is the one that is NOT the embedded wallet
-  // We identify embedded wallet by the 0x1F93 prefix (Privy's deterministic address)
-  const embeddedWallet = identifyEmbeddedWallet(privyWallets)
-  
-  console.log('🔍 Embedded wallet found:', embeddedWallet?.address)
-  
-  if (embeddedWallet && privyWallets.length > 1) {
-    // If we have an embedded wallet and multiple wallets, find the one that's not the embedded wallet
-    const smartWallet = privyWallets.find(
-      wallet => wallet.address?.toLowerCase() !== embeddedWallet.address?.toLowerCase()
-    )
-    if (smartWallet) {
-      console.log('✅ Smart wallet identified:', smartWallet.address)
-      return smartWallet
-    }
-  }
-  
-  // If we have multiple wallets, find the one that doesn't match the embedded pattern
-  if (privyWallets.length > 1) {
-    const nonEmbedded = privyWallets.find(
-      wallet => !wallet.address?.toLowerCase().startsWith('0x1f93')
-    )
-    if (nonEmbedded) {
-      console.log('✅ Smart wallet identified (non-embedded pattern):', nonEmbedded.address)
-      return nonEmbedded
-    }
-  }
-  
-  // If only one wallet, check if it's actually a smart wallet (contract) or embedded wallet (EOA)
-  // We can't determine this just from the address pattern, so we return null
-  // The smart wallet should be created separately by ZeroDev, not by Privy
-  if (privyWallets.length === 1) {
-    // If there's only one Privy wallet, it's likely the embedded wallet (EOA)
-    // The smart wallet will be created by ZeroDev separately
-    console.log('ℹ️ Only one Privy wallet found - this is likely the embedded wallet (EOA). Smart wallet will be created by ZeroDev.')
-    return null // Smart wallet is created by ZeroDev, not Privy
-  }
-  
-  console.log('❌ Smart wallet not found. Only embedded wallet or no wallets detected.')
+  console.log('❌ No WaaP wallet found')
   return null
 }
 
 /**
- * Identifies the embedded wallet (EOA) from a list of Privy wallets.
+ * Identifies the embedded wallet (EOA) from a list of WaaP wallets.
  * 
- * Embedded wallets are Externally Owned Accounts created by Privy.
- * They typically have addresses starting with 0x1F93... (Privy's deterministic prefix).
- * However, if there's only one Privy wallet and it doesn't match the pattern,
- * it's likely the embedded wallet (Privy may use different prefixes).
+ * With WaaP, the "embedded wallet" is the WaaP-created EOA which uses
+ * Human Keys technology for enhanced security.
  * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
- * @returns The embedded wallet if found, null otherwise
+ * @param wallets - Array of WaaP wallets
+ * @returns The WaaP wallet if found, null otherwise
  */
-export function identifyEmbeddedWallet(wallets: ConnectedWallet[]): ConnectedWallet | null {
-  const privyWallets = wallets.filter(wallet => wallet.walletClientType === 'privy')
+export function identifyEmbeddedWallet(wallets: WaaPWallet[]): WaaPWallet | null {
+  // WaaP wallet is the embedded wallet (EOA with Human Keys security)
+  const waapWallet = wallets.find(wallet => wallet.walletClientType === 'waap')
   
-  if (privyWallets.length === 0) {
-    return null
+  if (waapWallet) {
+    console.log('✅ WaaP embedded wallet (EOA) found:', waapWallet.address)
+    return waapWallet
   }
   
-  // First, try to find wallet with the typical Privy prefix (0x1F93...)
-  const typicalEmbeddedWallet = privyWallets.find(wallet => 
-    wallet.address?.toLowerCase().startsWith('0x1f93')
-  )
+  // Check for external wallets (MetaMask, etc.)
+  const externalWallet = wallets.find(wallet => wallet.walletClientType === 'external')
   
-  if (typicalEmbeddedWallet) {
-    return typicalEmbeddedWallet
+  if (externalWallet) {
+    console.log('ℹ️ Using external wallet as EOA:', externalWallet.address)
+    return externalWallet
   }
   
-  // If no wallet matches the typical pattern, but we have Privy wallets:
-  // - If there's only one Privy wallet, it's likely the embedded wallet (EOA)
-  // - If there are multiple, the embedded wallet is usually the first one or the one that's not a smart wallet
-  // Smart wallets are contract accounts, so they won't match the 0x1f93 pattern
-  // For now, if there's only one Privy wallet, assume it's the embedded wallet
-  if (privyWallets.length === 1) {
-    console.log('ℹ️ Only one Privy wallet found, assuming it\'s the embedded wallet (EOA):', privyWallets[0].address)
-    return privyWallets[0]
-  }
-  
-  // If multiple Privy wallets, return the first one (typically the embedded wallet)
-  // The smart wallet would be identified separately
-  return privyWallets[0] || null
+  return null
 }
 
 /**
  * Gets the primary wallet address to use for the application.
  * 
- * CRITICAL: We ONLY use smart wallet address. Never use EOA as it won't have gas sponsorship.
+ * With WaaP + ZeroDev, we use the WaaP wallet as the EOA owner for smart wallets.
  * 
- * Priority:
- * 1. Smart wallet (for gasless transactions via paymaster) - REQUIRED
- * 2. Return null if smart wallet not found (don't fallback to EOA)
- * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
- * @returns The smart wallet address to use, or null if smart wallet not found
+ * @param wallets - Array of WaaP wallets
+ * @returns The primary wallet address, or null if not found
  */
-export function getPrimaryWalletAddress(wallets: ConnectedWallet[]): string | null {
-  const smartWallet = identifySmartWallet(wallets)
-  if (smartWallet?.address) {
-    console.log('✅ Using smart wallet address:', smartWallet.address)
-    return smartWallet.address
+export function getPrimaryWalletAddress(wallets: WaaPWallet[]): string | null {
+  const waapWallet = identifyEmbeddedWallet(wallets)
+  if (waapWallet?.address) {
+    console.log('✅ Using WaaP wallet address:', waapWallet.address)
+    return waapWallet.address
   }
   
-  // DO NOT fallback to embedded wallet - we need smart wallet for gasless transactions
-  console.warn('⚠️ Smart wallet not found - cannot use EOA as it won\'t have gas sponsorship')
+  console.warn('⚠️ No WaaP wallet found')
   return null
 }
 
 /**
  * Gets the primary wallet to use for transactions.
  * 
- * CRITICAL: We ONLY use smart wallet. Never use EOA as it won't have gas sponsorship.
- * 
- * Priority:
- * 1. Smart wallet (for gasless transactions via paymaster) - REQUIRED
- * 2. Return null if smart wallet not found (don't fallback to EOA)
- * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
- * @returns The smart wallet to use, or null if smart wallet not found
+ * @param wallets - Array of WaaP wallets
+ * @returns The primary wallet, or null if not found
  */
-export function getPrimaryWallet(wallets: ConnectedWallet[]): ConnectedWallet | null {
-  const smartWallet = identifySmartWallet(wallets)
-  if (smartWallet) {
-    console.log('✅ Using smart wallet for transactions:', smartWallet.address)
-    return smartWallet
+export function getPrimaryWallet(wallets: WaaPWallet[]): WaaPWallet | null {
+  const waapWallet = identifyEmbeddedWallet(wallets)
+  if (waapWallet) {
+    console.log('✅ Using WaaP wallet for transactions:', waapWallet.address)
+    return waapWallet
   }
   
-  // DO NOT fallback to embedded wallet - we need smart wallet for gasless transactions
-  console.warn('⚠️ Smart wallet not found - cannot use EOA as it won\'t have gas sponsorship')
+  console.warn('⚠️ No WaaP wallet found')
   return null
 }
 
@@ -174,23 +121,13 @@ export function getPrimaryWallet(wallets: ConnectedWallet[]): ConnectedWallet | 
  * @param allWallets - All available wallets (for context)
  * @returns The wallet type
  */
-export function getWalletType(wallet: ConnectedWallet | null, allWallets: ConnectedWallet[]): WalletType {
+export function getWalletType(wallet: WaaPWallet | null, allWallets: WaaPWallet[]): WalletType {
   if (!wallet) {
     return 'external'
   }
   
-  if (wallet.walletClientType !== 'privy') {
-    return 'external'
-  }
-  
-  const smartWallet = identifySmartWallet(allWallets)
-  if (smartWallet && smartWallet.address?.toLowerCase() === wallet.address?.toLowerCase()) {
-    return 'smart-wallet'
-  }
-  
-  const embeddedWallet = identifyEmbeddedWallet(allWallets)
-  if (embeddedWallet && embeddedWallet.address?.toLowerCase() === wallet.address?.toLowerCase()) {
-    return 'embedded'
+  if (wallet.walletClientType === 'waap') {
+    return 'waap'
   }
   
   return 'external'
@@ -199,46 +136,37 @@ export function getWalletType(wallet: ConnectedWallet | null, allWallets: Connec
 /**
  * Verifies that a smart wallet exists and is ready.
  * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
+ * With WaaP + ZeroDev architecture, the smart wallet is created by ZeroDev
+ * using the WaaP EOA as the owner. This function verifies the WaaP wallet
+ * which will be used to create/access the smart wallet.
+ * 
+ * @param wallets - Array of WaaP wallets
  * @returns Object with verification result and details
  */
-export function verifySmartWallet(wallets: ConnectedWallet[]): {
+export function verifySmartWallet(wallets: WaaPWallet[]): {
   exists: boolean
-  smartWallet: ConnectedWallet | null
-  embeddedWallet: ConnectedWallet | null
+  smartWallet: WaaPWallet | null
+  embeddedWallet: WaaPWallet | null
   message: string
   isCreating: boolean
 } {
-  const smartWallet = identifySmartWallet(wallets)
-  const embeddedWallet = identifyEmbeddedWallet(wallets)
+  const waapWallet = identifyEmbeddedWallet(wallets)
   
-  if (smartWallet) {
+  if (waapWallet) {
     return {
       exists: true,
-      smartWallet,
-      embeddedWallet,
-      message: 'Smart wallet found and ready',
+      smartWallet: waapWallet, // WaaP wallet will be used to create ZeroDev smart wallet
+      embeddedWallet: waapWallet,
+      message: 'WaaP wallet found - smart wallet will be created by ZeroDev',
       isCreating: false
-    }
-  }
-  
-  // If we have an embedded wallet but no smart wallet, it might still be creating
-  // Smart wallets are created lazily on first use or may take time to deploy
-  if (embeddedWallet) {
-    return {
-      exists: false,
-      smartWallet: null,
-      embeddedWallet,
-      message: 'Smart wallet not found. It may still be creating, or smart wallets may not be enabled in Privy Dashboard. Please check your Privy Dashboard configuration.',
-      isCreating: true // Likely still creating
     }
   }
   
   return {
     exists: false,
     smartWallet: null,
-    embeddedWallet,
-    message: 'No Privy wallets found',
+    embeddedWallet: null,
+    message: 'No WaaP wallet found. Please log in with WaaP.',
     isCreating: false
   }
 }
@@ -248,30 +176,26 @@ export function verifySmartWallet(wallets: ConnectedWallet[]): {
  * 
  * Priority:
  * 1. External wallet (MetaMask, WalletConnect, etc.) - if user connected with external wallet
- * 2. Embedded wallet (Privy) - if user logged in with email
+ * 2. WaaP wallet - if user logged in with WaaP (email, phone, social)
  * 
- * This ensures we use the correct EOA address:
- * - If user connects MetaMask, we use MetaMask address (not Privy embedded wallet)
- * - If user logs in with email, we use Privy embedded wallet address
- * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
+ * @param wallets - Array of WaaP wallets
  * @returns The EOA address to use, or null if not found
  */
-export function getEOAAddress(wallets: ConnectedWallet[]): string | null {
+export function getEOAAddress(wallets: WaaPWallet[]): string | null {
   // First, check for external wallet (MetaMask, WalletConnect, etc.)
-  const externalWallet = wallets.find(wallet => wallet.walletClientType !== 'privy')
+  const externalWallet = wallets.find(wallet => wallet.walletClientType === 'external')
   
   if (externalWallet?.address) {
     console.log('✅ Using external wallet EOA address:', externalWallet.address)
     return externalWallet.address
   }
   
-  // If no external wallet, use embedded wallet (for email login)
-  const embeddedWallet = identifyEmbeddedWallet(wallets)
+  // If no external wallet, use WaaP wallet (for email/phone/social login)
+  const waapWallet = wallets.find(wallet => wallet.walletClientType === 'waap')
   
-  if (embeddedWallet?.address) {
-    console.log('✅ Using embedded wallet EOA address:', embeddedWallet.address)
-    return embeddedWallet.address
+  if (waapWallet?.address) {
+    console.log('✅ Using WaaP wallet EOA address:', waapWallet.address)
+    return waapWallet.address
   }
   
   console.warn('⚠️ No EOA address found')
@@ -283,29 +207,28 @@ export function getEOAAddress(wallets: ConnectedWallet[]): string | null {
  * 
  * Priority:
  * 1. External wallet (MetaMask, WalletConnect, etc.) - if user connected with external wallet
- * 2. Embedded wallet (Privy) - if user logged in with email
+ * 2. WaaP wallet - if user logged in with WaaP (email, phone, social)
  * 
- * @param wallets - Array of Privy wallets (ConnectedWallet[])
+ * @param wallets - Array of WaaP wallets
  * @returns The EOA wallet to use, or null if not found
  */
-export function getEOAWallet(wallets: ConnectedWallet[]): ConnectedWallet | null {
+export function getEOAWallet(wallets: WaaPWallet[]): WaaPWallet | null {
   // First, check for external wallet (MetaMask, WalletConnect, etc.)
-  const externalWallet = wallets.find(wallet => wallet.walletClientType !== 'privy')
+  const externalWallet = wallets.find(wallet => wallet.walletClientType === 'external')
   
   if (externalWallet) {
     console.log('✅ Using external wallet EOA:', externalWallet.address)
     return externalWallet
   }
   
-  // If no external wallet, use embedded wallet (for email login)
-  const embeddedWallet = identifyEmbeddedWallet(wallets)
+  // If no external wallet, use WaaP wallet (for email/phone/social login)
+  const waapWallet = wallets.find(wallet => wallet.walletClientType === 'waap')
   
-  if (embeddedWallet) {
-    console.log('✅ Using embedded wallet EOA:', embeddedWallet.address)
-    return embeddedWallet
+  if (waapWallet) {
+    console.log('✅ Using WaaP wallet EOA:', waapWallet.address)
+    return waapWallet
   }
   
   console.warn('⚠️ No EOA wallet found')
   return null
 }
-

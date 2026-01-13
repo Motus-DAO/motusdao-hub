@@ -24,7 +24,7 @@ import {
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { motusNameService } from '@/lib/motus-name-service'
@@ -53,9 +53,9 @@ interface UserData {
 export default function PerfilPage() {
   const { role, setMatrixColor } = useUIStore()
   
-  // Privy authentication hooks
-  const { authenticated, user, ready } = usePrivy()
-  const { wallets } = useWallets()
+  // WaaP authentication hooks (replaces Privy)
+  const { authenticated, user, ready } = useWaaP()
+  const { wallets } = useWaaPWallets()
   
   // ZeroDev smart wallet hook
   const { smartAccountAddress } = useSmartAccount()

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useLoginWithEmail, usePrivy } from '@privy-io/react-auth'
+import { useLoginWithEmail, useWaaP } from '@/lib/contexts/WaaPProvider'
 import { z } from 'zod'
 import { 
   Mail, 
@@ -29,7 +29,7 @@ interface EmailLoginModalProps {
 
 export function EmailLoginModal({ isOpen, onClose, onLoggedIn }: EmailLoginModalProps) {
   const { sendCode, loginWithCode } = useLoginWithEmail()
-  const { user, authenticated } = usePrivy()
+  const { user, authenticated } = useWaaP()
   
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')

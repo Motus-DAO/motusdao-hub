@@ -13,7 +13,7 @@ import {
   Loader,
   X
 } from 'lucide-react'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore, isValidCeloAddress } from '@/lib/onboarding-store'
@@ -40,8 +40,8 @@ interface StepConnectProps {
 }
 
 export function StepConnect({ onNext, onBack }: StepConnectProps) {
-  const { ready, authenticated, user, login } = usePrivy()
-  const { wallets } = useWallets()
+  const { ready, authenticated, user, login } = useWaaP()
+  const { wallets } = useWaaPWallets()
   const { data, updateData } = useOnboardingStore()
   const [isConnecting, setIsConnecting] = useState(false)
 
@@ -90,8 +90,8 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
       const emailToStore = privyEmail || formEmail
       const celoChain = celoMainnet
       
-      // Determine wallet type based on whether it's external or embedded
-      const externalWallet = wallets.find(w => w.walletClientType !== 'privy')
+      // Determine wallet type based on whether it's external or WaaP embedded
+      const externalWallet = wallets.find(w => w.walletClientType === 'external')
       const walletType = externalWallet ? 'external' : 'embedded'
       
       console.log('📝 StepConnect - Storing EOA address:', {
@@ -157,7 +157,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
       formEmail: formData.email
     })
     
-    // Update store with email (from Privy or form input)
+    // Update store with email (from WaaP or form input)
     const emailToSave = privyEmail || formData.email
     if (emailToSave && emailToSave !== data.email) {
       updateData({ email: emailToSave })
@@ -166,7 +166,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     onNext()
   }
 
-  // Get user email - prioritize Privy email, then form input
+  // Get user email - prioritize WaaP email, then form input
   const privyEmail = user?.email?.address || user?.google?.email
   const formEmail = watchedEmail || ''
   const finalEmail = privyEmail || formEmail
@@ -289,17 +289,17 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                     Correo Electrónico *
                   </label>
                   {privyEmail ? (
-                    // Show email from Privy (read-only)
+                    // Show email from WaaP (read-only)
                     <div>
                       <p className="text-sm text-muted-foreground">
                         {privyEmail}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Email verificado por Privy
+                        Email verificado por WaaP
                       </p>
                     </div>
                   ) : (
-                    // Show input field if no email from Privy
+                    // Show input field if no email from WaaP
                     <div>
                       <input
                         {...register('email')}

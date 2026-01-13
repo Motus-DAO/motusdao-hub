@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useUIStore } from '@/lib/store'
 import { marked } from 'marked'
-import { usePrivy } from '@privy-io/react-auth'
+import { useWaaP } from '@/lib/contexts/WaaPProvider'
 
 interface Message {
   id: string
@@ -44,7 +44,7 @@ const renderMarkdown = (content: string): string => {
 
 export default function MotusAIPage() {
   const { role } = useUIStore()
-  const { user, authenticated, ready } = usePrivy()
+  const { user, authenticated, ready } = useWaaP()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',

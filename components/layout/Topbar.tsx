@@ -16,7 +16,7 @@ import {
   Shield
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
@@ -31,14 +31,14 @@ export function Topbar() {
     setTheme
   } = useUIStore()
   
-  // Privy authentication hooks
-  const { ready, authenticated, user, login, logout } = usePrivy()
-  const { wallets } = useWallets()
+  // WaaP authentication hooks (replaces Privy)
+  const { ready, authenticated, user, login, logout } = useWaaP()
+  const { wallets } = useWaaPWallets()
   
   // ZeroDev smart wallet hook
   const { smartAccountAddress, isInitializing } = useSmartAccount()
   
-  // Get EOA (embedded wallet from Privy)
+  // Get EOA (embedded wallet from WaaP)
   const embeddedWallet = identifyEmbeddedWallet(wallets)
   const eoaAddress = embeddedWallet?.address
   
@@ -343,7 +343,7 @@ export function Topbar() {
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-muted-foreground flex items-center space-x-2">
                             <Wallet className="w-4 h-4" />
-                            <span>EOA (Privy):</span>
+                            <span>EOA (WaaP):</span>
                           </span>
                           <button
                             onClick={() => handleCopyAddress(eoaAddress, 'eoa')}

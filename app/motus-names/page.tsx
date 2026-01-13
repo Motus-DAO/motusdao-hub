@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
-import { useWallets } from '@privy-io/react-auth'
+import { useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
 
 export default function MotusNamesPage() {
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
-  const { wallets } = useWallets()
+  const { wallets } = useWaaPWallets()
   const [name, setName] = useState('')
   const [isChecking, setIsChecking] = useState(false)
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
@@ -561,9 +561,9 @@ export default function MotusNamesPage() {
             
             <div className="space-y-3 text-xs">
               <div className="p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                <p className="text-gray-600 dark:text-gray-400 mb-1">EOA (Embedded Wallet) - Privy:</p>
+                <p className="text-gray-600 dark:text-gray-400 mb-1">EOA (WaaP Wallet):</p>
                 <p className="font-mono text-gray-900 dark:text-gray-100 break-all">
-                  {wallets.find(w => w.walletClientType === 'privy')?.address || 'No encontrada'}
+                  {wallets.find(w => w.walletClientType === 'waap')?.address || wallets[0]?.address || 'No encontrada'}
                 </p>
                 <p className="text-yellow-600 dark:text-yellow-400 mt-1 text-[10px]">
                   ⚠️ Esta es la &quot;semilla&quot; que genera tu smart wallet. Si cambia, tu smart wallet cambia.
@@ -580,10 +580,10 @@ export default function MotusNamesPage() {
                 </p>
               </div>
               
-              {wallets.filter(w => w.walletClientType !== 'privy').length > 0 && (
+              {wallets.filter(w => w.walletClientType === 'external').length > 0 && (
                 <div className="p-3 bg-white/50 dark:bg-black/20 rounded-lg">
                   <p className="text-gray-600 dark:text-gray-400 mb-1">Otras wallets conectadas:</p>
-                  {wallets.filter(w => w.walletClientType !== 'privy').map((w, i) => (
+                  {wallets.filter(w => w.walletClientType === 'external').map((w, i) => (
                     <p key={i} className="font-mono text-gray-900 dark:text-gray-100 break-all">
                       {w.address} <span className="text-gray-500">({w.walletClientType})</span>
                     </p>

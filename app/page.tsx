@@ -10,7 +10,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { RolePickerModal } from '@/components/onboarding/RolePickerModal'
 import { EmailLoginModal } from '@/components/onboarding/EmailLoginModal'
 import { useUIStore } from '@/lib/store'
-import { usePrivy } from '@privy-io/react-auth'
+import { useWaaP } from '@/lib/contexts/WaaPProvider'
 import { 
   Bot, 
   Heart, 
@@ -56,7 +56,7 @@ const featuredApps = [
 
 export default function Home() {
   const { } = useUIStore()
-  const { authenticated } = usePrivy()
+  const { authenticated } = useWaaP()
   const [showEmailLogin, setShowEmailLogin] = useState(false)
   const [showRolePicker, setShowRolePicker] = useState(false)
 

@@ -2,13 +2,13 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { usePrivy } from '@privy-io/react-auth'
+import { useWaaP } from '@/lib/contexts/WaaPProvider'
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 
 export default function RegistroPage() {
   const router = useRouter()
-  const { authenticated, ready } = usePrivy()
+  const { authenticated, ready } = useWaaP()
   const { isCompleted } = useOnboardingStore()
 
   // Redirect to home if registration is already completed

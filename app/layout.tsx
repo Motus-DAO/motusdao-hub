@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Topbar } from "@/components/layout/Topbar";
 import { Footer } from "@/components/layout/Footer";
-import { PrivyProviderWrapper } from "@/components/PrivyProviderWrapper";
+import { WaaPProviderWrapper } from "@/components/WaaPProviderWrapper";
 import { SidebarWrapper } from "@/components/layout/SidebarWrapper";
 
 const inter = Inter({
@@ -54,7 +54,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jura.variable} font-sans antialiased`}
       >
-        <PrivyProviderWrapper>
+        <WaaPProviderWrapper>
           <ThemeProvider>
             <div className="min-h-screen bg-background overflow-x-hidden">
               <div className="flex min-h-screen max-w-full">
@@ -69,7 +69,7 @@ export default function RootLayout({
               </div>
             </div>
           </ThemeProvider>
-        </PrivyProviderWrapper>
+        </WaaPProviderWrapper>
       </body>
     </html>
   );

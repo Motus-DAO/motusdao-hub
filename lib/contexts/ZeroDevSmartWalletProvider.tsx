@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { 
   createKernelAccount, 
   createKernelAccountClient,
@@ -12,6 +11,7 @@ import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator'
 import { createPublicClient, createWalletClient, custom, http, type Address, type WalletClient, type Account, type Transport, type Chain } from 'viem'
 import { celoMainnet } from '@/lib/celo'
 import { createPimlicoPaymasterConfig, PAYMASTER_DEBUG_INFO } from '@/lib/pimlico-paymaster'
+import { useWaaP, useWaaPWallets, useWaaPProvider } from '@/lib/contexts/WaaPProvider'
 
 // FORZAR Celo Mainnet - no importa qué diga el dashboard
 const FORCED_CHAIN = celoMainnet // Chain ID 42220
@@ -43,8 +43,11 @@ export function ZeroDevSmartWalletProvider({
   children, 
   zeroDevProjectId 
 }: ZeroDevSmartWalletProviderProps) {
-  const { authenticated } = usePrivy()
-  const { wallets } = useWallets()
+  // WaaP hooks (replaces Privy hooks)
+  const { authenticated } = useWaaP()
+  const { wallets } = useWaaPWallets()
+  const { provider: waapProvider, isReady: isWaaPReady } = useWaaPProvider()
+  
   const [kernelClient, setKernelClient] = useState<KernelAccountClient | null>(null)
   const [smartAccountAddress, setSmartAccountAddress] = useState<Address | null>(null)
   const [isInitializing, setIsInitializing] = useState(false)
@@ -56,6 +59,7 @@ export function ZeroDevSmartWalletProvider({
     projectId: zeroDevProjectId ? `${zeroDevProjectId.substring(0, 8)}...` : 'missing',
     authenticated,
     walletsCount: wallets?.length || 0,
+    isWaaPReady,
   })
 
   useEffect(() => {
@@ -79,33 +83,39 @@ export function ZeroDevSmartWalletProvider({
         return
       }
 
+      if (!waapProvider) {
+        console.log('[ZERODEV] WaaP provider not ready, waiting...')
+        setIsInitializing(false)
+        return
+      }
+
       try {
         setIsInitializing(true)
         setError(null)
-        console.log('[ZERODEV] Initializing smart wallet with wallets:', wallets.length)
+        console.log('[ZERODEV] Initializing smart wallet with WaaP wallet...')
         console.log('[ZERODEV] Using Celo Mainnet (Chain ID: 42220)')
         
         // Get EntryPoint v0.7 from ZeroDev SDK
         const entryPoint = getEntryPoint('0.7')
         
-        // Look for either embedded wallet (email login) or connected wallet (MetaMask login)
-        const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === 'privy')
-        const connectedWallet = wallets.find((wallet) => wallet.walletClientType !== 'privy')
+        // Get the WaaP wallet (EOA)
+        const waapWallet = wallets.find((wallet) => wallet.walletClientType === 'waap')
+        const externalWallet = wallets.find((wallet) => wallet.walletClientType === 'external')
         
-        const walletToUse = embeddedWallet || connectedWallet
+        const walletToUse = waapWallet || externalWallet
         if (!walletToUse) {
           console.log('[ZERODEV] No wallet found for smart account creation')
           setIsInitializing(false)
           return
         }
         
-        console.log('[ZERODEV] Found wallet:', {
+        const walletTypeLabel = walletToUse.walletClientType === 'waap' ? 'WaaP embedded' : 'External (MetaMask, etc.)'
+        console.log('[ZERODEV] Found EOA wallet:', {
           address: walletToUse.address,
-          type: walletToUse.walletClientType,
-          isEmbedded: !!embeddedWallet,
-          isConnected: !!connectedWallet,
+          type: walletTypeLabel,
           chainId: walletToUse.chainId
         })
+        console.log(`ℹ️ Using ${walletTypeLabel} wallet as EOA:`, walletToUse.address)
         
         // Log all available wallets for debugging
         console.log('[ZERODEV] All available wallets:', wallets.map(w => ({
@@ -115,13 +125,13 @@ export function ZeroDevSmartWalletProvider({
         })))
         
         // Save EOA address for debugging
-        console.log('[ZERODEV] 🔑 EOA (Embedded Wallet) Address:', walletToUse.address)
+        console.log('[ZERODEV] 🔑 EOA (WaaP Wallet) Address:', walletToUse.address)
         console.log('[ZERODEV] ⚠️ Si esta EOA cambia entre sesiones, tu smart wallet cambiará también!')
         
-        // Get the EIP1193 provider from the selected wallet
-        const provider = await walletToUse.getEthereumProvider()
+        // Use WaaP's EIP-1193 provider
+        const provider = waapProvider
         if (!provider) {
-          throw new Error('Failed to get Ethereum provider from wallet')
+          throw new Error('Failed to get Ethereum provider from WaaP')
         }
 
         console.log('[ZERODEV] Creating ECDSA Kernel smart account...')
@@ -135,13 +145,11 @@ export function ZeroDevSmartWalletProvider({
         console.log('[ZERODEV] Creating ECDSA validator...')
         
         // Create wallet client with account for signing
-        // Using address with custom transport - the provider handles signing
-        // Type assertion needed because viem's type system doesn't fully recognize
-        // that custom transport with address string works as a WalletClient with Account
+        // Using WaaP's EIP-1193 provider with viem's custom transport
         const walletClient = createWalletClient({
           account: walletToUse.address as `0x${string}`,
           chain: FORCED_CHAIN,
-          transport: custom(provider),
+          transport: custom(provider as Parameters<typeof custom>[0]),
         }) as WalletClient<Transport, Chain, Account>
         
         // Create ECDSA validator using ZeroDev SDK
@@ -166,11 +174,15 @@ export function ZeroDevSmartWalletProvider({
           index: BigInt(0), // Use index 0 for deterministic address - same owner = same address
         })
         
-        console.log('[ZERODEV] Smart account created with index 0 (deterministic)')
-        console.log('[ZERODEV] Owner (EOA):', walletToUse.address)
-        console.log('[ZERODEV] Smart account address:', account.address)
-
-        console.log('[ZERODEV] Created smart account:', account.address)
+        console.log('[ZERODEV] ✅ Smart account created with index 0 (deterministic)')
+        console.log('[ZERODEV] ═════════════════════════════════════════════════════')
+        console.log('[ZERODEV] 🔑 EOA (WaaP Wallet - signer/owner):', walletToUse.address)
+        console.log('[ZERODEV] 🏦 Smart Wallet (sends transactions):', account.address)
+        console.log('[ZERODEV] ═════════════════════════════════════════════════════')
+        console.log('[ZERODEV] 💡 The SMART WALLET generates UserOperations')
+        console.log('[ZERODEV] 💡 The EOA only signs as the wallet owner')
+        console.log('[ZERODEV] 💡 Gas is sponsored by Pimlico paymaster')
+        console.log('[ZERODEV] ═════════════════════════════════════════════════════')
 
         // Bundler Configuration: Smart routing based on method type
         // ZeroDev SDK uses some ZeroDev-specific methods (zd_*) that Pimlico doesn't support
@@ -193,15 +205,22 @@ export function ZeroDevSmartWalletProvider({
                 requestBody = JSON.parse(options.body as string)
                 const method = requestBody.method || ''
                 
-                // Route ZeroDev-specific methods (zd_*, internal helpers) to ZeroDev bundler.
-                // All standard ERC-4337 methods (including eth_estimateUserOperationGas)
-                // go to Pimlico bundler so that paymaster can be applied correctly.
+                // Smart routing for ERC-4337 methods:
+                // - ZeroDev bundler: handles Kernel-specific methods AND gas estimation
+                //   (ZeroDev knows how to simulate Kernel accounts, Pimlico may not)
+                // - Pimlico bundler: handles eth_sendUserOperation with paymaster
+                //   (We want Pimlico to execute the UserOp so paymaster works)
+                
                 if (method.startsWith('zd_') || 
-                    method.includes('zerodev')) {
+                    method.includes('zerodev') ||
+                    method === 'eth_estimateUserOperationGas') {
+                  // Use ZeroDev for gas estimation - it knows how to handle Kernel wallets
+                  // including undeployed wallets with factory/factoryData
                   shouldUseZeroDevBundler = true
                   console.log('[ZERODEV] 🔀 Routing to ZeroDev bundler:', method)
                 } else {
-                  // Route other standard ERC-4337 methods to Pimlico bundler
+                  // Route eth_sendUserOperation and other methods to Pimlico bundler
+                  // This ensures the paymaster sponsorship is applied correctly
                   console.log('[ZERODEV] 📤 Routing to Pimlico bundler:', method)
                 }
               } catch {
@@ -267,8 +286,9 @@ export function ZeroDevSmartWalletProvider({
         })
         
         console.log('[ZERODEV] 📦 Using smart bundler routing:')
+        console.log('[ZERODEV]   - Gas estimation (eth_estimateUserOperationGas) → ZeroDev bundler')
+        console.log('[ZERODEV]   - Execution (eth_sendUserOperation) → Pimlico bundler')
         console.log('[ZERODEV]   - ZeroDev-specific methods (zd_*) → ZeroDev bundler')
-        console.log('[ZERODEV]   - All standard ERC-4337 methods (incl. eth_estimateUserOperationGas) → Pimlico bundler')
         console.log('[ZERODEV]   - Paymaster: Pimlico (REQUIRED for mainnet)')
         console.log('[ZERODEV] 🔒 Bundler API keys are secure on server, not exposed to client')
         
@@ -308,7 +328,8 @@ export function ZeroDevSmartWalletProvider({
           bundler: 'Smart routing (zd_* → ZeroDev, standard ERC-4337 → Pimlico)',
           chainId: FORCED_CHAIN.id,
           chainName: FORCED_CHAIN.name,
-          note: 'AA33 fix: getPaymasterData now returns ALL gas limits from Pimlico to ensure the final UserOp matches the signed values.',
+          eoaProvider: 'WaaP (Human.tech)',
+          note: 'Migrated from Privy to WaaP for EOA creation',
         })
         
         console.log("[ZERODEV] ✅ Smart account client created:", client.account.address)
@@ -349,7 +370,7 @@ export function ZeroDevSmartWalletProvider({
 
     // Always try to initialize - the function will handle missing dependencies
     initializeSmartWallet()
-  }, [authenticated, wallets, zeroDevProjectId])
+  }, [authenticated, wallets, zeroDevProjectId, waapProvider, isWaaPReady])
 
   return (
     <ZeroDevContext.Provider
@@ -364,4 +385,3 @@ export function ZeroDevSmartWalletProvider({
     </ZeroDevContext.Provider>
   )
 }
-

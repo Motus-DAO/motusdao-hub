@@ -28,9 +28,8 @@ import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback } from 'react'
-import { usePrivy } from '@privy-io/react-auth'
+import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
-import { useWallets } from '@privy-io/react-auth'
 import { sendPaymentWithKernel, type PaymentParams } from '@/lib/payments'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
@@ -124,8 +123,8 @@ const QRScanner = dynamic(
 )
 
 export default function PagosPage() {
-  const { authenticated, user, ready } = usePrivy()
-  const { wallets } = useWallets()
+  const { authenticated, user, ready } = useWaaP()
+  const { wallets } = useWaaPWallets()
   const { smartAccountAddress, kernelClient, isInitializing } = useSmartAccount()
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreferenceData | null>(null)
   const [isLoadingPreference, setIsLoadingPreference] = useState(false)
