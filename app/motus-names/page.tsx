@@ -6,7 +6,7 @@ import { useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
-import { registerMotusNameWithWaaPGasTank } from '@/lib/waap-gastank-mns'
+import { registerMotusNameWithWaaP } from '@/lib/mns-register'
 
 export default function MotusNamesPage() {
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
@@ -150,25 +150,25 @@ export default function MotusNamesPage() {
     }
     
     setIsRegistering(true)
-    setResult('🔄 Enviando transacción con WaaP (Gas Tank)...')
+    setResult('🔄 Registrando dominio en Celo (pagando gas desde tu wallet WaaP)...')
     setTxHash(null)
-    
-    const response = await registerMotusNameWithWaaPGasTank(
+
+    const response = await registerMotusNameWithWaaP(
       name,
       targetAddress
     )
-    
+
     if (response.success) {
       setResult('✅ ¡Nombre registrado exitosamente con WaaP!')
       setTxHash(response.txHash || null)
       setName('')
       setIsAvailable(null)
       setIsValid(null)
-      
+
       // Actualizar total supply
       const newTotal = await motusNameService.getTotalSupply()
       setTotalSupply(newTotal)
-      
+
       // Actualizar mi nombre
       setMyName(name)
       setRegisteredAddress(targetAddress as Address)
@@ -176,7 +176,7 @@ export default function MotusNamesPage() {
     } else {
       setResult(`❌ Error: ${response.error}`)
     }
-    
+
     setIsRegistering(false)
   }
   // Solicitar CELO del faucet para la EOA WaaP

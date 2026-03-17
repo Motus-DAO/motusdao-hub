@@ -14,8 +14,8 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { motusNameService } from '@/lib/motus-name-service'
-import { registerMotusNameWithWaaPGasTank } from '@/lib/waap-gastank-mns'
 import { getCeloExplorerUrl } from '@/lib/celo'
+import { registerMotusNameWithWaaP } from '@/lib/mns-register'
 
 interface StepBlockchainProps {
   onNext: () => void
@@ -138,11 +138,11 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
     }
 
     setIsRegisteringName(true)
-    setNameResult('🔄 Registrando dominio en Celo (pagando gas desde tu wallet)...')
+    setNameResult('🔄 Registrando dominio en Celo (pagando gas desde tu wallet WaaP)...')
     setNameTxHash(null)
 
     try {
-      const response = await registerMotusNameWithWaaPGasTank(
+      const response = await registerMotusNameWithWaaP(
         name,
         data.eoaAddress as `0x${string}`
       )
