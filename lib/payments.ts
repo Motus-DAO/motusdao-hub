@@ -1,4 +1,4 @@
-import { createWalletClient, custom, parseUnits, parseEther, encodeFunctionData, type Address } from 'viem'
+import { createWalletClient, custom, parseUnits, encodeFunctionData, type Address } from 'viem'
 import { celoMainnet, CELO_STABLE_TOKENS } from './celo'
 import { getCeloExplorerUrl } from './celo'
 import type { WaaPWallet } from './wallet-utils'
@@ -31,12 +31,10 @@ export interface PaymentResult {
  *
  * @param wallet - The WaaP wallet to use
  * @param allWallets - Optional: all available wallets to identify best wallet
- * @param allowEOA - If true, allows using EOA directly (default: false)
  */
 export async function createPrivyWalletClient(
   wallet: WaaPWallet, 
-  allWallets?: WaaPWallet[],
-  allowEOA: boolean = false
+  allWallets?: WaaPWallet[]
 ) {
   // Try to get the primary wallet
   let targetWallet = wallet
@@ -79,7 +77,7 @@ export async function sendCELOPayment(
   allWallets?: WaaPWallet[]
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createPrivyWalletClient(wallet, allWallets, true)
+    const walletClient = await createPrivyWalletClient(wallet, allWallets)
     const amountInWei = parseUnits(params.amount, 18) // CELO has 18 decimals
 
     console.log('🔄 Sending CELO transaction via WaaP EOA...')
@@ -161,14 +159,4 @@ export async function sendStablecoinPayment(
   }
 }
 
-/**
- * Check if an error is the known WaaP/ethers encoding error
- * This error is non-fatal and can be ignored
- */
-function isEncodingError(error: unknown): boolean {
-  if (!error) return false
-  const errorStr = error instanceof Error ? error.message : String(error)
-  return errorStr.includes('invalid codepoint') || 
-         errorStr.includes('missing continuation byte') ||
-         errorStr.includes('strings/5.7.0')
-}
+// Reserved for future specialized WaaP/ethers encoding error handling if needed

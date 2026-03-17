@@ -5,7 +5,6 @@ const PROFILE_NFT_NAME = 'Motus Clinical Profile'
 const lighthouseApiKey = process.env.LIGHTHOUSE_API_KEY
 
 if (!lighthouseApiKey) {
-  // eslint-disable-next-line no-console
   console.warn(
     '[profile-nft-metadata] LIGHTHOUSE_API_KEY is not set. Profile NFTs will fail to upload metadata.'
   )

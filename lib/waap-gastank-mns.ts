@@ -50,9 +50,15 @@ const ERC20_BALANCE_ABI = [
   },
 ] as const
 
-function getWaaP(): any | null {
+type WaaPLike = {
+  request: (args: { method: string; params?: unknown[] | Record<string, unknown>; async?: boolean }) => Promise<unknown>
+  on: (event: string, listener: (event: unknown) => void) => void
+  removeListener: (event: string, listener: (event: unknown) => void) => void
+}
+
+function getWaaP(): WaaPLike | null {
   if (typeof window === 'undefined') return null
-  return (window as any).waap ?? null
+  return (window as unknown as { waap?: WaaPLike }).waap ?? null
 }
 
 function getCeloPublicClient() {
@@ -62,14 +68,15 @@ function getCeloPublicClient() {
   })
 }
 
-async function ensureCeloChain(waap: any): Promise<void> {
+async function ensureCeloChain(waap: WaaPLike): Promise<void> {
   try {
     await waap.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: CELO_CHAIN_ID_HEX }],
     })
-  } catch (err: any) {
-    if (err?.code === 4902 || err?.message?.includes('Unrecognized chain')) {
+  } catch (err: unknown) {
+    const e = err as { code?: number; message?: string }
+    if (e?.code === 4902 || e?.message?.includes('Unrecognized chain')) {
       await waap.request({
         method: 'wallet_addEthereumChain',
         params: [CELO_CHAIN_PARAMS],
@@ -83,7 +90,7 @@ async function ensureCeloChain(waap: any): Promise<void> {
  * bypassing the WaaP gas tank relay which is currently unreachable.
  */
 async function signAndBroadcast(
-  waap: any,
+  waap: WaaPLike,
   txParams: { from: string; to: string; data: string; value: string },
 ): Promise<string> {
   const publicClient = getCeloPublicClient()
@@ -98,8 +105,8 @@ async function signAndBroadcast(
     function cleanup() {
       clearTimeout(timeout)
       try {
-        waap.removeListener('waap_sign_complete', onComplete)
-        waap.removeListener('waap_sign_failed', onFailed)
+        waap.removeListener('waap_sign_complete', onComplete as unknown as (event: unknown) => void)
+        waap.removeListener('waap_sign_failed', onFailed as unknown as (event: unknown) => void)
       } catch { /* listeners may not exist */ }
     }
 
@@ -117,8 +124,8 @@ async function signAndBroadcast(
       reject(new Error(event.error || 'Error al firmar la transacción en WaaP.'))
     }
 
-    waap.on('waap_sign_complete', onComplete)
-    waap.on('waap_sign_failed', onFailed)
+    waap.on('waap_sign_complete', onComplete as unknown as (event: unknown) => void)
+    waap.on('waap_sign_failed', onFailed as unknown as (event: unknown) => void)
   })
 
   // Send tx in async mode: WaaP will sign it, modal closes after user confirms.
@@ -147,8 +154,9 @@ async function signAndBroadcast(
     })
     console.log('[MNS] Broadcast successful:', txHash)
     return txHash as string
-  } catch (broadcastErr: any) {
-    const errMsg = broadcastErr?.message || broadcastErr?.details || String(broadcastErr)
+  } catch (broadcastErr: unknown) {
+    const e = broadcastErr as { message?: string; details?: string }
+    const errMsg = e?.message || e?.details || String(broadcastErr)
     if (errMsg.includes('already known') || errMsg.includes('nonce too low') || errMsg.includes('already exists')) {
       console.log('[MNS] Tx already broadcast by WaaP, using derived hash:', derivedTxHash)
       return derivedTxHash
@@ -191,7 +199,7 @@ export async function registerMotusNameWithWaaPGasTank(
 
     const celoBalance = await publicClient.getBalance({ address: from })
     console.log('[MNS] CELO balance:', formatUnits(celoBalance, 18))
-    if (celoBalance === 0n) {
+    if (celoBalance === BigInt(0)) {
       return {
         success: false,
         error: 'Tu wallet no tiene CELO para gas. Reclama CELO del faucet primero (paso 1).',
@@ -207,7 +215,7 @@ export async function registerMotusNameWithWaaPGasTank(
     console.log('[MNS] Registration price:', formatUnits(registrationPrice, 18), 'cUSD')
 
     // 5) If price > 0, handle cUSD approval first
-    if (registrationPrice > 0n) {
+    if (registrationPrice > BigInt(0)) {
       const cUSD = CELO_STABLE_TOKENS.cUSD as Address
       const cUSDBalance = (await publicClient.readContract({
         address: cUSD,

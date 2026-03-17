@@ -25,7 +25,7 @@ interface StepBlockchainProps {
 type BlockchainStatus = 'idle' | 'waiting-wallet' | 'submitting' | 'success' | 'error'
 
 export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
-  const { role, data, updateData } = useOnboardingStore()
+  const { data, updateData } = useOnboardingStore()
   const [status, setStatus] = useState<BlockchainStatus>('idle')
   const [error, setError] = useState<string>('')
   const [isRequestingFaucet, setIsRequestingFaucet] = useState(false)

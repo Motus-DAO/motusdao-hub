@@ -26,7 +26,11 @@ function buildRootAgentConfig(): RootAgentConfig {
       scope: selfScopeId,
       appName: selfAppName,
       endpoint: selfEndpoint,
-      endpointType: selfEndpointType as any,
+      endpointType: selfEndpointType as RootAgentConfig['selfConfig'] extends infer S
+        ? S extends { endpointType: infer T }
+          ? T
+          : never
+        : never,
       logoBase64: selfLogoBase64,
     };
   }

@@ -10,10 +10,9 @@ import type { WaaPWallet } from './wallet-utils'
  * With WaaP + ZeroDev Kernel, the smart wallet address can be calculated/predicted
  * even before the contract is deployed.
  * 
- * @param waapWallet - The WaaP wallet (EOA) that will sign for the smart wallet
  * @returns The predicted smart wallet address, or null if not available
  */
-export async function getSmartWalletAddress(waapWallet: WaaPWallet): Promise<string | null> {
+export async function getSmartWalletAddress(): Promise<string | null> {
   try {
     // With WaaP + ZeroDev Kernel, the smart wallet address is deterministic
     // based on the WaaP EOA address and index (0 by default)
@@ -33,10 +32,9 @@ export async function getSmartWalletAddress(waapWallet: WaaPWallet): Promise<str
  * WARNING: This will cost gas (or use paymaster if configured).
  * Only use if you need the smart wallet address immediately.
  * 
- * @param waapWallet - The WaaP wallet to use
  * @returns The smart wallet address after creation, or null if failed
  */
-export async function triggerSmartWalletCreation(waapWallet: WaaPWallet): Promise<string | null> {
+export async function triggerSmartWalletCreation(): Promise<string | null> {
   try {
     // With WaaP + ZeroDev, smart wallet creation is handled by ZeroDevSmartWalletProvider
     // The smart wallet will be deployed automatically on first transaction

@@ -2,6 +2,7 @@ import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { celoMainnet } from '@/lib/celo'
 import MotusClinicalProfileAbi from '@/contracts/abis/MotusClinicalProfile.json'
+import type { Abi } from 'viem'
 
 const PROFILE_NFT_ADDRESS =
   (process.env.MOTUS_PROFILE_NFT_ADDRESS as `0x${string}`) ||
@@ -24,14 +25,23 @@ export function getCeloClient() {
 }
 
 export function getProfileNftContract(client: ReturnType<typeof createWalletClient>) {
+  const abi = (MotusClinicalProfileAbi as { abi: Abi }).abi
+
   return {
     write: {
       mintProfile: (args: [`0x${string}`, string]) =>
-        client.writeContract({
+        (client as unknown as {
+          writeContract: (params: {
+            address: `0x${string}`
+            abi: Abi
+            functionName: 'mintProfile'
+            args: [`0x${string}`, string]
+          }) => Promise<unknown>
+        }).writeContract({
           address: PROFILE_NFT_ADDRESS,
-          abi: MotusClinicalProfileAbi as any,
+          abi,
           functionName: 'mintProfile',
-          args
+          args,
         })
     }
   }

@@ -121,7 +121,7 @@ export function getPrimaryWallet(wallets: WaaPWallet[]): WaaPWallet | null {
  * @param allWallets - All available wallets (for context)
  * @returns The wallet type
  */
-export function getWalletType(wallet: WaaPWallet | null, allWallets: WaaPWallet[]): WalletType {
+export function getWalletType(wallet: WaaPWallet | null): WalletType {
   if (!wallet) {
     return 'external'
   }

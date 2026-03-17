@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
             // Only remove paymasterAndData if unpacked fields exist (v0.6 → v0.7 cleanup)
             if ('paymasterAndData' in userOp && 'paymaster' in userOp && userOp.paymaster) {
               console.log('[PIMLICO BUNDLER PROXY] 🔧 Removing redundant paymasterAndData (keeping v0.7 unpacked fields)')
-              const { paymasterAndData: _, ...userOpClean } = userOp
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { paymasterAndData: _paymasterAndData, ...userOpClean } = userOp
               jsonRpcRequest.params[0] = userOpClean
             }
           }
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
               // Viem/ZeroDev adds both, but Pimlico v0.7 API REJECTS UserOps with paymasterAndData
               if ('paymasterAndData' in userOp) {
                 console.log('[PIMLICO BUNDLER PROXY] 🔧 Removing paymasterAndData from v0.7 unpacked UserOp')
-                const { paymasterAndData: _, ...userOpClean } = userOp
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { paymasterAndData: _paymasterAndData, ...userOpClean } = userOp
                 jsonRpcRequest.params[0] = userOpClean
               }
               
@@ -127,7 +129,8 @@ export async function POST(request: NextRequest) {
                 // paymasterAndData = paymaster (20 bytes / 40 hex chars) + paymasterData (rest)
                 const paymaster = '0x' + paymasterAndData.slice(2, 42)  // First 20 bytes
                 const paymasterData = '0x' + paymasterAndData.slice(42)  // Rest
-                const { paymasterAndData: _, ...userOpUnpacked } = userOp
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { paymasterAndData: _paymasterAndData, ...userOpUnpacked } = userOp
                 
                 // CRITICAL: Use gas limits from userOp if they exist (should be set by getPaymasterData)
                 // Only default to '0x0' if they're truly missing

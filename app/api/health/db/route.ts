@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     // Test database connection with timeout
-    const connectionTest = await Promise.race([
+    await Promise.race([
       prisma.$queryRaw`SELECT 1 as test`,
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Connection timeout after 5 seconds')), 5000)
