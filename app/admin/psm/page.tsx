@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -123,11 +124,6 @@ export default function AdminPSMPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
-
-  const truncateAddress = (address: string) => {
-    if (!address) return 'N/A'
-    return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
 
   const filteredPsms = psms.filter(psm => {
@@ -300,10 +296,11 @@ export default function AdminPSMPage() {
                     {/* Avatar */}
                     <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       {psm.avatarUrl ? (
-                        <img 
-                          src={psm.avatarUrl} 
+                        <Image
+                          src={psm.avatarUrl}
                           alt={`${psm.nombre} ${psm.apellido}`}
-                          className="w-full h-full rounded-lg object-cover"
+                          fill
+                          className="rounded-lg object-cover"
                         />
                       ) : (
                         <span className="text-white font-bold text-lg">
@@ -539,11 +536,14 @@ export default function AdminPSMPage() {
                     {selectedPSM.avatarUrl && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Avatar</p>
-                        <img 
-                          src={selectedPSM.avatarUrl} 
-                          alt={`${selectedPSM.nombre} ${selectedPSM.apellido}`}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
+                        <div className="relative w-16 h-16">
+                          <Image
+                            src={selectedPSM.avatarUrl}
+                            alt={`${selectedPSM.nombre} ${selectedPSM.apellido}`}
+                            fill
+                            className="rounded-lg object-cover"
+                          />
+                        </div>
                       </div>
                     )}
                     {selectedPSM.bio && (

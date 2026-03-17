@@ -12,7 +12,6 @@ import {
   Mail,
   Wallet,
   User as UserIcon,
-  Shield,
   Calendar,
   CheckCircle2,
   XCircle,
@@ -121,7 +120,7 @@ export default function AdminUsuariosPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, search, roleFilter])
+  }, [currentPage, search, roleFilter, showDeleted])
 
   useEffect(() => {
     fetchUsers()

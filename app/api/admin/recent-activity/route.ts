@@ -1,20 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-async function checkAdminAccess(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const privyId = searchParams.get('privyId') || request.headers.get('x-privy-id')
-  
-  if (!privyId) return null
-
-  const user = await prisma.user.findUnique({
-    where: { privyId },
-    select: { role: true }
-  })
-
-  return user?.role === 'admin' ? user : null
-}
-
 export async function GET(request: NextRequest) {
   try {
     // TEMPORAL: Autenticación deshabilitada para desarrollo

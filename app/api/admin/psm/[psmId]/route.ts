@@ -1,21 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Helper to check admin access
-async function checkAdminAccess(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const privyId = searchParams.get('privyId') || request.headers.get('x-privy-id')
-  
-  if (!privyId) return null
-
-  const user = await prisma.user.findUnique({
-    where: { privyId },
-    select: { role: true }
-  })
-
-  return user?.role === 'admin' ? user : null
-}
-
 /**
  * DELETE /api/admin/psm/[psmId]
  * Deletes a PSM user and all related data (admin only, for cleaning test data)
