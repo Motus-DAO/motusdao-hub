@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { uploadProfileMetadataToIPFS } from '@/lib/profile-nft-metadata'
 import { getCeloClient, getProfileNftContract } from '@/lib/profile-nft-onchain'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()

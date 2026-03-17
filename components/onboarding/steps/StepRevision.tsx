@@ -73,9 +73,27 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
         })
       })
 
-      const body = await res.json()
+      const text = await res.text()
+      let body: { success?: boolean; error?: string; txHash?: string; tokenURI?: unknown } = {}
+
+      try {
+        body = text ? (JSON.parse(text) as typeof body) : {}
+      } catch {
+        // If the API returned HTML or non-JSON, treat it as a soft failure
+        console.warn('Respuesta no JSON al registrar NFT de perfil:', text.slice(0, 200))
+      }
 
       if (!res.ok || !body.success) {
+        // For 5xx errors, do not block onboarding – just warn and continue
+        if (res.status >= 500) {
+          console.warn(
+            'Error 5xx al registrar NFT de perfil, continuando onboarding sin NFT:',
+            body.error || text.slice(0, 200)
+          )
+          onNext()
+          return
+        }
+
         throw new Error(body.error || 'Error al registrar NFT de perfil')
       }
 
