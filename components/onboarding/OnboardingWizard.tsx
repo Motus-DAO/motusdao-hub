@@ -84,9 +84,12 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
         return <StepConnect onNext={handleNext} onBack={handleBack} />
       
       case 1:
-        return <StepRoleSelection onNext={handleNext} onBack={handleBack} />
+        return <StepBlockchain onNext={handleNext} onBack={handleBack} />
       
       case 2:
+        return <StepRoleSelection onNext={handleNext} onBack={handleBack} />
+      
+      case 3:
         if (role === 'usuario') {
           return <StepPerfilUsuario onNext={handleNext} onBack={handleBack} />
         } else if (role === 'psm') {
@@ -96,11 +99,8 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
           return <StepRoleSelection onNext={handleNext} onBack={handleBack} />
         }
       
-      case 3:
-        return <StepRevision onNext={handleNext} onBack={handleBack} />
-      
       case 4:
-        return <StepBlockchain onNext={handleNext} onBack={handleBack} />
+        return <StepRevision onNext={handleNext} onBack={handleBack} />
       
       case 5:
         return <StepExito onComplete={handleComplete} />

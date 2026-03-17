@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 import { motusNameService } from '@/lib/motus-name-service'
-import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
-import { sendPaymentWithKernel } from '@/lib/payments'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
+import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { getPrimaryWallet } from '@/lib/wallet-utils'
+import { sendCELOPayment } from '@/lib/payments'
 
 interface SendWithMotusNameProps {
   onSuccess?: () => void
 }
 
 export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps = {}) {
-  const { kernelClient, smartAccountAddress } = useSmartAccount()
+  const { authenticated } = useWaaP()
+  const { wallets } = useWaaPWallets()
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [resolvedAddress, setResolvedAddress] = useState<Address | null>(null)
@@ -54,7 +56,18 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
   }
 
   const handleSend = async () => {
-    if (!kernelClient || !resolvedAddress || !amount) {
+    if (!authenticated) {
+      setError('Necesitas iniciar sesión para enviar pagos')
+      return
+    }
+
+    const primaryWallet = getPrimaryWallet(wallets || [])
+    if (!primaryWallet) {
+      setError('No se encontró una WaaP wallet. Inicia sesión para obtener una.')
+      return
+    }
+
+    if (!resolvedAddress || !amount) {
       setError('Por favor completa todos los campos')
       return
     }
@@ -70,12 +83,16 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
     setResult('🔄 Enviando transacción...')
 
     try {
-      const response = await sendPaymentWithKernel(kernelClient, {
-        from: smartAccountAddress!,
-        to: resolvedAddress,
-        amount: amount,
-        currency: 'CELO'
-      })
+      const response = await sendCELOPayment(
+        primaryWallet,
+        {
+          from: primaryWallet.address,
+          to: resolvedAddress,
+          amount: amount,
+          currency: 'CELO',
+        },
+        wallets,
+      )
 
       if (response.success) {
         setResult('✅ Transacción exitosa!')
@@ -170,7 +187,7 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
       {/* Botón Enviar */}
       <button
         onClick={handleSend}
-        disabled={!resolvedAddress || !amount || isSending || !kernelClient}
+        disabled={!resolvedAddress || !amount || isSending}
         className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg 
                  font-semibold shadow-lg hover:shadow-xl
                  disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed
@@ -183,7 +200,7 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
             Enviando...
           </span>
         ) : (
-          'Enviar (Gasless)'
+          'Enviar'
         )}
       </button>
 
@@ -231,7 +248,7 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
         <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
           <li>✅ Fácil de recordar y compartir</li>
           <li>✅ No necesitas copiar direcciones largas</li>
-          <li>✅ Transacciones gasless (sin fees)</li>
+          <li>✅ Experiencia de usuario simplificada</li>
           <li>✅ Verificación automática del destinatario</li>
         </ul>
       </div>

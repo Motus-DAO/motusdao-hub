@@ -29,12 +29,12 @@ import dynamic from 'next/dynamic'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback } from 'react'
 import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
-import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
-import { sendPaymentWithKernel, type PaymentParams } from '@/lib/payments'
+import { sendCELOPayment, sendStablecoinPayment, type PaymentParams } from '@/lib/payments'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
 import { motusNameService } from '@/lib/motus-name-service'
 import type { Address } from 'viem'
+import { getPrimaryWallet } from '@/lib/wallet-utils'
 
 const paymentSteps = [
   {
@@ -125,7 +125,8 @@ const QRScanner = dynamic(
 export default function PagosPage() {
   const { authenticated, user, ready } = useWaaP()
   const { wallets } = useWaaPWallets()
-  const { smartAccountAddress, kernelClient, isInitializing } = useSmartAccount()
+  const primaryWallet = getPrimaryWallet(wallets || [])
+  const walletAddress = primaryWallet?.address || null
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreferenceData | null>(null)
   const [isLoadingPreference, setIsLoadingPreference] = useState(false)
   const [isSavingPreference, setIsSavingPreference] = useState(false)
@@ -250,14 +251,14 @@ export default function PagosPage() {
   // Load user's .motus name for receive section
   useEffect(() => {
     const loadUserMotusName = async () => {
-      if (!smartAccountAddress) {
+      if (!walletAddress) {
         setUserMotusName(null)
         return
       }
       
       setIsLoadingUserMotusName(true)
       try {
-        const name = await motusNameService.reverseLookup(smartAccountAddress as Address)
+        const name = await motusNameService.reverseLookup(walletAddress as Address)
         setUserMotusName(name ? name + '.motus' : null)
       } catch (err) {
         console.error('Error loading user motus name:', err)
@@ -268,7 +269,7 @@ export default function PagosPage() {
     }
     
     loadUserMotusName()
-  }, [smartAccountAddress])
+  }, [walletAddress])
 
   // Lista de tokens disponibles con información
   const availableTokens = [
@@ -309,10 +310,8 @@ export default function PagosPage() {
       return
     }
 
-    if (!kernelClient) {
-      setSendError(isInitializing 
-        ? 'La smart wallet se está inicializando. Por favor espera...'
-        : 'Smart wallet no disponible. Asegúrate de estar conectado.')
+    if (!primaryWallet || !walletAddress) {
+      setSendError('Wallet no disponible. Asegúrate de haber iniciado sesión con WaaP.')
       return
     }
 
@@ -341,7 +340,7 @@ export default function PagosPage() {
 
     try {
       const params: PaymentParams = {
-        from: smartAccountAddress || '0x0' as `0x${string}`,
+        from: walletAddress as `0x${string}`,
         to: targetAddress as `0x${string}`,
         amount: sendAmount,
         currency: selectedToken,
@@ -354,7 +353,10 @@ export default function PagosPage() {
         token: selectedToken
       })
 
-      const result = await sendPaymentWithKernel(kernelClient, params)
+      const isNative = selectedToken === 'CELO'
+      const result = isNative
+        ? await sendCELOPayment(primaryWallet, params, wallets)
+        : await sendStablecoinPayment(primaryWallet, params)
 
       if (result.success && result.transactionHash) {
         setSendSuccess({
@@ -380,7 +382,7 @@ export default function PagosPage() {
   // Load token balances
   useEffect(() => {
     const loadBalances = async () => {
-      if (!authenticated || !smartAccountAddress || !ready) {
+      if (!authenticated || !walletAddress || !ready) {
         setTokenBalances([])
         return
       }
@@ -389,7 +391,7 @@ export default function PagosPage() {
       try {
         const enabledTokensArray = Array.from(enabledTokens)
         const balances = await getAllTokenBalances(
-          smartAccountAddress as `0x${string}`,
+          walletAddress as `0x${string}`,
           enabledTokensArray
         )
         setTokenBalances(balances)
@@ -406,24 +408,24 @@ export default function PagosPage() {
     // Refresh balances every 30 seconds
     const interval = setInterval(loadBalances, 30000)
     return () => clearInterval(interval)
-  }, [authenticated, smartAccountAddress, ready, enabledTokens])
+  }, [authenticated, walletAddress, ready, enabledTokens])
 
   // Refresh balances after successful payment
   useEffect(() => {
     if (sendSuccess) {
       // Reload balances after a short delay to allow blockchain to update
       setTimeout(async () => {
-        if (smartAccountAddress) {
+        if (walletAddress) {
           const enabledTokensArray = Array.from(enabledTokens)
           const balances = await getAllTokenBalances(
-            smartAccountAddress as `0x${string}`,
+            walletAddress as `0x${string}`,
             enabledTokensArray
           )
           setTokenBalances(balances)
         }
       }, 3000)
     }
-  }, [sendSuccess, smartAccountAddress, enabledTokens])
+  }, [sendSuccess, walletAddress, enabledTokens])
 
   // Configuración de proveedores con flags de habilitación desde env vars
   const providers: ProviderConfig[] = [
@@ -522,7 +524,7 @@ export default function PagosPage() {
 
     switch (paymentPreference.defaultDestination) {
       case 'own_wallet':
-        return smartAccountAddress || userData?.smartWalletAddress
+        return walletAddress
       case 'matched_psm':
         return paymentPreference.matchedPSM?.smartWalletAddress
       case 'dao_treasury':
@@ -756,7 +758,7 @@ export default function PagosPage() {
           </motion.div>
 
           {/* Wallet Balances Section */}
-          {authenticated && smartAccountAddress && (
+          {authenticated && walletAddress && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -777,12 +779,12 @@ export default function PagosPage() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={async () => {
-                        if (!smartAccountAddress) return
+                        if (!walletAddress) return
                         setIsLoadingBalances(true)
                         try {
                           const enabledTokensArray = Array.from(enabledTokens)
                           const balances = await getAllTokenBalances(
-                            smartAccountAddress as `0x${string}`,
+                            walletAddress as `0x${string}`,
                             enabledTokensArray
                           )
                           setTokenBalances(balances)
@@ -792,7 +794,7 @@ export default function PagosPage() {
                           setIsLoadingBalances(false)
                         }
                       }}
-                      disabled={isLoadingBalances || !smartAccountAddress}
+                      disabled={isLoadingBalances || !walletAddress}
                       className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Refrescar balances"
                     >
@@ -1002,17 +1004,17 @@ export default function PagosPage() {
                   </div>
                 )}
 
-                {smartAccountAddress && (
+                {walletAddress && (
                   <div className="mt-6 pt-6 border-t border-white/10">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Dirección de tu smart wallet:</p>
-                        <p className="text-xs font-mono break-all">{smartAccountAddress}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Dirección de tu wallet:</p>
+                        <p className="text-xs font-mono break-all">{walletAddress}</p>
                       </div>
                       <button
                         onClick={async () => {
                           try {
-                            await navigator.clipboard.writeText(smartAccountAddress)
+                            await navigator.clipboard.writeText(walletAddress)
                             alert('Dirección copiada al portapapeles')
                           } catch (err) {
                             console.error('Error copiando:', err)
@@ -1390,7 +1392,7 @@ export default function PagosPage() {
                         size="lg"
                         className="w-full"
                         onClick={handleSendPayment}
-                        disabled={isSending || !kernelClient || isInitializing || !resolvedAddress || !sendAmount || isResolvingName}
+                        disabled={isSending || !resolvedAddress || !sendAmount || isResolvingName}
                       >
                         {isSending ? (
                           <>
@@ -1478,14 +1480,14 @@ export default function PagosPage() {
 
                       <div>
                         <label className="block text-sm font-medium mb-1">
-                          Tu dirección de smart wallet
+                          Tu dirección de wallet
                         </label>
                         <div className="rounded-xl border border-mauve-500/40 bg-background/60 px-3 py-2 text-sm font-mono break-all">
-                          {smartAccountAddress || userData?.smartWalletAddress || 'Smart wallet no disponible aún'}
+                          {walletAddress || 'Wallet no disponible aún'}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Esta es la dirección que puedes compartir para recibir pagos. Las comisiones de gas se
-                          cubren mediante el paymaster (gasless).
+                          gestionan según la configuración de tu WaaP wallet.
                         </p>
                       </div>
 
@@ -1494,7 +1496,7 @@ export default function PagosPage() {
                           size="sm"
                           variant="secondary"
                           onClick={async () => {
-                            const addr = smartAccountAddress || userData?.smartWalletAddress
+                            const addr = walletAddress
                             if (!addr) {
                               alert('No hay una smart wallet disponible para copiar.')
                               return
@@ -1526,7 +1528,7 @@ export default function PagosPage() {
 
                     <div className="space-y-4">
                       <div className="p-4 rounded-xl border border-white/10 bg-white/5 flex flex-col items-center justify-center min-h-[220px]">
-                        {smartAccountAddress || userData?.smartWalletAddress ? (
+                        {walletAddress ? (
                           <>
                             {userMotusName && (
                               <div className="mb-3 px-3 py-1 bg-mauve-500/20 rounded-full">
@@ -1534,7 +1536,7 @@ export default function PagosPage() {
                               </div>
                             )}
                             <QRCodeSVG
-                              value={smartAccountAddress || userData?.smartWalletAddress || ''}
+                              value={walletAddress || ''}
                               size={180}
                               level="H"
                               includeMargin
@@ -1697,14 +1699,14 @@ export default function PagosPage() {
                           <div>
                             <h3 className="font-semibold text-lg mb-1">Mi Wallet</h3>
                             <p className="text-sm text-muted-foreground mb-2">
-                              Los fondos irán a tu propia smart wallet
+                              Los fondos irán a tu propia wallet WaaP
                             </p>
-                            {smartAccountAddress || userData?.smartWalletAddress ? (
+                            {walletAddress ? (
                               <p className="text-xs font-mono text-muted-foreground break-all">
-                                {(smartAccountAddress || userData?.smartWalletAddress)?.slice(0, 10)}...{(smartAccountAddress || userData?.smartWalletAddress)?.slice(-8)}
+                                {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
                               </p>
                             ) : (
-                              <p className="text-xs text-yellow-500">Smart wallet no disponible aún</p>
+                              <p className="text-xs text-yellow-500">Wallet no disponible aún</p>
                             )}
                           </div>
                         </div>

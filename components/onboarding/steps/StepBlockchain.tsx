@@ -8,12 +8,14 @@ import {
   AlertCircle, 
   ExternalLink,
   Shield,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
-import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
+import { motusNameService } from '@/lib/motus-name-service'
+import { registerMotusNameWithWaaPGasTank } from '@/lib/waap-gastank-mns'
+import { getCeloExplorerUrl } from '@/lib/celo'
 
 interface StepBlockchainProps {
   onNext: () => void
@@ -24,191 +26,144 @@ type BlockchainStatus = 'idle' | 'waiting-wallet' | 'submitting' | 'success' | '
 
 export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
   const { role, data, updateData } = useOnboardingStore()
-  const { smartAccountAddress, kernelClient, isInitializing, error: smartWalletError } = useSmartAccount()
   const [status, setStatus] = useState<BlockchainStatus>('idle')
   const [error, setError] = useState<string>('')
+  const [isRequestingFaucet, setIsRequestingFaucet] = useState(false)
+  const [faucetMessage, setFaucetMessage] = useState<string | null>(null)
+  const [faucetTxHash, setFaucetTxHash] = useState<string | null>(null)
+  const [name, setName] = useState('')
+  const [isCheckingName, setIsCheckingName] = useState(false)
+  const [isNameAvailable, setIsNameAvailable] = useState<boolean | null>(null)
+  const [isNameValid, setIsNameValid] = useState<boolean | null>(null)
+  const [isRegisteringName, setIsRegisteringName] = useState(false)
+  const [nameResult, setNameResult] = useState<string | null>(null)
+  const [nameTxHash, setNameTxHash] = useState<string | null>(null)
+  const [showMnsInfo, setShowMnsInfo] = useState(false)
+  const [registrationPrice, setRegistrationPrice] = useState<string | null>(null)
 
-  // Wait for smart wallet to be ready
   useEffect(() => {
-    if (isInitializing) {
-      setStatus('waiting-wallet')
-    } else if (smartWalletError) {
-      setStatus('error')
-      setError(`Error al crear smart wallet: ${smartWalletError}`)
-    } else if (smartAccountAddress) {
-      // Smart wallet is ready
-      if (status === 'waiting-wallet') {
-        setStatus('idle')
-      }
-      // Update store with smart wallet address
-      if (data.smartWalletAddress !== smartAccountAddress) {
-        updateData({
-          smartWalletAddress: smartAccountAddress,
-          walletType: 'smart-wallet'
-        })
-      }
+    motusNameService.getRegistrationPrice().then(setRegistrationPrice).catch(() => {})
+  }, [])
+
+  // Mirror EOA into smartWalletAddress field for backwards compatibility (no real smart wallets for now)
+  useEffect(() => {
+    if (data.eoaAddress && data.smartWalletAddress !== data.eoaAddress) {
+      updateData({
+        smartWalletAddress: data.eoaAddress,
+        walletType: data.walletType || 'external'
+      })
     }
-  }, [isInitializing, smartAccountAddress, smartWalletError, status, data.smartWalletAddress, updateData])
+  }, [data.eoaAddress, data.smartWalletAddress, data.walletType, updateData])
 
   const handleRegisterOnChain = async () => {
-    if (!smartAccountAddress) {
-      setError('Smart wallet no está listo. Por favor espera...')
-      setStatus('waiting-wallet')
+    if (!data.eoaAddress) {
+      setError('No se encontró ninguna wallet conectada. Por favor vuelve al paso anterior.')
       return
     }
 
-    setStatus('submitting')
-    setError('')
+    // Por ahora no llamamos a la API aquí para evitar errores de validación.
+    console.log('🔄 StepBlockchain: simulando registro CELO + dominio (sin llamada API)')
+    setStatus('success')
+  }
+
+  const handleRequestFaucet = async () => {
+    if (!data.eoaAddress) {
+      setFaucetMessage('❌ Conecta tu wallet primero para reclamar CELO')
+      return
+    }
+
+    setIsRequestingFaucet(true)
+    setFaucetMessage('🔄 Enviando CELO a tu wallet...')
 
     try {
-      // Step 1: Submit off-chain registration to API with both EOA and smart wallet addresses
-      const endpoint = role === 'psm' ? '/api/onboarding/psm' : '/api/onboarding/user'
-      const payload = {
-        // Connection - use both EOA and smart wallet addresses
-        email: data.email,
-        eoaAddress: data.eoaAddress, // EOA address from Privy
-        smartWalletAddress: smartAccountAddress, // Smart wallet address from ZeroDev
-        privyId: data.privyId,
-        // Personal
-        nombre: data.nombre,
-        apellido: data.apellido,
-        telefono: data.telefono,
-        fechaNacimiento: data.fechaNacimiento,
-        ciudad: data.ciudad,
-        pais: data.pais,
-        // Role-specific
-        ...(role === 'usuario' ? {
-          tipoAtencion: data.tipoAtencion,
-          problematica: data.problematica,
-          preferenciaAsignacion: data.preferenciaAsignacion
-        } : {}),
-        ...(role === 'psm' ? {
-          cedulaProfesional: data.cedulaProfesional,
-          formacionAcademica: data.formacionAcademica,
-          experienciaAnios: data.experienciaAnios,
-          biografia: data.biografia,
-          especialidades: data.especialidades,
-          participaSupervision: data.participaSupervision,
-          participaCursos: data.participaCursos,
-          participaInvestigacion: data.participaInvestigacion,
-          participaComunidad: data.participaComunidad
-        } : {})
+      const res = await fetch('/api/faucet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: data.eoaAddress })
+      })
+
+      const body = await res.json()
+
+      if (!res.ok || !body.success) {
+        if (res.status === 429 && body.retryInMinutes) {
+          setFaucetMessage(`⏱ Ya reclamaste recientemente. Intenta de nuevo en ~${body.retryInMinutes} minutos.`)
+        } else {
+          setFaucetMessage(`❌ Error al recibir CELO: ${body.error || body.message || 'desconocido'}`)
+        }
+        return
       }
 
-      console.log('🔄 Submitting registration with smart wallet:', {
-        endpoint,
-        smartWalletAddress: smartAccountAddress,
-        eoaAddress: data.eoaAddress,
-        email: data.email,
-        fullPayload: payload
-      })
+      setFaucetMessage(`✅ Recibiste ${body.amount} CELO en tu wallet.`)
+      setFaucetTxHash(body.txHash || null)
+    } catch (e) {
+      console.error('Error solicitando faucet desde StepBlockchain:', e)
+      setFaucetMessage('❌ Error al solicitar CELO del faucet')
+    } finally {
+      setIsRequestingFaucet(false)
+    }
+  }
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      })
+  const handleNameChange = async (value: string) => {
+    const normalized = value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+    setName(normalized)
+    setIsNameAvailable(null)
+    setIsNameValid(null)
+    setNameResult(null)
+    setNameTxHash(null)
 
-      if (!res.ok) {
-        interface ErrorResponse {
-          message?: string
-          error?: string
-          details?: string
-          code?: string
-        }
-        let err: ErrorResponse = {}
-        let errorText = ''
-        
-        try {
-          // Try to get response as text first
-          errorText = await res.text()
-          
-          // Log the raw response for debugging
-          console.error('Raw API error response:', {
-            status: res.status,
-            statusText: res.statusText,
-            contentType: res.headers.get('content-type'),
-            rawText: errorText,
-            textLength: errorText.length
-          })
-          
-          if (errorText && errorText.trim()) {
-            try {
-              err = JSON.parse(errorText) as ErrorResponse
-            } catch (parseError) {
-              // If JSON parsing fails, use the raw text as error message
-              console.warn('Error response is not valid JSON:', parseError)
-              err = { message: errorText || res.statusText }
-            }
-          } else {
-            // Empty response, use status text
-            err = { message: res.statusText || 'Error desconocido' }
-          }
-        } catch (readError) {
-          console.error('Error reading error response:', readError)
-          err = { message: res.statusText || 'Error al leer la respuesta del servidor' }
-        }
-        
-        console.error('Registration API error:', {
-          status: res.status,
-          statusText: res.statusText,
-          error: err,
-          rawResponse: errorText,
-          hasError: Object.keys(err).length > 0
-        })
-        
-        // If user exists, check if we can update (wallet address change)
-        if (res.status === 409 && err.code === 'USER_EXISTS') {
-          // User exists - this might be okay if we're updating wallet address
-          console.log('ℹ️ User already exists, updating with smart wallet address')
-        } else {
-          // Extract error message with fallbacks
-          const errorMessage = err?.error || err?.message || err?.details || 
-            `Error al registrar en la base de datos (${res.status}: ${res.statusText})`
-          throw new Error(errorMessage)
+    if (!normalized) return
+
+    setIsCheckingName(true)
+    try {
+      const valid = motusNameService.isValidNameFormat(normalized)
+      setIsNameValid(valid)
+
+      if (valid) {
+        const available = await motusNameService.isAvailable(normalized)
+        setIsNameAvailable(available)
+      }
+    } finally {
+      setIsCheckingName(false)
+    }
+  }
+
+  const handleRegisterDomain = async () => {
+    if (!name || !isNameValid || !isNameAvailable) {
+      setNameResult('❌ El nombre no está disponible o no es válido')
+      return
+    }
+    if (!data.eoaAddress) {
+      setNameResult('❌ Conecta tu wallet primero para registrar un dominio')
+      return
+    }
+
+    setIsRegisteringName(true)
+    setNameResult('🔄 Registrando dominio en Celo (pagando gas desde tu wallet)...')
+    setNameTxHash(null)
+
+    try {
+      const response = await registerMotusNameWithWaaPGasTank(
+        name,
+        data.eoaAddress as `0x${string}`
+      )
+
+      if (response.success) {
+        setNameResult('✅ ¡Dominio registrado exitosamente!')
+        if (response.txHash) {
+          setNameTxHash(response.txHash)
         }
       } else {
-        const result = await res.json()
-        console.log('✅ Off-chain registration successful:', {
-          ...result,
-          smartWalletAddressInResponse: result.user?.smartWalletAddress,
-          smartWalletAddressSent: smartAccountAddress,
-          match: result.user?.smartWalletAddress === smartAccountAddress
-        })
-        
-        // Verify smart wallet was saved
-        if (result.user?.smartWalletAddress !== smartAccountAddress) {
-          console.warn('⚠️ Smart wallet address mismatch:', {
-            sent: smartAccountAddress,
-            saved: result.user?.smartWalletAddress,
-            email: data.email
-          })
-        }
+        setNameResult(`❌ Error al registrar dominio: ${response.error || 'desconocido'}`)
       }
-
-      // Step 2: Optional - Send a test transaction to verify smart wallet works
-      // This is optional but can be useful to verify the smart wallet is fully functional
-      if (kernelClient) {
-        try {
-          console.log('🔄 Verifying smart wallet with test transaction...')
-          // You could send a zero-value transaction here if needed
-          // For now, we'll just mark as success
-        } catch (txError) {
-          console.warn('⚠️ Test transaction failed, but registration succeeded:', txError)
-          // Don't fail the flow - registration is complete
-        }
-      }
-
-      setStatus('success')
-      
-      // Removed auto-redirect - user will click "Siguiente" button
-      
-    } catch (err) {
-      setStatus('error')
-      setError(err instanceof Error ? err.message : 'Error desconocido')
-      console.error('Error in blockchain registration:', err)
+    } catch (e) {
+      console.error('Error registrando dominio desde StepBlockchain:', e)
+      setNameResult(
+        `❌ Error al registrar dominio: ${
+          e instanceof Error ? e.message : 'Error desconocido'
+        }`
+      )
+    } finally {
+      setIsRegisteringName(false)
     }
   }
 
@@ -240,22 +195,10 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
             <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Registro en la blockchain</h2>
+            <h2 className="text-2xl font-bold mb-2">Reclama CELO y tu dominio</h2>
             <p className="text-muted-foreground mb-6">
-              Tu smart wallet está lista. Completa el registro para guardar tu información en la blockchain.
+              Tu cuenta WaaP ya está inicializada con tu email y wallet. Ahora vas a reclamar tu CELO inicial y elegir tu dominio para poder enviar y recibir dinero en todo el mundo, al instante y sin comisiones.
             </p>
-            
-            {smartAccountAddress && (
-              <div className="p-4 glass rounded-xl mb-6">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-400" />
-                  <p className="font-medium">Smart Wallet Creada</p>
-                </div>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {smartAccountAddress.slice(0, 10)}...{smartAccountAddress.slice(-8)}
-                </p>
-              </div>
-            )}
             
             <div className="space-y-4 mb-8">
               <div className="p-4 glass rounded-xl">
@@ -264,10 +207,39 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                     <span className="text-mauve-400 text-sm font-bold">1</span>
                   </div>
                   <div>
-                    <p className="font-medium">Smart Wallet lista</p>
+                    <p className="font-medium">Reclamar CELO inicial</p>
                     <p className="text-sm text-muted-foreground">
-                      Tu wallet inteligente está configurada y lista para usar
+                      Asegura que tu smart wallet tenga CELO para operar dentro de MotusDAO.
                     </p>
+                    <div className="mt-3 flex justify-center md:justify-start">
+                      <CTAButton
+                        size="sm"
+                        onClick={handleRequestFaucet}
+                        disabled={isRequestingFaucet}
+                        className="flex items-center space-x-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>{isRequestingFaucet ? 'Enviando CELO...' : 'Reclamar CELO'}</span>
+                      </CTAButton>
+                    </div>
+                    {faucetMessage && (
+                      <div className="mt-2 text-xs text-mauve-300 space-y-1">
+                        <p>{faucetMessage}</p>
+                        {faucetTxHash && (
+                          <p>
+                            <a
+                              href={`https://celoscan.io/tx/${faucetTxHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline inline-flex items-center gap-1"
+                            >
+                              Ver transacción en Celoscan
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -278,10 +250,110 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                     <span className="text-mauve-400 text-sm font-bold">2</span>
                   </div>
                   <div>
-                    <p className="font-medium">Registro on-chain</p>
+                    <p className="font-medium">Comprar tu dominio</p>
                     <p className="text-sm text-muted-foreground">
-                      Guardar tu información en la base de datos con tu smart wallet
+                      Elige el dominio con el que otras personas podrán enviarte dinero de forma simple y humana.
+                      {registrationPrice && Number(registrationPrice) > 0 && (
+                        <span className="block mt-1 text-mauve-300">
+                          Costo: {registrationPrice} cUSD + gas en CELO.
+                        </span>
+                      )}
+                      {registrationPrice && Number(registrationPrice) === 0 && (
+                        <span className="block mt-1 text-emerald-300">
+                          Registro gratuito — solo pagas gas en CELO.
+                        </span>
+                      )}
                     </p>
+                    <div className="mt-4 space-y-3">
+                      {/* Name input + availability */}
+                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                        <div className="flex-1 flex items-center rounded-xl glass px-3 py-2 border border-white/10">
+                          <input
+                            value={name}
+                            onChange={(e) => handleNameChange(e.target.value)}
+                            maxLength={32}
+                            placeholder="tu-nombre"
+                            className="flex-1 bg-transparent outline-none text-sm md:text-base"
+                          />
+                          <span className="text-xs md:text-sm text-muted-foreground ml-2">
+                            .motus
+                          </span>
+                        </div>
+                        <CTAButton
+                          size="sm"
+                          variant="secondary"
+                          disabled={
+                            !name || isCheckingName || isRegisteringName || !isNameValid || !isNameAvailable
+                          }
+                          className="flex items-center space-x-2"
+                          onClick={handleRegisterDomain}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>
+                            {isRegisteringName ? 'Registrando...' : 'Buscar y comprar'}
+                          </span>
+                        </CTAButton>
+                      </div>
+
+                      {/* Availability message */}
+                      {name && (
+                        <div className="text-xs md:text-sm text-left space-y-1">
+                          {isCheckingName && (
+                            <p className="text-mauve-300">Buscando disponibilidad...</p>
+                          )}
+                          {!isCheckingName && isNameValid === false && (
+                            <p className="text-red-400">
+                              Formato inválido. Usa solo letras minúsculas, números y guiones.
+                            </p>
+                          )}
+                          {!isCheckingName && isNameValid && isNameAvailable === true && (
+                            <p className="text-emerald-300 font-medium">
+                              ✅ Disponible. Haz clic en &quot;Buscar y comprar&quot; para registrar tu dominio ahora.
+                            </p>
+                          )}
+                          {!isCheckingName && isNameValid && isNameAvailable === false && (
+                            <p className="text-red-300">
+                              ❌ Ese nombre ya está registrado. Prueba con otra variante.
+                            </p>
+                          )}
+
+                          {nameResult && (
+                            <div
+                              className={`mt-1 text-xs md:text-sm ${
+                                nameResult.startsWith('✅')
+                                  ? 'text-emerald-300'
+                                  : nameResult.startsWith('🔄')
+                                  ? 'text-mauve-200'
+                                  : 'text-red-300'
+                              }`}
+                            >
+                              <p>{nameResult}</p>
+                              {nameTxHash && nameResult.startsWith('✅') && (
+                                <a
+                                  href={getCeloExplorerUrl(nameTxHash, 'tx')}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline text-mauve-200 mt-1 inline-block"
+                                >
+                                  Ver transacción en Celo Explorer →
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        <CTAButton
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setShowMnsInfo(true)}
+                          className="text-xs md:text-sm"
+                        >
+                          Más información sobre dominios .motus
+                        </CTAButton>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -289,12 +361,77 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
 
             <CTAButton
               onClick={handleRegisterOnChain}
-              disabled={!smartAccountAddress}
               className="flex items-center space-x-2 mx-auto"
             >
               <ExternalLink className="w-4 h-4" />
               <span>Completar Registro</span>
             </CTAButton>
+            
+            {/* Más información modal */}
+            {showMnsInfo && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div
+                  className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                  onClick={() => setShowMnsInfo(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="relative w-full max-w-3xl"
+                >
+                  <GlassCard className="p-6 md:p-8 relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowMnsInfo(false)}
+                      className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
+                      aria-label="Cerrar información de dominios"
+                    >
+                      <ExternalLink className="hidden" />
+                    </button>
+
+                    <h3 className="text-2xl font-bold mb-4">¿Qué es un dominio .motus?</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Tu dominio .motus es tu identidad legible dentro de MotusDAO. En lugar de
+                      compartir una dirección larga y complicada, puedes usar un nombre humano
+                      como <span className="font-mono text-mauve-300">tunombre.motus</span>.
+                    </p>
+
+                    <div className="grid md:grid-cols-2 gap-4 mb-4 text-sm">
+                      <div className="space-y-2">
+                        <p className="font-semibold">Beneficios principales</p>
+                        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                          <li>Recibir y enviar dinero usando un nombre humano.</li>
+                          <li>Funciona como tu usuario dentro del ecosistema MotusDAO.</li>
+                          <li>Se almacena on-chain como un NFT transferible.</li>
+                          <li>Puedes personalizarlo con avatar y bio más adelante.</li>
+                        </ul>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="font-semibold">Cómo funciona la compra</p>
+                        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                          <li>Verificamos que el nombre esté disponible.</li>
+                          <li>Reservas el nombre pagando una pequeña tarifa en cUSD.</li>
+                          <li>Tu dominio queda asociado a tu wallet para siempre (o hasta que lo transfieras).</li>
+                          <li>Más adelante podrás gestionar tus dominios desde el panel de MotusDAO.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Puedes explorar más detalles y registrar dominios adicionales en la sección
+                      dedicada de Motus Names dentro del Hub una vez que termines tu registro.
+                    </p>
+
+                    <div className="mt-6 flex justify-end">
+                      <CTAButton size="sm" onClick={() => setShowMnsInfo(false)}>
+                        Entendido
+                      </CTAButton>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              </div>
+            )}
           </div>
         )
 
@@ -306,17 +443,8 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
             </div>
             <h2 className="text-2xl font-bold mb-2">Registrando en blockchain...</h2>
             <p className="text-muted-foreground mb-6">
-              Guardando tu información en la base de datos con tu smart wallet.
+              Guardando tu información en la base de datos vinculada a tu wallet.
             </p>
-            
-            {smartAccountAddress && (
-              <div className="p-4 glass rounded-xl mb-4">
-                <p className="text-sm text-muted-foreground mb-1">Smart Wallet:</p>
-                <p className="text-sm font-mono text-white">
-                  {smartAccountAddress.slice(0, 10)}...{smartAccountAddress.slice(-8)}
-                </p>
-              </div>
-            )}
             
             <div className="space-y-3">
               <div className="flex items-center justify-center space-x-2 text-muted-foreground">
@@ -337,44 +465,27 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
             <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">¡Registro completado!</h2>
+            <h2 className="text-2xl font-bold mb-2">¡Tu cuenta financiera está lista!</h2>
             <p className="text-muted-foreground mb-6">
-              Tu smart wallet ha sido creada y tu registro está completo.
+              Tu registro financiero está completo y tu dominio está configurado. Ahora puedes enviar y recibir dinero digital, sin fronteras, de manera inmediata y sin comisiones.
             </p>
-            
-            <div className="space-y-4 mb-6">
-              <div className="p-4 glass rounded-xl">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
-                  <div className="text-left">
-                    <p className="font-medium">Smart Wallet creada</p>
-                    {smartAccountAddress && (
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {smartAccountAddress.slice(0, 10)}...{smartAccountAddress.slice(-8)}
-                      </p>
-                    )}
-                  </div>
-                </div>
+
+            {name && (
+              <div className="mb-6">
+                <p className="text-sm text-mauve-300">
+                  Tu dominio elegido:
+                </p>
+                <p className="text-lg font-semibold text-white font-mono">
+                  {name}.motus
+                </p>
               </div>
-              
-              <div className="p-4 glass rounded-xl">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
-                  <div className="text-left">
-                    <p className="font-medium">Registro completado</p>
-                    <p className="text-sm text-muted-foreground">
-                      Tu cuenta {role === 'usuario' ? 'de usuario' : 'profesional'} está lista
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
 
             <CTAButton
               onClick={onNext}
               className="flex items-center space-x-2 mx-auto"
             >
-              <span>Siguiente</span>
+              <span>Continuar al registro como usuario / psicólogo</span>
               <ArrowRight className="w-4 h-4" />
             </CTAButton>
           </div>

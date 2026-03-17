@@ -37,6 +37,10 @@ export interface OnboardingData {
   participaCursos?: boolean
   participaInvestigacion?: boolean
   participaComunidad?: boolean
+
+  // NFT de perfil / on-chain
+  profileNftTxHash?: string
+  profileNftTokenURI?: string
 }
 
 interface OnboardingState {
@@ -114,13 +118,16 @@ export const useOnboardingStore = create<OnboardingState>()(
         })
         
         switch (step) {
-          case 0: // Conexión (email login)
+          case 0: // Registro WaaP (email + EOA)
             return !!(data.eoaAddress && data.email)
           
-          case 1: // Selección de rol
+          case 1: // Blockchain (claim CELO + dominio) - valid when reached
+            return true
+          
+          case 2: // Selección de rol
             return !!role // Role must be selected
           
-          case 2: // Perfil específico (terapéutico o profesional)
+          case 3: // Perfil específico (terapéutico o profesional)
             if (role === 'usuario') {
               return !!(
                 data.nombre &&
@@ -151,10 +158,10 @@ export const useOnboardingStore = create<OnboardingState>()(
             }
             return false
           
-          case 3: // Revisión
+          case 4: // Revisión
             return true // Siempre válido si llegamos aquí
           
-          case 4: // Blockchain
+          case 5: // Éxito final
             return true // Siempre válido si llegamos aquí
           
           default:
@@ -195,27 +202,31 @@ export const getFormattedWalletAddress = (address: string): string => {
 // Utilidades para obtener pasos por rol
 export const getStepsForRole = (role: UserRole) => {
   const baseSteps = [
-    { id: 0, title: 'Conexión', description: 'Inicia sesión con email' },
-    { id: 1, title: 'Rol', description: 'Selecciona tu tipo de cuenta' },
-    { id: 2, title: 'Perfil', description: 'Información personal' },
-    { id: 3, title: 'Revisión', description: 'Revisa tu información' },
-    { id: 4, title: 'Blockchain', description: 'Registro en blockchain' },
+    { id: 0, title: 'Cuenta WaaP', description: 'Registra tu email y wallet' },
+    { id: 1, title: 'Celo & dominio', description: 'Reclama CELO y compra tu dominio' },
+    { id: 2, title: 'Rol', description: 'Selecciona tu tipo de cuenta' },
+    { id: 3, title: 'Perfil', description: 'Información personal' },
+    { id: 4, title: 'Revisión', description: 'Revisa tu información' },
     { id: 5, title: 'Listo', description: '¡Registro completado!' }
   ]
   
   if (role === 'usuario') {
     return [
-      baseSteps[0], // Conexión
-      baseSteps[1], // Rol
-      { id: 2, title: 'Terapéutico', description: 'Perfil terapéutico' },
-      ...baseSteps.slice(3) // Revisión, Blockchain, Listo
+      baseSteps[0], // Cuenta WaaP
+      baseSteps[1], // Celo & dominio
+      baseSteps[2], // Rol
+      { id: 3, title: 'Terapéutico', description: 'Perfil terapéutico' },
+      baseSteps[4], // Revisión
+      baseSteps[5]  // Listo
     ]
   } else {
     return [
-      baseSteps[0], // Conexión
-      baseSteps[1], // Rol
-      { id: 2, title: 'Profesional', description: 'Datos profesionales' },
-      ...baseSteps.slice(3) // Revisión, Blockchain, Listo
+      baseSteps[0], // Cuenta WaaP
+      baseSteps[1], // Celo & dominio
+      baseSteps[2], // Rol
+      { id: 3, title: 'Profesional', description: 'Datos profesionales' },
+      baseSteps[4], // Revisión
+      baseSteps[5]  // Listo
     ]
   }
 }

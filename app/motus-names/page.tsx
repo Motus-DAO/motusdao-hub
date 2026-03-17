@@ -6,6 +6,7 @@ import { useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
+import { registerMotusNameWithWaaPGasTank } from '@/lib/waap-gastank-mns'
 
 export default function MotusNamesPage() {
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
@@ -28,6 +29,8 @@ export default function MotusNamesPage() {
   const [updateResult, setUpdateResult] = useState<string | null>(null)
   const [nftOwner, setNftOwner] = useState<Address | null>(null)
   const [canUpdateAddress, setCanUpdateAddress] = useState(false)
+  const [isRequestingFaucet, setIsRequestingFaucet] = useState(false)
+  const [faucetMessage, setFaucetMessage] = useState<string | null>(null)
 
   // Cargar precio y total de nombres registrados
   useEffect(() => {
@@ -131,8 +134,13 @@ export default function MotusNamesPage() {
   }
 
   const handleRegister = async () => {
-    if (!kernelClient || !smartAccountAddress || !name) {
-      setResult('❌ Por favor conecta tu wallet primero')
+    const waapAddress =
+      wallets.find((w) => w.walletClientType === 'waap')?.address || wallets[0]?.address
+
+    const targetAddress = (smartAccountAddress || waapAddress) as Address | undefined
+
+    if (!targetAddress || !name) {
+      setResult('❌ Por favor conecta tu wallet WaaP primero')
       return
     }
 
@@ -142,17 +150,16 @@ export default function MotusNamesPage() {
     }
     
     setIsRegistering(true)
-    setResult('🔄 Preparando transacciones...')
+    setResult('🔄 Enviando transacción con WaaP (Gas Tank)...')
     setTxHash(null)
     
-    const response = await motusNameService.registerName(
-      kernelClient,
+    const response = await registerMotusNameWithWaaPGasTank(
       name,
-      smartAccountAddress
+      targetAddress
     )
     
     if (response.success) {
-      setResult('✅ ¡Nombre registrado exitosamente!')
+      setResult('✅ ¡Nombre registrado exitosamente con WaaP!')
       setTxHash(response.txHash || null)
       setName('')
       setIsAvailable(null)
@@ -164,13 +171,56 @@ export default function MotusNamesPage() {
       
       // Actualizar mi nombre
       setMyName(name)
-      setRegisteredAddress(smartAccountAddress as Address)
+      setRegisteredAddress(targetAddress as Address)
       setHasAddressMismatch(false)
     } else {
       setResult(`❌ Error: ${response.error}`)
     }
     
     setIsRegistering(false)
+  }
+  // Solicitar CELO del faucet para la EOA WaaP
+  const handleRequestFaucet = async () => {
+    const waapAddress =
+      wallets.find((w) => w.walletClientType === 'waap')?.address || wallets[0]?.address
+
+    if (!waapAddress) {
+      setFaucetMessage('❌ Conecta tu wallet WaaP para recibir CELO')
+      return
+    }
+
+    setIsRequestingFaucet(true)
+    setFaucetMessage('🔄 Enviando CELO a tu wallet...')
+
+    try {
+      const res = await fetch('/api/faucet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: waapAddress }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        if (res.status === 429 && data.retryInMinutes) {
+          setFaucetMessage(
+            `⏱ Ya reclamaste recientemente. Intenta de nuevo en ~${data.retryInMinutes} minutos.`,
+          )
+        } else {
+          setFaucetMessage(`❌ Error al recibir CELO: ${data.error || 'desconocido'}`)
+        }
+        return
+      }
+
+      setFaucetMessage(
+        `✅ Recibiste ${data.amount} CELO en tu wallet. Hash: ${data.txHash.slice(0, 10)}...`,
+      )
+    } catch (error) {
+      console.error('Error solicitando faucet:', error)
+      setFaucetMessage('❌ Error al solicitar CELO del faucet')
+    } finally {
+      setIsRequestingFaucet(false)
+    }
   }
   
   // Función para actualizar la dirección del nombre .motus
@@ -259,9 +309,11 @@ export default function MotusNamesPage() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-500 mb-1">Smart Wallet actual:</p>
+                <p className="text-xs text-gray-500 mb-1">Smart Wallet actual (si existe):</p>
                 <p className="text-xs font-mono text-gray-700 dark:text-gray-300">
-                  {smartAccountAddress?.slice(0, 6)}...{smartAccountAddress?.slice(-4)}
+                  {smartAccountAddress
+                    ? `${smartAccountAddress.slice(0, 6)}...${smartAccountAddress.slice(-4)}`
+                    : 'Sin smart wallet (usando EOA de WaaP)'}
                 </p>
               </div>
             </div>
@@ -469,21 +521,46 @@ export default function MotusNamesPage() {
           )}
 
           {/* Estado de Conexión */}
-          {!smartAccountAddress && (
+          {!smartAccountAddress && wallets.length === 0 && (
             <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-sm text-yellow-800 dark:text-yellow-400">
                 {isInitializing 
                   ? '⏳ Inicializando smart wallet...'
-                  : '⚠️ Por favor conecta tu wallet para continuar'
+                  : '⚠️ Por favor conecta tu wallet WaaP para continuar'
                 }
               </p>
             </div>
           )}
 
+          {/* Faucet: recibir CELO inicial */}
+          <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+            <h3 className="text-sm font-semibold mb-2 text-emerald-900 dark:text-emerald-300">
+              🚰 Recibe tu primer CELO
+            </h3>
+            <p className="text-xs text-emerald-800 dark:text-emerald-300 mb-3">
+              Te enviamos una pequeña cantidad de CELO para que puedas registrar tu primer nombre
+              .motus y hacer tus primeras transacciones.
+            </p>
+            <button
+              onClick={handleRequestFaucet}
+              disabled={isRequestingFaucet || wallets.length === 0}
+              className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white font-medium
+                         hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed
+                         transition-colors"
+            >
+              {isRequestingFaucet ? 'Enviando CELO...' : 'Recibir CELO gratis'}
+            </button>
+            {faucetMessage && (
+              <p className="mt-2 text-xs text-emerald-900 dark:text-emerald-200">
+                {faucetMessage}
+              </p>
+            )}
+          </div>
+
           {/* Botón de Registro */}
           <button
             onClick={handleRegister}
-            disabled={!isAvailable || !isValid || isRegistering || !kernelClient || isInitializing}
+            disabled={!isAvailable || !isValid || isRegistering || wallets.length === 0 || isInitializing}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-lg 
                      font-semibold text-lg shadow-lg hover:shadow-xl
                      disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed

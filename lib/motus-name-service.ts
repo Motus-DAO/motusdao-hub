@@ -8,7 +8,7 @@ import type { KernelAccountClient } from '@zerodev/sdk'
 export const MNS_CONTRACT_ADDRESS = '0x4eB280b21de012FCAe14c9aB2D29b298c0A91d1c' as const
 
 // ABI del contrato Motus Name Service
-const MNS_ABI = [
+export const MNS_ABI = [
   {
     name: 'registerName',
     type: 'function',

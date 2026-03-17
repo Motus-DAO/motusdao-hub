@@ -217,6 +217,24 @@ npm run db:seed      # Poblar DB con datos de ejemplo
 - [ ] Sistema de notificaciones
 - [ ] Chat en tiempo real
 
+### 🌊 Infraestructura On‑chain
+
+- **Motus Name Service (MNS)**  
+  - Contrato: `MotusNameService.sol`  
+  - Red: Celo Mainnet (42220)  
+  - Dirección: `0x4eB280b21de012FCAe14c9aB2D29b298c0A91d1c`
+
+- **Motus Celo Faucet**  
+  - Contrato: `MotusCeloFaucet.sol`  
+  - Red: Celo Mainnet (42220)  
+  - Dirección: `0x6d252282fE35EF90B5d80b911d121183D7A0CEbF`  
+  - Drip inicial: `0.01 CELO` por address (máximo 1 vez)
+
+- **Motus Clinical Profile NFT**  
+  - Contrato: `MotusClinicalProfile.sol`  
+  - Red: Celo Mainnet (42220)  
+  - Dirección: `0x3343BDc2bfB3C37405c12AD916bb81e88410a1f5`
+
 ### 📋 Próximas Funcionalidades
 - [ ] Sistema de citas para psicoterapia
 - [ ] Integración con calendarios

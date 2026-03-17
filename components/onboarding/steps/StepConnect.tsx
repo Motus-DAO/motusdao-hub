@@ -172,9 +172,10 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
   const finalEmail = privyEmail || formEmail
   const hasEmail = !!finalEmail && finalEmail.includes('@')
   
-  // Allow proceeding if we have EOA address, email, and terms accepted
-  // Smart wallet will be created by ZeroDev
-  const canProceed = authenticated && eoaAddress && isValid && isValidCeloAddress(eoaAddress) && hasEmail
+  // Allow clicking "Continuar" when tenemos email + wallet,
+  // y dejamos que react-hook-form bloquee el submit si faltan términos/privacidad.
+  // Smart wallet will be created by ZeroDev.
+  const canProceed = authenticated && eoaAddress && isValidCeloAddress(eoaAddress) && hasEmail
 
 
   // Debug logs

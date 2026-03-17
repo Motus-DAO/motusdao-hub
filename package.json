@@ -36,6 +36,8 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
     "@human.tech/waap-sdk": "^1.0.2",
+    "@lighthouse-web3/sdk": "^0.4.4",
+    "@motus-dao/root-agent": "^0.1.0",
     "@prisma/client": "^6.15.0",
     "@privy-io/react-auth": "^2.24.0",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -59,6 +61,7 @@
     "lucide-react": "^0.543.0",
     "marked": "^16.2.1",
     "next": "^15.5.7",
+    "nft.storage": "^7.2.0",
     "openai": "^5.20.0",
     "permissionless": "^0.2.57",
     "pg": "^8.16.3",
@@ -70,6 +73,7 @@
     "tailwind-merge": "^3.3.1",
     "three": "^0.180.0",
     "viem": "^2.37.5",
+    "web3.storage": "^4.5.5",
     "zod": "^3.25.76",
     "zustand": "^5.0.8"
   },

@@ -2,7 +2,6 @@
 
 import { ReactNode, Component, ErrorInfo, useEffect } from 'react'
 import { WaaPProvider } from '@/lib/contexts/WaaPProvider'
-import { ZeroDevSmartWalletProvider } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 
 interface WaaPProviderWrapperProps {
   children: ReactNode
@@ -141,10 +140,8 @@ function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
  * WaaP Provider Wrapper
  * 
  * Replaces PrivyProviderWrapper to use WaaP (Human.tech Wallet as Protocol)
- * as the EOA creation provider while keeping:
- * - ZeroDev for smart wallet creation (Kernel v3.1)
- * - Pimlico for paymaster (gasless transactions)
- * 
+ * as the EOA creation provider.
+ *
  * WaaP provides:
  * - Two-Party Computation (2PC) security
  * - Human Keys technology
@@ -154,26 +151,17 @@ function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
  * 
  * Architecture:
  * WaaPProvider (EOA creation & auth)
- *   └── ZeroDevSmartWalletProvider (smart wallet via Kernel)
- *       └── App Components
- * 
- * Important: The ZeroDev smart wallet generates the transactions and gets gas sponsored
- * by Pimlico. The WaaP EOA is only used as the signer/owner of the smart wallet.
+ *   └── App Components
  * 
  * @see https://docs.wallet.human.tech/quick-start
  */
 export function WaaPProviderWrapper({ children }: WaaPProviderWrapperProps) {
-  // ZeroDev Project ID - same as before, works with Celo Mainnet
-  const zeroDevProjectId = process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID || 'e46f4ac3-404e-42fc-a3d3-1c75846538a8'
-
   return (
     <WaaPErrorBoundary>
       <WaaPGlobalErrorHandler>
         <div suppressHydrationWarning>
           <WaaPProvider>
-            <ZeroDevSmartWalletProvider zeroDevProjectId={zeroDevProjectId}>
-              {children}
-            </ZeroDevSmartWalletProvider>
+            {children}
           </WaaPProvider>
         </div>
       </WaaPGlobalErrorHandler>

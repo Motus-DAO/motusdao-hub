@@ -430,10 +430,10 @@ export function Topbar() {
             >
               <Wallet className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="font-medium hidden sm:inline">
-                {ready ? 'Conectar Wallet' : 'Cargando...'}
+                {ready ? 'Inicia Sesión' : 'Cargando...'}
               </span>
               <span className="font-medium sm:hidden">
-                {ready ? 'Conectar' : '...'}
+                {ready ? 'Inicia' : '...'}
               </span>
             </button>
           )}

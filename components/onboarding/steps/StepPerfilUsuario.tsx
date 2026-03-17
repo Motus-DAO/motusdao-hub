@@ -75,8 +75,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid }
-    // watch // TODO: Add form watching functionality when needed
+    formState: { errors, isValid, isSubmitted }
   } = useForm<UsuarioFormData>({
     resolver: zodResolver(usuarioSchema),
     defaultValues: {
@@ -90,15 +89,10 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       problematica: data.problematica || '',
       preferenciaAsignacion: data.preferenciaAsignacion || undefined
     },
-    mode: 'onChange'
+    mode: 'all'
   })
 
   const onSubmit = (formData: UsuarioFormData) => {
-    console.log('StepPerfilUsuario onSubmit:', {
-      formData,
-      isValid,
-      errors
-    })
     updateData(formData)
     onNext()
   }
@@ -358,8 +352,22 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
             </div>
           </div>
 
+          {/* Error summary (shows after first submit attempt) */}
+          {isSubmitted && Object.keys(errors).length > 0 && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <p className="text-red-400 text-sm font-medium mb-2">
+                Completa los siguientes campos para continuar:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-red-300 text-xs">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{error?.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6">
+          <div className="flex justify-between items-center pt-6">
             <button
               type="button"
               onClick={onBack}
@@ -370,39 +378,10 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
             
             <CTAButton
               type="submit"
-              disabled={!isValid}
               className="flex items-center space-x-2"
             >
-              <span>Continuar {!isValid ? '(Deshabilitado)' : ''}</span>
+              <span>Continuar</span>
             </CTAButton>
-            
-            {/* Debug info */}
-            <div className="mt-4 p-3 bg-gray-800/50 rounded-xl text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p><strong>Formulario:</strong></p>
-                  <p className={isValid ? 'text-green-400' : 'text-red-400'}>
-                    {isValid ? '✅ Válido' : '❌ Inválido'}
-                  </p>
-                </div>
-                <div>
-                  <p><strong>Errores:</strong></p>
-                  <p className={Object.keys(errors).length === 0 ? 'text-green-400' : 'text-red-400'}>
-                    {Object.keys(errors).length === 0 ? '✅ Sin errores' : `❌ ${Object.keys(errors).length} errores`}
-                  </p>
-                </div>
-              </div>
-              {Object.keys(errors).length > 0 && (
-                <div className="mt-2">
-                  <p><strong>Errores específicos:</strong></p>
-                  {Object.entries(errors).map(([field, error]) => (
-                    <p key={field} className="text-red-400">
-                      {field}: {error?.message}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </form>
       </GlassCard>

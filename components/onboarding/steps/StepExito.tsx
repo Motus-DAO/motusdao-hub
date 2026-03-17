@@ -21,7 +21,7 @@ interface StepExitoProps {
 }
 
 export function StepExito({ onComplete }: StepExitoProps) {
-  const { role, reset, markCompleted } = useOnboardingStore()
+  const { role, reset, markCompleted, data } = useOnboardingStore()
   const router = useRouter()
   const hasMarkedCompleted = useRef(false)
   const hasCalledOnComplete = useRef(false)
@@ -142,6 +142,54 @@ export function StepExito({ onComplete }: StepExitoProps) {
           >
             {content.subtitle}
           </motion.p>
+
+          {(data.profileNftTxHash || data.profileNftTokenURI || data.eoaAddress) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="mt-4 text-xs text-mauve-300 space-y-1"
+            >
+              {data.profileNftTokenURI && (
+                <p>
+                  Metadata en IPFS/Filecoin:{' '}
+                  <a
+                    href={`https://gateway.lighthouse.storage/ipfs/${data.profileNftTokenURI.replace('ipfs://', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    abrir en Lighthouse/IPFS
+                  </a>
+                </p>
+              )}
+              {data.profileNftTxHash ? (
+                <p>
+                  Registro on-chain:{' '}
+                  <a
+                    href={`https://celoscan.io/tx/${data.profileNftTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    ver transacción en Celoscan
+                  </a>
+                </p>
+              ) : data.eoaAddress && (
+                <p>
+                  Registro on-chain:{' '}
+                  <a
+                    href={`https://celoscan.io/address/${data.eoaAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    ver tu wallet en Celoscan
+                  </a>
+                </p>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* Features Grid */}
