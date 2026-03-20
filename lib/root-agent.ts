@@ -2,6 +2,8 @@ import { RootAgent, type RootAgentConfig } from '@motus-dao/root-agent';
 
 let cachedRootAgent: RootAgent | null = null;
 
+const ALLOWED_SELF_ENDPOINT_TYPES = new Set(['https', 'celo', 'staging_celo', 'staging_https'] as const);
+
 function buildRootAgentConfig(): RootAgentConfig {
   const celoNetwork =
     (process.env.ROOT_AGENT_CELO_NETWORK as RootAgentConfig['celoNetwork']) ?? 'alfajores';
@@ -20,8 +22,18 @@ function buildRootAgentConfig(): RootAgentConfig {
   const selfEndpoint = process.env.ROOT_AGENT_SELF_ENDPOINT;
   const selfEndpointType = process.env.ROOT_AGENT_SELF_ENDPOINT_TYPE;
   const selfLogoBase64 = process.env.ROOT_AGENT_SELF_LOGO_BASE64;
+  const enableSelf = process.env.ROOT_AGENT_ENABLE_SELF === 'true';
 
-  if (selfScopeId && selfAppName && selfEndpoint && selfEndpointType) {
+  // Self/live-connect can fail at runtime if params are malformed.
+  // Keep it behind an explicit opt-in flag plus minimal validation.
+  if (
+    enableSelf &&
+    selfScopeId &&
+    selfAppName &&
+    selfEndpoint &&
+    selfEndpointType &&
+    ALLOWED_SELF_ENDPOINT_TYPES.has(selfEndpointType as (typeof ALLOWED_SELF_ENDPOINT_TYPES extends Set<infer T> ? T : never))
+  ) {
     config.selfConfig = {
       scope: selfScopeId,
       appName: selfAppName,
@@ -33,6 +45,8 @@ function buildRootAgentConfig(): RootAgentConfig {
         : never,
       logoBase64: selfLogoBase64,
     };
+  } else if (enableSelf) {
+    console.warn('[root-agent] ROOT_AGENT_ENABLE_SELF=true but self config is incomplete/invalid. Skipping selfConfig.');
   }
 
   return config;
