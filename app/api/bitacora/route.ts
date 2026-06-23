@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { asStringArray } from '@/lib/prisma-json'
+import { requireJournalOwnerOrAdmin, requireSelfOrAdmin } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,14 +18,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const session = await requireSelfOrAdmin(request, userId)
+
     // Create journal entry
     const journalEntry = await prisma.journalEntry.create({
       data: {
         userId,
         content,
         mood: mood || null,
-        tags: tags ? JSON.stringify(tags) : null
+        tags: Array.isArray(tags) ? tags : tags ?? null
       }
+    })
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: userId,
+      action: 'create',
+      resource: 'journal_entry',
+      resourceId: journalEntry.id,
+      reason: 'journal_create',
     })
 
     return NextResponse.json(
@@ -33,6 +49,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error creating journal entry:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -56,6 +75,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const session = await requireSelfOrAdmin(request, userId)
+
     const [entries, total] = await Promise.all([
       prisma.journalEntry.findMany({
         where: { userId },
@@ -68,10 +89,20 @@ export async function GET(request: NextRequest) {
       })
     ])
 
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: userId,
+      action: 'list',
+      resource: 'journal_entry',
+      reason: 'journal_list',
+      metadata: { page, limit, total },
+    })
+
     // Parse tags for each entry
     const entriesWithParsedTags = entries.map(entry => ({
       ...entry,
-      tags: entry.tags ? JSON.parse(entry.tags) : []
+      tags: asStringArray(entry.tags)
     }))
 
     return NextResponse.json({
@@ -84,6 +115,9 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error fetching journal entries:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -104,13 +138,25 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const { session, entry } = await requireJournalOwnerOrAdmin(request, id)
+
     const updatedEntry = await prisma.journalEntry.update({
       where: { id },
       data: {
         content,
         mood,
-        tags: tags ? JSON.stringify(tags) : null
+        tags: Array.isArray(tags) ? tags : tags ?? null
       }
+    })
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: entry.userId,
+      action: 'update',
+      resource: 'journal_entry',
+      resourceId: id,
+      reason: 'journal_update',
     })
 
     return NextResponse.json({
@@ -118,10 +164,13 @@ export async function PUT(request: NextRequest) {
       message: 'Journal entry updated successfully',
       entry: {
         ...updatedEntry,
-        tags: updatedEntry.tags ? JSON.parse(updatedEntry.tags) : []
+        tags: asStringArray(updatedEntry.tags)
       }
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error updating journal entry:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -142,8 +191,20 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const { session, entry } = await requireJournalOwnerOrAdmin(request, id)
+
     await prisma.journalEntry.delete({
       where: { id }
+    })
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: entry.userId,
+      action: 'delete',
+      resource: 'journal_entry',
+      resourceId: id,
+      reason: 'journal_delete',
     })
 
     return NextResponse.json({
@@ -151,6 +212,9 @@ export async function DELETE(request: NextRequest) {
       message: 'Journal entry deleted successfully'
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error deleting journal entry:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SessionStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 // Helper: build random Jitsi room URL (configurable for producción)
 const buildJitsiUrl = () => {
@@ -25,7 +28,21 @@ const buildJitsiUrl = () => {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, externalUrl } = body as { userId?: string; externalUrl?: string }
+    const {
+      userId,
+      externalUrl,
+      scheduledStart,
+      scheduledEnd,
+      timezone,
+      durationMinutes,
+    } = body as {
+      userId?: string
+      externalUrl?: string
+      scheduledStart?: string
+      scheduledEnd?: string
+      timezone?: string
+      durationMinutes?: number
+    }
 
     if (!userId) {
       return NextResponse.json(
@@ -33,6 +50,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const sessionActor = await requireSelfOrAdmin(request, userId)
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -112,6 +131,10 @@ export async function POST(request: NextRequest) {
         mode: 'video_external',
         externalUrl: url,
         requestedAt: new Date(),
+        scheduledStart: scheduledStart ? new Date(scheduledStart) : null,
+        scheduledEnd: scheduledEnd ? new Date(scheduledEnd) : null,
+        timezone: timezone || null,
+        durationMinutes: durationMinutes || null,
       },
       include: {
         user: {
@@ -124,6 +147,17 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    await recordClinicalAccess({
+      request,
+      actorUserId: sessionActor.userId,
+      targetUserId: user.id,
+      action: 'create',
+      resource: 'session',
+      resourceId: session.id,
+      reason: 'session_request',
+      metadata: { psmId: activeMatch.psmId, scheduledStart, scheduledEnd },
+    })
+
     return NextResponse.json(
       {
         success: true,
@@ -133,6 +167,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error creating session:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
@@ -162,6 +199,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const sessionActor = await requireSelfOrAdmin(request, userId || psmId!)
+
     const where = userId
       ? { userId, status: { in: [SessionStatus.requested, SessionStatus.accepted] } }
       : { psmId: psmId!, status: { in: [SessionStatus.requested, SessionStatus.accepted] } }
@@ -182,10 +221,23 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    await recordClinicalAccess({
+      request,
+      actorUserId: sessionActor.userId,
+      targetUserId: userId || psmId,
+      action: 'read',
+      resource: 'session',
+      resourceId: session?.id ?? null,
+      reason: 'active_session_fetch',
+    })
+
     return NextResponse.json({
       activeSession: session || null,
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error fetching sessions:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },

@@ -17,6 +17,7 @@ import {
   Activity
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { authFetch } from '@/lib/auth/client'
 
 interface DashboardStats {
   totalUsers: number
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         // TEMPORAL: Sin privyId requerido
-        const response = await fetch('/api/admin/stats')
+        const response = await authFetch('/api/admin/stats')
         const data = await response.json()
         setStats(data)
       } catch (error) {

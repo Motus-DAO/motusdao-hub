@@ -201,6 +201,15 @@ export class MotusNameService {
   }
 
   /**
+   * Returns true if the name resolves to the given address.
+   */
+  async isOwnedBy(name: string, address: Address): Promise<boolean> {
+    const resolved = await this.resolve(name)
+    if (!resolved) return false
+    return resolved.toLowerCase() === address.toLowerCase()
+  }
+
+  /**
    * Lookup inverso: dirección a nombre principal
    * @param address - Dirección a resolver
    * @returns Nombre principal asociado o null
@@ -261,7 +270,7 @@ export class MotusNameService {
   async getRegistrationPrice(): Promise<string> {
     try {
       if (!this.isDeployed()) {
-        return '5' // Default price
+        return '0'
       }
 
       const price = await this.publicClient.readContract({
@@ -274,7 +283,7 @@ export class MotusNameService {
       return (Number(price) / 10**18).toString()
     } catch (error) {
       console.error('Error getting price:', error)
-      return '5' // Default price
+      return '0'
     }
   }
 

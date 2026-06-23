@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireMatchParticipantOrAdmin } from '@/lib/auth/guards'
+import { guardAdmin } from '@/lib/auth/admin-route'
+import { handleAuthError } from '@/lib/auth/session'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 /**
  * PUT /api/matching/[matchId]
@@ -13,6 +17,7 @@ export async function PUT(
 ) {
   try {
     const { matchId } = await params
+    const { session, match: authorizedMatch } = await requireMatchParticipantOrAdmin(request, matchId)
     const body = await request.json()
     const { status, reason } = body
 
@@ -70,6 +75,17 @@ export async function PUT(
       }
     })
 
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: authorizedMatch.userId,
+      action: 'update',
+      resource: 'match',
+      resourceId: matchId,
+      reason: `match_${status}`,
+      metadata: { psmId: authorizedMatch.psmId, status },
+    })
+
     const statusMessages: Record<'active' | 'paused' | 'ended', string> = {
       active: 'reactivado',
       paused: 'pausado',
@@ -91,6 +107,9 @@ export async function PUT(
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error updating match:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
@@ -108,6 +127,9 @@ export async function DELETE(
   { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
+    const denied = await guardAdmin(request)
+    if (denied) return denied
+
     const { matchId } = await params
 
     const match = await prisma.match.findUnique({
@@ -144,6 +166,9 @@ export async function DELETE(
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error deleting match:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },

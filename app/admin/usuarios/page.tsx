@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { authFetch } from '@/lib/auth/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { cn } from '@/lib/utils'
@@ -101,7 +102,7 @@ export default function AdminUsuariosPage() {
         params.append('showDeleted', 'true')
       }
 
-      const response = await fetch(`/api/admin/users?${params.toString()}`)
+      const response = await authFetch(`/api/admin/users?${params.toString()}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -135,7 +136,7 @@ export default function AdminUsuariosPage() {
 
     setActionLoading(userId)
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await authFetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
       })
 
@@ -166,7 +167,7 @@ export default function AdminUsuariosPage() {
 
     setActionLoading(userId)
     try {
-      const response = await fetch(`/api/admin/users/${userId}?action=restore`, {
+      const response = await authFetch(`/api/admin/users/${userId}?action=restore`, {
         method: 'PATCH',
       })
 

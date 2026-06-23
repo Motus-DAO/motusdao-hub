@@ -83,7 +83,7 @@ async function main() {
       formacionAcademica: 'Licenciatura en Psicología, Universidad Nacional Autónoma de México',
       experienciaAnios: 8,
       biografia: 'Especialista en terapia cognitivo-conductual con más de 8 años de experiencia ayudando a personas con ansiedad, depresión y trastornos del estado de ánimo.',
-      especialidades: JSON.stringify(['ansiedad', 'depresion', 'cognitivo', 'estres']),
+      especialidades: ['ansiedad', 'depresion', 'cognitivo', 'estres'],
       participaSupervision: true,
       participaCursos: true,
       participaInvestigacion: false,
@@ -134,7 +134,20 @@ async function main() {
     }
   })
 
-  // Create lessons for course 1
+  // Create default module + lessons for course 1
+  const module1 = await prisma.module.upsert({
+    where: { id: `module_${course1.id}_default` },
+    update: {},
+    create: {
+      id: `module_${course1.id}_default`,
+      courseId: course1.id,
+      title: 'Contenido principal',
+      summary: 'Lecciones del curso',
+      order: 1,
+      updatedAt: new Date()
+    }
+  })
+
   const lessons1 = [
     {
       title: 'Introducción al Mindfulness',
@@ -171,22 +184,31 @@ async function main() {
   ]
 
   for (const lesson of lessons1) {
+    const lessonId = `lesson_${course1.id}_${lesson.slug}`
     await prisma.lesson.upsert({
-      where: { 
-        courseId_slug: {
-          courseId: course1.id,
-          slug: lesson.slug
-        }
-      },
+      where: { id: lessonId },
       update: {},
       create: {
-        id: `lesson_${course1.id}_${lesson.slug}`,
-        courseId: course1.id,
+        id: lessonId,
+        moduleId: module1.id,
         ...lesson,
         updatedAt: new Date()
       }
     })
   }
+
+  const module2 = await prisma.module.upsert({
+    where: { id: `module_${course2.id}_default` },
+    update: {},
+    create: {
+      id: `module_${course2.id}_default`,
+      courseId: course2.id,
+      title: 'Contenido principal',
+      summary: 'Lecciones del curso',
+      order: 1,
+      updatedAt: new Date()
+    }
+  })
 
   // Create lessons for course 2
   const lessons2 = [
@@ -217,17 +239,13 @@ async function main() {
   ]
 
   for (const lesson of lessons2) {
+    const lessonId = `lesson_${course2.id}_${lesson.slug}`
     await prisma.lesson.upsert({
-      where: { 
-        courseId_slug: {
-          courseId: course2.id,
-          slug: lesson.slug
-        }
-      },
+      where: { id: lessonId },
       update: {},
       create: {
-        id: `lesson_${course2.id}_${lesson.slug}`,
-        courseId: course2.id,
+        id: lessonId,
+        moduleId: module2.id,
         ...lesson,
         updatedAt: new Date()
       }
@@ -240,19 +258,19 @@ async function main() {
       userId: user1.id,
       content: 'Hoy me sentí muy motivado después de la sesión de meditación. Logré concentrarme mejor en el trabajo y me siento más tranquilo.',
       mood: 'happy',
-      tags: JSON.stringify(['meditación', 'trabajo', 'motivación'])
+      tags: ['meditación', 'trabajo', 'motivación']
     },
     {
       userId: user1.id,
       content: 'Tuve una conversación difícil con mi familia. Me siento un poco abrumado pero sé que es importante comunicar mis sentimientos.',
       mood: 'anxious',
-      tags: JSON.stringify(['familia', 'comunicación', 'emociones'])
+      tags: ['familia', 'comunicación', 'emociones']
     },
     {
       userId: user1.id,
       content: 'Día tranquilo en casa. Disfruté leyendo un libro y cocinando. Me siento en paz conmigo mismo.',
       mood: 'calm',
-      tags: JSON.stringify(['lectura', 'cocina', 'paz'])
+      tags: ['lectura', 'cocina', 'paz']
     }
   ]
 

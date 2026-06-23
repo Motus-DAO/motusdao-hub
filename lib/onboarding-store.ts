@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware'
 import { formatCeloAddress } from './celo'
 
 export type UserRole = 'usuario' | 'psm'
+export type IntakeSource = 'manual' | 'ai_assisted'
+export type UrgencyLevel = 'low' | 'medium' | 'high' | 'crisis'
+export type Modality = 'video' | 'chat' | 'in_person' | 'hybrid'
 
 export interface OnboardingData {
   // Paso 1: Conexión
@@ -12,6 +15,7 @@ export interface OnboardingData {
   privyId?: string
   celoChainId?: number
   walletType?: 'embedded' | 'external' | 'smart-wallet'
+  intakeSource?: IntakeSource
   
   // Paso 2: Perfil básico
   nombre: string
@@ -20,25 +24,60 @@ export interface OnboardingData {
   fechaNacimiento: string
   ciudad: string
   pais: string
+  avatarUrl?: string
+  avatarStoragePath?: string
   
   // Paso 3: Perfil específico por rol
   // Para Usuario
   tipoAtencion?: string
   problematica?: string
   preferenciaAsignacion?: 'automatica' | 'explorar'
+  clinicalConcern?: string[]
+  urgencyLevel?: UrgencyLevel
+  preferredModality?: Modality
+  preferredTherapyStyle?: string[]
+  languages?: string[]
+  timezone?: string
+  availability?: Record<string, unknown>
+  availabilityNotes?: string
+  budgetMin?: number
+  budgetMax?: number
+  paymentPreference?: string
+  therapistGenderPreference?: string
+  priorTherapyExperience?: boolean
+  medicationOrDiagnosisContext?: string
+  riskFlags?: string[]
+  consentToAIProcessing?: boolean
+  consentToShareWithPSM?: boolean
+  consentToClinicalMatching?: boolean
   
   // Para PSM
   cedulaProfesional?: string
+  cedulaDocumentPath?: string
+  tituloDocumentPath?: string
   formacionAcademica?: string
   experienciaAnios?: number
   biografia?: string
   especialidades?: string[]
+  therapyStyles?: string[]
+  licensedCountries?: string[]
+  licensedRegions?: string[]
+  modalities?: Modality[]
+  sessionPrice?: number
+  currency?: string
+  acceptsSlidingScale?: boolean
+  worksWithUrgencyLevels?: UrgencyLevel[]
+  exclusionCriteria?: string[]
+  isAcceptingPatients?: boolean
+  maxActivePatients?: number
   participaSupervision?: boolean
   participaCursos?: boolean
   participaInvestigacion?: boolean
   participaComunidad?: boolean
 
-  // NFT de perfil / on-chain
+  // MNS / on-chain identity
+  motusName?: string
+  mnsTxHash?: string
   profileNftTxHash?: string
   profileNftTokenURI?: string
 }
@@ -49,10 +88,12 @@ interface OnboardingState {
   role: UserRole | null
   data: Partial<OnboardingData>
   isCompleted: boolean
+  profileIntakeMode: 'manual' | 'ai'
   
   // Acciones
   setRole: (role: UserRole) => void
   setCurrentStep: (step: number) => void
+  setProfileIntakeMode: (mode: 'manual' | 'ai') => void
   updateData: (data: Partial<OnboardingData>) => void
   reset: () => void
   markCompleted: () => void
@@ -82,11 +123,14 @@ export const useOnboardingStore = create<OnboardingState>()(
       role: null,
       data: initialData,
       isCompleted: false,
+      profileIntakeMode: 'manual',
       
       // Acciones
       setRole: (role) => set({ role }),
       
       setCurrentStep: (step) => set({ currentStep: step }),
+
+      setProfileIntakeMode: (mode) => set({ profileIntakeMode: mode }),
       
       updateData: (newData) => set((state) => ({
         data: { ...state.data, ...newData }
@@ -96,7 +140,8 @@ export const useOnboardingStore = create<OnboardingState>()(
         currentStep: 0,
         role: null,
         data: initialData,
-        isCompleted: false
+        isCompleted: false,
+        profileIntakeMode: 'manual',
       }),
       
       markCompleted: () => set({ isCompleted: true }),
@@ -104,19 +149,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       // Validaciones
       isStepValid: (step) => {
         const { data, role } = get()
-        
-        // Debug log
-        console.log('Store isStepValid Debug:', {
-          step,
-          data: {
-            email: data.email,
-            eoaAddress: data.eoaAddress,
-            nombre: data.nombre,
-            apellido: data.apellido
-          },
-          role
-        })
-        
+
         switch (step) {
           case 0: // Registro WaaP (email + EOA)
             return !!(data.eoaAddress && data.email)
@@ -136,9 +169,10 @@ export const useOnboardingStore = create<OnboardingState>()(
                 data.fechaNacimiento &&
                 data.ciudad &&
                 data.pais &&
-                data.tipoAtencion && 
                 data.problematica && 
-                data.preferenciaAsignacion
+                data.preferenciaAsignacion &&
+                data.consentToShareWithPSM &&
+                data.consentToClinicalMatching
               )
             } else if (role === 'psm') {
               return !!(
@@ -152,6 +186,7 @@ export const useOnboardingStore = create<OnboardingState>()(
                 data.formacionAcademica && 
                 data.experienciaAnios !== undefined && 
                 data.experienciaAnios >= 0 &&
+                (data.cedulaDocumentPath || data.tituloDocumentPath) &&
                 data.especialidades && 
                 data.especialidades.length > 0
               )
@@ -180,7 +215,8 @@ export const useOnboardingStore = create<OnboardingState>()(
         currentStep: state.currentStep,
         role: state.role,
         data: state.data,
-        isCompleted: state.isCompleted
+        isCompleted: state.isCompleted,
+        profileIntakeMode: state.profileIntakeMode,
       })
     }
   )
@@ -229,4 +265,88 @@ export const getStepsForRole = (role: UserRole) => {
       baseSteps[5]  // Listo
     ]
   }
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  email: 'Correo electrónico',
+  eoaAddress: 'Wallet conectada',
+  nombre: 'Nombre',
+  apellido: 'Apellidos',
+  telefono: 'Teléfono',
+  fechaNacimiento: 'Fecha de nacimiento',
+  ciudad: 'Ciudad',
+  pais: 'País',
+  clinicalConcern: 'Áreas relacionadas',
+  tipoAtencion: 'Área principal',
+  problematica: 'Motivo de consulta',
+  preferenciaAsignacion: 'Preferencia de asignación',
+  cedulaProfesional: 'Cédula profesional',
+  formacionAcademica: 'Formación académica',
+  experienciaAnios: 'Años de experiencia',
+  especialidades: 'Especialidades',
+  cedulaDocumentPath: 'Documento de cédula o título',
+  tituloDocumentPath: 'Documento de cédula o título',
+}
+
+export function getStepBlockerKeys(
+  step: number,
+  role: UserRole | null,
+  data: Partial<OnboardingData>
+): string[] {
+  const keys: string[] = []
+
+  const requireField = (key: keyof OnboardingData) => {
+    const value = data[key]
+    if (value == null || value === '') keys.push(key as string)
+    else if (Array.isArray(value) && value.length === 0) keys.push(key as string)
+    else if (typeof value === 'boolean' && value === false) keys.push(key as string)
+  }
+
+  switch (step) {
+    case 0:
+      requireField('email')
+      requireField('eoaAddress')
+      break
+    case 2:
+      if (!role) keys.push('role')
+      break
+    case 3:
+      requireField('nombre')
+      requireField('apellido')
+      requireField('telefono')
+      requireField('fechaNacimiento')
+      requireField('ciudad')
+      requireField('pais')
+      if (role === 'usuario') {
+        requireField('problematica')
+        requireField('preferenciaAsignacion')
+        requireField('consentToShareWithPSM')
+        requireField('consentToClinicalMatching')
+      } else if (role === 'psm') {
+        requireField('cedulaProfesional')
+        requireField('formacionAcademica')
+        if (data.experienciaAnios === undefined || data.experienciaAnios < 0) {
+          keys.push('experienciaAnios')
+        }
+        if (!data.cedulaDocumentPath && !data.tituloDocumentPath) {
+          keys.push('cedulaDocumentPath')
+        }
+        requireField('especialidades')
+      }
+      break
+    default:
+      break
+  }
+
+  return [...new Set(keys)]
+}
+
+export function getStepBlockers(
+  step: number,
+  role: UserRole | null,
+  data: Partial<OnboardingData>
+): string[] {
+  return getStepBlockerKeys(step, role, data).map(
+    (key) => FIELD_LABELS[key] || key
+  )
 }

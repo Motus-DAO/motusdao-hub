@@ -1,21 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-// TEMPORAL: Autenticación deshabilitada para desarrollo
-// TODO: Re-habilitar antes de producción
+import { asStringArray } from '@/lib/prisma-json'
+import { guardAdmin } from '@/lib/auth/admin-route'
+import { isVerificationStatus } from '@/lib/psm-verification'
 
 export async function GET(request: NextRequest) {
   try {
+    const denied = await guardAdmin(request)
+    if (denied) return denied
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
     const search = searchParams.get('search') || ''
+    const status = searchParams.get('status') || ''
     const skip = (page - 1) * limit
 
     // Get all PSM users with related data
     const psms = await prisma.user.findMany({
       where: {
-        role: 'psm'
+        role: 'psm',
+        ...(isVerificationStatus(status)
+          ? { psm: { is: { verificationStatus: status } } }
+          : {})
       },
       include: {
         profile: true,
@@ -54,15 +61,7 @@ export async function GET(request: NextRequest) {
 
     // Transform and filter PSMs
     let psmsData = psms.map(psm => {
-      // Parse especialidades from JSON string
-      let especialidades: string[] = []
-      if (psm.psm?.especialidades) {
-        try {
-          especialidades = JSON.parse(psm.psm.especialidades) as string[]
-        } catch {
-          especialidades = []
-        }
-      }
+      const especialidades = asStringArray(psm.psm?.especialidades)
 
       const activeMatches = psm.psmMatches.filter(m => m.status === 'active')
       const totalMatches = psm.psmMatches.length
@@ -93,6 +92,8 @@ export async function GET(request: NextRequest) {
         pais: psm.profile?.pais || '',
         bio: psm.psm?.biografia || psm.profile?.bio || '',
         cedulaProfesional: psm.psm?.cedulaProfesional || '',
+        cedulaDocumentPath: psm.psm?.cedulaDocumentPath || null,
+        tituloDocumentPath: psm.psm?.tituloDocumentPath || null,
         formacionAcademica: psm.psm?.formacionAcademica || '',
         experienciaAnios: psm.psm?.experienciaAnios || 0,
         especialidades: especialidades,
@@ -100,6 +101,14 @@ export async function GET(request: NextRequest) {
         participaCursos: psm.psm?.participaCursos || false,
         participaInvestigacion: psm.psm?.participaInvestigacion || false,
         participaComunidad: psm.psm?.participaComunidad || false,
+        verificationStatus: psm.psm?.verificationStatus || 'pending',
+        onboardingStatus: psm.onboardingStatus,
+        adminReviewNotes: psm.psm?.adminReviewNotes || '',
+        isAcceptingPatients: psm.psm?.isAcceptingPatients || false,
+        maxActivePatients: psm.psm?.maxActivePatients || 10,
+        verifiedAt: psm.psm?.verifiedAt || null,
+        rejectedAt: psm.psm?.rejectedAt || null,
+        suspendedAt: psm.psm?.suspendedAt || null,
         registrationCompleted: psm.registrationCompleted,
         activeMatches: activeMatches.length,
         totalMatches: totalMatches,
@@ -108,8 +117,8 @@ export async function GET(request: NextRequest) {
         totalRevenue,
         capacity: {
           current: activeMatches.length,
-          max: 10,
-          available: 10 - activeMatches.length
+          max: psm.psm?.maxActivePatients || 10,
+          available: Math.max((psm.psm?.maxActivePatients || 10) - activeMatches.length, 0)
         },
         createdAt: psm.createdAt,
         updatedAt: psm.updatedAt

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { asStringArray } from '@/lib/prisma-json'
 
 /**
  * GET /api/psm
@@ -10,7 +11,15 @@ export async function GET() {
     const psms = await prisma.user.findMany({
       where: {
         role: 'psm',
-        registrationCompleted: true
+        registrationCompleted: true,
+        onboardingStatus: 'active',
+        deletedAt: null,
+        psm: {
+          is: {
+            verificationStatus: 'approved',
+            isAcceptingPatients: true,
+          }
+        }
       },
       include: {
         profile: true,
@@ -26,15 +35,7 @@ export async function GET() {
 
     // Transform PSMs to include relevant information
     const psmsData = psms.map(psm => {
-      // Parse especialidades from JSON string
-      let especialidades: string[] = []
-      if (psm.psm?.especialidades) {
-        try {
-          especialidades = JSON.parse(psm.psm.especialidades) as string[]
-        } catch {
-          // If parsing fails, use empty array
-        }
-      }
+      const especialidades = asStringArray(psm.psm?.especialidades)
 
       return {
         id: psm.id,
@@ -53,8 +54,8 @@ export async function GET() {
         activeMatches: psm.psmMatches.length,
         capacity: {
           current: psm.psmMatches.length,
-          max: 10,
-          available: 10 - psm.psmMatches.length
+          max: psm.psm?.maxActivePatients || 10,
+          available: Math.max((psm.psm?.maxActivePatients || 10) - psm.psmMatches.length, 0)
         },
         createdAt: psm.createdAt,
         updatedAt: psm.updatedAt

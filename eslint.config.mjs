@@ -18,6 +18,11 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "artifacts/**",
+      "cache/**",
+      "contracts/**",
+      "scripts/**",
+      "hardhat.config.*",
     ],
   },
 ];

@@ -49,6 +49,8 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     register,
     handleSubmit,
     watch,
+    setValue,
+    trigger,
     formState: { errors, isValid }
   } = useForm<ConnectFormData>({
     resolver: zodResolver(connectSchema),
@@ -62,6 +64,11 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
 
   // Watch email field to update validation
   const watchedEmail = watch('email')
+  const acceptTerms = watch('acceptTerms')
+  const acceptPrivacy = watch('acceptPrivacy')
+
+  // Get user email - prioritize WaaP email, then form input
+  const privyEmail = user?.email?.address || user?.google?.email
 
   // Get the EOA address - prioritizes external wallet (MetaMask) over embedded wallet
   const eoaAddress = getEOAAddress(wallets)
@@ -132,6 +139,13 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     }
   }, [authenticated, user, eoaAddress, watchedEmail, data.email, data.eoaAddress, updateData, wallets])
 
+  // Keep react-hook-form in sync when WaaP provides the email (field is read-only in UI)
+  useEffect(() => {
+    if (privyEmail) {
+      setValue('email', privyEmail, { shouldValidate: true })
+    }
+  }, [privyEmail, setValue])
+
   const handleConnectWallet = async () => {
     if (!ready) return
     
@@ -147,45 +161,33 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
 
 
   const onSubmit = (formData: ConnectFormData) => {
-    console.log('StepConnect onSubmit Debug:', {
-      formData,
-      canProceed,
-      authenticated,
-      eoaAddress,
-      isValid,
-      privyEmail: user?.email?.address || user?.google?.email,
-      formEmail: formData.email
-    })
-    
-    // Update store with email (from WaaP or form input)
     const emailToSave = privyEmail || formData.email
-    if (emailToSave && emailToSave !== data.email) {
-      updateData({ email: emailToSave })
+    if (emailToSave) {
+      updateData({
+        email: emailToSave,
+        eoaAddress: eoaAddress || data.eoaAddress,
+        privyId: user?.id || data.privyId,
+      })
     }
-    
+
     onNext()
   }
 
-  // Get user email - prioritize WaaP email, then form input
-  const privyEmail = user?.email?.address || user?.google?.email
+  const onInvalid = () => {
+    void trigger()
+  }
+
   const formEmail = watchedEmail || ''
   const finalEmail = privyEmail || formEmail
   const hasEmail = !!finalEmail && finalEmail.includes('@')
-  
-  // Allow clicking "Continuar" when tenemos email + wallet,
-  // y dejamos que react-hook-form bloquee el submit si faltan términos/privacidad.
-  // Smart wallet will be created by ZeroDev.
-  const canProceed = authenticated && eoaAddress && isValidCeloAddress(eoaAddress) && hasEmail
+  const termsAccepted = acceptTerms === true && acceptPrivacy === true
 
-
-  // Debug logs
-  console.log('StepConnect Debug:', {
-    authenticated,
-    eoaAddress,
-    isValid,
-    userEmail: user?.email?.address || user?.google?.email,
-    canProceed
-  })
+  const canProceed =
+    authenticated &&
+    !!eoaAddress &&
+    isValidCeloAddress(eoaAddress) &&
+    hasEmail &&
+    termsAccepted
 
   // Show login screen if not authenticated
   if (!authenticated) {
@@ -272,7 +274,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
           {/* Account Information */}
           <div className="space-y-4">
             {/* Email Display/Input */}
@@ -290,7 +292,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                     Correo Electrónico *
                   </label>
                   {privyEmail ? (
-                    // Show email from WaaP (read-only)
+                    // Show email from WaaP (read-only); synced to RHF via setValue above
                     <div>
                       <p className="text-sm text-muted-foreground">
                         {privyEmail}
@@ -396,6 +398,13 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
               <p className="text-red-400 text-sm flex items-center space-x-1">
                 <AlertCircle className="w-4 h-4" />
                 <span>{errors.acceptPrivacy.message}</span>
+              </p>
+            )}
+
+            {!termsAccepted && hasEmail && eoaAddress && (
+              <p className="text-sm text-amber-400 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                <span>Marca ambas casillas de términos y privacidad para continuar.</span>
               </p>
             )}
           </div>

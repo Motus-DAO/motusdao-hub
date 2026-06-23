@@ -17,7 +17,8 @@ import {
   BarChart3,
   Settings,
   Shield,
-  X
+  X,
+  AtSign
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
@@ -62,6 +63,11 @@ const navigationItems = [
     name: 'Mensajes',
     href: '/admin/mensajes',
     icon: MessageSquare,
+  },
+  {
+    name: 'MNS Debug',
+    href: '/admin/mns',
+    icon: AtSign,
   },
   {
     name: 'Reportes',

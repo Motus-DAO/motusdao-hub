@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
 
 /**
  * POST /api/payment-logs
@@ -29,7 +31,11 @@ export async function POST(request: NextRequest) {
       currency,
       transactionHash,
       explorerUrl,
-      notes
+      notes,
+      orderId,
+      paymentId,
+      sessionId,
+      enrollmentId
     } = body
 
     // Validate required fields
@@ -55,6 +61,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    await requireSelfOrAdmin(request, fromUserId)
+
+    if (destination === 'matched_psm') {
+      const activeMatch = await prisma.match.findFirst({
+        where: {
+          userId: fromUserId,
+          psmId: toUserId,
+          status: 'active',
+        },
+        select: { id: true },
+      })
+
+      if (!activeMatch) {
+        return NextResponse.json(
+          { error: 'No existe un match activo con el profesional indicado' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Check if transaction hash already exists
     const existingLog = await prisma.paymentLog.findUnique({
       where: { transactionHash }
@@ -77,7 +103,11 @@ export async function POST(request: NextRequest) {
         currency,
         transactionHash,
         explorerUrl,
-        notes
+        notes,
+        orderId,
+        paymentId,
+        sessionId,
+        enrollmentId
       },
       include: {
         fromUser: {
@@ -107,6 +137,10 @@ export async function POST(request: NextRequest) {
         transactionHash: paymentLog.transactionHash,
         explorerUrl: paymentLog.explorerUrl,
         notes: paymentLog.notes,
+        orderId: paymentLog.orderId,
+        paymentId: paymentLog.paymentId,
+        sessionId: paymentLog.sessionId,
+        enrollmentId: paymentLog.enrollmentId,
         createdAt: paymentLog.createdAt,
         fromUser: {
           id: paymentLog.fromUser.id,
@@ -124,6 +158,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error creating payment log:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
@@ -152,6 +189,8 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    await requireSelfOrAdmin(request, userId)
 
     if (!['sent', 'received'].includes(type)) {
       return NextResponse.json(
@@ -195,6 +234,10 @@ export async function GET(request: NextRequest) {
         transactionHash: log.transactionHash,
         explorerUrl: log.explorerUrl,
         notes: log.notes,
+        orderId: log.orderId,
+        paymentId: log.paymentId,
+        sessionId: log.sessionId,
+        enrollmentId: log.enrollmentId,
         createdAt: log.createdAt,
         fromUser: {
           id: log.fromUser.id,
@@ -212,6 +255,9 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error fetching payment logs:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },

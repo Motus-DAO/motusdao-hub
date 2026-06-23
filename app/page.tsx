@@ -12,6 +12,7 @@ import { EmailLoginModal } from '@/components/onboarding/EmailLoginModal'
 import { useUIStore } from '@/lib/store'
 import { useWaaP } from '@/lib/contexts/WaaPProvider'
 import { useOnboardingStore } from '@/lib/onboarding-store'
+import { ONBOARDING_ROUTE } from '@/lib/onboarding-routes'
 import { 
   Bot, 
   Heart, 
@@ -163,7 +164,7 @@ export default function Home() {
                       <p className="text-muted-foreground mb-4">
                         Primero necesitamos algunos datos básicos para personalizar tu experiencia y activar todas las aplicaciones de MotusDAO.
                       </p>
-                      <Link href="/registro">
+                      <Link href={ONBOARDING_ROUTE}>
                         <CTAButton size="lg" glow className="inline-flex items-center">
                           Ir al registro clínico
                           <ArrowRight className="w-5 h-5 ml-2" />

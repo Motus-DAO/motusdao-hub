@@ -11,7 +11,10 @@ import {
   Briefcase, 
   Download,
   ExternalLink,
-  Search
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
@@ -34,15 +37,17 @@ const docCategories = [
   {
     id: 'brandkit',
     title: 'Brandkit',
-    description: 'Recursos de diseño, logos, colores y tipografías',
+    description: 'MotusDAO Brand Kit v2 con sistema visual y aplicaciones',
     icon: Palette,
     color: 'from-pink-500 to-rose-600',
     sections: [
-      'Logotipos',
-      'Paleta de Colores',
-      'Tipografías',
-      'Iconografía',
-      'Elementos Gráficos'
+      'Brand Foundation',
+      'Color System & Themes',
+      'Typography',
+      'Logo System & Usage',
+      'UI Language & Components',
+      'Social & Marketing Applications',
+      'Galería del Brand Kit v2'
     ]
   },
   {
@@ -78,6 +83,8 @@ const docCategories = [
 export default function DocsPage() {
   const [activeCategory, setActiveCategory] = useState('brandbook')
   const [searchTerm, setSearchTerm] = useState('')
+  const [isBrandkitCarouselOpen, setIsBrandkitCarouselOpen] = useState(false)
+  const [brandkitSlideIndex, setBrandkitSlideIndex] = useState(0)
 
   const filteredCategories = docCategories.filter(category =>
     category.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,6 +92,61 @@ export default function DocsPage() {
   )
 
   const activeDoc = docCategories.find(doc => doc.id === activeCategory)
+  const brandkitSlides = [
+    {
+      title: 'Portada · MotusDAO Brand Kit v2',
+      description: 'Portada principal del sistema de marca MotusDAO.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/07.png'
+    },
+    {
+      title: '01 · Brand Foundation',
+      description: 'Fundamentos de marca, rasgos centrales y lógica de temas.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/01.png'
+    },
+    {
+      title: '02 · Color System & Themes',
+      description: 'Paleta oficial, gradientes y reglas de uso para light, dark y matrix.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/02.png'
+    },
+    {
+      title: '03 · Typography',
+      description: 'Sistema tipográfico y jerarquías para interfaces y piezas editoriales.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/03.png'
+    },
+    {
+      title: '04 · Logo System & Usage',
+      description: 'Versiones de logo, clear space y reglas de uso correcto.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/04.png'
+    },
+    {
+      title: '05 · UI Language & Components',
+      description: 'Botones, tarjetas, inputs y patrones visuales del sistema.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/05.png'
+    },
+    {
+      title: '06 · Social & Marketing Applications',
+      description: 'Adaptaciones para social media, presentaciones y website hero.',
+      imageUrl: 'https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/brandkit/motusdao-brandkit-v2/06.png'
+    }
+  ]
+  const nextBrandkitSlide = () => {
+    setBrandkitSlideIndex((prev) => (prev + 1) % brandkitSlides.length)
+  }
+
+  const prevBrandkitSlide = () => {
+    setBrandkitSlideIndex((prev) => (prev - 1 + brandkitSlides.length) % brandkitSlides.length)
+  }
+
+  const openBrandkitCarousel = () => {
+    setBrandkitSlideIndex(0)
+    setIsBrandkitCarouselOpen(true)
+  }
+  const handleVerOnlineClick = () => {
+    if (activeCategory !== 'brandkit') {
+      setActiveCategory('brandkit')
+    }
+    openBrandkitCarousel()
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -198,10 +260,14 @@ export default function DocsPage() {
                         <Download className="w-4 h-4 mr-2" />
                         Descargar PDF
                       </CTAButton>
-                      <CTAButton variant="secondary" size="sm">
+                      <button
+                        type="button"
+                        onClick={handleVerOnlineClick}
+                        className="inline-flex items-center justify-center font-medium focus-ring btn-secondary px-4 py-2 text-sm"
+                      >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Ver Online
-                      </CTAButton>
+                      </button>
                     </div>
                   </div>
 
@@ -223,65 +289,210 @@ export default function DocsPage() {
                   </div>
 
                   {/* Document Content */}
-                  <div className="prose prose-invert max-w-none">
-                    <div id="section-1" className="mb-8">
-                      <h3 className="text-xl font-semibold mb-4">Introducción</h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        MotusDAO es una plataforma descentralizada que combina tecnología blockchain, 
-                        inteligencia artificial y atención profesional para revolucionar el acceso 
-                        a servicios de salud mental. Nuestra misión es democratizar el bienestar 
-                        mental a través de soluciones innovadoras y accesibles.
-                      </p>
-                    </div>
+                  {activeCategory === 'brandkit' ? (
+                    <div className="prose prose-invert max-w-none">
+                      <div id="section-1" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">01 · Brand Foundation</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Define la personalidad visual de MotusDAO: calmada, confiable, inteligente,
+                          futurista y accesible. Establece el uso de los tres modos de tema y cómo
+                          se integran en el producto y comunicación.
+                        </p>
+                      </div>
 
-                    <div id="section-2" className="mb-8">
-                      <h3 className="text-xl font-semibold mb-4">Características Principales</h3>
-                      <ul className="space-y-2 text-muted-foreground">
-                        <li className="flex items-start space-x-2">
-                          <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
-                          <span>Asistente de IA especializado en salud mental</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
-                          <span>Plataforma de psicoterapia virtual</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
-                          <span>Academia de bienestar mental</span>
-                        </li>
-                        <li className="flex items-start space-x-2">
-                          <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
-                          <span>Sistema de pagos descentralizado</span>
-                        </li>
-                      </ul>
-                    </div>
+                      <div id="section-2" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">02 · Color System & Themes</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Sistema cromático oficial con gradientes principales y secundarios para Light,
+                          Dark y Matrix. Incluye reglas de contraste, jerarquía visual y consistencia
+                          entre interfaz, piezas editoriales y marketing.
+                        </p>
+                      </div>
 
-                    <div id="section-3" className="mb-8">
-                      <h3 className="text-xl font-semibold mb-4">Tecnología</h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        MotusDAO utiliza tecnología blockchain para garantizar la privacidad, 
-                        seguridad y transparencia de todas las transacciones y datos de salud mental. 
-                        Nuestra plataforma está construida sobre principios de descentralización 
-                        y privacidad por diseño.
-                      </p>
-                    </div>
+                      <div id="section-3" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">03 · Typography</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Jerarquía tipográfica basada en Jura e Inter para claridad de producto, con
+                          acentos editoriales y variantes Matrix. Prioriza legibilidad, ritmo visual
+                          y coherencia entre componentes.
+                        </p>
+                      </div>
 
-                    <div id="section-4" className="mb-8">
-                      <h3 className="text-xl font-semibold mb-4">Impacto Social</h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        A través de MotusDAO, buscamos reducir las barreras de acceso a servicios 
-                        de salud mental, especialmente en comunidades desatendidas. Nuestra 
-                        plataforma democratiza el acceso a atención profesional y herramientas 
-                        de bienestar mental de alta calidad.
-                      </p>
+                      <div id="section-4" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">04 · Logo System & Usage</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Define versiones del logo, clear space, tamaños mínimos y recomendaciones Do/Don&apos;t
+                          para mantener reconocimiento y calidad visual en todos los canales.
+                        </p>
+                      </div>
+
+                      <div id="section-5" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">05 · UI Language & Components</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Componentes base del Hub: botones primario/secundario/ghost, glass cards,
+                          métricas, campos de entrada, chips y navegación. Incluye principios de motion
+                          y reglas de estilo para mantener una UX consistente.
+                        </p>
+                      </div>
+
+                      <div id="section-6" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">06 · Social & Marketing Applications</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Ejemplos de implementación para Instagram, stories, covers, presentaciones y
+                          website hero. Se prioriza claridad de mensaje, CTA visible y uso controlado de
+                          gradientes para preservar identidad.
+                        </p>
+                      </div>
+
+                      <div id="section-7" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">Galería del Brand Kit v2</h3>
+                        <button
+                          type="button"
+                          onClick={handleVerOnlineClick}
+                          className="group relative w-full overflow-hidden rounded-2xl border border-white/15 text-left transition-all duration-300 hover:border-mauve-400/50 hover:shadow-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-mauve-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          aria-label="Abrir galería del Brand Kit v2"
+                        >
+                          <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full">
+                            <img
+                              src={brandkitSlides[0].imageUrl}
+                              alt={brandkitSlides[0].title}
+                              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
+                            <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6 md:p-8">
+                              <span className="mb-3 inline-flex w-fit items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-sm">
+                                {brandkitSlides.length} slides · Brand Kit v2
+                              </span>
+                              <p className="font-heading text-xl sm:text-2xl font-semibold text-white mb-2">
+                                {brandkitSlides[0].title}
+                              </p>
+                              <p className="text-sm sm:text-base text-white/80 max-w-xl mb-4 leading-relaxed">
+                                Explora fundamentos, color, tipografía, logo, UI y aplicaciones de marketing en un recorrido visual interactivo.
+                              </p>
+                              <span className="inline-flex w-fit items-center justify-center font-medium btn-secondary px-4 py-2 text-sm pointer-events-none">
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Ver Online
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="prose prose-invert max-w-none">
+                      <div id="section-1" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">Introducción</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          MotusDAO es una plataforma descentralizada que combina tecnología blockchain,
+                          inteligencia artificial y atención profesional para revolucionar el acceso
+                          a servicios de salud mental. Nuestra misión es democratizar el bienestar
+                          mental a través de soluciones innovadoras y accesibles.
+                        </p>
+                      </div>
+
+                      <div id="section-2" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">Características Principales</h3>
+                        <ul className="space-y-2 text-muted-foreground">
+                          <li className="flex items-start space-x-2">
+                            <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
+                            <span>Asistente de IA especializado en salud mental</span>
+                          </li>
+                          <li className="flex items-start space-x-2">
+                            <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
+                            <span>Plataforma de psicoterapia virtual</span>
+                          </li>
+                          <li className="flex items-start space-x-2">
+                            <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
+                            <span>Academia de bienestar mental</span>
+                          </li>
+                          <li className="flex items-start space-x-2">
+                            <span className="w-2 h-2 bg-mauve-500 rounded-full mt-2 flex-shrink-0"></span>
+                            <span>Sistema de pagos descentralizado</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div id="section-3" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">Tecnología</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          MotusDAO utiliza tecnología blockchain para garantizar la privacidad,
+                          seguridad y transparencia de todas las transacciones y datos de salud mental.
+                          Nuestra plataforma está construida sobre principios de descentralización
+                          y privacidad por diseño.
+                        </p>
+                      </div>
+
+                      <div id="section-4" className="mb-8">
+                        <h3 className="text-xl font-semibold mb-4">Impacto Social</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          A través de MotusDAO, buscamos reducir las barreras de acceso a servicios
+                          de salud mental, especialmente en comunidades desatendidas. Nuestra
+                          plataforma democratiza el acceso a atención profesional y herramientas
+                          de bienestar mental de alta calidad.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </GlassCard>
               </motion.div>
             </div>
           </div>
         </div>
       </Section>
+
+      {isBrandkitCarouselOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm px-4 py-10 md:px-8 md:py-12 overflow-y-auto">
+          <div className="relative z-[101] w-full max-w-5xl mx-auto glass-card border border-white/15 rounded-2xl p-4 md:p-6">
+            <button
+              type="button"
+              onClick={() => setIsBrandkitCarouselOpen(false)}
+              className="absolute top-4 right-4 z-[140] btn-secondary p-2 rounded-lg"
+              aria-label="Cerrar carrusel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="relative z-[110] mb-4 pr-12">
+              <div className="text-center">
+                <p className="font-semibold">{brandkitSlides[brandkitSlideIndex].title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {brandkitSlideIndex + 1} / {brandkitSlides.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="relative z-[105] rounded-xl overflow-hidden border border-white/10">
+              <button
+                type="button"
+                onClick={prevBrandkitSlide}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-[140] btn-secondary p-2 rounded-lg"
+                aria-label="Slide anterior"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <img
+                src={brandkitSlides[brandkitSlideIndex].imageUrl}
+                alt={brandkitSlides[brandkitSlideIndex].title}
+                className="w-full h-auto max-h-[75vh] object-contain bg-black/30 pointer-events-none"
+              />
+
+              <button
+                type="button"
+                onClick={nextBrandkitSlide}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-[140] btn-secondary p-2 rounded-lg"
+                aria-label="Siguiente slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mt-4 mb-0">
+              {brandkitSlides[brandkitSlideIndex].description}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

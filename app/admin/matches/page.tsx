@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { authFetch } from '@/lib/auth/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { motion } from 'framer-motion'
@@ -120,7 +121,7 @@ export default function AdminMatchesPage() {
         params.append('status', statusFilter)
       }
 
-      const response = await fetch(`/api/admin/matches?${params.toString()}`)
+      const response = await authFetch(`/api/admin/matches?${params.toString()}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

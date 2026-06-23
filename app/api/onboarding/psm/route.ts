@@ -1,47 +1,139 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { toInputJson } from '@/lib/prisma-json'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
+
+const stringArray = z.array(z.string()).default([])
 
 const psmOnboardingSchema = z.object({
-  // Connection data
   email: z.string().email(),
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
   privyId: z.string().optional(),
-  
-  // Personal data
+  intakeSource: z.enum(['manual', 'ai_assisted']).default('manual'),
+  motusName: z.string().optional(),
+  mnsTxHash: z.string().optional(),
+  profileNftTxHash: z.string().optional(),
+  profileNftTokenURI: z.string().optional(),
+
   nombre: z.string().min(1),
   apellido: z.string().min(1),
   telefono: z.string().min(1),
   fechaNacimiento: z.string().min(1),
   ciudad: z.string().min(1),
   pais: z.string().min(1),
-  
-  // Professional data
+  avatarUrl: z.string().optional(),
+  avatarStoragePath: z.string().optional(),
+
   cedulaProfesional: z.string().min(1),
+  cedulaDocumentPath: z.string().optional(),
+  tituloDocumentPath: z.string().optional(),
   formacionAcademica: z.string().min(1),
   experienciaAnios: z.number().min(0),
   biografia: z.string().optional(),
   especialidades: z.array(z.string()).min(1),
+  therapyStyles: stringArray,
+  languages: z.array(z.string()).default(['es']),
+  licensedCountries: stringArray,
+  licensedRegions: stringArray,
+  timezone: z.string().optional(),
+  availability: z.record(z.unknown()).default({}),
+  modalities: z.array(z.enum(['video', 'chat', 'in_person', 'hybrid'])).default(['video']),
+  sessionPrice: z.number().int().nonnegative().optional(),
+  currency: z.string().default('MXN'),
+  acceptsSlidingScale: z.boolean().default(false),
+  worksWithUrgencyLevels: z.array(z.enum(['low', 'medium', 'high', 'crisis'])).default(['low', 'medium']),
+  exclusionCriteria: stringArray,
+  isAcceptingPatients: z.boolean().default(false),
+  maxActivePatients: z.number().int().positive().default(10),
   participaSupervision: z.boolean().default(false),
   participaCursos: z.boolean().default(false),
   participaInvestigacion: z.boolean().default(false),
-  participaComunidad: z.boolean().default(false)
+  participaComunidad: z.boolean().default(false),
+
+  consentToTerms: z.boolean().default(true),
+  consentToPrivacy: z.boolean().default(true),
+  consentToAIProcessing: z.boolean().default(false),
+  consentToShareWithPSM: z.boolean().default(false),
+  consentToClinicalMatching: z.boolean().default(false)
+}).superRefine((data, ctx) => {
+  if (!data.cedulaDocumentPath && !data.tituloDocumentPath) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Debes subir al menos un documento: cédula profesional o título',
+      path: ['cedulaDocumentPath'],
+    })
+  }
 })
+
+type PsmOnboardingData = z.infer<typeof psmOnboardingSchema>
+
+function buildPsmProfileFields(
+  data: PsmOnboardingData,
+  existingPsm?: {
+    verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended'
+    isAcceptingPatients: boolean
+    cedulaDocumentPath: string | null
+    tituloDocumentPath: string | null
+  } | null
+) {
+  const docsChanged = Boolean(
+    existingPsm &&
+      (
+        (data.cedulaDocumentPath && data.cedulaDocumentPath !== existingPsm.cedulaDocumentPath) ||
+        (data.tituloDocumentPath && data.tituloDocumentPath !== existingPsm.tituloDocumentPath)
+      )
+  )
+  const verificationStatus =
+    !existingPsm || docsChanged || existingPsm.verificationStatus === 'rejected'
+      ? 'pending'
+      : existingPsm.verificationStatus
+  const isAcceptingPatients =
+    verificationStatus === 'approved'
+      ? existingPsm?.isAcceptingPatients ?? data.isAcceptingPatients
+      : false
+
+  return {
+    cedulaProfesional: data.cedulaProfesional,
+    cedulaDocumentPath: data.cedulaDocumentPath,
+    tituloDocumentPath: data.tituloDocumentPath,
+    formacionAcademica: data.formacionAcademica,
+    experienciaAnios: data.experienciaAnios,
+    biografia: data.biografia,
+    especialidades: toInputJson(data.especialidades),
+    verificationStatus,
+    isAcceptingPatients,
+    maxActivePatients: data.maxActivePatients,
+    therapyStyles: toInputJson(data.therapyStyles ?? []),
+    languages: toInputJson(data.languages?.length ? data.languages : ['es']),
+    licensedCountries: toInputJson(data.licensedCountries ?? []),
+    licensedRegions: toInputJson(data.licensedRegions ?? []),
+    timezone: data.timezone,
+    availability: toInputJson(data.availability ?? {}),
+    modalities: toInputJson(data.modalities ?? ['video']),
+    sessionPrice: data.sessionPrice,
+    currency: data.currency,
+    acceptsSlidingScale: data.acceptsSlidingScale,
+    worksWithUrgencyLevels: toInputJson(data.worksWithUrgencyLevels ?? ['low', 'medium']),
+    exclusionCriteria: toInputJson(data.exclusionCriteria ?? []),
+    participaSupervision: data.participaSupervision,
+    participaCursos: data.participaCursos,
+    participaInvestigacion: data.participaInvestigacion,
+    participaComunidad: data.participaComunidad
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    // Validate input
-    const validatedData = psmOnboardingSchema.parse(body)
-    
-    // Check if user already exists
+    const data = psmOnboardingSchema.parse(body)
+
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: validatedData.email },
-          { eoaAddress: validatedData.eoaAddress }
+          { email: data.email },
+          { eoaAddress: data.eoaAddress }
         ]
       },
       include: {
@@ -50,208 +142,152 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // If user exists, update their information instead of creating new
-    if (existingUser) {
-      // Check if this is the same user trying to update their smart wallet
-      // Allow update if:
-      // 1. Same email and EOA, and smart wallet is missing or different
-      // 2. Registration is not completed
-      const isSameUser = existingUser.email === validatedData.email && 
-                         existingUser.eoaAddress === validatedData.eoaAddress
-      const needsSmartWalletUpdate = !existingUser.smartWalletAddress || 
-                                    (validatedData.smartWalletAddress && 
-                                     existingUser.smartWalletAddress !== validatedData.smartWalletAddress)
-      const isUpdatingSmartWallet = isSameUser && needsSmartWalletUpdate
-      
-      // Log for debugging
-      console.log('🔍 PSM exists - checking update conditions:', {
-        email: validatedData.email,
-        eoaAddress: validatedData.eoaAddress,
-        smartWalletAddress: validatedData.smartWalletAddress,
-        existingSmartWallet: existingUser.smartWalletAddress,
-        isSameUser,
-        needsSmartWalletUpdate,
-        isUpdatingSmartWallet,
-        registrationCompleted: existingUser.registrationCompleted,
-        willUpdate: isUpdatingSmartWallet || !existingUser.registrationCompleted
-      })
-      
-      if (isUpdatingSmartWallet || !existingUser.registrationCompleted) {
-        // Determine the smart wallet address to use
-        // If a new smart wallet address is provided, use it; otherwise keep existing
-        const smartWalletToSave = validatedData.smartWalletAddress || existingUser.smartWalletAddress
-        
-        console.log('✅ Updating PSM with smart wallet:', {
-          userId: existingUser.id,
-          smartWalletToSave,
-          provided: validatedData.smartWalletAddress,
-          existing: existingUser.smartWalletAddress
-        })
-        
-        // Update user with smart wallet address and mark registration as completed
-        const result = await prisma.$transaction(async (tx) => {
-          const user = await tx.user.update({
+    if (
+      existingUser &&
+      (existingUser.email !== data.email || existingUser.eoaAddress !== data.eoaAddress)
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Ya existe una cuenta con este correo o wallet, pero no pertenecen al mismo registro.',
+          code: 'IDENTITY_CONFLICT'
+        },
+        { status: 409 }
+      )
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existingPsm = existingUser?.psm
+      const docsChanged = Boolean(
+        existingPsm &&
+          (
+            (data.cedulaDocumentPath && data.cedulaDocumentPath !== existingPsm.cedulaDocumentPath) ||
+            (data.tituloDocumentPath && data.tituloDocumentPath !== existingPsm.tituloDocumentPath)
+          )
+      )
+      const nextOnboardingStatus =
+        existingPsm?.verificationStatus === 'approved' && !docsChanged
+          ? 'active'
+          : 'pending_verification'
+
+      const user = existingUser
+        ? await tx.user.update({
             where: { id: existingUser.id },
             data: {
-              eoaAddress: validatedData.eoaAddress,
-              smartWalletAddress: smartWalletToSave,
+              role: 'psm',
+              smartWalletAddress: data.smartWalletAddress || existingUser.smartWalletAddress,
               registrationCompleted: true,
-              privyId: validatedData.privyId || existingUser.privyId
+              onboardingStatus: nextOnboardingStatus,
+              intakeSource: data.intakeSource,
+              motusName: data.motusName || existingUser.motusName,
+              mnsTxHash: data.mnsTxHash || existingUser.mnsTxHash,
+              mnsRegisteredAt: data.mnsTxHash && !existingUser.mnsRegisteredAt
+                ? new Date()
+                : existingUser.mnsRegisteredAt,
+              profileNftTxHash: data.profileNftTxHash || existingUser.profileNftTxHash,
+              profileNftTokenURI: data.profileNftTokenURI || existingUser.profileNftTokenURI,
+              privyId: data.privyId || existingUser.privyId
+            }
+          })
+        : await tx.user.create({
+            data: {
+              role: 'psm',
+              email: data.email,
+              eoaAddress: data.eoaAddress,
+              smartWalletAddress: data.smartWalletAddress || null,
+              registrationCompleted: true,
+              onboardingStatus: nextOnboardingStatus,
+              intakeSource: data.intakeSource,
+              motusName: data.motusName,
+              mnsTxHash: data.mnsTxHash,
+              mnsRegisteredAt: data.mnsTxHash ? new Date() : null,
+              profileNftTxHash: data.profileNftTxHash,
+              profileNftTokenURI: data.profileNftTokenURI,
+              privyId: data.privyId
             }
           })
 
-          // Update profile if it exists
-          if (existingUser.profile) {
-            await tx.profile.update({
-              where: { userId: existingUser.id },
-              data: {
-                nombre: validatedData.nombre,
-                apellido: validatedData.apellido,
-                telefono: validatedData.telefono,
-                fechaNacimiento: new Date(validatedData.fechaNacimiento),
-                ciudad: validatedData.ciudad,
-                pais: validatedData.pais
-              }
-            })
-          } else {
-            await tx.profile.create({
-              data: {
-                userId: existingUser.id,
-                nombre: validatedData.nombre,
-                apellido: validatedData.apellido,
-                telefono: validatedData.telefono,
-                fechaNacimiento: new Date(validatedData.fechaNacimiento),
-                ciudad: validatedData.ciudad,
-                pais: validatedData.pais
-              }
-            })
-          }
-
-          // Update PSM profile if it exists
-          if (existingUser.psm) {
-            await tx.pSMProfile.update({
-              where: { userId: existingUser.id },
-              data: {
-                cedulaProfesional: validatedData.cedulaProfesional,
-                formacionAcademica: validatedData.formacionAcademica,
-                experienciaAnios: validatedData.experienciaAnios,
-                biografia: validatedData.biografia,
-                especialidades: JSON.stringify(validatedData.especialidades),
-                participaSupervision: validatedData.participaSupervision,
-                participaCursos: validatedData.participaCursos,
-                participaInvestigacion: validatedData.participaInvestigacion,
-                participaComunidad: validatedData.participaComunidad
-              }
-            })
-          } else {
-            await tx.pSMProfile.create({
-              data: {
-                userId: existingUser.id,
-                cedulaProfesional: validatedData.cedulaProfesional,
-                formacionAcademica: validatedData.formacionAcademica,
-                experienciaAnios: validatedData.experienciaAnios,
-                biografia: validatedData.biografia,
-                especialidades: JSON.stringify(validatedData.especialidades),
-                participaSupervision: validatedData.participaSupervision,
-                participaCursos: validatedData.participaCursos,
-                participaInvestigacion: validatedData.participaInvestigacion,
-                participaComunidad: validatedData.participaComunidad
-              }
-            })
-          }
-
-          return user
-        })
-
-        return NextResponse.json({
-          success: true,
-          message: 'Profesional actualizado exitosamente',
-          user: {
-            id: result.id,
-            role: result.role,
-            email: result.email,
-            eoaAddress: result.eoaAddress,
-            smartWalletAddress: result.smartWalletAddress,
-            registrationCompleted: result.registrationCompleted
-          }
-        }, { status: 200 })
-      } else {
-        // User exists with same email and wallet - might be duplicate registration
-        return NextResponse.json(
-          { 
-            error: 'Ya existe una cuenta con este correo o wallet. Inicia sesión o actualiza tu perfil.',
-            code: 'USER_EXISTS'
-          },
-          { status: 409 }
-        )
-      }
-    }
-
-    // Create new user and related records in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create user
-      const user = await tx.user.create({
-        data: {
-          role: 'psm',
-          email: validatedData.email,
-          eoaAddress: validatedData.eoaAddress,
-          smartWalletAddress: validatedData.smartWalletAddress || null,
-          registrationCompleted: true,
-          privyId: validatedData.privyId
+      await tx.profile.upsert({
+        where: { userId: user.id },
+        update: {
+          nombre: data.nombre,
+          apellido: data.apellido,
+          telefono: data.telefono,
+          fechaNacimiento: new Date(data.fechaNacimiento),
+          ciudad: data.ciudad,
+          pais: data.pais,
+          avatarUrl: data.avatarUrl,
+          avatarStoragePath: data.avatarStoragePath,
+        },
+        create: {
+          userId: user.id,
+          nombre: data.nombre,
+          apellido: data.apellido,
+          telefono: data.telefono,
+          fechaNacimiento: new Date(data.fechaNacimiento),
+          ciudad: data.ciudad,
+          pais: data.pais,
+          avatarUrl: data.avatarUrl,
+          avatarStoragePath: data.avatarStoragePath,
         }
       })
 
-      // Create profile
-      await tx.profile.create({
-        data: {
-          userId: user.id,
-          nombre: validatedData.nombre,
-          apellido: validatedData.apellido,
-          telefono: validatedData.telefono,
-          fechaNacimiento: new Date(validatedData.fechaNacimiento),
-          ciudad: validatedData.ciudad,
-          pais: validatedData.pais
-        }
+      const psmProfileFields = buildPsmProfileFields(data, existingUser?.psm)
+
+      await tx.pSMProfile.upsert({
+        where: { userId: user.id },
+        update: psmProfileFields,
+        create: { userId: user.id, ...psmProfileFields }
       })
 
-      // Create PSM profile
-      await tx.pSMProfile.create({
+      await tx.consentRecord.create({
         data: {
           userId: user.id,
-          cedulaProfesional: validatedData.cedulaProfesional,
-          formacionAcademica: validatedData.formacionAcademica,
-          experienciaAnios: validatedData.experienciaAnios,
-          biografia: validatedData.biografia,
-          especialidades: JSON.stringify(validatedData.especialidades),
-          participaSupervision: validatedData.participaSupervision,
-          participaCursos: validatedData.participaCursos,
-          participaInvestigacion: validatedData.participaInvestigacion,
-          participaComunidad: validatedData.participaComunidad
+          consentToTerms: data.consentToTerms,
+          consentToPrivacy: data.consentToPrivacy,
+          consentToAIProcessing: data.consentToAIProcessing,
+          consentToShareWithPSM: data.consentToShareWithPSM,
+          consentToClinicalMatching: data.consentToClinicalMatching,
+          source: data.intakeSource
         }
       })
 
       return user
     })
 
+    await recordClinicalAccess({
+      request,
+      actorUserId: result.id,
+      targetUserId: result.id,
+      action: 'create',
+      resource: 'psm_profile',
+      reason: 'onboarding_psm',
+      metadata: { intakeSource: data.intakeSource },
+    })
+
     return NextResponse.json({
       success: true,
-      message: 'Profesional registrado exitosamente',
+      message: 'Profesional registrado exitosamente. Queda pendiente de verificación antes de recibir matches.',
       user: {
         id: result.id,
         role: result.role,
         email: result.email,
         eoaAddress: result.eoaAddress,
         smartWalletAddress: result.smartWalletAddress,
-        registrationCompleted: result.registrationCompleted
+        registrationCompleted: result.registrationCompleted,
+        onboardingStatus: result.onboardingStatus,
+        intakeSource: result.intakeSource
+      },
+      verification: {
+        status: 'pending',
+        matchEligible: false
       }
-    }, { status: 201 })
-
+    }, { status: existingUser ? 200 : 201 })
   } catch (error) {
     console.error('Error creating PSM:', error)
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: 'Datos de entrada inválidos',
           details: error.errors
         },
@@ -259,19 +295,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Log detailed error for debugging
-    console.error('Detailed error:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined
-    })
-
     return NextResponse.json(
-      { 
+      {
         error: 'Error interno del servidor',
-        details: process.env.NODE_ENV === 'development' ? 
-          (error instanceof Error ? error.message : 'Unknown error') : 
-          undefined
+        details: process.env.NODE_ENV === 'development'
+          ? (error instanceof Error ? error.message : 'Unknown error')
+          : undefined
       },
       { status: 500 }
     )

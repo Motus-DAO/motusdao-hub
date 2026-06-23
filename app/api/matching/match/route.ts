@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { asStringArray, toInputJson } from '@/lib/prisma-json'
+import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 /**
  * POST /api/matching/match
@@ -23,6 +27,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const session = await requireSelfOrAdmin(request, userId)
 
     // Get user with profile and patient data
     const user = await prisma.user.findUnique({
@@ -65,6 +71,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (user.onboardingStatus !== 'active' || !user.registrationCompleted) {
+      return NextResponse.json(
+        { error: 'El usuario aún no tiene un registro activo para matching' },
+        { status: 400 }
+      )
+    }
+
+    if (user.patient.urgencyLevel === 'crisis') {
+      return NextResponse.json(
+        { error: 'Este caso requiere una ruta de crisis antes de hacer matching automático' },
+        { status: 400 }
+      )
+    }
+    const patient = user.patient
+
     // Check if user already has an active match
     if (user.userMatches.length > 0) {
       return NextResponse.json(
@@ -80,7 +101,15 @@ export async function POST(request: NextRequest) {
     const allPSMs = await prisma.user.findMany({
       where: {
         role: 'psm',
-        registrationCompleted: true
+        registrationCompleted: true,
+        onboardingStatus: 'active',
+        deletedAt: null,
+        psm: {
+          is: {
+            verificationStatus: 'approved',
+            isAcceptingPatients: true
+          }
+        }
       },
       include: {
         profile: true,
@@ -91,9 +120,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Filter PSMs with less than 10 active matches (capacity check)
+    // Filter PSMs with available active capacity.
     const availablePSMs = allPSMs.filter(
-      psm => psm.psmMatches.length < 10
+      psm => psm.psm && psm.psmMatches.length < psm.psm.maxActivePatients
     )
 
     if (availablePSMs.length === 0) {
@@ -104,52 +133,79 @@ export async function POST(request: NextRequest) {
     }
 
     // Score PSMs based on matching criteria
-    const userProblematica = user.patient.problematica.toLowerCase()
+    const userConcerns = asStringArray(patient.clinicalConcern)
+      .concat(patient.tipoAtencion ? [patient.tipoAtencion] : [])
+      .map(item => item.toLowerCase())
+    const userLanguages = asStringArray(patient.languages).map(item => item.toLowerCase())
     const scoredPSMs = availablePSMs.map(psm => {
       let score = 0
+      const criteria: Array<{ criterion: string; score: number; details?: Record<string, unknown> }> = []
+      const addScore = (criterion: string, points: number, details?: Record<string, unknown>) => {
+        if (points <= 0) return
+        score += points
+        criteria.push({ criterion, score: points, details })
+      }
 
       // Check especialidades match
       if (psm.psm && psm.psm.especialidades) {
-        try {
-          const especialidades = JSON.parse(psm.psm.especialidades) as string[]
-          const especialidadesLower = especialidades.map(e => e.toLowerCase())
-          
-          // Exact match
-          if (especialidadesLower.includes(userProblematica)) {
-            score += 10
+        const especialidadesLower = asStringArray(psm.psm.especialidades).map(e => e.toLowerCase())
+
+        userConcerns.forEach(concern => {
+          if (especialidadesLower.includes(concern)) {
+            addScore('clinical_concern_exact', 10, { concern })
           }
-          
-          // Partial match (contains keyword)
+
           especialidadesLower.forEach(esp => {
-            if (userProblematica.includes(esp) || esp.includes(userProblematica)) {
-              score += 5
+            if (concern.includes(esp) || esp.includes(concern)) {
+              addScore('clinical_concern_partial', 5, { concern, specialty: esp })
             }
           })
-        } catch {
-          // If JSON parsing fails, skip this scoring
+        })
+      }
+
+      if (psm.psm) {
+        const modalities = asStringArray(psm.psm.modalities)
+        if (modalities.includes(patient.preferredModality)) {
+          addScore('modality', 4, { modality: patient.preferredModality })
+        }
+
+        const psmLanguages = asStringArray(psm.psm.languages).map(item => item.toLowerCase())
+        if (userLanguages.some(language => psmLanguages.includes(language))) {
+          addScore('language', 3, { patientLanguages: userLanguages, psmLanguages })
+        }
+
+        const urgencyLevels = asStringArray(psm.psm.worksWithUrgencyLevels)
+        if (urgencyLevels.includes(patient.urgencyLevel)) {
+          addScore('urgency', 3, { urgencyLevel: patient.urgencyLevel })
         }
       }
 
       // Geographic proximity bonus (same city)
       if (user.profile && psm.profile) {
         if (user.profile.ciudad.toLowerCase() === psm.profile.ciudad.toLowerCase()) {
-          score += 3
+          addScore('same_city', 3, { ciudad: user.profile.ciudad })
         }
         if (user.profile.pais.toLowerCase() === psm.profile.pais.toLowerCase()) {
-          score += 2
+          addScore('same_country', 2, { pais: user.profile.pais })
         }
       }
 
       // Experience bonus (more years = slightly better)
       if (psm.psm) {
-        score += Math.min(psm.psm.experienciaAnios / 10, 2) // Max 2 points
+        addScore('experience', Math.min(psm.psm.experienciaAnios / 10, 2), {
+          experienciaAnios: psm.psm.experienciaAnios,
+        })
       }
 
       // Capacity bonus (more available slots = slightly better for load balancing)
       const activeMatches = psm.psmMatches.length
-      score += (10 - activeMatches) * 0.1 // Max 1 point
+      const maxActivePatients = psm.psm?.maxActivePatients ?? 10
+      addScore('capacity', Math.max(maxActivePatients - activeMatches, 0) * 0.1, {
+        activeMatches,
+        maxActivePatients,
+      })
 
-      return { psm, score }
+      return { psm, score, criteria }
     })
 
     // Sort by score (highest first)
@@ -163,7 +219,17 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         psmId: topPSM.id,
         status: 'active',
-        matchedAt: new Date()
+        matchedAt: new Date(),
+        source: 'automatic',
+        score: scoredPSMs[0].score,
+        scoreBreakdown: toInputJson(scoredPSMs[0].criteria),
+        criteria: {
+          create: scoredPSMs[0].criteria.map(criterion => ({
+            criterion: criterion.criterion,
+            score: criterion.score,
+            details: toInputJson(criterion.details ?? {}),
+          })),
+        },
       },
       include: {
         user: {
@@ -178,6 +244,20 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    })
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: user.id,
+      action: 'create',
+      resource: 'match',
+      resourceId: match.id,
+      reason: 'automatic_matching',
+      metadata: {
+        psmId: topPSM.id,
+        score: scoredPSMs[0].score,
+      },
     })
 
     return NextResponse.json({
@@ -208,6 +288,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error creating match:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
@@ -215,4 +298,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

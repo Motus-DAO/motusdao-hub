@@ -16,6 +16,8 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { useOnboardingStore } from '@/lib/onboarding-store'
+import { ONBOARDING_ROUTE } from '@/lib/onboarding-routes'
 
 interface RolePickerModalProps {
   isOpen: boolean
@@ -25,6 +27,7 @@ interface RolePickerModalProps {
 export function RolePickerModal({ isOpen, onClose }: RolePickerModalProps) {
   const [selectedRole, setSelectedRole] = useState<'usuario' | 'psm' | null>(null)
   const router = useRouter()
+  const { setRole } = useOnboardingStore()
 
   const handleRoleSelect = (role: 'usuario' | 'psm') => {
     setSelectedRole(role)
@@ -32,7 +35,8 @@ export function RolePickerModal({ isOpen, onClose }: RolePickerModalProps) {
 
   const handleContinue = () => {
     if (selectedRole) {
-      router.push(`/onboarding?role=${selectedRole}`)
+      setRole(selectedRole)
+      router.push(ONBOARDING_ROUTE)
       onClose()
     }
   }

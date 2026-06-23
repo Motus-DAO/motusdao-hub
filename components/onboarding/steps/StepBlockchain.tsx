@@ -15,7 +15,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { motusNameService } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
-import { registerMotusNameWithWaaP } from '@/lib/mns-register'
+import { registerMotusName } from '@/lib/mns-register'
 
 interface StepBlockchainProps {
   onNext: () => void
@@ -38,6 +38,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
   const [isRegisteringName, setIsRegisteringName] = useState(false)
   const [nameResult, setNameResult] = useState<string | null>(null)
   const [nameTxHash, setNameTxHash] = useState<string | null>(null)
+  const [ownsName, setOwnsName] = useState(false)
   const [showMnsInfo, setShowMnsInfo] = useState(false)
   const [registrationPrice, setRegistrationPrice] = useState<string | null>(null)
 
@@ -45,12 +46,48 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
     motusNameService.getRegistrationPrice().then(setRegistrationPrice).catch(() => {})
   }, [])
 
-  // Mirror EOA into smartWalletAddress field for backwards compatibility (no real smart wallets for now)
+  // Restore domain from store or on-chain when user returns to this step
+  useEffect(() => {
+    let cancelled = false
+
+    const loadExistingDomain = async () => {
+      if (!data.eoaAddress) return
+
+      const address = data.eoaAddress as `0x${string}`
+      const storedName = data.motusName?.replace('.motus', '')
+
+      try {
+        const onChainName = await motusNameService.reverseLookup(address)
+        const resolvedName = storedName || onChainName
+
+        if (!resolvedName || cancelled) return
+
+        setName(resolvedName)
+        setIsNameValid(true)
+        setOwnsName(true)
+        setIsNameAvailable(false)
+        setNameResult(`✅ Ya tienes registrado ${resolvedName}.motus en Celo.`)
+
+        if (!data.motusName) {
+          updateData({ motusName: resolvedName })
+        }
+      } catch (e) {
+        console.error('Error loading existing MNS domain:', e)
+      }
+    }
+
+    void loadExistingDomain()
+
+    return () => {
+      cancelled = true
+    }
+  }, [data.eoaAddress, data.motusName, updateData])
+
   useEffect(() => {
     if (data.eoaAddress && data.smartWalletAddress !== data.eoaAddress) {
       updateData({
         smartWalletAddress: data.eoaAddress,
-        walletType: data.walletType || 'external'
+        walletType: data.walletType || 'external',
       })
     }
   }, [data.eoaAddress, data.smartWalletAddress, data.walletType, updateData])
@@ -110,6 +147,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
     setIsNameValid(null)
     setNameResult(null)
     setNameTxHash(null)
+    setOwnsName(false)
 
     if (!normalized) return
 
@@ -118,18 +156,31 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       const valid = motusNameService.isValidNameFormat(normalized)
       setIsNameValid(valid)
 
-      if (valid) {
-        const available = await motusNameService.isAvailable(normalized)
-        setIsNameAvailable(available)
+      if (!valid || !data.eoaAddress) return
+
+      const ownedByUser = await motusNameService.isOwnedBy(
+        normalized,
+        data.eoaAddress as `0x${string}`
+      )
+
+      if (ownedByUser) {
+        setOwnsName(true)
+        setIsNameAvailable(false)
+        setNameResult(`✅ Ya tienes registrado ${normalized}.motus`)
+        updateData({ motusName: normalized })
+        return
       }
+
+      const available = await motusNameService.isAvailable(normalized)
+      setIsNameAvailable(available)
     } finally {
       setIsCheckingName(false)
     }
   }
 
   const handleRegisterDomain = async () => {
-    if (!name || !isNameValid || !isNameAvailable) {
-      setNameResult('❌ El nombre no está disponible o no es válido')
+    if (!name || !isNameValid) {
+      setNameResult('❌ El nombre no es válido')
       return
     }
     if (!data.eoaAddress) {
@@ -137,18 +188,37 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       return
     }
 
+    if (ownsName) {
+      setNameResult(`✅ Ya tienes registrado ${name}.motus`)
+      updateData({ motusName: name })
+      return
+    }
+
+    if (!isNameAvailable) {
+      setNameResult('❌ El nombre no está disponible')
+      return
+    }
+
     setIsRegisteringName(true)
-    setNameResult('🔄 Registrando dominio en Celo (pagando gas desde tu wallet WaaP)...')
+    setNameResult('🔄 Registrando dominio en Celo Mainnet (gas en CELO)...')
     setNameTxHash(null)
 
     try {
-      const response = await registerMotusNameWithWaaP(
-        name,
-        data.eoaAddress as `0x${string}`
-      )
+      const targetAddress = data.eoaAddress as `0x${string}`
+      const response = await registerMotusName(name, targetAddress)
 
       if (response.success) {
-        setNameResult('✅ ¡Dominio registrado exitosamente!')
+        setOwnsName(true)
+        setIsNameAvailable(false)
+        updateData({
+          motusName: name,
+          ...(response.txHash ? { mnsTxHash: response.txHash } : {}),
+        })
+        setNameResult(
+          response.alreadyRegistered
+            ? `✅ Ya tenías registrado ${name}.motus — no hace falta volver a comprarlo.`
+            : '✅ ¡Dominio registrado exitosamente!'
+        )
         if (response.txHash) {
           setNameTxHash(response.txHash)
         }
@@ -255,12 +325,12 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                       Elige el dominio con el que otras personas podrán enviarte dinero de forma simple y humana.
                       {registrationPrice && Number(registrationPrice) > 0 && (
                         <span className="block mt-1 text-mauve-300">
-                          Costo: {registrationPrice} cUSD + gas en CELO.
+                          Costo: {registrationPrice} cUSD + gas en CELO (red Celo Mainnet, no Ethereum).
                         </span>
                       )}
                       {registrationPrice && Number(registrationPrice) === 0 && (
                         <span className="block mt-1 text-emerald-300">
-                          Registro gratuito — solo pagas gas en CELO.
+                          Registro gratuito — solo pagas gas en CELO (reclámalo con el faucet).
                         </span>
                       )}
                     </p>
@@ -283,14 +353,23 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                           size="sm"
                           variant="secondary"
                           disabled={
-                            !name || isCheckingName || isRegisteringName || !isNameValid || !isNameAvailable
+                            !name ||
+                            isCheckingName ||
+                            isRegisteringName ||
+                            !isNameValid ||
+                            ownsName ||
+                            !isNameAvailable
                           }
                           className="flex items-center space-x-2"
                           onClick={handleRegisterDomain}
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>
-                            {isRegisteringName ? 'Registrando...' : 'Buscar y comprar'}
+                            {ownsName
+                              ? 'Ya registrado'
+                              : isRegisteringName
+                              ? 'Registrando...'
+                              : 'Buscar y comprar'}
                           </span>
                         </CTAButton>
                       </div>
@@ -306,14 +385,19 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                               Formato inválido. Usa solo letras minúsculas, números y guiones.
                             </p>
                           )}
-                          {!isCheckingName && isNameValid && isNameAvailable === true && (
+                          {!isCheckingName && isNameValid && ownsName && (
+                            <p className="text-emerald-300 font-medium">
+                              ✅ Este dominio ya está registrado a tu wallet. Puedes continuar con el registro.
+                            </p>
+                          )}
+                          {!isCheckingName && isNameValid && !ownsName && isNameAvailable === true && (
                             <p className="text-emerald-300 font-medium">
                               ✅ Disponible. Haz clic en &quot;Buscar y comprar&quot; para registrar tu dominio ahora.
                             </p>
                           )}
-                          {!isCheckingName && isNameValid && isNameAvailable === false && (
+                          {!isCheckingName && isNameValid && !ownsName && isNameAvailable === false && (
                             <p className="text-red-300">
-                              ❌ Ese nombre ya está registrado. Prueba con otra variante.
+                              ❌ Ese nombre ya está registrado por otra wallet. Prueba con otra variante.
                             </p>
                           )}
 

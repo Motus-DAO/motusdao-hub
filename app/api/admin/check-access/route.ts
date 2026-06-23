@@ -1,37 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { guardAdmin } from '@/lib/auth/admin-route'
+import { getSessionFromRequest } from '@/lib/auth/session'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get privyId from query params (passed by client)
-    const { searchParams } = new URL(request.url)
-    const privyId = searchParams.get('privyId')
-    
-    if (!privyId) {
-      return NextResponse.json(
-        { isAdmin: false, error: 'Privy ID is required' },
-        { status: 400 }
-      )
-    }
+    const denied = await guardAdmin(request)
+    if (denied) return denied
 
-    // Find user in database (only active users)
-    const user = await prisma.user.findUnique({
-      where: { privyId },
-      select: { role: true, deletedAt: true }
-    })
-
-    if (!user || user.deletedAt) {
-      return NextResponse.json(
-        { isAdmin: false, error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    const isAdmin = user.role === 'admin'
+    const session = await getSessionFromRequest(request)
 
     return NextResponse.json({
-      isAdmin,
-      role: user.role
+      isAdmin: true,
+      role: session!.role,
+      userId: session!.userId,
+      eoaAddress: session!.eoaAddress,
+      authProvider: session!.authProvider,
     })
   } catch (error) {
     console.error('Error checking admin access:', error)
@@ -41,4 +24,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

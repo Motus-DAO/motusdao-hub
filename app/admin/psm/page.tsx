@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { authFetch } from '@/lib/auth/client'
 import Image from 'next/image'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
@@ -18,9 +19,14 @@ import {
   Filter,
   ChevronRight,
   Trash2,
-  Wallet
+  Wallet,
+  CheckCircle,
+  XCircle,
+  PauseCircle,
+  RefreshCw
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { fetchSignedDocumentUrl } from '@/lib/storage-client'
 
 interface PSM {
   id: string
@@ -36,6 +42,8 @@ interface PSM {
   pais: string
   bio: string
   cedulaProfesional: string
+  cedulaDocumentPath: string | null
+  tituloDocumentPath: string | null
   formacionAcademica: string
   experienciaAnios: number
   especialidades: string[]
@@ -43,6 +51,14 @@ interface PSM {
   participaCursos: boolean
   participaInvestigacion: boolean
   participaComunidad: boolean
+  verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended'
+  onboardingStatus: string
+  adminReviewNotes: string
+  isAcceptingPatients: boolean
+  maxActivePatients: number
+  verifiedAt: string | Date | null
+  rejectedAt: string | Date | null
+  suspendedAt: string | Date | null
   activeMatches: number
   totalMatches: number
   completedSessions: number
@@ -63,12 +79,13 @@ export default function AdminPSMPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCapacity, setFilterCapacity] = useState<'all' | 'available' | 'full'>('all')
+  const [filterVerification, setFilterVerification] = useState<'all' | PSM['verificationStatus']>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [selectedPSM, setSelectedPSM] = useState<PSM | null>(null)
 
   const fetchPSMs = async () => {
     try {
-      const response = await fetch('/api/admin/psm')
+      const response = await authFetch('/api/admin/psm')
       const data = await response.json()
       if (data.success) {
         setPsms(data.psms || [])
@@ -93,7 +110,7 @@ export default function AdminPSMPage() {
 
     setActionLoading(psmId)
     try {
-      const response = await fetch(`/api/admin/psm/${psmId}`, {
+      const response = await authFetch(`/api/admin/psm/${psmId}`, {
         method: 'DELETE',
       })
 
@@ -115,6 +132,47 @@ export default function AdminPSMPage() {
     }
   }
 
+  const handleVerificationAction = async (
+    psm: PSM,
+    action: 'approve' | 'reject' | 'suspend' | 'request_resubmission'
+  ) => {
+    const noteRequired = action === 'reject' || action === 'suspend'
+    const defaultPrompt =
+      action === 'approve'
+        ? 'Notas de aprobación (opcional)'
+        : action === 'request_resubmission'
+          ? 'Indica qué debe corregir o reenviar el profesional'
+          : 'Notas obligatorias para esta decisión'
+    const notes = window.prompt(defaultPrompt, psm.adminReviewNotes || '')
+
+    if (notes === null) return
+    if (noteRequired && !notes.trim()) {
+      alert('Las notas son obligatorias para rechazar o suspender.')
+      return
+    }
+
+    setActionLoading(`${psm.id}:${action}`)
+    try {
+      const response = await authFetch(`/api/admin/psm/${psm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, notes }),
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'No se pudo actualizar la verificación')
+      }
+
+      await fetchPSMs()
+      setSelectedPSM(current => current?.id === psm.id ? null : current)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al actualizar verificación')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const formatDate = (date: string | Date) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date
     return dateObj.toLocaleDateString('es-ES', {
@@ -124,6 +182,35 @@ export default function AdminPSMPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const verificationLabel = (status: PSM['verificationStatus']) => {
+    const labels = {
+      pending: 'Pendiente',
+      approved: 'Aprobado',
+      rejected: 'Rechazado',
+      suspended: 'Suspendido'
+    }
+    return labels[status]
+  }
+
+  const verificationClass = (status: PSM['verificationStatus']) => {
+    const classes = {
+      pending: 'bg-yellow-500/20 text-yellow-300',
+      approved: 'bg-green-500/20 text-green-300',
+      rejected: 'bg-red-500/20 text-red-300',
+      suspended: 'bg-orange-500/20 text-orange-300'
+    }
+    return classes[status]
+  }
+
+  const openDocument = async (storagePath: string, userId: string) => {
+    try {
+      const signedUrl = await fetchSignedDocumentUrl(storagePath, userId)
+      window.open(signedUrl, '_blank', 'noopener,noreferrer')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'No se pudo abrir el documento')
+    }
   }
 
   const filteredPsms = psms.filter(psm => {
@@ -139,7 +226,10 @@ export default function AdminPSMPage() {
       (filterCapacity === 'available' && psm.capacity.available > 0) ||
       (filterCapacity === 'full' && psm.capacity.available === 0)
 
-    return matchesSearch && matchesFilter
+    const matchesVerification =
+      filterVerification === 'all' || psm.verificationStatus === filterVerification
+
+    return matchesSearch && matchesFilter && matchesVerification
   })
 
   const stats = {
@@ -147,6 +237,10 @@ export default function AdminPSMPage() {
     active: psms.filter(p => p.activeMatches > 0).length,
     available: psms.filter(p => p.capacity.available > 0).length,
     full: psms.filter(p => p.capacity.available === 0).length,
+    pending: psms.filter(p => p.verificationStatus === 'pending').length,
+    approved: psms.filter(p => p.verificationStatus === 'approved').length,
+    rejected: psms.filter(p => p.verificationStatus === 'rejected').length,
+    suspended: psms.filter(p => p.verificationStatus === 'suspended').length,
     totalRevenue: psms.reduce((sum, p) => sum + p.totalRevenue, 0)
   }
 
@@ -266,6 +360,17 @@ export default function AdminPSMPage() {
               <option value="available">Con capacidad</option>
               <option value="full">Capacidad llena</option>
             </select>
+            <select
+              value={filterVerification}
+              onChange={(e) => setFilterVerification(e.target.value as 'all' | PSM['verificationStatus'])}
+              className="px-4 py-2 glass-card border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-mauve-500 focus:border-transparent"
+            >
+              <option value="all">Todos los estados</option>
+              <option value="pending">Pendientes</option>
+              <option value="approved">Aprobados</option>
+              <option value="rejected">Rechazados</option>
+              <option value="suspended">Suspendidos</option>
+            </select>
           </div>
         </div>
       </GlassCard>
@@ -315,6 +420,9 @@ export default function AdminPSMPage() {
                         <h3 className="text-xl font-semibold">
                           {psm.nombre} {psm.apellido}
                         </h3>
+                        <span className={`px-2 py-1 rounded text-xs ${verificationClass(psm.verificationStatus)}`}>
+                          {verificationLabel(psm.verificationStatus)}
+                        </span>
                         {!psm.registrationCompleted && (
                           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">
                             Pendiente
@@ -402,7 +510,47 @@ export default function AdminPSMPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex flex-wrap items-center justify-end gap-2 ml-4 max-w-xs">
+                    {psm.verificationStatus !== 'approved' && (
+                      <button
+                        onClick={() => handleVerificationAction(psm, 'approve')}
+                        disabled={Boolean(actionLoading?.startsWith(`${psm.id}:`))}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-500/20 border border-green-500/40 rounded-lg hover:bg-green-500/30 text-sm disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Aprobar
+                      </button>
+                    )}
+                    {psm.verificationStatus !== 'rejected' && (
+                      <button
+                        onClick={() => handleVerificationAction(psm, 'reject')}
+                        disabled={Boolean(actionLoading?.startsWith(`${psm.id}:`))}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-red-500/20 border border-red-500/40 rounded-lg hover:bg-red-500/30 text-sm disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Rechazar
+                      </button>
+                    )}
+                    {psm.verificationStatus !== 'suspended' && (
+                      <button
+                        onClick={() => handleVerificationAction(psm, 'suspend')}
+                        disabled={Boolean(actionLoading?.startsWith(`${psm.id}:`))}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 border border-orange-500/40 rounded-lg hover:bg-orange-500/30 text-sm disabled:opacity-50"
+                      >
+                        <PauseCircle className="w-4 h-4" />
+                        Suspender
+                      </button>
+                    )}
+                    {psm.verificationStatus !== 'pending' && (
+                      <button
+                        onClick={() => handleVerificationAction(psm, 'request_resubmission')}
+                        disabled={Boolean(actionLoading?.startsWith(`${psm.id}:`))}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/40 rounded-lg hover:bg-yellow-500/30 text-sm disabled:opacity-50"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Revisión
+                      </button>
+                    )}
                     <CTAButton 
                       variant="secondary" 
                       size="sm"
@@ -443,6 +591,24 @@ export default function AdminPSMPage() {
                   Detalles del Profesional
                 </GradientText>
                 <div className="flex items-center gap-2">
+                  {selectedPSM.verificationStatus !== 'approved' && (
+                    <button
+                      onClick={() => handleVerificationAction(selectedPSM, 'approve')}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 border border-green-500/50 rounded-lg hover:bg-green-500/30 text-sm"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Aprobar
+                    </button>
+                  )}
+                  {selectedPSM.verificationStatus !== 'rejected' && (
+                    <button
+                      onClick={() => handleVerificationAction(selectedPSM, 'reject')}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/50 rounded-lg hover:bg-red-500/30 text-sm"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Rechazar
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeletePSM(selectedPSM.id)}
                     disabled={actionLoading === selectedPSM.id}
@@ -491,6 +657,22 @@ export default function AdminPSMPage() {
                         )}
                       </div>
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Verificación</p>
+                      <span className={`px-2 py-1 rounded text-xs ${verificationClass(selectedPSM.verificationStatus)}`}>
+                        {verificationLabel(selectedPSM.verificationStatus)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Acepta pacientes</p>
+                      <p>{selectedPSM.isAcceptingPatients ? 'Sí' : 'No'}</p>
+                    </div>
+                    {selectedPSM.adminReviewNotes && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-muted-foreground mb-1">Notas de revisión</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedPSM.adminReviewNotes}</p>
+                      </div>
+                    )}
                   </div>
                 </GlassCard>
 
@@ -574,6 +756,35 @@ export default function AdminPSMPage() {
                       <p className="text-sm text-muted-foreground mb-1">Formación Académica</p>
                       <p>{selectedPSM.formacionAcademica}</p>
                     </div>
+                    {(selectedPSM.cedulaDocumentPath || selectedPSM.tituloDocumentPath) && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-muted-foreground mb-2">Documentos de verificación</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedPSM.cedulaDocumentPath && (
+                            <CTAButton
+                              type="button"
+                              variant="secondary"
+                              onClick={() =>
+                                openDocument(selectedPSM.cedulaDocumentPath!, selectedPSM.id)
+                              }
+                            >
+                              Ver cédula
+                            </CTAButton>
+                          )}
+                          {selectedPSM.tituloDocumentPath && (
+                            <CTAButton
+                              type="button"
+                              variant="secondary"
+                              onClick={() =>
+                                openDocument(selectedPSM.tituloDocumentPath!, selectedPSM.id)
+                              }
+                            >
+                              Ver título
+                            </CTAButton>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {selectedPSM.especialidades.length > 0 && (
                       <div className="col-span-2">
                         <p className="text-sm text-muted-foreground mb-2">Especialidades</p>

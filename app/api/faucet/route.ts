@@ -3,13 +3,14 @@ import { createWalletClient, http, parseEther } from 'viem'
 import { celoMainnet } from '@/lib/celo'
 import { privateKeyToAccount } from 'viem/accounts'
 
-// Amount of CELO to send per faucet claim (0.01 CELO)
-const FAUCET_AMOUNT = '0.01'
+// WaaP reserves ~0.12 CELO/tx on Celo; MNS may need approve + register (2 txs)
+const FAUCET_AMOUNT = '0.3'
 
 // Simple in-memory rate limiting (per address) for this server process.
 // NOTE: For production, replace with Redis or a DB-based limit.
 const lastClaimByAddress = new Map<string, number>()
-const MIN_INTERVAL_MS = 60 * 60 * 1000 // 1 hour between claims per address
+const MIN_INTERVAL_MS =
+  process.env.NODE_ENV === 'development' ? 2 * 60 * 1000 : 60 * 60 * 1000
 
 export async function POST(request: Request) {
   try {

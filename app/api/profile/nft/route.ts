@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { uploadProfileMetadataToIPFS } from '@/lib/profile-nft-metadata'
 import { getCeloClient, getProfileNftContract } from '@/lib/profile-nft-onchain'
+import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
 
@@ -37,12 +38,21 @@ export async function POST(request: Request) {
     try {
       console.log('[profile/nft] Llamando mintProfile en Celo:', wallet)
       const hash = await contract.write.mintProfile([wallet as `0x${string}`, tokenURI])
+      const txHash = String(hash)
       console.log('[profile/nft] Mint tx enviada:', hash)
+
+      await prisma.user.updateMany({
+        where: { eoaAddress: wallet },
+        data: {
+          profileNftTxHash: txHash,
+          profileNftTokenURI: tokenURI
+        }
+      })
 
       return NextResponse.json({
         success: true,
         tokenURI,
-        txHash: hash
+        txHash
       })
     } catch (err) {
       const message =
@@ -56,6 +66,12 @@ export async function POST(request: Request) {
           '[profile/nft] Profile already exists for wallet, omitiendo nuevo mint:',
           wallet
         )
+        await prisma.user.updateMany({
+          where: { eoaAddress: wallet },
+          data: {
+            profileNftTokenURI: tokenURI
+          }
+        })
         return NextResponse.json({
           success: true,
           tokenURI,
@@ -78,4 +94,3 @@ export async function POST(request: Request) {
     )
   }
 }
-

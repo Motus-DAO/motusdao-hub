@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { prisma } from '@/lib/prisma'
+import { assertAuthenticatedUser, isAdmin } from '@/lib/auth/guards'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { AuthError } from '@/lib/auth/errors'
 
 /**
  * POST /api/jitsi/token
@@ -12,6 +16,8 @@ import jwt from 'jsonwebtoken'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const session = await requireSession(request)
+    const actorId = assertAuthenticatedUser(session)
     const { roomName, userId, userName, userEmail } = body as {
       roomName?: string
       userId?: string
@@ -24,6 +30,26 @@ export async function POST(request: NextRequest) {
         { error: 'roomName es requerido' },
         { status: 400 }
       )
+    }
+
+    if (userId && userId !== actorId && !isAdmin(session)) {
+      throw new AuthError(403, 'Not authorized for this Jitsi user')
+    }
+
+    const therapySession = await prisma.session.findFirst({
+      where: {
+        externalUrl: { contains: roomName },
+        status: { in: ['requested', 'accepted'] },
+        OR: [
+          { userId: actorId },
+          { psmId: actorId },
+        ],
+      },
+      select: { id: true },
+    })
+
+    if (!therapySession && !isAdmin(session)) {
+      throw new AuthError(403, 'No active session found for this room')
     }
 
     // JWT secret for Jitsi (must match your Jitsi server configuration)
@@ -51,7 +77,7 @@ export async function POST(request: NextRequest) {
       sub: jitsiAppId, // Subject
       context: {
         user: {
-          id: userId || 'anonymous',
+          id: actorId,
           name: userName || 'Usuario',
           email: userEmail || '',
           moderator: false, // Set to true if user should be moderator
@@ -74,6 +100,9 @@ export async function POST(request: NextRequest) {
       token,
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error generating Jitsi JWT token:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor al generar token' },

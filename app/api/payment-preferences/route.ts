@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
 
 /**
  * GET /api/payment-preferences?userId=xxx
@@ -16,6 +18,8 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    await requireSelfOrAdmin(request, userId)
 
     const preference = await prisma.paymentPreference.findUnique({
       where: { userId },
@@ -92,6 +96,9 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error fetching payment preference:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
@@ -117,6 +124,8 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    await requireSelfOrAdmin(request, userId)
 
     if (!['own_wallet', 'matched_psm', 'dao_treasury'].includes(defaultDestination)) {
       return NextResponse.json(
@@ -189,6 +198,9 @@ export async function PUT(request: NextRequest) {
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error updating payment preference:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },

@@ -115,7 +115,11 @@ export default function BitacoraPage() {
         id: result.entry.id,
         content: result.entry.content,
         mood: result.entry.mood,
-        tags: result.entry.tags ? JSON.parse(result.entry.tags) : [],
+        tags: Array.isArray(result.entry.tags)
+          ? result.entry.tags
+          : typeof result.entry.tags === 'string'
+            ? (() => { try { return JSON.parse(result.entry.tags) } catch { return [] } })()
+            : [],
         createdAt: new Date(result.entry.createdAt)
       }
 

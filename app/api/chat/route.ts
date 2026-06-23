@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { getAIClient, getAIModel, getAIProvider, hasAIKey } from "@/lib/ai-client";
 
 const SYSTEM_PROMPT = `Eres el Asistente Oficial de MotusDAO.
 Capacidades:
@@ -61,11 +59,12 @@ function wantsSupervisorMode(text: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 401 });
+  if (!hasAIKey()) {
+    return NextResponse.json({ error: `Missing ${getAIProvider() === 'venice' ? 'VENICE_INFERENCE_KEY' : 'OPENAI_API_KEY'}` }, { status: 401 });
   }
 
   try {
+    const client = getAIClient();
     const body = await req.json();
     const userMessages = (body?.messages || []) as {role:"user"|"assistant"|"system", content:string}[];
     const contextSnippets = (body?.contextSnippets || []) as string[];
@@ -99,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     if (wantsSupervisorMode(userText)) {
       const r = await client.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-4o",
+        model: getAIModel(),
         messages: input,
         response_format: SUPERVISOR_SCHEMA,
         temperature: 0.7,
@@ -126,7 +125,7 @@ export async function POST(req: NextRequest) {
 
     // Q&A normal
     const r = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o",
+      model: getAIModel(),
       messages: input,
       temperature: 0.7,
       max_tokens: 800

@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { guardAdmin } from '@/lib/auth/admin-route'
 
 export async function GET(request: NextRequest) {
   try {
-    // TEMPORAL: Autenticación deshabilitada para desarrollo
-    // TODO: Re-habilitar antes de producción
-    // const adminUser = await checkAdminAccess(request)
-    // if (!adminUser) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   )
-    // }
+    const denied = await guardAdmin(request)
+    if (denied) return denied
 
     // Get query parameters for pagination and filtering
     const { searchParams } = new URL(request.url)
@@ -24,7 +18,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause
-    const where: Prisma.userWhereInput = {}
+    const where: Prisma.UserWhereInput = {}
     
     // Filter by deletion status
     if (showDeleted) {

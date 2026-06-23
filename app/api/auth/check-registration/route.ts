@@ -1,67 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getSessionFromRequest } from '@/lib/auth/session'
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSessionFromRequest(request)
     const { searchParams } = new URL(request.url)
     const email = searchParams.get('email')
     const privyId = searchParams.get('privyId')
+    const eoaAddress = searchParams.get('eoaAddress')
+    const userId = searchParams.get('userId')
 
-    if (!email && !privyId) {
+    if (!session?.userId && !email && !privyId && !eoaAddress && !userId) {
       return NextResponse.json(
-        { error: 'Email or Privy ID is required' },
+        { error: 'Email, wallet address, user id, or session is required' },
         { status: 400 }
       )
     }
 
-    // Find user by email or privyId
+    const identityFilters = [
+      session?.userId ? { id: session.userId } : null,
+      userId ? { id: userId } : null,
+      email ? { email } : null,
+      privyId ? { privyId } : null,
+      eoaAddress
+        ? { eoaAddress: { equals: eoaAddress, mode: 'insensitive' as const } }
+        : null,
+      session?.eoaAddress && !eoaAddress
+        ? {
+            eoaAddress: {
+              equals: session.eoaAddress,
+              mode: 'insensitive' as const,
+            },
+          }
+        : null,
+    ].filter((condition): condition is NonNullable<typeof condition> => condition !== null)
+
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          email ? { email } : {},
-          privyId ? { privyId } : {}
-        ].filter(condition => Object.keys(condition).length > 0)
+        deletedAt: null,
+        OR: identityFilters,
       },
       select: {
         id: true,
         email: true,
-        registrationCompleted: true
-      }
+        registrationCompleted: true,
+        onboardingStatus: true,
+        role: true,
+      },
     })
 
     if (!user) {
       return NextResponse.json({
         registered: false,
-        registrationCompleted: false
+        registrationCompleted: false,
       })
     }
 
     return NextResponse.json({
       registered: true,
       registrationCompleted: user.registrationCompleted,
-      userId: user.id
+      onboardingStatus: user.onboardingStatus,
+      role: user.role,
+      userId: user.id,
     })
   } catch (error) {
     console.error('Error checking registration:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const message =
+      process.env.NODE_ENV === 'development' && error instanceof Error
+        ? error.message
+        : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -284,7 +284,7 @@ export function StepExito({ onComplete }: StepExitoProps) {
           <button
             onClick={() => {
               reset()
-              router.push('/onboarding')
+              router.push('/registro')
             }}
             className="text-sm text-gray-400 hover:text-white transition-colors underline"
           >

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { guardAdmin } from '@/lib/auth/admin-route'
 
 /**
  * DELETE /api/admin/users/[userId]
@@ -11,15 +12,8 @@ export async function DELETE(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    // TEMPORAL: Autenticación deshabilitada para desarrollo
-    // TODO: Re-habilitar antes de producción
-    // const adminUser = await checkAdminAccess(request)
-    // if (!adminUser) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   )
-    // }
+    const denied = await guardAdmin(request)
+    if (denied) return denied
 
     const { userId } = await params
 
@@ -87,15 +81,8 @@ export async function PATCH(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    // TEMPORAL: Autenticación deshabilitada para desarrollo
-    // TODO: Re-habilitar antes de producción
-    // const adminUser = await checkAdminAccess(request)
-    // if (!adminUser) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   )
-    // }
+    const denied = await guardAdmin(request)
+    if (denied) return denied
 
     const { userId } = await params
     const { searchParams } = new URL(request.url)

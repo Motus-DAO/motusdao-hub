@@ -1,68 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { uploadAvatar } from '@/lib/storage'
+import { resolveUploadActor } from '@/lib/storage-auth'
+import { handleAuthError } from '@/lib/auth/session'
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File
-    const userId = formData.get('userId') as string
+    const file = formData.get('file') as File | null
+    const userId = formData.get('userId') as string | null
+    const eoaAddress = formData.get('eoaAddress') as string | null
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
-    if (!validTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.' },
-        { status: 400 }
-      )
-    }
-
-    // Validate file size (max 2MB for base64 storage - smaller limit since base64 increases size by ~33%)
-    const maxSize = 2 * 1024 * 1024 // 2MB
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: 'File size too large. Maximum size is 2MB for direct database storage.' },
-        { status: 400 }
-      )
-    }
-
-    // Convert file to base64 data URL
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    const base64 = buffer.toString('base64')
-    const dataUrl = `data:${file.type};base64,${base64}`
-
-    // Update profile with base64 image data
-    const profile = await prisma.profile.update({
-      where: { userId },
-      data: { avatarUrl: dataUrl }
+    const actor = await resolveUploadActor(request, eoaAddress, userId)
+    const { storagePath, publicUrl } = await uploadAvatar({
+      file,
+      ownerKey: actor.ownerKey,
     })
+
+    if (actor.userId) {
+      const profile = await prisma.profile.findUnique({
+        where: { userId: actor.userId },
+        select: { id: true },
+      })
+
+      if (profile) {
+        await prisma.profile.update({
+          where: { userId: actor.userId },
+          data: {
+            avatarUrl: publicUrl,
+            avatarStoragePath: storagePath,
+          },
+        })
+      }
+    }
 
     return NextResponse.json({
       success: true,
       message: 'Avatar uploaded successfully',
-      avatarUrl: dataUrl,
-      profile
+      avatarUrl: publicUrl,
+      storagePath,
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error uploading avatar:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    const status =
+      message.includes('Not authorized') ||
+      message.includes('does not match') ||
+      message.includes('required')
+        ? 403
+        : message.includes('Invalid') || message.includes('too large')
+          ? 400
+          : 500
+
+    return NextResponse.json({ error: message }, { status })
   }
 }
-

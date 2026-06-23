@@ -16,6 +16,34 @@ import { useWaaP, useWaaPWallets, useWaaPProvider } from '@/lib/contexts/WaaPPro
 // FORZAR Celo Mainnet - no importa qué diga el dashboard
 const FORCED_CHAIN = celoMainnet // Chain ID 42220
 
+class ZeroDevUnavailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ZeroDevUnavailableError'
+  }
+}
+
+function isZeroDevPlanError(status: number, message: string): boolean {
+  const lower = message.toLowerCase()
+  return (
+    status === 402 ||
+    lower.includes('no plan found') ||
+    lower.includes('payment required') ||
+    lower.includes('unauthorized') ||
+    status === 401
+  )
+}
+
+function extractBundlerErrorMessage(errorData: {
+  error?: { message?: string } | string
+  message?: string
+}): string {
+  if (typeof errorData.error === 'string') return errorData.error
+  if (errorData.error?.message) return errorData.error.message
+  if (errorData.message) return errorData.message
+  return 'Unknown error'
+}
+
 interface ZeroDevContextType {
   kernelClient: KernelAccountClient | null
   smartAccountAddress: Address | null
@@ -249,35 +277,33 @@ export function ZeroDevSmartWalletProvider({
             })
 
             if (!response.ok) {
-              let errorData: { error?: { message?: string } | string } = {}
+              let errorData: { error?: { message?: string } | string; message?: string } = {}
               try {
                 errorData = await response.json()
               } catch {
-                // If JSON parsing fails, try to get text
                 const errorText = await response.text()
                 errorData = { error: errorText }
               }
-              console.error('[ZERODEV] ❌ Bundler error:', response.status, errorData)
-              
-              // Check for API key configuration error
-              let errorMessage: string = 'Unknown error'
-              if (errorData.error) {
-                if (typeof errorData.error === 'string') {
-                  errorMessage = errorData.error
-                } else if (errorData.error.message) {
-                  errorMessage = errorData.error.message
-                }
-              }
-              
-              if (errorMessage.includes('Pimlico API key not configured') || 
-                  errorMessage.includes('PIMLICO_API_KEY not configured')) {
-                throw new Error(
-                  'PIMLICO_API_KEY not configured in Vercel environment variables. ' +
-                  'Pimlico bundler is REQUIRED for production. ' +
-                  'Please add PIMLICO_API_KEY to your Vercel project settings.'
+
+              const errorMessage = extractBundlerErrorMessage(errorData)
+
+              if (isZeroDevPlanError(response.status, errorMessage)) {
+                throw new ZeroDevUnavailableError(
+                  'Patrocinio de gas no disponible (ZeroDev/Pimlico). Se usará tu wallet EOA en Celo.'
                 )
               }
-              
+
+              console.error('[ZERODEV] Bundler error:', response.status, errorData)
+
+              if (
+                errorMessage.includes('Pimlico API key not configured') ||
+                errorMessage.includes('PIMLICO_API_KEY not configured')
+              ) {
+                throw new ZeroDevUnavailableError(
+                  'Pimlico no está configurado. Se usará tu wallet EOA en Celo.'
+                )
+              }
+
               throw new Error(`Bundler error: ${response.status} ${errorMessage}`)
             }
 
@@ -332,37 +358,51 @@ export function ZeroDevSmartWalletProvider({
           note: 'Migrated from Privy to WaaP for EOA creation',
         })
         
-        console.log("[ZERODEV] ✅ Smart account client created:", client.account.address)
-        
-        // Try to get chain ID to verify bundler connection
-        // This will fail if PIMLICO_API_KEY is not configured
+        console.log("[ZERODEV] Smart account client created:", client.account.address)
+
+        let bundlerReady = true
         try {
           const chainId = await client.getChainId()
-          console.log("[ZERODEV] ✅ Chain ID verified:", chainId)
+          console.log("[ZERODEV] Chain ID verified:", chainId)
         } catch (chainIdError) {
-          console.error("[ZERODEV] ⚠️ Failed to get chain ID (bundler connection test):", chainIdError)
-          // Don't fail the entire initialization - the client is still created
-          // The error will surface when trying to send a transaction
-          if (chainIdError instanceof Error && 
-              (chainIdError.message.includes('401') || 
-               chainIdError.message.includes('Unauthorized') ||
-               chainIdError.message.includes('PIMLICO_API_KEY'))) {
-            console.error("[ZERODEV] ❌ Pimlico API key issue detected")
-            console.error("[ZERODEV] 💡 Please verify PIMLICO_API_KEY is set correctly in Vercel environment variables")
-            console.error("[ZERODEV] 💡 Check: https://dashboard.pimlico.io to verify your API key is active")
+          bundlerReady = false
+          const message =
+            chainIdError instanceof Error ? chainIdError.message : String(chainIdError)
+
+          if (
+            chainIdError instanceof ZeroDevUnavailableError ||
+            isZeroDevPlanError(0, message)
+          ) {
+            console.warn(
+              '[ZERODEV] Gas sponsorship unavailable; falling back to EOA transactions on Celo.',
+              message
+            )
+          } else {
+            console.warn('[ZERODEV] Bundler check failed; falling back to EOA:', message)
           }
         }
 
-        setKernelClient(client)
-        setSmartAccountAddress(account.address)
+        if (bundlerReady) {
+          setKernelClient(client)
+          setSmartAccountAddress(account.address)
+        } else {
+          setKernelClient(null)
+          setSmartAccountAddress(null)
+          setError(null)
+        }
       } catch (err) {
-        console.error("[ZERODEV] ❌ Error initializing smart wallet:", err)
-        console.error("[ZERODEV] Error details:", {
-          message: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-          name: err instanceof Error ? err.name : undefined,
-        })
-        setError(err instanceof Error ? err.message : "Unknown error")
+        if (err instanceof ZeroDevUnavailableError) {
+          console.warn('[ZERODEV] Smart wallet disabled:', err.message)
+          setKernelClient(null)
+          setSmartAccountAddress(null)
+          setError(null)
+          return
+        }
+
+        console.error('[ZERODEV] Error initializing smart wallet:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+        setKernelClient(null)
+        setSmartAccountAddress(null)
       } finally {
         setIsInitializing(false)
       }

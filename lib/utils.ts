@@ -7,9 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Get Privy user from request
- * For now, we'll get privyId from headers or query params
- * In production, this should use Privy's server-side authentication
+ * @deprecated Use SIWE session auth via lib/auth/session.ts instead.
+ * Client-sent privyId headers are not cryptographically verified.
  */
 export async function getPrivyUser(request: NextRequest): Promise<{ id: string } | null> {
   // Try to get privyId from headers (set by client)

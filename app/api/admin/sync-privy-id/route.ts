@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { guardAdmin } from '@/lib/auth/admin-route'
 
 /**
  * POST /api/admin/sync-privy-id
- * Sincroniza el privyId de un usuario existente basado en su eoaAddress
- * Útil para usuarios admin que fueron creados antes de tener privyId
- * 
- * Body: { eoaAddress: string, privyId: string }
+ * Sync auth provider id for an existing user by eoaAddress (admin only).
+ * Legacy name kept for backward compatibility with scripts/docs.
+ *
+ * Body: { eoaAddress: string, privyId: string, authProvider?: 'waap' | 'privy' | 'external' }
  */
 export async function POST(request: NextRequest) {
   try {
+    const denied = await guardAdmin(request)
+    if (denied) return denied
+
     const body = await request.json()
-    const { eoaAddress, privyId } = body
+    const { eoaAddress, privyId, authProvider } = body
 
     if (!eoaAddress || !privyId) {
       return NextResponse.json(
@@ -50,7 +54,11 @@ export async function POST(request: NextRequest) {
     // Actualizar privyId
     const updatedUser = await prisma.user.update({
       where: { eoaAddress },
-      data: { privyId }
+      data: {
+        privyId,
+        authProviderId: privyId,
+        ...(authProvider ? { authProvider } : {}),
+      },
     })
 
     return NextResponse.json({

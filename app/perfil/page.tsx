@@ -28,6 +28,7 @@ import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { motusNameService } from '@/lib/motus-name-service'
+import { asStringArray } from '@/lib/prisma-json'
 
 interface ProfileData {
   nombre: string
@@ -48,6 +49,8 @@ interface UserData {
   eoaAddress: string
   smartWalletAddress?: string
   registrationCompleted: boolean
+  motusName?: string | null
+  mnsTxHash?: string | null
 }
 
 export default function PerfilPage() {
@@ -216,10 +219,15 @@ export default function PerfilPage() {
             language: data.profile.language || 'es',
             avatarUrl: data.profile.avatarUrl || ''
           })
+        } else if (data.profileIncomplete) {
+          setError('Tu perfil básico está incompleto. Por favor completa tus datos personales.')
         }
 
         if (data.user) {
           setUserData(data.user)
+          if (data.user.motusName) {
+            setMotusName(data.user.motusName.replace(/\.motus$/i, ''))
+          }
         }
       } catch (err) {
         console.error('Error fetching profile:', err)
@@ -260,16 +268,40 @@ export default function PerfilPage() {
     }
   }, [userData?.id, userData?.role])
 
-  // Fetch Motus Name for the user's smart wallet
+  // Fetch Motus Name — DB first, then on-chain fallback
   useEffect(() => {
     const fetchMotusName = async () => {
-      const walletAddress = userData?.smartWalletAddress || smartAccountAddress
-      if (!walletAddress) return
+      if (userData?.motusName) {
+        setMotusName(userData.motusName.replace(/\.motus$/i, ''))
+        return
+      }
+
+      const walletAddresses = [
+        userData?.smartWalletAddress,
+        userData?.eoaAddress,
+        smartAccountAddress,
+        eoaAddress
+      ].filter((addr): addr is string => Boolean(addr))
+
+      const seen = new Set<string>()
+      const uniqueAddresses = walletAddresses.filter((addr) => {
+        const key = addr.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+
+      if (uniqueAddresses.length === 0) return
       
       setIsLoadingMotusName(true)
       try {
-        const name = await motusNameService.reverseLookup(walletAddress as `0x${string}`)
-        setMotusName(name)
+        for (const address of uniqueAddresses) {
+          const name = await motusNameService.reverseLookup(address as `0x${string}`)
+          if (name) {
+            setMotusName(name)
+            break
+          }
+        }
       } catch (err) {
         console.error('Error fetching motus name:', err)
       } finally {
@@ -278,7 +310,7 @@ export default function PerfilPage() {
     }
     
     fetchMotusName()
-  }, [userData?.smartWalletAddress, smartAccountAddress])
+  }, [userData?.motusName, userData?.smartWalletAddress, userData?.eoaAddress, smartAccountAddress, eoaAddress])
 
   // Fetch active therapy session
   useEffect(() => {
@@ -386,10 +418,10 @@ export default function PerfilPage() {
       return
     }
 
-    // Validate file size (max 2MB for base64 storage)
-    const maxSize = 2 * 1024 * 1024 // 2MB
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024
     if (file.size > maxSize) {
-      setError('El archivo es demasiado grande. El tamaño máximo es 2MB.')
+      setError('El archivo es demasiado grande. El tamaño máximo es 5MB.')
       return
     }
 
@@ -856,15 +888,8 @@ export default function PerfilPage() {
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Especialidades</p>
                                 <p className="text-sm">
-                                  {matchData.activeMatch.psm.especialidades 
-                                    ? (() => {
-                                        try {
-                                          const esp = JSON.parse(matchData.activeMatch.psm.especialidades)
-                                          return Array.isArray(esp) ? esp.join(', ') : matchData.activeMatch.psm.especialidades
-                                        } catch {
-                                          return matchData.activeMatch.psm.especialidades
-                                        }
-                                      })()
+                                  {matchData.activeMatch.psm.especialidades
+                                    ? asStringArray(matchData.activeMatch.psm.especialidades).join(', ') || 'No especificadas'
                                     : 'No especificadas'}
                                 </p>
                               </div>

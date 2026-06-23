@@ -1,17 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { guardAdmin } from '@/lib/auth/admin-route'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // TEMPORAL: Autenticación deshabilitada para desarrollo
-    // TODO: Re-habilitar antes de producción
-    // const adminUser = await checkAdminAccess(request)
-    // if (!adminUser) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   )
-    // }
+    const denied = await guardAdmin(request)
+    if (denied) return denied
 
     // Get date ranges
     const now = new Date()

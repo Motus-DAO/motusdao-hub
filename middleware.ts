@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Public routes that don't require registration
-const publicRoutes = ['/registro', '/', '/docs', '/contact', '/terms', '/privacy']
+const publicRoutes = ['/registro', '/onboarding', '/', '/docs', '/contact', '/terms', '/privacy']
 const apiRoutes = ['/api']
 
 export function middleware(request: NextRequest) {

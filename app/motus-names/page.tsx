@@ -6,7 +6,7 @@ import { useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
-import { registerMotusNameWithWaaP } from '@/lib/mns-register'
+import { registerMotusName } from '@/lib/mns-register'
 
 export default function MotusNamesPage() {
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
@@ -150,27 +150,39 @@ export default function MotusNamesPage() {
     }
     
     setIsRegistering(true)
-    setResult('🔄 Registrando dominio en Celo (pagando gas desde tu wallet WaaP)...')
+    setResult('🔄 Registrando dominio en Celo Mainnet (gas en CELO)...')
     setTxHash(null)
 
-    const response = await registerMotusNameWithWaaP(
-      name,
-      targetAddress
-    )
+    const response = await registerMotusName(name, targetAddress)
 
     if (response.success) {
+      const registeredName = name
       setResult('✅ ¡Nombre registrado exitosamente con WaaP!')
       setTxHash(response.txHash || null)
       setName('')
       setIsAvailable(null)
       setIsValid(null)
 
+      try {
+        await fetch('/api/profile/mns', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eoaAddress: targetAddress,
+            motusName: registeredName,
+            mnsTxHash: response.txHash
+          })
+        })
+      } catch (dbError) {
+        console.warn('MNS registrado on-chain pero no se pudo guardar en DB:', dbError)
+      }
+
       // Actualizar total supply
       const newTotal = await motusNameService.getTotalSupply()
       setTotalSupply(newTotal)
 
       // Actualizar mi nombre
-      setMyName(name)
+      setMyName(registeredName)
       setRegisteredAddress(targetAddress as Address)
       setHasAddressMismatch(false)
     } else {

@@ -2,6 +2,8 @@
 
 import { ReactNode, Component, ErrorInfo, useEffect } from 'react'
 import { WaaPProvider } from '@/lib/contexts/WaaPProvider'
+import { OnboardingGuard } from '@/components/onboarding/OnboardingGuard'
+import { AppSessionProvider } from '@/components/auth/AppSessionProvider'
 
 interface WaaPProviderWrapperProps {
   children: ReactNode
@@ -161,7 +163,11 @@ export function WaaPProviderWrapper({ children }: WaaPProviderWrapperProps) {
       <WaaPGlobalErrorHandler>
         <div suppressHydrationWarning>
           <WaaPProvider>
-            {children}
+            <AppSessionProvider>
+              <OnboardingGuard>
+                {children}
+              </OnboardingGuard>
+            </AppSessionProvider>
           </WaaPProvider>
         </div>
       </WaaPGlobalErrorHandler>

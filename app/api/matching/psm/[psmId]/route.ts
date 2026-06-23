@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 /**
  * GET /api/matching/psm/[psmId]
@@ -11,10 +14,12 @@ export async function GET(
 ) {
   try {
     const { psmId } = await params
+    const session = await requireSelfOrAdmin(request, psmId)
 
     const psm = await prisma.user.findUnique({
       where: { id: psmId },
       include: {
+        psm: true,
         psmMatches: {
           include: {
             user: {
@@ -48,6 +53,16 @@ export async function GET(
     // Separate active and history
     const activeMatches = psm.psmMatches.filter(m => m.status === 'active')
     const matchHistory = psm.psmMatches.filter(m => m.status !== 'active')
+    const maxActivePatients = psm.psm?.maxActivePatients ?? 10
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: psmId,
+      action: 'read',
+      resource: 'match',
+      reason: 'psm_match_history',
+    })
 
     return NextResponse.json({
       activeMatches: activeMatches.map(m => ({
@@ -85,12 +100,15 @@ export async function GET(
       })),
       capacity: {
         current: activeMatches.length,
-        max: 10,
-        available: 10 - activeMatches.length
+        max: maxActivePatients,
+        available: Math.max(maxActivePatients - activeMatches.length, 0)
       }
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error fetching PSM matches:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },

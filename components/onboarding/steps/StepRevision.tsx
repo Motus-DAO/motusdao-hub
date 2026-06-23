@@ -17,6 +17,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
+import { deriveConcernFields } from '@/lib/intake-concerns'
 
 interface StepRevisionProps {
   onNext: () => void
@@ -56,66 +57,179 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
     setTokenURI(null)
 
     try {
-      const registrationDate =
-        data.fechaNacimiento && data.fechaNacimiento.length >= 4
-          ? new Date().toISOString().slice(0, 10)
-          : new Date().toISOString().slice(0, 10)
+      const concernFields = deriveConcernFields({
+        tipoAtencion: data.tipoAtencion,
+        clinicalConcern: data.clinicalConcern,
+        problematica: data.problematica,
+      })
+      const onboardingEndpoint =
+        role === 'usuario' ? '/api/onboarding/user' : '/api/onboarding/psm'
 
-      const res = await fetch('/api/profile/nft', {
+      const basePayload = {
+        email: data.email,
+        eoaAddress: data.eoaAddress,
+        smartWalletAddress: data.smartWalletAddress || data.eoaAddress,
+        privyId: data.privyId,
+        intakeSource: data.intakeSource || 'manual',
+        nombre: data.nombre,
+        apellido: data.apellido,
+        telefono: data.telefono,
+        fechaNacimiento: data.fechaNacimiento,
+        ciudad: data.ciudad,
+        pais: data.pais,
+        avatarUrl: data.avatarUrl,
+        avatarStoragePath: data.avatarStoragePath,
+        motusName: data.motusName,
+        mnsTxHash: data.mnsTxHash,
+        consentToTerms: true,
+        consentToPrivacy: true,
+        consentToAIProcessing: false
+      }
+
+      const rolePayload =
+        role === 'usuario'
+          ? {
+              tipoAtencion: concernFields.tipoAtencion,
+              problematica: data.problematica,
+              preferenciaAsignacion: data.preferenciaAsignacion,
+              clinicalConcern: concernFields.clinicalConcern,
+              urgencyLevel: data.urgencyLevel || 'medium',
+              preferredModality: data.preferredModality || 'video',
+              preferredTherapyStyle: data.preferredTherapyStyle || [],
+              languages: data.languages || ['es'],
+              timezone: data.timezone,
+              availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
+              budgetMin: data.budgetMin,
+              budgetMax: data.budgetMax,
+              paymentPreference: data.paymentPreference,
+              therapistGenderPreference: data.therapistGenderPreference,
+              priorTherapyExperience: data.priorTherapyExperience,
+              medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
+              riskFlags: data.riskFlags || [],
+              consentToAIProcessing: data.consentToAIProcessing ?? false,
+              consentToShareWithPSM: data.consentToShareWithPSM ?? true,
+              consentToClinicalMatching: data.consentToClinicalMatching ?? true
+            }
+          : {
+              cedulaProfesional: data.cedulaProfesional,
+              cedulaDocumentPath: data.cedulaDocumentPath,
+              tituloDocumentPath: data.tituloDocumentPath,
+              formacionAcademica: data.formacionAcademica,
+              experienciaAnios: data.experienciaAnios,
+              biografia: data.biografia,
+              especialidades: data.especialidades || [],
+              therapyStyles: data.therapyStyles || [],
+              languages: data.languages || ['es'],
+              licensedCountries: data.licensedCountries || (data.pais ? [data.pais] : []),
+              licensedRegions: data.licensedRegions || [],
+              timezone: data.timezone,
+              availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
+              modalities: data.modalities || ['video'],
+              sessionPrice: data.sessionPrice,
+              currency: data.currency || 'MXN',
+              acceptsSlidingScale: data.acceptsSlidingScale ?? false,
+              worksWithUrgencyLevels: data.worksWithUrgencyLevels || ['low', 'medium'],
+              exclusionCriteria: data.exclusionCriteria || [],
+              isAcceptingPatients: data.isAcceptingPatients ?? false,
+              maxActivePatients: data.maxActivePatients || 10,
+              participaSupervision: data.participaSupervision ?? false,
+              participaCursos: data.participaCursos ?? false,
+              participaInvestigacion: data.participaInvestigacion ?? false,
+              participaComunidad: data.participaComunidad ?? false,
+              consentToAIProcessing: data.consentToAIProcessing ?? false,
+              consentToShareWithPSM: false,
+              consentToClinicalMatching: false
+            }
+
+      const onboardingRes = await fetch(onboardingEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          wallet: data.eoaAddress,
-          role,
-          registrationDate
+          ...basePayload,
+          ...rolePayload
         })
       })
 
-      const text = await res.text()
-      let body: { success?: boolean; error?: string; txHash?: string; tokenURI?: unknown }
+      const onboardingText = await onboardingRes.text()
+      let onboardingBody: {
+        success?: boolean
+        error?: string
+        details?: unknown
+        user?: { id?: string }
+      }
 
       try {
-        body = text ? (JSON.parse(text) as typeof body) : {}
+        onboardingBody = onboardingText ? JSON.parse(onboardingText) : {}
       } catch {
-        // Backend should always return JSON; if not, surface a clear error.
-        console.error('Respuesta no JSON al registrar NFT de perfil:', text.slice(0, 200))
-        throw new Error('Respuesta inválida del servidor al registrar NFT de perfil.')
+        console.error('Respuesta no JSON al guardar onboarding:', onboardingText.slice(0, 200))
+        throw new Error('Respuesta inválida del servidor al guardar tu registro.')
       }
 
-      if (!res.ok || !body.success) {
-        throw new Error(body.error || 'Error al registrar NFT de perfil')
+      if (!onboardingRes.ok || !onboardingBody.success) {
+        const detail =
+          typeof onboardingBody.details === 'string'
+            ? onboardingBody.details
+            : onboardingBody.details
+              ? JSON.stringify(onboardingBody.details)
+              : undefined
+        throw new Error(
+          [onboardingBody.error || 'Error al guardar tu registro', detail]
+            .filter(Boolean)
+            .join(' — ')
+        )
       }
 
-      if (body.txHash) {
-        setTxHash(body.txHash as string)
-      }
-      if (body.tokenURI && typeof body.tokenURI === 'string') {
-        setTokenURI(body.tokenURI as string)
-      }
+      try {
+        const registrationDate = new Date().toISOString().slice(0, 10)
 
-      // Persistir en el store para que otros pasos (como StepExito) puedan mostrarlo
-      updateData({
-        profileNftTxHash: body.txHash as string | undefined,
-        profileNftTokenURI: body.tokenURI as string | undefined
-      })
+        const res = await fetch('/api/profile/nft', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            wallet: data.eoaAddress,
+            role,
+            registrationDate
+          })
+        })
+
+        const text = await res.text()
+        let body: { success?: boolean; error?: string; txHash?: string; tokenURI?: unknown }
+
+        try {
+          body = text ? (JSON.parse(text) as typeof body) : {}
+        } catch {
+          console.warn('Respuesta no JSON al registrar NFT de perfil:', text.slice(0, 200))
+          body = { success: false, error: 'Respuesta inválida del servidor al registrar NFT de perfil.' }
+        }
+
+        if (!res.ok || !body.success) {
+          throw new Error(body.error || 'Error al registrar NFT de perfil')
+        }
+
+        if (body.txHash) {
+          setTxHash(body.txHash as string)
+        }
+        if (body.tokenURI && typeof body.tokenURI === 'string') {
+          setTokenURI(body.tokenURI as string)
+        }
+
+        updateData({
+          profileNftTxHash: body.txHash as string | undefined,
+          profileNftTokenURI: body.tokenURI as string | undefined
+        })
+      } catch (nftError) {
+        console.warn('NFT de perfil no completado; el registro DB ya quedó guardado.', nftError)
+      }
 
       onNext()
     } catch (error) {
-      console.error('Error registrando NFT de perfil:', error)
+      console.error('Error completando onboarding:', error)
       const message =
-        error instanceof Error ? error.message : 'Error desconocido al registrar NFT de perfil'
-
-      // Si Web3.storage está en mantenimiento, no bloqueamos el onboarding:
-      // continuamos sin NFT y solo dejamos un aviso suave en consola.
-      if (message.toLowerCase().includes('maintenance')) {
-        console.warn(
-          'Web3.storage en mantenimiento, continuando onboarding sin mintear NFT de perfil.'
-        )
-        onNext()
-        return
-      }
+        error instanceof Error ? error.message : 'Error desconocido al completar onboarding'
 
       setSubmitError(message)
     } finally {
@@ -215,9 +329,22 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 <div className="p-4 glass rounded-xl">
                   <div className="flex items-center space-x-2 mb-2">
                     <Heart className="w-4 h-4 text-pink-400" />
-                    <span className="text-sm font-medium">Tipo de atención</span>
+                    <span className="text-sm font-medium">Áreas relacionadas</span>
                   </div>
-                  <p className="text-white capitalize">{data.tipoAtencion || 'No especificado'}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {deriveConcernFields({
+                      tipoAtencion: data.tipoAtencion,
+                      clinicalConcern: data.clinicalConcern,
+                      problematica: data.problematica,
+                    }).clinicalConcern.map(concern => (
+                      <span
+                        key={concern}
+                        className="px-2 py-1 bg-mauve-500/20 text-mauve-300 rounded-full text-xs"
+                      >
+                        {concern}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="p-4 glass rounded-xl">
                   <div className="flex items-center space-x-2 mb-2">
@@ -383,8 +510,8 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             >
               <span>
                 {isSubmitting
-                  ? 'Registrando en blockchain...'
-                  : 'Continuar al registro en blockchain'}
+                  ? 'Guardando registro...'
+                  : 'Completar registro'}
               </span>
             </CTAButton>
           </div>

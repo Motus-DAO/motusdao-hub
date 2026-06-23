@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireMatchedUserAccess } from '@/lib/auth/guards'
+import { handleAuthError } from '@/lib/auth/session'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 /**
  * GET /api/matching/user/[userId]
@@ -11,6 +14,7 @@ export async function GET(
 ) {
   try {
     const { userId } = await params
+    const session = await requireMatchedUserAccess(request, userId)
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -37,6 +41,15 @@ export async function GET(
         { status: 404 }
       )
     }
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: session.userId,
+      targetUserId: userId,
+      action: 'read',
+      resource: 'match',
+      reason: 'user_match_history',
+    })
 
     // Separate active and history
     const activeMatch = user.userMatches.find(m => m.status === 'active')
@@ -80,6 +93,9 @@ export async function GET(
     })
 
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('Error fetching user matches:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },

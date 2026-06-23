@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { authFetch } from '@/lib/auth/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { 
@@ -43,7 +44,7 @@ export function RecentActivity() {
     const fetchActivities = async () => {
       try {
         // TEMPORAL: Sin privyId requerido
-        const response = await fetch('/api/admin/recent-activity')
+        const response = await authFetch('/api/admin/recent-activity')
         const data = await response.json()
         setActivities(data.activities || [])
       } catch (error) {

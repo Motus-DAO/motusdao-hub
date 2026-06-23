@@ -1,39 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { toInputJson } from '@/lib/prisma-json'
+import { deriveConcernFields } from '@/lib/intake-concerns'
+import { createCrisisEventIfNeeded } from '@/lib/crisis'
+import { recordClinicalAccess } from '@/lib/clinical-audit'
+
+const stringArray = z.array(z.string()).default([])
+const optionalStringArray = z.array(z.string()).optional()
 
 const userOnboardingSchema = z.object({
-  // Connection data
   email: z.string().email(),
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
   privyId: z.string().optional(),
-  
-  // Personal data
+  intakeSource: z.enum(['manual', 'ai_assisted']).default('manual'),
+  motusName: z.string().optional(),
+  mnsTxHash: z.string().optional(),
+  profileNftTxHash: z.string().optional(),
+  profileNftTokenURI: z.string().optional(),
+
   nombre: z.string().min(1),
   apellido: z.string().min(1),
   telefono: z.string().min(1),
   fechaNacimiento: z.string().min(1),
   ciudad: z.string().min(1),
   pais: z.string().min(1),
-  
-  // Patient profile
-  tipoAtencion: z.string().min(1),
+  avatarUrl: z.string().optional(),
+  avatarStoragePath: z.string().optional(),
+
+  tipoAtencion: z.string().optional(),
   problematica: z.string().min(10),
-  preferenciaAsignacion: z.enum(['automatica', 'explorar'])
+  preferenciaAsignacion: z.enum(['automatica', 'explorar']),
+  clinicalConcern: optionalStringArray,
+  urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis']).default('medium'),
+  preferredModality: z.enum(['video', 'chat', 'in_person', 'hybrid']).default('video'),
+  preferredTherapyStyle: stringArray,
+  languages: z.array(z.string()).default(['es']),
+  timezone: z.string().optional(),
+  availability: z.record(z.unknown()).default({}),
+  budgetMin: z.number().int().nonnegative().optional(),
+  budgetMax: z.number().int().nonnegative().optional(),
+  paymentPreference: z.string().optional(),
+  therapistGenderPreference: z.string().optional(),
+  priorTherapyExperience: z.boolean().optional(),
+  medicationOrDiagnosisContext: z.string().optional(),
+  riskFlags: stringArray,
+
+  consentToTerms: z.boolean().default(true),
+  consentToPrivacy: z.boolean().default(true),
+  consentToAIProcessing: z.boolean().default(false),
+  consentToShareWithPSM: z.boolean().default(true),
+  consentToClinicalMatching: z.boolean().default(true),
+  consentPolicyVersion: z.string().default('v1'),
+  consentLocale: z.string().default('es')
 })
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-
-    const validatedData = userOnboardingSchema.parse(body)
+    const data = userOnboardingSchema.parse(body)
+    const concernFields = deriveConcernFields({
+      tipoAtencion: data.tipoAtencion,
+      clinicalConcern: data.clinicalConcern,
+      problematica: data.problematica,
+    })
 
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: validatedData.email },
-          { eoaAddress: validatedData.eoaAddress }
+          { email: data.email },
+          { eoaAddress: data.eoaAddress }
         ]
       },
       include: {
@@ -42,172 +79,171 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // If user exists, update their information instead of creating new
-    if (existingUser) {
-      // Check if this is the same user trying to update their smart wallet
-      // Allow update if:
-      // 1. Same email and EOA, and smart wallet is missing or different
-      // 2. Registration is not completed
-      const isSameUser = existingUser.email === validatedData.email && 
-                         existingUser.eoaAddress === validatedData.eoaAddress
-      const needsSmartWalletUpdate = !existingUser.smartWalletAddress || 
-                                    (validatedData.smartWalletAddress && 
-                                     existingUser.smartWalletAddress !== validatedData.smartWalletAddress)
-      const isUpdatingSmartWallet = isSameUser && needsSmartWalletUpdate
-      
-      // Log for debugging
-      console.log('🔍 User exists - checking update conditions:', {
-        email: validatedData.email,
-        eoaAddress: validatedData.eoaAddress,
-        smartWalletAddress: validatedData.smartWalletAddress,
-        existingSmartWallet: existingUser.smartWalletAddress,
-        isSameUser,
-        needsSmartWalletUpdate,
-        isUpdatingSmartWallet,
-        registrationCompleted: existingUser.registrationCompleted,
-        willUpdate: isUpdatingSmartWallet || !existingUser.registrationCompleted
-      })
-      
-      if (isUpdatingSmartWallet || !existingUser.registrationCompleted) {
-        // Determine the smart wallet address to use
-        // If a new smart wallet address is provided, use it; otherwise keep existing
-        const smartWalletToSave = validatedData.smartWalletAddress || existingUser.smartWalletAddress
-        
-        console.log('✅ Updating user with smart wallet:', {
-          userId: existingUser.id,
-          smartWalletToSave,
-          provided: validatedData.smartWalletAddress,
-          existing: existingUser.smartWalletAddress
-        })
-        
-        // Update user with smart wallet address and mark registration as completed
-        const result = await prisma.$transaction(async (tx) => {
-          const user = await tx.user.update({
+    if (
+      existingUser &&
+      (existingUser.email !== data.email || existingUser.eoaAddress !== data.eoaAddress)
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Ya existe una cuenta con este correo o wallet, pero no pertenecen al mismo registro.',
+          code: 'IDENTITY_CONFLICT'
+        },
+        { status: 409 }
+      )
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = existingUser
+        ? await tx.user.update({
             where: { id: existingUser.id },
             data: {
-              eoaAddress: validatedData.eoaAddress,
-              smartWalletAddress: smartWalletToSave,
+              role: 'usuario',
+              smartWalletAddress: data.smartWalletAddress || existingUser.smartWalletAddress,
               registrationCompleted: true,
-              privyId: validatedData.privyId || existingUser.privyId
+              onboardingStatus: 'active',
+              intakeSource: data.intakeSource,
+              motusName: data.motusName || existingUser.motusName,
+              mnsTxHash: data.mnsTxHash || existingUser.mnsTxHash,
+              mnsRegisteredAt: data.mnsTxHash && !existingUser.mnsRegisteredAt
+                ? new Date()
+                : existingUser.mnsRegisteredAt,
+              profileNftTxHash: data.profileNftTxHash || existingUser.profileNftTxHash,
+              profileNftTokenURI: data.profileNftTokenURI || existingUser.profileNftTokenURI,
+              privyId: data.privyId || existingUser.privyId
+            }
+          })
+        : await tx.user.create({
+            data: {
+              role: 'usuario',
+              email: data.email,
+              eoaAddress: data.eoaAddress,
+              smartWalletAddress: data.smartWalletAddress || null,
+              registrationCompleted: true,
+              onboardingStatus: 'active',
+              intakeSource: data.intakeSource,
+              motusName: data.motusName,
+              mnsTxHash: data.mnsTxHash,
+              mnsRegisteredAt: data.mnsTxHash ? new Date() : null,
+              profileNftTxHash: data.profileNftTxHash,
+              profileNftTokenURI: data.profileNftTokenURI,
+              privyId: data.privyId
             }
           })
 
-          // Update profile if it exists
-          if (existingUser.profile) {
-            await tx.profile.update({
-              where: { userId: existingUser.id },
-              data: {
-                nombre: validatedData.nombre,
-                apellido: validatedData.apellido,
-                telefono: validatedData.telefono,
-                fechaNacimiento: new Date(validatedData.fechaNacimiento),
-                ciudad: validatedData.ciudad,
-                pais: validatedData.pais
-              }
-            })
-          } else {
-            await tx.profile.create({
-              data: {
-                userId: existingUser.id,
-                nombre: validatedData.nombre,
-                apellido: validatedData.apellido,
-                telefono: validatedData.telefono,
-                fechaNacimiento: new Date(validatedData.fechaNacimiento),
-                ciudad: validatedData.ciudad,
-                pais: validatedData.pais
-              }
-            })
-          }
-
-          // Update patient profile if it exists
-          if (existingUser.patient) {
-            await tx.patientProfile.update({
-              where: { userId: existingUser.id },
-              data: {
-                tipoAtencion: validatedData.tipoAtencion,
-                problematica: validatedData.problematica,
-                preferenciaAsignacion: validatedData.preferenciaAsignacion
-              }
-            })
-          } else {
-            await tx.patientProfile.create({
-              data: {
-                userId: existingUser.id,
-                tipoAtencion: validatedData.tipoAtencion,
-                problematica: validatedData.problematica,
-                preferenciaAsignacion: validatedData.preferenciaAsignacion
-              }
-            })
-          }
-
-          return user
-        })
-
-        return NextResponse.json({
-          success: true,
-          message: 'Usuario actualizado exitosamente',
-          user: {
-            id: result.id,
-            role: result.role,
-            email: result.email,
-            eoaAddress: result.eoaAddress,
-            smartWalletAddress: result.smartWalletAddress,
-            registrationCompleted: result.registrationCompleted
-          }
-        }, { status: 200 })
-      } else {
-        // User exists with same email and wallet - might be duplicate registration
-        return NextResponse.json(
-          { 
-            error: 'Ya existe una cuenta con este correo o wallet. Inicia sesión o actualiza tu perfil.',
-            code: 'USER_EXISTS'
-          },
-          { status: 409 }
-        )
-      }
-    }
-
-    // Create new user
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          role: 'usuario',
-          email: validatedData.email,
-          eoaAddress: validatedData.eoaAddress,
-          smartWalletAddress: validatedData.smartWalletAddress || null,
-          registrationCompleted: true,
-          privyId: validatedData.privyId
+      await tx.profile.upsert({
+        where: { userId: user.id },
+        update: {
+          nombre: data.nombre,
+          apellido: data.apellido,
+          telefono: data.telefono,
+          fechaNacimiento: new Date(data.fechaNacimiento),
+          ciudad: data.ciudad,
+          pais: data.pais,
+          avatarUrl: data.avatarUrl,
+          avatarStoragePath: data.avatarStoragePath,
+        },
+        create: {
+          userId: user.id,
+          nombre: data.nombre,
+          apellido: data.apellido,
+          telefono: data.telefono,
+          fechaNacimiento: new Date(data.fechaNacimiento),
+          ciudad: data.ciudad,
+          pais: data.pais,
+          avatarUrl: data.avatarUrl,
+          avatarStoragePath: data.avatarStoragePath,
         }
       })
 
-      await tx.profile.create({
-        data: {
+      await tx.patientProfile.upsert({
+        where: { userId: user.id },
+        update: {
+          tipoAtencion: concernFields.tipoAtencion,
+          problematica: data.problematica,
+          preferenciaAsignacion: data.preferenciaAsignacion,
+          clinicalConcern: toInputJson(concernFields.clinicalConcern),
+          urgencyLevel: data.urgencyLevel,
+          preferredModality: data.preferredModality,
+          preferredTherapyStyle: toInputJson(data.preferredTherapyStyle ?? []),
+          languages: toInputJson(data.languages?.length ? data.languages : ['es']),
+          timezone: data.timezone,
+          availability: toInputJson(data.availability ?? {}),
+          budgetMin: data.budgetMin,
+          budgetMax: data.budgetMax,
+          paymentPreference: data.paymentPreference,
+          therapistGenderPreference: data.therapistGenderPreference,
+          priorTherapyExperience: data.priorTherapyExperience,
+          medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
+          riskFlags: toInputJson(data.riskFlags ?? [])
+        },
+        create: {
           userId: user.id,
-          nombre: validatedData.nombre,
-          apellido: validatedData.apellido,
-          telefono: validatedData.telefono,
-          fechaNacimiento: new Date(validatedData.fechaNacimiento),
-          ciudad: validatedData.ciudad,
-          pais: validatedData.pais
+          tipoAtencion: concernFields.tipoAtencion,
+          problematica: data.problematica,
+          preferenciaAsignacion: data.preferenciaAsignacion,
+          clinicalConcern: toInputJson(concernFields.clinicalConcern),
+          urgencyLevel: data.urgencyLevel,
+          preferredModality: data.preferredModality,
+          preferredTherapyStyle: toInputJson(data.preferredTherapyStyle ?? []),
+          languages: toInputJson(data.languages?.length ? data.languages : ['es']),
+          timezone: data.timezone,
+          availability: toInputJson(data.availability ?? {}),
+          budgetMin: data.budgetMin,
+          budgetMax: data.budgetMax,
+          paymentPreference: data.paymentPreference,
+          therapistGenderPreference: data.therapistGenderPreference,
+          priorTherapyExperience: data.priorTherapyExperience,
+          medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
+          riskFlags: toInputJson(data.riskFlags ?? [])
         }
       })
 
-      await tx.patientProfile.create({
+      await tx.consentRecord.create({
         data: {
           userId: user.id,
-          tipoAtencion: validatedData.tipoAtencion,
-          problematica: validatedData.problematica,
-          preferenciaAsignacion: validatedData.preferenciaAsignacion
+          consentToTerms: data.consentToTerms,
+          consentToPrivacy: data.consentToPrivacy,
+          consentToAIProcessing: data.consentToAIProcessing,
+          consentToShareWithPSM: data.consentToShareWithPSM,
+          consentToClinicalMatching: data.consentToClinicalMatching,
+          source: data.intakeSource,
+          policyVersion: data.consentPolicyVersion,
+          locale: data.consentLocale,
+          scope: toInputJson({
+            aiProcessing: data.consentToAIProcessing,
+            shareWithPSM: data.consentToShareWithPSM,
+            clinicalMatching: data.consentToClinicalMatching,
+          })
         }
       })
 
       return user
     })
 
-    // Trigger automatic matching if user prefers automatic assignment
-    // Note: This is done asynchronously after registration completes
-    // The matching will happen when the user visits their profile or when explicitly requested
-    // We don't block registration on matching success
+    await createCrisisEventIfNeeded({
+      userId: result.id,
+      source: data.intakeSource,
+      urgencyLevel: data.urgencyLevel,
+      riskFlags: data.riskFlags,
+      summary: data.problematica,
+      metadata: {
+        clinicalConcern: concernFields.clinicalConcern,
+        preferredModality: data.preferredModality,
+      },
+    })
+
+    await recordClinicalAccess({
+      request,
+      actorUserId: result.id,
+      targetUserId: result.id,
+      action: 'create',
+      resource: 'patient_profile',
+      reason: 'onboarding_user',
+      metadata: {
+        intakeSource: data.intakeSource,
+        clinicalConcern: concernFields.clinicalConcern,
+      },
+    })
 
     return NextResponse.json({
       success: true,
@@ -218,16 +254,21 @@ export async function POST(request: NextRequest) {
         email: result.email,
         eoaAddress: result.eoaAddress,
         smartWalletAddress: result.smartWalletAddress,
-        registrationCompleted: result.registrationCompleted
+        registrationCompleted: result.registrationCompleted,
+        onboardingStatus: result.onboardingStatus,
+        intakeSource: result.intakeSource
+      },
+      matching: {
+        eligible: data.urgencyLevel !== 'crisis',
+        preference: data.preferenciaAsignacion
       }
-    }, { status: 201 })
-
+    }, { status: existingUser ? 200 : 201 })
   } catch (error) {
     console.error('Error creating user:', error)
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: 'Datos de entrada inválidos',
           details: error.errors
         },
@@ -235,19 +276,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Log detailed error for debugging
-    console.error('Detailed error:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined
-    })
-
     return NextResponse.json(
-      { 
+      {
         error: 'Error interno del servidor',
-        details: process.env.NODE_ENV === 'development' ? 
-          (error instanceof Error ? error.message : 'Unknown error') : 
-          undefined
+        details: process.env.NODE_ENV === 'development'
+          ? (error instanceof Error ? error.message : 'Unknown error')
+          : undefined
       },
       { status: 500 }
     )

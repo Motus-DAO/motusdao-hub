@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useOnboardingStore, getStepsForRole } from '@/lib/onboarding-store'
+import { useOnboardingStore, getStepsForRole, getStepBlockers } from '@/lib/onboarding-store'
 import { WizardStepper } from './WizardStepper'
 import { StepConnect } from './steps/StepConnect'
 import { StepRoleSelection } from './steps/StepRoleSelection'
@@ -26,6 +26,7 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
     canProceed
     // reset // TODO: Add reset functionality when needed
   } = useOnboardingStore()
+  const [navigationError, setNavigationError] = useState<string | null>(null)
 
   // Get steps - role might not be set yet in step 0
   const steps = role ? getStepsForRole(role) : getStepsForRole('usuario') // Default for step count
@@ -42,14 +43,19 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
   }, [initialRole, role, currentStep, steps.length, setRole, setCurrentStep])
 
   const handleNext = () => {
-    console.log('OnboardingWizard handleNext Debug:', {
-      canProceed: canProceed(),
-      currentStep,
-      stepsLength: steps.length,
-      isStepValid: isStepValid(currentStep)
-    })
-    
-    if (canProceed() && currentStep < steps.length - 1) {
+    setNavigationError(null)
+
+    if (!canProceed()) {
+      const blockers = getStepBlockers(currentStep, role, useOnboardingStore.getState().data)
+      setNavigationError(
+        blockers.length > 0
+          ? `Completa antes de continuar: ${blockers.join(', ')}`
+          : 'No se puede avanzar todavía. Revisa los campos obligatorios.'
+      )
+      return
+    }
+
+    if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -127,6 +133,11 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {navigationError && (
+          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {navigationError}
+          </div>
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}

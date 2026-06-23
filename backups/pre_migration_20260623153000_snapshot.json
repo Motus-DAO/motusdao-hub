@@ -1,0 +1,34 @@
+{
+  "capturedAt": "2026-06-23T15:30:00Z",
+  "projectRef": "ryjkpaiknsnjyydxwugl",
+  "migration": "20260623153000_security_intake_marketplace_foundations",
+  "rowCounts": {
+    "users": 7,
+    "matches": 0,
+    "sessions": 0,
+    "journal_entries": 0,
+    "psm_profiles": 4,
+    "patient_profiles": 1,
+    "profiles": 6
+  },
+  "appliedPrismaMigrations": [
+    "20260617120000_jsonb_columns",
+    "20260616140000_profile_integrity",
+    "20260616130000_revoke_anon_access",
+    "20260616120000_mns_persistence",
+    "20260615030000_onboarding_source_of_truth",
+    "20250122120000_add_modules_to_courses",
+    "20251130215712_update_user_wallet_schema"
+  ],
+  "pendingNewTables": [
+    "clinical_access_logs",
+    "match_criteria",
+    "crisis_events",
+    "orders",
+    "order_items",
+    "payments",
+    "provider_availability_slots",
+    "reviews"
+  ],
+  "notes": "Logical snapshot before applying security_intake_marketplace_foundations. Full pg_dump unavailable locally (libpq not installed)."
+}
