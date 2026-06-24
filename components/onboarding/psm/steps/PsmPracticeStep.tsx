@@ -9,7 +9,8 @@ import { useOnboardingStore } from '@/lib/onboarding-store'
 import { inputFieldClass } from '@/lib/onboarding-form-helpers'
 import {
   PSM_LANGUAGES,
-  PSM_MODALITIES,
+  PSM_THERAPY_STYLES,
+  PSM_ESPECIALIDADES,
 } from '@/lib/intake/psm-intake-options'
 import {
   PSM_MIN_NARRATIVE_LENGTH,
@@ -17,8 +18,7 @@ import {
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
 import { PsmChipGroup } from '../PsmChipGroup'
-import { PsmTherapyStyleField } from '../PsmTherapyStyleField'
-import { PsmEspecialidadesField } from '../PsmEspecialidadesField'
+import { PsmTagSelect } from '../PsmTagSelect'
 import { PsmStepValidationBanner } from '../PsmStepValidationBanner'
 
 const schema = z.object({
@@ -31,9 +31,6 @@ const schema = z.object({
   especialidades: z.array(z.string()).min(1, 'Selecciona o escribe al menos una especialidad'),
   therapyStyles: z.array(z.string()).min(1, 'Selecciona o escribe al menos un enfoque terapéutico'),
   languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
-  modalities: z
-    .array(z.enum(['video', 'chat', 'in_person', 'hybrid']))
-    .min(1, 'Selecciona al menos una modalidad'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -61,7 +58,6 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
       therapyStyles: data.therapyStyles?.length ? data.therapyStyles : [],
       especialidades: data.especialidades || [],
       languages: data.languages?.length ? data.languages : ['es'],
-      modalities: data.modalities?.length ? data.modalities : ['video'],
     },
   })
 
@@ -128,38 +124,40 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
         </div>
       </div>
 
-      <PsmTherapyStyleField
+      <PsmTagSelect
+        label="Enfoque terapéutico *"
+        hint="Cómo trabajas. Marca los que apliquen o agrega el tuyo (ej. EMDR, gestalt)."
+        options={PSM_THERAPY_STYLES}
         value={watch('therapyStyles') || []}
         onChange={(next) => setValue('therapyStyles', next, { shouldValidate: true })}
         hasError={!!errors.therapyStyles}
         errorMessage={errors.therapyStyles?.message}
+        addPlaceholder="Otro enfoque (ej. EMDR)"
       />
 
-      <PsmEspecialidadesField
+      <PsmTagSelect
+        label="Especialización / temas *"
+        hint="En qué te especializas. Marca temas o poblaciones, o agrega los tuyos."
+        options={PSM_ESPECIALIDADES}
         value={watch('especialidades') || []}
         onChange={(next) => setValue('especialidades', next, { shouldValidate: true })}
         hasError={!!errors.especialidades}
         errorMessage={errors.especialidades?.message}
+        columns={3}
+        addPlaceholder="Otro tema (ej. perinatal)"
       />
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <PsmChipGroup
-          label="Idiomas *"
-          options={PSM_LANGUAGES}
-          selected={watch('languages') || []}
-          onChange={(next) => setValue('languages', next, { shouldValidate: true })}
-          hasError={!!errors.languages}
-        />
-        <PsmChipGroup
-          label="Modalidades *"
-          options={PSM_MODALITIES}
-          selected={watch('modalities') || []}
-          onChange={(next) =>
-            setValue('modalities', next as FormData['modalities'], { shouldValidate: true })
-          }
-          hasError={!!errors.modalities}
-        />
-      </div>
+      <PsmChipGroup
+        label="Idiomas *"
+        options={PSM_LANGUAGES}
+        selected={watch('languages') || []}
+        onChange={(next) => setValue('languages', next, { shouldValidate: true })}
+        hasError={!!errors.languages}
+      />
+
+      <p className="text-xs text-muted-foreground">
+        Las sesiones en MotusDAO son 100% teleterapia por video.
+      </p>
 
       <div className="flex justify-between pt-2">
         <button type="button" onClick={onBack} className="px-6 py-3 text-gray-400 hover:text-white">

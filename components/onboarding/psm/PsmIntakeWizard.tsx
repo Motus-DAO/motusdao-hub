@@ -20,9 +20,11 @@ interface PsmIntakeWizardProps {
 }
 
 export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
-  const { data, profileIntakeMode, setProfileIntakeMode } = useOnboardingStore()
+  const { data, profileIntakeMode, setProfileIntakeMode, psmWizardStep, setPsmWizardStep } =
+    useOnboardingStore()
   const intakeMode = profileIntakeMode ?? 'manual'
-  const [wizardStep, setWizardStep] = useState(0)
+  const wizardStep = psmWizardStep
+  const setWizardStep = setPsmWizardStep
   const [exitBlockers, setExitBlockers] = useState(false)
 
   const progress = computePsmIntakeProgress(data)

@@ -12,14 +12,28 @@ import {
   PSM_URGENCY_LEVELS,
   PSM_EXCLUSION_CRITERIA,
 } from '@/lib/intake/psm-intake-options'
-import { getPsmWizardStepBlockers } from '@/lib/intake/psm-intake-v1'
+import {
+  PSM_MIN_WEEKLY_THERAPY_HOURS,
+  PSM_MAX_WEEKLY_THERAPY_HOURS,
+  getPsmWizardStepBlockers,
+  resolveWeeklyTherapyHours,
+} from '@/lib/intake/psm-intake-v1'
+import { resolvePsmTimezoneDefault } from '@/lib/intake/psm-timezone-options'
 import { PsmChipGroup } from '../PsmChipGroup'
 import { PsmStepValidationBanner } from '../PsmStepValidationBanner'
+import { PsmTimezoneSelect } from '../PsmTimezoneSelect'
 
 const schema = z.object({
   licensedCountries: z.array(z.string()).min(1, 'Selecciona al menos un país donde puedes atender'),
   timezone: z.string().min(1, 'La zona horaria es obligatoria'),
-  availabilityNotes: z.string().min(3, 'Describe tu disponibilidad'),
+  weeklyTherapyHours: z.coerce
+    .number()
+    .int('Las horas deben ser un número entero')
+    .min(PSM_MIN_WEEKLY_THERAPY_HOURS, `Indica al menos ${PSM_MIN_WEEKLY_THERAPY_HOURS} hora semanal`)
+    .max(
+      PSM_MAX_WEEKLY_THERAPY_HOURS,
+      `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas semanales`
+    ),
   worksWithUrgencyLevels: z
     .array(z.enum(['low', 'medium', 'high', 'crisis']))
     .min(1, 'Selecciona al menos un nivel de urgencia'),
@@ -62,8 +76,12 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
     defaultValues: {
       licensedCountries:
         data.licensedCountries?.length ? data.licensedCountries : data.pais ? [data.pais] : [],
-      timezone: data.timezone || browserTz,
-      availabilityNotes: data.availabilityNotes || '',
+      timezone: resolvePsmTimezoneDefault({
+        timezone: data.timezone,
+        pais: data.pais,
+        browserTimezone: browserTz,
+      }),
+      weeklyTherapyHours: resolveWeeklyTherapyHours(data) ?? PSM_MIN_WEEKLY_THERAPY_HOURS,
       worksWithUrgencyLevels: data.worksWithUrgencyLevels?.length
         ? data.worksWithUrgencyLevels
         : ['low', 'medium'],
@@ -84,10 +102,20 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
       ...formData,
       isAcceptingPatients: formData.isAcceptingUsers,
       maxActivePatients: formData.maxActiveUsers,
-      availability: { notes: formData.availabilityNotes },
+      availability: { weeklyTherapyHours: formData.weeklyTherapyHours },
     })
     onContinue()
   }
+
+  const weeklyHours = watch('weeklyTherapyHours')
+  const maxUsers = watch('maxActiveUsers')
+  const capacityHint =
+    typeof weeklyHours === 'number' &&
+    typeof maxUsers === 'number' &&
+    weeklyHours > 0 &&
+    maxUsers > weeklyHours
+      ? 'Con sesiones semanales de ~1 h, el cupo de usuarios activos suele ser similar o menor que tus horas disponibles.'
+      : null
 
   const blockers = showBlockers
     ? getPsmWizardStepBlockers(2, { ...data, ...getValues() })
@@ -108,18 +136,36 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
         <p className="text-red-400 text-sm">{errors.licensedCountries.message}</p>
       )}
 
+      <PsmTimezoneSelect
+        value={watch('timezone') || ''}
+        onChange={(next) => setValue('timezone', next, { shouldValidate: true })}
+        preferredCountry={data.pais}
+        hasError={!!errors.timezone}
+        errorMessage={errors.timezone?.message}
+      />
+
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Zona horaria *</label>
+          <label className="block text-sm font-medium">Horas semanales para terapia *</label>
+          <p className="text-xs text-muted-foreground">
+            Tiempo aproximado que puedes dedicar a sesiones por semana.
+          </p>
           <input
-            {...register('timezone')}
-            placeholder="America/Mexico_City"
-            className={inputFieldClass(!!errors.timezone)}
+            {...register('weeklyTherapyHours')}
+            type="number"
+            min={PSM_MIN_WEEKLY_THERAPY_HOURS}
+            max={PSM_MAX_WEEKLY_THERAPY_HOURS}
+            className={inputFieldClass(!!errors.weeklyTherapyHours)}
           />
-          {errors.timezone && <p className="text-red-400 text-sm">{errors.timezone.message}</p>}
+          {errors.weeklyTherapyHours && (
+            <p className="text-red-400 text-sm">{errors.weeklyTherapyHours.message}</p>
+          )}
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-medium">Usuarios activos que puedes atender *</label>
+          <p className="text-xs text-muted-foreground">
+            Personas con las que puedes trabajar al mismo tiempo.
+          </p>
           <input
             {...register('maxActiveUsers')}
             type="number"
@@ -131,19 +177,7 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
           )}
         </div>
       </div>
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Disponibilidad *</label>
-        <textarea
-          {...register('availabilityNotes')}
-          rows={3}
-          placeholder="Ej: lunes a jueves 16:00–20:00, zona horaria Ciudad de México"
-          className={inputFieldClass(!!errors.availabilityNotes, 'resize-none')}
-        />
-        {errors.availabilityNotes && (
-          <p className="text-red-400 text-sm">{errors.availabilityNotes.message}</p>
-        )}
-      </div>
+      {capacityHint && <p className="text-xs text-amber-300/90">{capacityHint}</p>}
 
       <PsmChipGroup
         label="Niveles de urgencia que puedes atender *"

@@ -10,12 +10,14 @@
  */
 import { z } from 'zod'
 import type { OnboardingData, IntakeSource } from '@/lib/onboarding-store'
+import { resolvePsmTimezoneDefault } from '@/lib/intake/psm-timezone-options'
 
 export const PSM_INTAKE_VERSION = 'psm_v1' as const
 export const PSM_MIN_NARRATIVE_LENGTH = 80
+export const PSM_MIN_WEEKLY_THERAPY_HOURS = 1
+export const PSM_MAX_WEEKLY_THERAPY_HOURS = 80
 
 const stringArray = z.array(z.string()).default([])
-const modalityEnum = z.enum(['video', 'chat', 'in_person', 'hybrid'])
 const urgencyEnum = z.enum(['low', 'medium', 'high', 'crisis'])
 
 /** Block A — identity */
@@ -56,7 +58,6 @@ export const psmClinicalScopeFields = z.object({
   languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
   licensedCountries: z.array(z.string()).min(1, 'Selecciona al menos un país donde puedes atender'),
   licensedRegions: stringArray,
-  modalities: z.array(modalityEnum).min(1, 'Selecciona al menos una modalidad'),
   worksWithUrgencyLevels: z.array(urgencyEnum).min(1, 'Selecciona al menos un nivel de urgencia'),
   exclusionCriteria: stringArray,
 })
@@ -64,7 +65,14 @@ export const psmClinicalScopeFields = z.object({
 /** Block E — operations */
 export const psmOperationsFields = z.object({
   timezone: z.string().min(1, 'La zona horaria es obligatoria'),
-  availabilityNotes: z.string().min(3, 'Describe tu disponibilidad'),
+  weeklyTherapyHours: z
+    .number()
+    .int('Las horas deben ser un número entero')
+    .min(PSM_MIN_WEEKLY_THERAPY_HOURS, `Indica al menos ${PSM_MIN_WEEKLY_THERAPY_HOURS} hora semanal`)
+    .max(
+      PSM_MAX_WEEKLY_THERAPY_HOURS,
+      `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas semanales`
+    ),
   maxActiveUsers: z.number().int().positive('Los usuarios activos deben ser mayor a 0'),
   isAcceptingUsers: z.boolean().default(false),
   acceptsSlidingScale: z.boolean().default(false),
@@ -138,8 +146,7 @@ export const PSM_FIELD_ORDER = [
   'languages',
   'licensedCountries',
   'timezone',
-  'availabilityNotes',
-  'modalities',
+  'weeklyTherapyHours',
   'worksWithUrgencyLevels',
   'maxActiveUsers',
   'cedulaDocumentPath',
@@ -163,8 +170,7 @@ export const PSM_FIELD_LABELS: Record<string, string> = {
   licensedCountries: 'Países donde puedes atender',
   licensedRegions: 'Regiones con licencia',
   timezone: 'Zona horaria',
-  availabilityNotes: 'Disponibilidad',
-  modalities: 'Modalidades',
+  weeklyTherapyHours: 'Horas semanales para terapia',
   worksWithUrgencyLevels: 'Niveles de urgencia',
   maxActiveUsers: 'Usuarios activos',
   exclusionCriteria: 'Casos que no tomas',
@@ -182,6 +188,32 @@ export function resolveProfessionalNarrative(data: Partial<OnboardingData>): str
   return (data.professionalNarrative || data.biografia || '').trim()
 }
 
+/** Resolve weekly therapy hours from store or legacy availability JSON. */
+export function resolveWeeklyTherapyHours(data: Partial<OnboardingData>): number | undefined {
+  if (typeof data.weeklyTherapyHours === 'number' && !Number.isNaN(data.weeklyTherapyHours)) {
+    return data.weeklyTherapyHours
+  }
+  const fromAvailability = data.availability?.weeklyTherapyHours
+  if (typeof fromAvailability === 'number' && !Number.isNaN(fromAvailability)) {
+    return fromAvailability
+  }
+  return undefined
+}
+
+export function buildPsmAvailability(data: Partial<OnboardingData>): Record<string, unknown> {
+  const hours = resolveWeeklyTherapyHours(data)
+  if (hours != null && hours > 0) {
+    return { weeklyTherapyHours: hours }
+  }
+  if (data.availabilityNotes?.trim()) {
+    return { notes: data.availabilityNotes.trim() }
+  }
+  if (data.availability && Object.keys(data.availability).length > 0) {
+    return data.availability
+  }
+  return {}
+}
+
 function isFieldFilled(data: Partial<OnboardingData>, key: string): boolean {
   if (key === 'professionalNarrative') {
     return resolveProfessionalNarrative(data).length >= PSM_MIN_NARRATIVE_LENGTH
@@ -189,6 +221,14 @@ function isFieldFilled(data: Partial<OnboardingData>, key: string): boolean {
   if (key === 'maxActiveUsers') {
     const n = data.maxActiveUsers ?? data.maxActivePatients
     return typeof n === 'number' && n > 0
+  }
+  if (key === 'weeklyTherapyHours') {
+    const hours = resolveWeeklyTherapyHours(data)
+    return (
+      typeof hours === 'number' &&
+      hours >= PSM_MIN_WEEKLY_THERAPY_HOURS &&
+      hours <= PSM_MAX_WEEKLY_THERAPY_HOURS
+    )
   }
   if (key === 'cedulaDocumentPath' || key === 'tituloDocumentPath') {
     return Boolean(data.cedulaDocumentPath || data.tituloDocumentPath)
@@ -242,9 +282,9 @@ const PSM_FIELD_HINTS: Record<string, string> = {
   especialidades: 'Indica en qué temas o poblaciones te especializas, arriba o en el campo abierto.',
   languages: 'Indica al menos un idioma en el que atiendes.',
   licensedCountries: 'Marca los países donde puedes atender legalmente.',
-  timezone: 'Confirma tu zona horaria (ej. America/Mexico_City).',
-  availabilityNotes: 'Describe tus horarios o disponibilidad habitual.',
-  modalities: 'Selecciona al menos una modalidad (video, presencial, etc.).',
+  timezone: 'Selecciona tu país y ciudad en la lista de zonas horarias.',
+  weeklyTherapyHours:
+    'Indica cuántas horas a la semana puedes dedicar aproximadamente a sesiones de terapia.',
   worksWithUrgencyLevels: 'Indica qué niveles de urgencia puedes atender.',
   maxActiveUsers: 'Define cuántos usuarios activos puedes atender a la vez.',
   cedulaDocumentPath: 'Sube tu cédula profesional o título en PDF o imagen.',
@@ -315,11 +355,11 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
     'formacionAcademica',
     'experienciaAnios',
   ],
-  1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages', 'modalities'],
+  1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages'],
   2: [
     'licensedCountries',
     'timezone',
-    'availabilityNotes',
+    'weeklyTherapyHours',
     'worksWithUrgencyLevels',
     'maxActiveUsers',
   ],
@@ -338,6 +378,14 @@ export function validatePsmWizardStep(
     if (key === 'maxActiveUsers') {
       const n = data.maxActiveUsers ?? data.maxActivePatients
       return !(typeof n === 'number' && n > 0)
+    }
+    if (key === 'weeklyTherapyHours') {
+      const hours = resolveWeeklyTherapyHours(data)
+      return !(
+        typeof hours === 'number' &&
+        hours >= PSM_MIN_WEEKLY_THERAPY_HOURS &&
+        hours <= PSM_MAX_WEEKLY_THERAPY_HOURS
+      )
     }
     if (key === 'cedulaDocumentPath') {
       return !data.cedulaDocumentPath && !data.tituloDocumentPath
@@ -388,9 +436,13 @@ export function buildPsmFormDefaults(data: Partial<OnboardingData>) {
     languages: data.languages?.length ? data.languages : ['es'],
     licensedCountries,
     licensedRegions: data.licensedRegions || [],
-    timezone: data.timezone || browserTz,
-    availabilityNotes: data.availabilityNotes || '',
-    modalities: data.modalities?.length ? data.modalities : ['video'],
+    timezone: resolvePsmTimezoneDefault({
+      timezone: data.timezone,
+      pais: data.pais,
+      browserTimezone: browserTz,
+    }),
+    weeklyTherapyHours: resolveWeeklyTherapyHours(data) ?? PSM_MIN_WEEKLY_THERAPY_HOURS,
+    modalities: ['video'],
     worksWithUrgencyLevels: data.worksWithUrgencyLevels?.length
       ? data.worksWithUrgencyLevels
       : ['low', 'medium'],
@@ -448,9 +500,8 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
     licensedCountries: data.licensedCountries || (data.pais ? [data.pais] : []),
     licensedRegions: data.licensedRegions || [],
     timezone: data.timezone,
-    availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
-    availabilityNotes: data.availabilityNotes,
-    modalities: data.modalities || ['video'],
+    availability: buildPsmAvailability(data),
+    modalities: ['video'],
     worksWithUrgencyLevels: data.worksWithUrgencyLevels || ['low', 'medium'],
     exclusionCriteria: data.exclusionCriteria || [],
     isAcceptingPatients: data.isAcceptingUsers ?? data.isAcceptingPatients ?? false,
@@ -461,8 +512,8 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
     participaInvestigacion: data.participaInvestigacion ?? false,
     participaComunidad: data.participaComunidad ?? false,
 
-    consentToTerms: true as const,
-    consentToPrivacy: true as const,
+    consentToTerms: data.consentToTerms ?? false,
+    consentToPrivacy: data.consentToPrivacy ?? false,
     consentToAIProcessing: data.consentToAIProcessing ?? false,
     consentToShareWithPSM: false,
     consentToClinicalMatching: false,

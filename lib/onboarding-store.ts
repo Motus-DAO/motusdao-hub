@@ -41,6 +41,7 @@ export interface OnboardingData {
   timezone?: string
   availability?: Record<string, unknown>
   availabilityNotes?: string
+  weeklyTherapyHours?: number
   budgetMin?: number
   budgetMax?: number
   paymentPreference?: string
@@ -51,6 +52,8 @@ export interface OnboardingData {
   consentToAIProcessing?: boolean
   consentToShareWithPSM?: boolean
   consentToClinicalMatching?: boolean
+  consentToTerms?: boolean
+  consentToPrivacy?: boolean
   
   // Para PSM
   cedulaProfesional?: string
@@ -91,11 +94,13 @@ interface OnboardingState {
   data: Partial<OnboardingData>
   isCompleted: boolean
   profileIntakeMode: 'manual' | 'ai'
+  psmWizardStep: number
   
   // Acciones
   setRole: (role: UserRole) => void
   setCurrentStep: (step: number) => void
   setProfileIntakeMode: (mode: 'manual' | 'ai') => void
+  setPsmWizardStep: (step: number) => void
   updateData: (data: Partial<OnboardingData>) => void
   reset: () => void
   markCompleted: () => void
@@ -126,6 +131,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       data: initialData,
       isCompleted: false,
       profileIntakeMode: 'manual',
+      psmWizardStep: 0,
       
       // Acciones
       setRole: (role) => set({ role }),
@@ -133,6 +139,8 @@ export const useOnboardingStore = create<OnboardingState>()(
       setCurrentStep: (step) => set({ currentStep: step }),
 
       setProfileIntakeMode: (mode) => set({ profileIntakeMode: mode }),
+
+      setPsmWizardStep: (step) => set({ psmWizardStep: step }),
       
       updateData: (newData) => set((state) => ({
         data: { ...state.data, ...newData }
@@ -144,6 +152,7 @@ export const useOnboardingStore = create<OnboardingState>()(
         data: initialData,
         isCompleted: false,
         profileIntakeMode: 'manual',
+        psmWizardStep: 0,
       }),
       
       markCompleted: () => set({ isCompleted: true }),
@@ -205,6 +214,7 @@ export const useOnboardingStore = create<OnboardingState>()(
         data: state.data,
         isCompleted: state.isCompleted,
         profileIntakeMode: state.profileIntakeMode,
+        psmWizardStep: state.psmWizardStep,
       })
     }
   )
@@ -274,6 +284,7 @@ const FIELD_LABELS: Record<string, string> = {
   therapyStyles: 'Enfoque terapéutico',
   especialidades: 'Especialización',
   professionalNarrative: 'Descripción de tu práctica',
+  weeklyTherapyHours: 'Horas semanales para terapia',
   maxActiveUsers: 'Usuarios activos',
   cedulaDocumentPath: 'Documento de cédula o título',
   tituloDocumentPath: 'Documento de cédula o título',

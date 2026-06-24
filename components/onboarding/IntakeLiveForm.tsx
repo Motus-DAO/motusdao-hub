@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useOnboardingStore, type UserRole } from '@/lib/onboarding-store'
 import { fieldLabel } from '@/lib/intake-chat-progress'
 import { concernOptions, deriveConcernFields } from '@/lib/intake-concerns'
-import { computePsmIntakeProgress, resolveProfessionalNarrative } from '@/lib/intake/psm-intake-v1'
+import { computePsmIntakeProgress, resolveProfessionalNarrative, resolveWeeklyTherapyHours } from '@/lib/intake/psm-intake-v1'
 
 type Props = {
   role: UserRole
@@ -338,34 +338,25 @@ export function IntakeLiveForm({
                       }
                     />
                     <LiveInput
-                      label={fieldLabel('modalities')}
-                      value={(data.modalities || []).join(', ')}
-                      onChange={(v) =>
-                        set(
-                          'modalities',
-                          v.split(',').map((s) => s.trim()).filter(Boolean)
-                        )
-                      }
-                    />
-                    <LiveInput
-                      label={fieldLabel('maxActiveUsers')}
-                      value={String(data.maxActiveUsers ?? data.maxActivePatients ?? '')}
+                      label={fieldLabel('weeklyTherapyHours')}
+                      value={String(resolveWeeklyTherapyHours(data) ?? '')}
                       onChange={(v) => {
                         const n = Number(v) || 0
-                        set('maxActiveUsers', n)
-                        set('maxActivePatients', n)
+                        set('weeklyTherapyHours', n)
+                        set('availability', { weeklyTherapyHours: n })
                       }}
                       type="number"
                     />
                   </div>
                   <LiveInput
-                    label={fieldLabel('availabilityNotes')}
-                    value={data.availabilityNotes || ''}
+                    label={fieldLabel('maxActiveUsers')}
+                    value={String(data.maxActiveUsers ?? data.maxActivePatients ?? '')}
                     onChange={(v) => {
-                      set('availabilityNotes', v)
-                      set('availability', { notes: v })
+                      const n = Number(v) || 0
+                      set('maxActiveUsers', n)
+                      set('maxActivePatients', n)
                     }}
-                    textarea
+                    type="number"
                   />
                   {(data.cedulaDocumentPath || data.tituloDocumentPath) && (
                     <div className="text-xs text-emerald-300/90 space-y-1">

@@ -27,11 +27,19 @@ interface StepRevisionProps {
 }
 
 export function StepRevision({ onNext, onBack }: StepRevisionProps) {
-  const { data, role, updateData } = useOnboardingStore()
+  const { data, role, updateData, setCurrentStep, setPsmWizardStep } = useOnboardingStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [tokenURI, setTokenURI] = useState<string | null>(null)
+
+  const goToPsmStep = (sub: number) => {
+    setPsmWizardStep(sub)
+    setCurrentStep(3)
+  }
+
+  const consentsComplete =
+    role !== 'psm' || Boolean(data.consentToTerms && data.consentToPrivacy)
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No especificada'
@@ -50,6 +58,11 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
   const handleContinue = async () => {
     if (!data.eoaAddress || !role) {
       setSubmitError('No se encontró una wallet conectada o el rol no está definido.')
+      return
+    }
+
+    if (!consentsComplete) {
+      setSubmitError('Debes aceptar los Términos y el Aviso de Privacidad para continuar.')
       return
     }
 
@@ -342,10 +355,13 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center space-x-2">
-                <Award className="w-5 h-5 text-mauve-400" />
-                <span>Información Profesional</span>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-mauve-400" />
+                  <span>Información Profesional</span>
+                </h3>
+                <EditButton onClick={() => goToPsmStep(0)} />
+              </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="p-4 glass rounded-xl">
                   <div className="flex items-center space-x-2 mb-2">
@@ -378,9 +394,12 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                   </div>
                 )}
                 <div className="p-4 glass-card rounded-lg md:col-span-2">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Heart className="w-4 h-4 text-indigo-400" />
-                    <span className="text-sm font-medium">Enfoque terapéutico</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Heart className="w-4 h-4 text-indigo-400" />
+                      <span className="text-sm font-medium">Enfoque terapéutico</span>
+                    </div>
+                    <EditButton onClick={() => goToPsmStep(1)} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {data.therapyStyles?.map((style, index) => (
@@ -416,10 +435,13 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
           {/* Platform Preferences (PSM only) */}
           {role === 'psm' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center space-x-2">
-                <User className="w-5 h-5 text-mauve-400" />
-                <span>Preferencias de Plataforma</span>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center space-x-2">
+                  <User className="w-5 h-5 text-mauve-400" />
+                  <span>Preferencias de Plataforma</span>
+                </h3>
+                <EditButton onClick={() => goToPsmStep(2)} />
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {data.participaSupervision && (
                   <div className="p-3 glass-card rounded-lg text-center">
@@ -449,6 +471,55 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             </div>
           )}
         </div>
+
+        {/* Consents (PSM only) */}
+        {role === 'psm' && (
+          <div className="mt-6 space-y-3 rounded-xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold flex items-center space-x-2">
+              <CheckCircle className="w-5 h-5 text-mauve-400" />
+              <span>Consentimientos</span>
+            </h3>
+            <label className="flex items-start gap-3 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(data.consentToTerms)}
+                onChange={(e) => updateData({ consentToTerms: e.target.checked })}
+                className="mt-1 w-4 h-4"
+              />
+              <span>
+                Acepto los <span className="text-mauve-300">Términos y Condiciones</span> de MotusDAO. *
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(data.consentToPrivacy)}
+                onChange={(e) => updateData({ consentToPrivacy: e.target.checked })}
+                className="mt-1 w-4 h-4"
+              />
+              <span>
+                He leído y acepto el <span className="text-mauve-300">Aviso de Privacidad</span> y el
+                tratamiento de mis datos profesionales. *
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(data.consentToAIProcessing)}
+                onChange={(e) => updateData({ consentToAIProcessing: e.target.checked })}
+                className="mt-1 w-4 h-4"
+              />
+              <span className="text-muted-foreground">
+                Autorizo el uso de IA para apoyar el emparejamiento y mejorar mi perfil (opcional).
+              </span>
+            </label>
+            {!consentsComplete && (
+              <p className="text-xs text-amber-300">
+                Marca los dos consentimientos obligatorios para poder completar tu registro.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Navigation Buttons */}
         <div className="pt-8 space-y-4">
@@ -497,7 +568,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             
             <CTAButton
               onClick={handleContinue}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !consentsComplete}
               className="flex items-center space-x-2"
             >
               <span>
@@ -510,5 +581,18 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
         </div>
       </GlassCard>
     </motion.div>
+  )
+}
+
+function EditButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/10 hover:text-white transition-colors"
+    >
+      <Edit className="w-3.5 h-3.5" />
+      Editar
+    </button>
   )
 }

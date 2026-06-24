@@ -11,6 +11,7 @@ import {
   getStepBlockerKeys,
 } from '@/lib/onboarding-store'
 import { computeFieldProgress } from '@/lib/intake-chat-progress'
+import { buildPsmAvailability } from '@/lib/intake/psm-intake-v1'
 import { IntakeChatStepper } from '@/components/onboarding/IntakeChatStepper'
 import { IntakeLiveForm } from '@/components/onboarding/IntakeLiveForm'
 
@@ -144,6 +145,7 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
         )
       }
       const intakeBody = body as IntakeResponse
+      const merged = { ...data, ...intakeBody.extractedData } as Partial<OnboardingData>
 
       updateData({
         ...intakeBody.extractedData,
@@ -159,12 +161,9 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
         maxActivePatients:
           (intakeBody.extractedData.maxActiveUsers as number | undefined) ??
           (intakeBody.extractedData.maxActivePatients as number | undefined),
+        weeklyTherapyHours: intakeBody.extractedData.weeklyTherapyHours as number | undefined,
         intakeSource: 'ai_assisted',
-        availability:
-          intakeBody.extractedData.availability ||
-          (intakeBody.extractedData.availabilityNotes
-            ? { notes: intakeBody.extractedData.availabilityNotes }
-            : data.availability),
+        availability: buildPsmAvailability(merged),
       })
       setMissingFields(intakeBody.missingFields)
       setIsComplete(intakeBody.isComplete)

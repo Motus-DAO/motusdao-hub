@@ -70,8 +70,8 @@ const QUESTION_GUIDE = {
   },
   psm: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios',
-    q2: 'professionalNarrative, therapyStyles, especialidades, languages, licensedCountries, timezone, availabilityNotes, modalities, worksWithUrgencyLevels',
-    q3: 'maxActiveUsers, exclusionCriteria, isAcceptingUsers (documentos se suben en el formulario)',
+    q2: 'professionalNarrative, therapyStyles, especialidades, languages, licensedCountries, timezone, worksWithUrgencyLevels',
+    q3: 'weeklyTherapyHours, maxActiveUsers, exclusionCriteria, isAcceptingUsers (documentos se suben en el formulario)',
   },
 }
 
@@ -89,10 +89,10 @@ Reglas:
 - Extrae datos en extractedData con claves exactas. Fusiona con datos actuales; no borres campos ya capturados.
 - No inventes datos. Campos faltantes van en missingFields.
 - Si hay senales de crisis, autolesion o emergencia: riskAlert=crisis_possible, urgencyLevel=crisis (usuario), recomienda ayuda local brevemente.
-- Valores: urgencyLevel low|medium|high|crisis. preferredModality/modalities video|chat|in_person|hybrid. preferenciaAsignacion automatica|explorar.
-- Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, licensedCountries, modalities, worksWithUrgencyLevels, riskFlags.
+- Valores: urgencyLevel low|medium|high|crisis. preferredModality video|chat|in_person|hybrid (solo usuario). preferenciaAsignacion automatica|explorar.
+- Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, licensedCountries, worksWithUrgencyLevels, riskFlags.
 - Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, preferredModality, languages, consentToAIProcessing=true, consentToShareWithPSM=true, consentToClinicalMatching=true. clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array.
-- PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles (enfoque terapéutico), especialidades (especialización/temas), languages, licensedCountries, timezone, availabilityNotes, modalities, worksWithUrgencyLevels, maxActiveUsers.
+- PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles (enfoque terapéutico), especialidades (especialización/temas), languages, licensedCountries, timezone, weeklyTherapyHours (horas semanales para terapia, entero 1-80), worksWithUrgencyLevels, maxActiveUsers.
 - assistantMessage debe ser conversacional y terminar con la siguiente pregunta (excepto en handoff_ready).
 
 Devuelve JSON con: assistantMessage, isComplete, missingFields, confidence, extractedData, riskAlert, phase, questionIndex.`
@@ -207,8 +207,7 @@ function computeMissingFields(
           'languages',
           'licensedCountries',
           'timezone',
-          'availabilityNotes',
-          'modalities',
+          'weeklyTherapyHours',
           'worksWithUrgencyLevels',
           'maxActiveUsers',
         ]
@@ -219,11 +218,21 @@ function computeMissingFields(
         ? (data.professionalNarrative ?? data.biografia)
         : key === 'maxActiveUsers'
           ? (data.maxActiveUsers ?? data.maxActivePatients)
-          : data[key]
+          : key === 'weeklyTherapyHours'
+            ? (data.weeklyTherapyHours ??
+              (typeof data.availability === 'object' && data.availability !== null
+                ? (data.availability as { weeklyTherapyHours?: number }).weeklyTherapyHours
+                : undefined))
+            : data[key]
     if (value == null) return true
     if (typeof value === 'boolean') return !value
     if (Array.isArray(value)) return value.length === 0
-    if (typeof value === 'number') return Number.isNaN(value)
+    if (typeof value === 'number') {
+      if (key === 'weeklyTherapyHours') {
+        return Number.isNaN(value) || value < 1 || value > 80
+      }
+      return Number.isNaN(value)
+    }
     if (key === 'professionalNarrative') {
       return String(value ?? '').trim().length < 80
     }
