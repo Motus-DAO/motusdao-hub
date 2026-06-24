@@ -18,6 +18,8 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { deriveConcernFields } from '@/lib/intake-concerns'
+import { buildPsmApiPayload } from '@/lib/intake/psm-intake-v1'
+import { getEspecialidadLabel, getTherapyStyleLabel } from '@/lib/intake/psm-intake-options'
 
 interface StepRevisionProps {
   onNext: () => void
@@ -110,36 +112,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
               consentToShareWithPSM: data.consentToShareWithPSM ?? true,
               consentToClinicalMatching: data.consentToClinicalMatching ?? true
             }
-          : {
-              cedulaProfesional: data.cedulaProfesional,
-              cedulaDocumentPath: data.cedulaDocumentPath,
-              tituloDocumentPath: data.tituloDocumentPath,
-              formacionAcademica: data.formacionAcademica,
-              experienciaAnios: data.experienciaAnios,
-              biografia: data.biografia,
-              especialidades: data.especialidades || [],
-              therapyStyles: data.therapyStyles || [],
-              languages: data.languages || ['es'],
-              licensedCountries: data.licensedCountries || (data.pais ? [data.pais] : []),
-              licensedRegions: data.licensedRegions || [],
-              timezone: data.timezone,
-              availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
-              modalities: data.modalities || ['video'],
-              sessionPrice: data.sessionPrice,
-              currency: data.currency || 'MXN',
-              acceptsSlidingScale: data.acceptsSlidingScale ?? false,
-              worksWithUrgencyLevels: data.worksWithUrgencyLevels || ['low', 'medium'],
-              exclusionCriteria: data.exclusionCriteria || [],
-              isAcceptingPatients: data.isAcceptingPatients ?? false,
-              maxActivePatients: data.maxActivePatients || 10,
-              participaSupervision: data.participaSupervision ?? false,
-              participaCursos: data.participaCursos ?? false,
-              participaInvestigacion: data.participaInvestigacion ?? false,
-              participaComunidad: data.participaComunidad ?? false,
-              consentToAIProcessing: data.consentToAIProcessing ?? false,
-              consentToShareWithPSM: false,
-              consentToClinicalMatching: false
-            }
+          : buildPsmApiPayload(data)
 
       const onboardingRes = await fetch(onboardingEndpoint, {
         method: 'POST',
@@ -164,7 +137,10 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
         onboardingBody = onboardingText ? JSON.parse(onboardingText) : {}
       } catch {
         console.error('Respuesta no JSON al guardar onboarding:', onboardingText.slice(0, 200))
-        throw new Error('Respuesta inválida del servidor al guardar tu registro.')
+        throw new Error(
+          `El servidor respondió ${onboardingRes.status} sin JSON (${onboardingText.slice(0, 120) || 'vacío'}). ` +
+            'Si estás en local, reinicia el dev server (puerto duplicado o caché .next corrupta).'
+        )
       }
 
       if (!onboardingRes.ok || !onboardingBody.success) {
@@ -392,19 +368,35 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                   </div>
                   <p className="text-white">{data.formacionAcademica || 'No especificada'}</p>
                 </div>
-                {data.biografia && (
+                {(data.professionalNarrative || data.biografia) && (
                   <div className="p-4 glass-card rounded-lg md:col-span-2">
                     <div className="flex items-center space-x-2 mb-2">
                       <Edit className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-medium">Biografía</span>
+                      <span className="text-sm font-medium">Descripción de tu práctica</span>
                     </div>
-                    <p className="text-white">{data.biografia}</p>
+                    <p className="text-white">{data.professionalNarrative || data.biografia}</p>
                   </div>
                 )}
                 <div className="p-4 glass-card rounded-lg md:col-span-2">
                   <div className="flex items-center space-x-2 mb-2">
+                    <Heart className="w-4 h-4 text-indigo-400" />
+                    <span className="text-sm font-medium">Enfoque terapéutico</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {data.therapyStyles?.map((style, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs"
+                      >
+                        {getTherapyStyleLabel(style)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="p-4 glass-card rounded-lg md:col-span-2">
+                  <div className="flex items-center space-x-2 mb-2">
                     <Award className="w-4 h-4 text-pink-400" />
-                    <span className="text-sm font-medium">Especialidades</span>
+                    <span className="text-sm font-medium">Especialización</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {data.especialidades?.map((especialidad, index) => (
@@ -412,7 +404,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                         key={index}
                         className="px-2 py-1 bg-mauve-500/20 text-mauve-300 rounded-full text-xs"
                       >
-                        {especialidad}
+                        {getEspecialidadLabel(especialidad)}
                       </span>
                     ))}
                   </div>

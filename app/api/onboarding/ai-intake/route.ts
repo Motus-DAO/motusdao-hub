@@ -70,8 +70,8 @@ const QUESTION_GUIDE = {
   },
   psm: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios',
-    q2: 'especialidades, therapyStyles, languages, licensedCountries, timezone, availabilityNotes, modalities, sessionPrice, currency, worksWithUrgencyLevels',
-    q3: 'maxActivePatients, biografia, exclusionCriteria, isAcceptingPatients (documentos se suben en el formulario)',
+    q2: 'professionalNarrative, therapyStyles, especialidades, languages, licensedCountries, timezone, availabilityNotes, modalities, worksWithUrgencyLevels',
+    q3: 'maxActiveUsers, exclusionCriteria, isAcceptingUsers (documentos se suben en el formulario)',
   },
 }
 
@@ -92,7 +92,7 @@ Reglas:
 - Valores: urgencyLevel low|medium|high|crisis. preferredModality/modalities video|chat|in_person|hybrid. preferenciaAsignacion automatica|explorar.
 - Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, licensedCountries, modalities, worksWithUrgencyLevels, riskFlags.
 - Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, preferredModality, languages, consentToAIProcessing=true, consentToShareWithPSM=true, consentToClinicalMatching=true. clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array.
-- PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, especialidades, therapyStyles, languages, licensedCountries, timezone, availabilityNotes, modalities, sessionPrice, currency, worksWithUrgencyLevels, maxActivePatients.
+- PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles (enfoque terapéutico), especialidades (especialización/temas), languages, licensedCountries, timezone, availabilityNotes, modalities, worksWithUrgencyLevels, maxActiveUsers.
 - assistantMessage debe ser conversacional y terminar con la siguiente pregunta (excepto en handoff_ready).
 
 Devuelve JSON con: assistantMessage, isComplete, missingFields, confidence, extractedData, riskAlert, phase, questionIndex.`
@@ -201,6 +201,7 @@ function computeMissingFields(
           'cedulaProfesional',
           'formacionAcademica',
           'experienciaAnios',
+          'professionalNarrative',
           'especialidades',
           'therapyStyles',
           'languages',
@@ -208,18 +209,24 @@ function computeMissingFields(
           'timezone',
           'availabilityNotes',
           'modalities',
-          'sessionPrice',
-          'currency',
           'worksWithUrgencyLevels',
-          'maxActivePatients',
+          'maxActiveUsers',
         ]
 
   return required.filter((key) => {
-    const value = data[key]
+    const value =
+      key === 'professionalNarrative'
+        ? (data.professionalNarrative ?? data.biografia)
+        : key === 'maxActiveUsers'
+          ? (data.maxActiveUsers ?? data.maxActivePatients)
+          : data[key]
     if (value == null) return true
     if (typeof value === 'boolean') return !value
     if (Array.isArray(value)) return value.length === 0
     if (typeof value === 'number') return Number.isNaN(value)
+    if (key === 'professionalNarrative') {
+      return String(value ?? '').trim().length < 80
+    }
     return String(value).trim().length === 0
   })
 }

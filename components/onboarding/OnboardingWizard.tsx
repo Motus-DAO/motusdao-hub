@@ -3,6 +3,8 @@
 import { useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useOnboardingStore, getStepsForRole, getStepBlockers } from '@/lib/onboarding-store'
+import { getPsmIntakeBlockers } from '@/lib/intake/psm-intake-v1'
+import { PsmStepValidationBanner } from './psm/PsmStepValidationBanner'
 import { WizardStepper } from './WizardStepper'
 import { StepConnect } from './steps/StepConnect'
 import { StepRoleSelection } from './steps/StepRoleSelection'
@@ -27,6 +29,7 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
     // reset // TODO: Add reset functionality when needed
   } = useOnboardingStore()
   const [navigationError, setNavigationError] = useState<string | null>(null)
+  const [showPsmBlockers, setShowPsmBlockers] = useState(false)
 
   // Get steps - role might not be set yet in step 0
   const steps = role ? getStepsForRole(role) : getStepsForRole('usuario') // Default for step count
@@ -44,9 +47,16 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
 
   const handleNext = () => {
     setNavigationError(null)
+    setShowPsmBlockers(false)
 
     if (!canProceed()) {
-      const blockers = getStepBlockers(currentStep, role, useOnboardingStore.getState().data)
+      const storeData = useOnboardingStore.getState().data
+      if (role === 'psm' && currentStep === 3) {
+        setShowPsmBlockers(true)
+        return
+      }
+
+      const blockers = getStepBlockers(currentStep, role, storeData)
       setNavigationError(
         blockers.length > 0
           ? `Completa antes de continuar: ${blockers.join(', ')}`
@@ -133,6 +143,14 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {showPsmBlockers && role === 'psm' && (
+          <div className="mb-4">
+            <PsmStepValidationBanner
+              title="Tu registro profesional aún no está completo:"
+              blockers={getPsmIntakeBlockers(useOnboardingStore.getState().data)}
+            />
+          </div>
+        )}
         {navigationError && (
           <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {navigationError}

@@ -147,6 +147,18 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
 
       updateData({
         ...intakeBody.extractedData,
+        professionalNarrative:
+          (intakeBody.extractedData.professionalNarrative as string | undefined) ??
+          (intakeBody.extractedData.biografia as string | undefined),
+        biografia:
+          (intakeBody.extractedData.professionalNarrative as string | undefined) ??
+          (intakeBody.extractedData.biografia as string | undefined),
+        maxActiveUsers:
+          (intakeBody.extractedData.maxActiveUsers as number | undefined) ??
+          (intakeBody.extractedData.maxActivePatients as number | undefined),
+        maxActivePatients:
+          (intakeBody.extractedData.maxActiveUsers as number | undefined) ??
+          (intakeBody.extractedData.maxActivePatients as number | undefined),
         intakeSource: 'ai_assisted',
         availability:
           intakeBody.extractedData.availability ||

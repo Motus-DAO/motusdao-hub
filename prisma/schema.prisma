@@ -346,6 +346,7 @@ model PSMProfile {
   formacionAcademica     String
   experienciaAnios       Int
   biografia              String?
+  professionalNarrative  String?
   especialidades         Json               @db.JsonB
   verificationStatus     VerificationStatus @default(pending)
   isAcceptingPatients    Boolean            @default(false)
@@ -646,6 +647,7 @@ enum OnboardingStatus {
 enum IntakeSource {
   manual
   ai_assisted
+  hybrid
 }
 
 enum VerificationStatus {

@@ -1,9 +1,10 @@
 import { create } from 'zustand'
+import { isPsmIntakeComplete, getPsmMissingFieldKeys } from '@/lib/intake/psm-intake-v1'
 import { persist } from 'zustand/middleware'
 import { formatCeloAddress } from './celo'
 
 export type UserRole = 'usuario' | 'psm'
-export type IntakeSource = 'manual' | 'ai_assisted'
+export type IntakeSource = 'manual' | 'ai_assisted' | 'hybrid'
 export type UrgencyLevel = 'low' | 'medium' | 'high' | 'crisis'
 export type Modality = 'video' | 'chat' | 'in_person' | 'hybrid'
 
@@ -58,17 +59,18 @@ export interface OnboardingData {
   formacionAcademica?: string
   experienciaAnios?: number
   biografia?: string
+  professionalNarrative?: string
   especialidades?: string[]
   therapyStyles?: string[]
   licensedCountries?: string[]
   licensedRegions?: string[]
   modalities?: Modality[]
-  sessionPrice?: number
-  currency?: string
   acceptsSlidingScale?: boolean
   worksWithUrgencyLevels?: UrgencyLevel[]
   exclusionCriteria?: string[]
+  isAcceptingUsers?: boolean
   isAcceptingPatients?: boolean
+  maxActiveUsers?: number
   maxActivePatients?: number
   participaSupervision?: boolean
   participaCursos?: boolean
@@ -175,21 +177,7 @@ export const useOnboardingStore = create<OnboardingState>()(
                 data.consentToClinicalMatching
               )
             } else if (role === 'psm') {
-              return !!(
-                data.nombre &&
-                data.apellido &&
-                data.telefono &&
-                data.fechaNacimiento &&
-                data.ciudad &&
-                data.pais &&
-                data.cedulaProfesional && 
-                data.formacionAcademica && 
-                data.experienciaAnios !== undefined && 
-                data.experienciaAnios >= 0 &&
-                (data.cedulaDocumentPath || data.tituloDocumentPath) &&
-                data.especialidades && 
-                data.especialidades.length > 0
-              )
+              return isPsmIntakeComplete(data)
             }
             return false
           
@@ -283,7 +271,10 @@ const FIELD_LABELS: Record<string, string> = {
   cedulaProfesional: 'Cédula profesional',
   formacionAcademica: 'Formación académica',
   experienciaAnios: 'Años de experiencia',
-  especialidades: 'Especialidades',
+  therapyStyles: 'Enfoque terapéutico',
+  especialidades: 'Especialización',
+  professionalNarrative: 'Descripción de tu práctica',
+  maxActiveUsers: 'Usuarios activos',
   cedulaDocumentPath: 'Documento de cédula o título',
   tituloDocumentPath: 'Documento de cédula o título',
 }
@@ -323,15 +314,9 @@ export function getStepBlockerKeys(
         requireField('consentToShareWithPSM')
         requireField('consentToClinicalMatching')
       } else if (role === 'psm') {
-        requireField('cedulaProfesional')
-        requireField('formacionAcademica')
-        if (data.experienciaAnios === undefined || data.experienciaAnios < 0) {
-          keys.push('experienciaAnios')
+        if (!isPsmIntakeComplete(data)) {
+          keys.push(...getPsmMissingFieldKeys(data))
         }
-        if (!data.cedulaDocumentPath && !data.tituloDocumentPath) {
-          keys.push('cedulaDocumentPath')
-        }
-        requireField('especialidades')
       }
       break
     default:

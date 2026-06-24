@@ -488,7 +488,7 @@ export default function AdminPSMPage() {
                       {/* Capacity Bar */}
                       <div className="mt-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Capacidad</span>
+                          <span className="text-sm font-medium">Usuarios activos</span>
                           <span className="text-sm text-muted-foreground">
                             {psm.capacity.current}/{psm.capacity.max} ({psm.capacity.available} disponibles)
                           </span>
@@ -664,7 +664,7 @@ export default function AdminPSMPage() {
                       </span>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Acepta pacientes</p>
+                      <p className="text-sm text-muted-foreground mb-1">Recibe usuarios</p>
                       <p>{selectedPSM.isAcceptingPatients ? 'Sí' : 'No'}</p>
                     </div>
                     {selectedPSM.adminReviewNotes && (
@@ -854,7 +854,7 @@ export default function AdminPSMPage() {
                       </p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-sm text-muted-foreground mb-2">Capacidad</p>
+                      <p className="text-sm text-muted-foreground mb-2">Usuarios activos</p>
                       <div className="w-full bg-white/10 rounded-full h-2">
                         <div 
                           className={`h-2 rounded-full transition-all duration-300 ${

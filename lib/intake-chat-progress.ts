@@ -1,4 +1,9 @@
 import type { UserRole } from '@/lib/onboarding-store'
+import {
+  PSM_FIELD_ORDER,
+  psmFieldLabel,
+  computePsmIntakeProgress,
+} from '@/lib/intake/psm-intake-v1'
 
 export const USUARIO_FIELD_ORDER = [
   'nombre',
@@ -20,28 +25,7 @@ export const USUARIO_FIELD_ORDER = [
   'consentToClinicalMatching',
 ] as const
 
-export const PSM_FIELD_ORDER = [
-  'nombre',
-  'apellido',
-  'telefono',
-  'fechaNacimiento',
-  'ciudad',
-  'pais',
-  'cedulaProfesional',
-  'formacionAcademica',
-  'experienciaAnios',
-  'especialidades',
-  'therapyStyles',
-  'languages',
-  'modalities',
-  'sessionPrice',
-  'currency',
-  'availabilityNotes',
-  'worksWithUrgencyLevels',
-  'maxActivePatients',
-  'cedulaDocumentPath',
-  'tituloDocumentPath',
-] as const
+export { PSM_FIELD_ORDER }
 
 const QUESTION_LABELS: Record<UserRole, Record<number, string>> = {
   usuario: {
@@ -50,9 +34,9 @@ const QUESTION_LABELS: Record<UserRole, Record<number, string>> = {
     3: 'Consentimientos y detalles',
   },
   psm: {
-    1: 'Datos personales y credenciales',
-    2: 'Práctica clínica y modalidades',
-    3: 'Capacidad y documentación',
+    1: 'Identidad y credenciales',
+    2: 'Tu práctica profesional',
+    3: 'Operación y capacidad',
   },
 }
 
@@ -75,18 +59,6 @@ const FIELD_LABELS: Record<string, string> = {
   consentToAIProcessing: 'Consentimiento IA',
   consentToShareWithPSM: 'Compartir con profesional',
   consentToClinicalMatching: 'Matching clínico',
-  cedulaProfesional: 'Cédula profesional',
-  formacionAcademica: 'Formación',
-  experienciaAnios: 'Años de experiencia',
-  especialidades: 'Especialidades',
-  therapyStyles: 'Enfoques',
-  modalities: 'Modalidades',
-  sessionPrice: 'Precio por sesión',
-  currency: 'Moneda',
-  worksWithUrgencyLevels: 'Niveles de urgencia',
-  maxActivePatients: 'Capacidad de pacientes',
-  cedulaDocumentPath: 'Doc. cédula',
-  tituloDocumentPath: 'Doc. título',
 }
 
 export function getFieldOrder(role: UserRole): readonly string[] {
@@ -94,7 +66,7 @@ export function getFieldOrder(role: UserRole): readonly string[] {
 }
 
 export function fieldLabel(key: string): string {
-  return FIELD_LABELS[key] ?? key
+  return FIELD_LABELS[key] ?? psmFieldLabel(key)
 }
 
 function isFilled(captured: Record<string, unknown> | null | undefined, key: string): boolean {
@@ -116,6 +88,17 @@ export function computeFieldProgress(
   nextFieldLabel: string | null
   filledKeys: string[]
 } {
+  if (role === 'psm') {
+    const p = computePsmIntakeProgress(captured as never)
+    return {
+      filledCount: p.filledCount,
+      total: p.total,
+      nextFieldKey: p.nextFieldKey,
+      nextFieldLabel: p.nextFieldLabel,
+      filledKeys: p.filledKeys,
+    }
+  }
+
   const order = getFieldOrder(role)
   const filledKeys: string[] = []
 
@@ -150,7 +133,7 @@ export function computeThreeQuestionStep(
     return {
       displayStep: 3,
       total: 3,
-      label: 'Perfil completo — listo para continuar',
+      label: 'Formulario completo — sube documentos y continúa',
       handoffReady: true,
     }
   }

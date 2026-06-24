@@ -1,6 +1,8 @@
 import type { FieldErrors } from 'react-hook-form'
 import { cn } from '@/lib/utils'
-import type { OnboardingData, Modality, UrgencyLevel } from '@/lib/onboarding-store'
+import type { OnboardingData } from '@/lib/onboarding-store'
+import { buildPsmFormDefaults } from '@/lib/intake/psm-intake-v1'
+import { psmFieldLabel } from '@/lib/intake/psm-intake-v1'
 
 export function inputFieldClass(hasError?: boolean, extra?: string) {
   return cn(
@@ -41,94 +43,13 @@ export function flattenFormErrors(
   return result
 }
 
-const PSM_FIELD_LABELS: Record<string, string> = {
-  nombre: 'Nombre',
-  apellido: 'Apellidos',
-  telefono: 'Teléfono',
-  fechaNacimiento: 'Fecha de nacimiento',
-  ciudad: 'Ciudad',
-  pais: 'País',
-  cedulaProfesional: 'Cédula profesional',
-  formacionAcademica: 'Formación académica',
-  experienciaAnios: 'Años de experiencia',
-  especialidades: 'Especialidades',
-  therapyStyles: 'Enfoques terapéuticos',
-  languages: 'Idiomas',
-  licensedCountries: 'Países donde puedes atender',
-  timezone: 'Zona horaria',
-  availabilityNotes: 'Disponibilidad',
-  modalities: 'Modalidades',
-  currency: 'Moneda',
-  worksWithUrgencyLevels: 'Niveles de urgencia',
-  maxActivePatients: 'Capacidad activa',
-  sessionPrice: 'Precio por sesión',
-}
-
 export function labelForField(field: string): string {
   const root = field.split('.')[0]
-  return PSM_FIELD_LABELS[root] || root
+  return psmFieldLabel(root)
 }
 
 export function buildPsmFormValues(data: Partial<OnboardingData>) {
-  const browserTz =
-    typeof Intl !== 'undefined'
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone
-      : 'America/Mexico_City'
-
-  const especialidades = data.especialidades || []
-  const therapyStyles =
-    data.therapyStyles && data.therapyStyles.length > 0
-      ? data.therapyStyles
-      : especialidades.length > 0
-        ? [especialidades[0]]
-        : []
-
-  const licensedCountries =
-    data.licensedCountries && data.licensedCountries.length > 0
-      ? data.licensedCountries
-      : data.pais
-        ? [data.pais]
-        : []
-
-  return {
-    nombre: data.nombre || '',
-    apellido: data.apellido || '',
-    telefono: data.telefono || '',
-    fechaNacimiento: data.fechaNacimiento || '',
-    ciudad: data.ciudad || '',
-    pais: data.pais || '',
-    cedulaProfesional: data.cedulaProfesional || '',
-    formacionAcademica: data.formacionAcademica || '',
-    experienciaAnios:
-      data.experienciaAnios !== undefined && !Number.isNaN(data.experienciaAnios)
-        ? data.experienciaAnios
-        : 0,
-    biografia: data.biografia || '',
-    especialidades,
-    therapyStyles,
-    languages: data.languages?.length ? data.languages : ['es'],
-    licensedCountries,
-    licensedRegions: data.licensedRegions || [],
-    timezone: data.timezone || browserTz,
-    availabilityNotes: data.availabilityNotes || '',
-    modalities: (data.modalities?.length ? data.modalities : ['video']) as Modality[],
-    sessionPrice: data.sessionPrice,
-    currency: data.currency || 'MXN',
-    acceptsSlidingScale: data.acceptsSlidingScale ?? false,
-    worksWithUrgencyLevels: (data.worksWithUrgencyLevels?.length
-      ? data.worksWithUrgencyLevels
-      : ['low', 'medium']) as UrgencyLevel[],
-    exclusionCriteria: data.exclusionCriteria || [],
-    isAcceptingPatients: data.isAcceptingPatients ?? false,
-    maxActivePatients:
-      data.maxActivePatients && data.maxActivePatients > 0
-        ? data.maxActivePatients
-        : 10,
-    participaSupervision: data.participaSupervision ?? false,
-    participaCursos: data.participaCursos ?? false,
-    participaInvestigacion: data.participaInvestigacion ?? false,
-    participaComunidad: data.participaComunidad ?? false,
-  }
+  return buildPsmFormDefaults(data)
 }
 
 export function normalizePhone(value: unknown): string {

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useOnboardingStore, type UserRole } from '@/lib/onboarding-store'
 import { fieldLabel } from '@/lib/intake-chat-progress'
 import { concernOptions, deriveConcernFields } from '@/lib/intake-concerns'
+import { computePsmIntakeProgress, resolveProfessionalNarrative } from '@/lib/intake/psm-intake-v1'
 
 type Props = {
   role: UserRole
@@ -108,12 +109,15 @@ export function IntakeLiveForm({
     })
   }
 
-  const filledCount = Object.entries(data).filter(([, v]) => {
-    if (v == null || v === '') return false
-    if (Array.isArray(v)) return v.length > 0
-    if (typeof v === 'boolean') return v
-    return String(v).trim().length > 0
-  }).length
+  const filledCount =
+    role === 'psm'
+      ? computePsmIntakeProgress(data).filledCount
+      : Object.entries(data).filter(([, v]) => {
+          if (v == null || v === '') return false
+          if (Array.isArray(v)) return v.length > 0
+          if (typeof v === 'boolean') return v
+          return String(v).trim().length > 0
+        }).length
 
   return (
     <div className={cn('w-full', className)}>
@@ -292,23 +296,33 @@ export function IntakeLiveForm({
                     onChange={(v) => set('formacionAcademica', v)}
                     textarea
                   />
+                  <LiveInput
+                    label={fieldLabel('professionalNarrative')}
+                    value={resolveProfessionalNarrative(data)}
+                    onChange={(v) => {
+                      set('professionalNarrative', v)
+                      set('biografia', v)
+                    }}
+                    textarea
+                    highlighted={hi('professionalNarrative')}
+                  />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <LiveInput
-                      label={fieldLabel('especialidades')}
-                      value={(data.especialidades || []).join(', ')}
-                      onChange={(v) =>
-                        set(
-                          'especialidades',
-                          v.split(',').map((s) => s.trim()).filter(Boolean)
-                        )
-                      }
-                    />
                     <LiveInput
                       label={fieldLabel('therapyStyles')}
                       value={(data.therapyStyles || []).join(', ')}
                       onChange={(v) =>
                         set(
                           'therapyStyles',
+                          v.split(',').map((s) => s.trim()).filter(Boolean)
+                        )
+                      }
+                    />
+                    <LiveInput
+                      label={fieldLabel('especialidades')}
+                      value={(data.especialidades || []).join(', ')}
+                      onChange={(v) =>
+                        set(
+                          'especialidades',
                           v.split(',').map((s) => s.trim()).filter(Boolean)
                         )
                       }
@@ -334,20 +348,13 @@ export function IntakeLiveForm({
                       }
                     />
                     <LiveInput
-                      label={fieldLabel('sessionPrice')}
-                      value={data.sessionPrice?.toString() || ''}
-                      onChange={(v) => set('sessionPrice', Number(v) || undefined)}
-                      type="number"
-                    />
-                    <LiveInput
-                      label={fieldLabel('currency')}
-                      value={data.currency || ''}
-                      onChange={(v) => set('currency', v)}
-                    />
-                    <LiveInput
-                      label={fieldLabel('maxActivePatients')}
-                      value={data.maxActivePatients?.toString() || ''}
-                      onChange={(v) => set('maxActivePatients', Number(v) || 0)}
+                      label={fieldLabel('maxActiveUsers')}
+                      value={String(data.maxActiveUsers ?? data.maxActivePatients ?? '')}
+                      onChange={(v) => {
+                        const n = Number(v) || 0
+                        set('maxActiveUsers', n)
+                        set('maxActivePatients', n)
+                      }}
                       type="number"
                     />
                   </div>

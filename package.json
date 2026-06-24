@@ -24,6 +24,7 @@
     "update-privy-id": "tsx scripts/update-privy-id.ts",
     "list-admins": "tsx scripts/list-admins.ts",
     "grant-admin": "tsx scripts/grant-admin.ts",
+    "dev:reset-onboarding": "tsx scripts/reset-onboarding-dev.ts",
     "mns:deploy": "npx hardhat run scripts/mns/deploy-mns.js --network celo",
     "mns:deploy:sepolia": "npx hardhat run scripts/mns/deploy-sepolia.js --network celoSepolia",
     "mns:deploy:testnet": "npx hardhat run scripts/mns/deploy-testnet.js --network alfajores",

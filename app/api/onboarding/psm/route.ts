@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { toInputJson } from '@/lib/prisma-json'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import {
+  PSM_INTAKE_VERSION,
+  PSM_MIN_NARRATIVE_LENGTH,
+  resolveProfessionalNarrative,
+} from '@/lib/intake/psm-intake-v1'
 
 const stringArray = z.array(z.string()).default([])
 
@@ -11,7 +16,8 @@ const psmOnboardingSchema = z.object({
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
   privyId: z.string().optional(),
-  intakeSource: z.enum(['manual', 'ai_assisted']).default('manual'),
+  intakeSource: z.enum(['manual', 'ai_assisted', 'hybrid']).default('manual'),
+  intakeVersion: z.string().default(PSM_INTAKE_VERSION),
   motusName: z.string().optional(),
   mnsTxHash: z.string().optional(),
   profileNftTxHash: z.string().optional(),
@@ -31,22 +37,23 @@ const psmOnboardingSchema = z.object({
   tituloDocumentPath: z.string().optional(),
   formacionAcademica: z.string().min(1),
   experienciaAnios: z.number().min(0),
+  professionalNarrative: z.string().min(PSM_MIN_NARRATIVE_LENGTH),
   biografia: z.string().optional(),
+
   especialidades: z.array(z.string()).min(1),
-  therapyStyles: stringArray,
+  therapyStyles: z.array(z.string()).min(1),
   languages: z.array(z.string()).default(['es']),
-  licensedCountries: stringArray,
+  licensedCountries: z.array(z.string()).min(1),
   licensedRegions: stringArray,
-  timezone: z.string().optional(),
+  timezone: z.string().min(1),
   availability: z.record(z.unknown()).default({}),
+  availabilityNotes: z.string().optional(),
   modalities: z.array(z.enum(['video', 'chat', 'in_person', 'hybrid'])).default(['video']),
-  sessionPrice: z.number().int().nonnegative().optional(),
-  currency: z.string().default('MXN'),
-  acceptsSlidingScale: z.boolean().default(false),
   worksWithUrgencyLevels: z.array(z.enum(['low', 'medium', 'high', 'crisis'])).default(['low', 'medium']),
   exclusionCriteria: stringArray,
   isAcceptingPatients: z.boolean().default(false),
   maxActivePatients: z.number().int().positive().default(10),
+  acceptsSlidingScale: z.boolean().default(false),
   participaSupervision: z.boolean().default(false),
   participaCursos: z.boolean().default(false),
   participaInvestigacion: z.boolean().default(false),
@@ -56,7 +63,9 @@ const psmOnboardingSchema = z.object({
   consentToPrivacy: z.boolean().default(true),
   consentToAIProcessing: z.boolean().default(false),
   consentToShareWithPSM: z.boolean().default(false),
-  consentToClinicalMatching: z.boolean().default(false)
+  consentToClinicalMatching: z.boolean().default(false),
+  consentPolicyVersion: z.string().default('v1'),
+  consentLocale: z.string().default('es'),
 }).superRefine((data, ctx) => {
   if (!data.cedulaDocumentPath && !data.tituloDocumentPath) {
     ctx.addIssue({
@@ -100,7 +109,8 @@ function buildPsmProfileFields(
     tituloDocumentPath: data.tituloDocumentPath,
     formacionAcademica: data.formacionAcademica,
     experienciaAnios: data.experienciaAnios,
-    biografia: data.biografia,
+    biografia: resolveProfessionalNarrative(data),
+    professionalNarrative: resolveProfessionalNarrative(data),
     especialidades: toInputJson(data.especialidades),
     verificationStatus,
     isAcceptingPatients,
@@ -112,8 +122,6 @@ function buildPsmProfileFields(
     timezone: data.timezone,
     availability: toInputJson(data.availability ?? {}),
     modalities: toInputJson(data.modalities ?? ['video']),
-    sessionPrice: data.sessionPrice,
-    currency: data.currency,
     acceptsSlidingScale: data.acceptsSlidingScale,
     worksWithUrgencyLevels: toInputJson(data.worksWithUrgencyLevels ?? ['low', 'medium']),
     exclusionCriteria: toInputJson(data.exclusionCriteria ?? []),
