@@ -4,10 +4,18 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useOnboardingStore, type UserRole } from '@/lib/onboarding-store'
+import { useOnboardingStore, type UserRole, type OnboardingData } from '@/lib/onboarding-store'
 import { fieldLabel } from '@/lib/intake-chat-progress'
 import { concernOptions, deriveConcernFields } from '@/lib/intake-concerns'
 import { computePsmIntakeProgress, resolveProfessionalNarrative, resolveWeeklyTherapyHours } from '@/lib/intake/psm-intake-v1'
+import {
+  resolveCredentialedCountries,
+  resolveCountriesWhereCanReceivePatients,
+  resolveServiceTypes,
+  resolveClinicalComplexityLevels,
+  resolveExcludedCases,
+  resolveEmergencyProtocolStatus,
+} from '@/lib/intake/psm-operations-compat'
 
 type Props = {
   role: UserRole
@@ -357,6 +365,55 @@ export function IntakeLiveForm({
                       set('maxActivePatients', n)
                     }}
                     type="number"
+                  />
+                  <LiveInput
+                    label={fieldLabel('credentialedCountries')}
+                    value={resolveCredentialedCountries(data).join(', ')}
+                    onChange={(v) =>
+                      set(
+                        'credentialedCountries',
+                        v.split(',').map((s) => s.trim()).filter(Boolean)
+                      )
+                    }
+                  />
+                  <LiveInput
+                    label={fieldLabel('countriesWhereCanReceivePatients')}
+                    value={resolveCountriesWhereCanReceivePatients(data).join(', ')}
+                    onChange={(v) =>
+                      set(
+                        'countriesWhereCanReceivePatients',
+                        v.split(',').map((s) => s.trim()).filter(Boolean)
+                      )
+                    }
+                  />
+                  <LiveInput
+                    label={fieldLabel('serviceTypes')}
+                    value={resolveServiceTypes(data).join(', ')}
+                    onChange={(v) => set('serviceTypes', v.split(',').map((s) => s.trim()).filter(Boolean))}
+                  />
+                  <LiveInput
+                    label={fieldLabel('clinicalComplexityLevels')}
+                    value={resolveClinicalComplexityLevels(data).join(', ')}
+                    onChange={(v) =>
+                      set(
+                        'clinicalComplexityLevels',
+                        v.split(',').map((s) => s.trim()).filter(Boolean)
+                      )
+                    }
+                  />
+                  <LiveInput
+                    label={fieldLabel('excludedCases')}
+                    value={resolveExcludedCases(data).join(', ')}
+                    onChange={(v) => {
+                      const next = v.split(',').map((s) => s.trim()).filter(Boolean)
+                      set('excludedCases', next)
+                      set('exclusionCriteria', next)
+                    }}
+                  />
+                  <LiveInput
+                    label={fieldLabel('emergencyProtocolStatus')}
+                    value={resolveEmergencyProtocolStatus(data) || ''}
+                    onChange={(v) => set('emergencyProtocolStatus', v as OnboardingData['emergencyProtocolStatus'])}
                   />
                   {(data.cedulaDocumentPath || data.tituloDocumentPath) && (
                     <div className="text-xs text-emerald-300/90 space-y-1">

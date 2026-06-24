@@ -23,10 +23,22 @@ import {
   CheckCircle,
   XCircle,
   PauseCircle,
-  RefreshCw
+  RefreshCw,
+  Shield,
+  AlertTriangle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { fetchSignedDocumentUrl } from '@/lib/storage-client'
+import type { PsmAdminOperationsView } from '@/lib/intake/psm-admin-view'
+import {
+  getPaisLabel,
+  getClinicalComplexityLabel,
+  getServiceTypeLabel,
+  getExcludedCaseLabel,
+  getEmergencyProtocolLabel,
+  getTherapyStyleLabel,
+  PSM_LEGAL_DECLARATIONS,
+} from '@/lib/intake/psm-intake-options'
 
 interface PSM {
   id: string
@@ -41,6 +53,12 @@ interface PSM {
   ciudad: string
   pais: string
   bio: string
+  professionalNarrative: string | null
+  therapyStyles: string[]
+  languages: string[]
+  timezone: string | null
+  acceptsSlidingScale: boolean
+  operations: PsmAdminOperationsView
   cedulaProfesional: string
   cedulaDocumentPath: string | null
   tituloDocumentPath: string | null
@@ -423,6 +441,12 @@ export default function AdminPSMPage() {
                         <span className={`px-2 py-1 rounded text-xs ${verificationClass(psm.verificationStatus)}`}>
                           {verificationLabel(psm.verificationStatus)}
                         </span>
+                        {psm.verificationStatus === 'pending' && psm.operations.requiresCrossBorderReview && (
+                          <span className="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Revisión transfronteriza
+                          </span>
+                        )}
                         {!psm.registrationCompleted && (
                           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">
                             Pendiente
@@ -734,7 +758,150 @@ export default function AdminPSMPage() {
                         <p>{selectedPSM.bio}</p>
                       </div>
                     )}
+                    {selectedPSM.professionalNarrative &&
+                      selectedPSM.professionalNarrative !== selectedPSM.bio && (
+                        <div className="col-span-2">
+                          <p className="text-sm text-muted-foreground mb-1">Descripción de práctica</p>
+                          <p>{selectedPSM.professionalNarrative}</p>
+                        </div>
+                      )}
                   </div>
+                </GlassCard>
+
+                {/* Operations & clinical scope — admission review */}
+                <GlassCard className="p-4 border-l-4 border-amber-500/50">
+                  <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-amber-400" />
+                    Operación, jurisdicción y límites clínicos
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Declaración profesional del registro. MotusDAO debe revisar credenciales, alcance y
+                    riesgo antes de aprobar o asignar pacientes.
+                  </p>
+
+                  {selectedPSM.operations.requiresCrossBorderReview && (
+                    <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>
+                        El profesional declara recibir pacientes en país(es) distinto(s) a su
+                        habilitación registrada. Requiere revisión adicional antes de aprobar.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <AdminField
+                      label="Zona horaria"
+                      value={selectedPSM.operations.timezone || selectedPSM.timezone || 'No indicada'}
+                    />
+                    <AdminField
+                      label="Horas semanales para terapia"
+                      value={
+                        selectedPSM.operations.weeklyTherapyHours != null
+                          ? `${selectedPSM.operations.weeklyTherapyHours} h/semana`
+                          : 'No indicado'
+                      }
+                    />
+                    <AdminField
+                      label="Cupo máximo de usuarios activos"
+                      value={String(selectedPSM.operations.maxActivePatients)}
+                    />
+                    <AdminField
+                      label="Escala flexible de honorarios"
+                      value={selectedPSM.acceptsSlidingScale ? 'Sí' : 'No'}
+                    />
+                  </div>
+
+                  <div className="mt-4 space-y-4">
+                    <AdminTagField
+                      label="País(es) con cédula, licencia o registro"
+                      tags={selectedPSM.operations.credentialedCountries.map(getPaisLabel)}
+                    />
+                    <AdminTagField
+                      label="Países donde declara poder recibir pacientes"
+                      tags={selectedPSM.operations.countriesWhereCanReceivePatients.map(getPaisLabel)}
+                    />
+                    <AdminTagField
+                      label="Tipos de servicio en MotusDAO"
+                      tags={selectedPSM.operations.serviceTypes.map(getServiceTypeLabel)}
+                    />
+                    <AdminTagField
+                      label="Complejidad clínica aceptada en teleterapia"
+                      tags={selectedPSM.operations.clinicalComplexityLevels.map(getClinicalComplexityLabel)}
+                    />
+                    <AdminTagField
+                      label="Casos excluidos / derivación"
+                      tags={selectedPSM.operations.excludedCases.map(getExcludedCaseLabel)}
+                      tone="amber"
+                    />
+                    <AdminField
+                      label="Protocolo de derivación o emergencia"
+                      value={
+                        selectedPSM.operations.emergencyProtocolStatus
+                          ? getEmergencyProtocolLabel(selectedPSM.operations.emergencyProtocolStatus)
+                          : 'No indicado'
+                      }
+                    />
+                    {selectedPSM.operations.legacyAvailabilityNotes && (
+                      <AdminField
+                        label="Disponibilidad (registro anterior)"
+                        value={selectedPSM.operations.legacyAvailabilityNotes}
+                      />
+                    )}
+                  </div>
+
+                  {selectedPSM.therapyStyles.length > 0 && (
+                    <div className="mt-4">
+                      <AdminTagField
+                        label="Enfoque terapéutico"
+                        tags={selectedPSM.therapyStyles.map(getTherapyStyleLabel)}
+                      />
+                    </div>
+                  )}
+
+                  {selectedPSM.languages.length > 0 && (
+                    <div className="mt-4">
+                      <AdminTagField label="Idiomas" tags={selectedPSM.languages} />
+                    </div>
+                  )}
+                </GlassCard>
+
+                {/* Legal declarations */}
+                <GlassCard className="p-4 border-l-4 border-mauve-500/50">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-mauve-400" />
+                    Declaraciones legales
+                    {selectedPSM.operations.legalDeclarationsComplete ? (
+                      <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400">
+                        Completas
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-300">
+                        Incompletas o no registradas
+                      </span>
+                    )}
+                  </h3>
+                  <ul className="space-y-2">
+                    {PSM_LEGAL_DECLARATIONS.map((item) => {
+                      const accepted = Boolean(
+                        selectedPSM.operations.legalDeclarations[
+                          item.key as keyof typeof selectedPSM.operations.legalDeclarations
+                        ]
+                      )
+                      return (
+                        <li key={item.key} className="flex items-start gap-2 text-sm">
+                          {accepted ? (
+                            <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-400/80 mt-0.5 shrink-0" />
+                          )}
+                          <span className={accepted ? 'text-white' : 'text-muted-foreground'}>
+                            {item.label}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
                 </GlassCard>
 
                 {/* Professional Info */}
@@ -895,6 +1062,47 @@ export default function AdminPSMPage() {
             </GlassCard>
           </motion.div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function AdminField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-1">{label}</p>
+      <p className="text-sm text-white">{value}</p>
+    </div>
+  )
+}
+
+function AdminTagField({
+  label,
+  tags,
+  tone = 'purple',
+}: {
+  label: string
+  tags: string[]
+  tone?: 'purple' | 'amber'
+}) {
+  const chipClass =
+    tone === 'amber'
+      ? 'bg-amber-500/20 text-amber-300'
+      : 'bg-purple-500/20 text-purple-300'
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-2">{label}</p>
+      {tags.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag) => (
+            <span key={tag} className={`px-2 py-1 rounded text-xs ${chipClass}`}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">No indicado</p>
       )}
     </div>
   )

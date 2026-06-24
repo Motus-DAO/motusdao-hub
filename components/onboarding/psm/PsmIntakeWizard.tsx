@@ -97,7 +97,11 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
                 />
               </div>
             )}
-            <PsmSubStepper currentStep={wizardStep} className="mb-6" />
+            <PsmSubStepper
+              currentStep={wizardStep}
+              onStepClick={setWizardStep}
+              className="mb-6"
+            />
             {wizardStep === 0 && (
               <PsmIdentityStep onContinue={() => setWizardStep(1)} />
             )}
@@ -123,13 +127,15 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
         )}
 
         <div className="flex justify-start pt-6 mt-6 border-t border-white/10">
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
-          >
-            Atrás
-          </button>
+          {(intakeMode === 'ai' || wizardStep === 0) && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+            >
+              Atrás
+            </button>
+          )}
         </div>
       </GlassCard>
     </motion.div>

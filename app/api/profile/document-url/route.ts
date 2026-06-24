@@ -28,24 +28,31 @@ export async function GET(request: NextRequest) {
     const isAdmin = !adminDenied
 
     if (!isAdmin) {
-      if (!session?.userId) {
+      if (!session) {
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
       }
 
-      if (userId && session.userId !== userId) {
+      if (userId && session.userId && session.userId !== userId) {
         return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: session.userId },
-        select: { eoaAddress: true },
-      })
+      if (session.userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: session.userId },
+          select: { eoaAddress: true },
+        })
 
-      if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        if (!user) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+
+        assertDocumentOwnership(storagePath, user.eoaAddress)
+      } else if (session.eoaAddress) {
+        // Onboarding: SIWE session with wallet only (user not in DB yet)
+        assertDocumentOwnership(storagePath, session.eoaAddress)
+      } else {
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
       }
-
-      assertDocumentOwnership(storagePath, user.eoaAddress)
     } else if (userId) {
       const user = await prisma.user.findUnique({
         where: { id: userId },

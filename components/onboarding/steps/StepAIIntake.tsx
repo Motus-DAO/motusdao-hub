@@ -145,23 +145,48 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
         )
       }
       const intakeBody = body as IntakeResponse
-      const merged = { ...data, ...intakeBody.extractedData } as Partial<OnboardingData>
+      const extracted = intakeBody.extractedData as Partial<OnboardingData>
+      const legacyLicensed = extracted.licensedCountries
+      const merged = {
+        ...data,
+        ...extracted,
+        credentialedCountries:
+          extracted.credentialedCountries ??
+          (legacyLicensed && !extracted.countriesWhereCanReceivePatients
+            ? legacyLicensed
+            : data.credentialedCountries),
+        countriesWhereCanReceivePatients:
+          extracted.countriesWhereCanReceivePatients ??
+          extracted.licensedRegions ??
+          legacyLicensed ??
+          data.countriesWhereCanReceivePatients,
+        excludedCases:
+          extracted.excludedCases ?? extracted.exclusionCriteria ?? data.excludedCases,
+        clinicalComplexityLevels:
+          extracted.clinicalComplexityLevels ??
+          (extracted.worksWithUrgencyLevels as string[] | undefined) ??
+          data.clinicalComplexityLevels,
+      } as Partial<OnboardingData>
 
       updateData({
-        ...intakeBody.extractedData,
+        ...extracted,
+        credentialedCountries: merged.credentialedCountries,
+        countriesWhereCanReceivePatients: merged.countriesWhereCanReceivePatients,
+        licensedCountries: merged.credentialedCountries,
+        licensedRegions: merged.countriesWhereCanReceivePatients,
+        excludedCases: merged.excludedCases,
+        exclusionCriteria: merged.excludedCases,
+        clinicalComplexityLevels: merged.clinicalComplexityLevels,
         professionalNarrative:
-          (intakeBody.extractedData.professionalNarrative as string | undefined) ??
-          (intakeBody.extractedData.biografia as string | undefined),
-        biografia:
-          (intakeBody.extractedData.professionalNarrative as string | undefined) ??
-          (intakeBody.extractedData.biografia as string | undefined),
+          extracted.professionalNarrative ?? extracted.biografia,
+        biografia: extracted.professionalNarrative ?? extracted.biografia,
         maxActiveUsers:
-          (intakeBody.extractedData.maxActiveUsers as number | undefined) ??
-          (intakeBody.extractedData.maxActivePatients as number | undefined),
+          extracted.maxActiveUsers ?? extracted.maxActivePatients,
         maxActivePatients:
-          (intakeBody.extractedData.maxActiveUsers as number | undefined) ??
-          (intakeBody.extractedData.maxActivePatients as number | undefined),
-        weeklyTherapyHours: intakeBody.extractedData.weeklyTherapyHours as number | undefined,
+          extracted.maxActiveUsers ?? extracted.maxActivePatients,
+        weeklyTherapyHours: extracted.weeklyTherapyHours,
+        emergencyProtocolStatus: extracted.emergencyProtocolStatus,
+        serviceTypes: extracted.serviceTypes,
         intakeSource: 'ai_assisted',
         availability: buildPsmAvailability(merged),
       })

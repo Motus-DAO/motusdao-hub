@@ -29,7 +29,7 @@ export async function uploadProfileAvatar(params: UploadAvatarParams) {
   if (params.userId) formData.append('userId', params.userId)
   if (params.eoaAddress) formData.append('eoaAddress', params.eoaAddress)
 
-  const response = await fetch('/api/profile/upload-avatar', {
+  const response = await authFetch('/api/profile/upload-avatar', {
     method: 'POST',
     body: formData,
   })
@@ -47,7 +47,7 @@ export async function uploadProfessionalDocument(params: UploadDocumentParams) {
   if (params.userId) formData.append('userId', params.userId)
   if (params.eoaAddress) formData.append('eoaAddress', params.eoaAddress)
 
-  const response = await fetch('/api/profile/upload-document', {
+  const response = await authFetch('/api/profile/upload-document', {
     method: 'POST',
     body: formData,
   })

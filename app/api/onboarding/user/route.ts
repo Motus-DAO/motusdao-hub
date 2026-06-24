@@ -5,6 +5,7 @@ import { toInputJson } from '@/lib/prisma-json'
 import { deriveConcernFields } from '@/lib/intake-concerns'
 import { createCrisisEventIfNeeded } from '@/lib/crisis'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
 
 const stringArray = z.array(z.string()).default([])
 const optionalStringArray = z.array(z.string()).optional()
@@ -66,37 +67,33 @@ export async function POST(request: NextRequest) {
       problematica: data.problematica,
     })
 
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: data.email },
-          { eoaAddress: data.eoaAddress }
-        ]
-      },
-      include: {
-        profile: true,
-        patient: true
-      }
+    const identity = await resolveOnboardingIdentity({
+      email: data.email,
+      eoaAddress: data.eoaAddress,
     })
 
-    if (
-      existingUser &&
-      (existingUser.email !== data.email || existingUser.eoaAddress !== data.eoaAddress)
-    ) {
+    if (identity.status === 'conflict') {
       return NextResponse.json(
-        {
-          error: 'Ya existe una cuenta con este correo o wallet, pero no pertenecen al mismo registro.',
-          code: 'IDENTITY_CONFLICT'
-        },
+        { error: identity.message, code: identity.code },
         { status: 409 }
       )
     }
+
+    const normalizedEoa = identity.normalizedEoa
+    const existingUser =
+      identity.status === 'update'
+        ? await prisma.user.findUnique({
+            where: { id: identity.user.id },
+            include: { profile: true, patient: true },
+          })
+        : null
 
     const result = await prisma.$transaction(async (tx) => {
       const user = existingUser
         ? await tx.user.update({
             where: { id: existingUser.id },
             data: {
+              ...(identity.status === 'update' ? identity.identitySync : {}),
               role: 'usuario',
               smartWalletAddress: data.smartWalletAddress || existingUser.smartWalletAddress,
               registrationCompleted: true,
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
             data: {
               role: 'usuario',
               email: data.email,
-              eoaAddress: data.eoaAddress,
+              eoaAddress: normalizedEoa,
               smartWalletAddress: data.smartWalletAddress || null,
               registrationCompleted: true,
               onboardingStatus: 'active',

@@ -6,6 +6,7 @@ type Option = { value: string; label: string }
 
 type Props = {
   label: string
+  hint?: string
   options: readonly Option[]
   selected: string[]
   onChange: (next: string[]) => void
@@ -15,6 +16,7 @@ type Props = {
 
 export function PsmChipGroup({
   label,
+  hint,
   options,
   selected,
   onChange,
@@ -28,7 +30,8 @@ export function PsmChipGroup({
 
   return (
     <div className={cn(hasError && 'rounded-xl border-2 border-red-500/60 bg-red-500/5 p-2')}>
-      <label className="block text-sm font-medium mb-2">{label}</label>
+      <label className="block text-sm font-medium mb-1">{label}</label>
+      {hint && <p className="text-xs text-muted-foreground mb-2">{hint}</p>}
       <div
         className={cn(
           'grid gap-2',

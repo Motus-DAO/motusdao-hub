@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { asStringArray } from '@/lib/prisma-json'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { isVerificationStatus } from '@/lib/psm-verification'
+import { buildPsmAdminOperationsView } from '@/lib/intake/psm-admin-view'
 
 export async function GET(request: NextRequest) {
   try {
@@ -78,6 +79,8 @@ export async function GET(request: NextRequest) {
         }
       }, 0)
 
+      const operations = buildPsmAdminOperationsView(psm.psm)
+
       return {
         id: psm.id,
         email: psm.email,
@@ -91,6 +94,12 @@ export async function GET(request: NextRequest) {
         ciudad: psm.profile?.ciudad || '',
         pais: psm.profile?.pais || '',
         bio: psm.psm?.biografia || psm.profile?.bio || '',
+        professionalNarrative: operations.professionalNarrative,
+        therapyStyles: operations.therapyStyles,
+        languages: operations.languages,
+        timezone: operations.timezone,
+        acceptsSlidingScale: operations.acceptsSlidingScale,
+        operations,
         cedulaProfesional: psm.psm?.cedulaProfesional || '',
         cedulaDocumentPath: psm.psm?.cedulaDocumentPath || null,
         tituloDocumentPath: psm.psm?.tituloDocumentPath || null,

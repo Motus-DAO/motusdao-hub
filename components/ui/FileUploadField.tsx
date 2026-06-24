@@ -25,6 +25,20 @@ function isImageAccept(accept: string): boolean {
   return accept.includes('image/')
 }
 
+function formatUploadError(message: string): string {
+  const normalized = message.trim()
+  if (normalized === 'Authentication required') {
+    return 'Falta verificar tu wallet: firma el mensaje de verificación (arriba en el paso de conexión o en esta pantalla).'
+  }
+  if (normalized === 'No file provided') {
+    return 'No se seleccionó ningún archivo.'
+  }
+  if (normalized === 'Error al subir el archivo') {
+    return 'No se pudo subir el archivo. Intenta de nuevo.'
+  }
+  return normalized
+}
+
 export function FileUploadField({
   label,
   description,
@@ -40,6 +54,9 @@ export function FileUploadField({
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const [justUploaded, setJustUploaded] = useState(false)
+
+  const isUploaded = Boolean(fileName)
 
   useEffect(() => {
     return () => {
@@ -47,29 +64,52 @@ export function FileUploadField({
     }
   }, [localPreview])
 
+  useEffect(() => {
+    if (isUploaded) {
+      setJustUploaded(true)
+      setError(null)
+    }
+  }, [isUploaded])
+
   const displayPreview = localPreview || previewUrl
-  const showImagePreview = Boolean(displayPreview && (isImageAccept(accept) || previewUrl))
+  const showImagePreview = Boolean(
+    displayPreview && (isImageAccept(accept) || previewUrl) && (isUploading || isUploaded)
+  )
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
-    if (localPreview) URL.revokeObjectURL(localPreview)
-    if (isImageFile(file)) {
-      setLocalPreview(URL.createObjectURL(file))
-    } else {
+    let objectUrl: string | null = null
+    if (localPreview) {
+      URL.revokeObjectURL(localPreview)
       setLocalPreview(null)
+    }
+
+    if (isImageFile(file)) {
+      objectUrl = URL.createObjectURL(file)
+      setLocalPreview(objectUrl)
     }
 
     setIsUploading(true)
     setError(null)
+    setJustUploaded(false)
 
     try {
       await onUpload(file)
+      setJustUploaded(true)
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+        setLocalPreview(null)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al subir el archivo')
-      if (localPreview) {
-        URL.revokeObjectURL(localPreview)
+      const message = formatUploadError(
+        err instanceof Error ? err.message : 'Error al subir el archivo'
+      )
+      setError(message)
+      setJustUploaded(false)
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
         setLocalPreview(null)
       }
     } finally {
@@ -83,17 +123,21 @@ export function FileUploadField({
       URL.revokeObjectURL(localPreview)
       setLocalPreview(null)
     }
+    setError(null)
+    setJustUploaded(false)
     onClear?.()
   }
 
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium">{label}</label>
-      {description && (
-        <p className="text-sm text-muted-foreground">{description}</p>
-      )}
+  const showSuccess = isUploaded && !error && !isUploading
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-sm font-medium">{label}</label>
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           disabled={disabled || isUploading}
@@ -105,7 +149,7 @@ export function FileUploadField({
           ) : (
             <Upload className="h-4 w-4" />
           )}
-          {fileName ? 'Reemplazar archivo' : 'Seleccionar archivo'}
+          {isUploaded ? 'Reemplazar archivo' : 'Seleccionar archivo'}
         </button>
 
         <input
@@ -117,32 +161,61 @@ export function FileUploadField({
           onChange={handleFileChange}
         />
 
-        {fileName && (
-          <div className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-            <div className="flex min-w-0 items-center gap-2 text-sm text-emerald-300">
-              {fileName.endsWith('.pdf') ? (
-                <FileText className="h-4 w-4 shrink-0" />
-              ) : (
-                <CheckCircle className="h-4 w-4 shrink-0" />
-              )}
-              <span className="truncate">{fileName}</span>
-            </div>
-            {onClear && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-muted-foreground transition hover:text-white"
-                aria-label="Quitar archivo"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+        {isUploading && (
+          <span className="text-sm text-muted-foreground">Subiendo archivo…</span>
         )}
       </div>
 
+      {showSuccess && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-500/35 bg-emerald-500/15 px-4 py-3">
+          <div className="flex min-w-0 items-start gap-2 text-sm text-emerald-100">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+            <div className="min-w-0">
+              <p className="font-medium text-emerald-200">
+                {justUploaded ? 'Documento subido correctamente' : 'Documento guardado'}
+              </p>
+              <p className="truncate text-emerald-300/90">{fileName}</p>
+            </div>
+          </div>
+          {onClear && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="shrink-0 rounded-lg p-1.5 text-emerald-300/80 transition hover:bg-emerald-500/20 hover:text-white"
+              aria-label="Quitar documento"
+              title="Quitar documento"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-500/35 bg-red-500/10 px-4 py-3">
+          <div className="flex min-w-0 items-start gap-2 text-sm">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            <div>
+              <p className="font-medium text-red-300">No se pudo subir el archivo</p>
+              <p className="text-red-200/90">{error}</p>
+            </div>
+          </div>
+          {(localPreview || isUploaded) && onClear && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="shrink-0 rounded-lg p-1.5 text-red-300/80 transition hover:bg-red-500/20 hover:text-white"
+              aria-label="Quitar selección"
+              title="Quitar selección"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {showImagePreview && displayPreview && (
-        <div className="relative mt-2 inline-block overflow-hidden rounded-xl border border-white/10 bg-black/20">
+        <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 bg-black/20">
           <Image
             src={displayPreview}
             alt={`Vista previa de ${label}`}
@@ -151,12 +224,18 @@ export function FileUploadField({
             className="h-40 w-auto max-w-full object-contain"
             unoptimized
           />
-          {onClear && fileName && (
+          {isUploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <Loader className="h-6 w-6 animate-spin text-white" />
+            </div>
+          )}
+          {onClear && isUploaded && !isUploading && (
             <button
               type="button"
               onClick={handleClear}
-              className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white/80 transition hover:bg-black/80"
+              className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white/90 transition hover:bg-black/90"
               aria-label="Quitar imagen"
+              title="Quitar documento"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -164,21 +243,14 @@ export function FileUploadField({
         </div>
       )}
 
-      {fileName && !showImagePreview && fileName.match(/\.(pdf|doc|docx)$/i) && (
-        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-          <FileText className="h-5 w-5 shrink-0 text-mauve-400" />
-          <span>Documento cargado — se guardará con tu perfil</span>
+      {showSuccess && fileName?.match(/\.pdf$/i) && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-200/90">
+          <FileText className="h-4 w-4 shrink-0 text-emerald-400" />
+          <span>PDF listo para verificación administrativa</span>
         </div>
       )}
 
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-
-      {error && (
-        <p className="flex items-center gap-1 text-sm text-red-400">
-          <AlertCircle className="h-4 w-4" />
-          <span>{error}</span>
-        </p>
-      )}
+      {hint && !showSuccess && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }

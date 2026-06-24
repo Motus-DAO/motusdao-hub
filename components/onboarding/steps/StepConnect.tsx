@@ -16,6 +16,7 @@ import {
 import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { useOnboardingStore, isValidCeloAddress } from '@/lib/onboarding-store'
 import { celoMainnet } from '@/lib/celo'
 import { 
@@ -44,6 +45,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
   const { wallets } = useWaaPWallets()
   const { data, updateData } = useOnboardingStore()
   const [isConnecting, setIsConnecting] = useState(false)
+  const [siweSessionReady, setSiweSessionReady] = useState(false)
 
   const {
     register,
@@ -187,7 +189,8 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     !!eoaAddress &&
     isValidCeloAddress(eoaAddress) &&
     hasEmail &&
-    termsAccepted
+    termsAccepted &&
+    siweSessionReady
 
   // Show login screen if not authenticated
   if (!authenticated) {
@@ -353,6 +356,8 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
               </div>
               {eoaAddress && <CheckCircle className="w-5 h-5 text-green-400" />}
             </div>
+
+            <SiweSessionBanner compact onReadyChange={setSiweSessionReady} />
           </div>
 
           {/* Terms and Privacy */}

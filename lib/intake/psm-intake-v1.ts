@@ -11,14 +11,35 @@
 import { z } from 'zod'
 import type { OnboardingData, IntakeSource } from '@/lib/onboarding-store'
 import { resolvePsmTimezoneDefault } from '@/lib/intake/psm-timezone-options'
+import {
+  arePsmLegalDeclarationsComplete,
+  mapClinicalComplexityToUrgencyLevels,
+  resolveClinicalComplexityLevels,
+  resolveCountriesWhereCanReceivePatients,
+  resolveCredentialedCountries,
+  resolveEmergencyProtocolStatus,
+  resolveExcludedCases,
+  resolveLegalDeclarations,
+  resolveServiceTypes,
+} from '@/lib/intake/psm-operations-compat'
 
 export const PSM_INTAKE_VERSION = 'psm_v1' as const
 export const PSM_MIN_NARRATIVE_LENGTH = 80
 export const PSM_MIN_WEEKLY_THERAPY_HOURS = 1
 export const PSM_MAX_WEEKLY_THERAPY_HOURS = 80
 
-const stringArray = z.array(z.string()).default([])
-const urgencyEnum = z.enum(['low', 'medium', 'high', 'crisis'])
+const clinicalComplexityEnum = z.enum([
+  'low_complexity',
+  'medium_complexity',
+  'high_with_support',
+  'no_active_crisis',
+])
+const emergencyProtocolEnum = z.enum([
+  'own_protocol',
+  'institutional_protocol',
+  'not_yet',
+  'want_motus_guidance',
+])
 
 /** Block A — identity */
 export const psmIdentityFields = z.object({
@@ -56,10 +77,6 @@ export const psmClinicalScopeFields = z.object({
   especialidades: z.array(z.string()).min(1, 'Selecciona al menos una especialidad'),
   therapyStyles: z.array(z.string()).min(1, 'Selecciona al menos un enfoque terapéutico'),
   languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
-  licensedCountries: z.array(z.string()).min(1, 'Selecciona al menos un país donde puedes atender'),
-  licensedRegions: stringArray,
-  worksWithUrgencyLevels: z.array(urgencyEnum).min(1, 'Selecciona al menos un nivel de urgencia'),
-  exclusionCriteria: stringArray,
 })
 
 /** Block E — operations */
@@ -73,7 +90,21 @@ export const psmOperationsFields = z.object({
       PSM_MAX_WEEKLY_THERAPY_HOURS,
       `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas semanales`
     ),
-  maxActiveUsers: z.number().int().positive('Los usuarios activos deben ser mayor a 0'),
+  maxActiveUsers: z.number().int().positive('El cupo máximo debe ser mayor a 0'),
+  credentialedCountries: z
+    .array(z.string())
+    .min(1, 'Selecciona al menos un país con cédula, licencia o registro'),
+  countriesWhereCanReceivePatients: z
+    .array(z.string())
+    .min(1, 'Selecciona al menos un país donde declaras poder recibir pacientes'),
+  serviceTypes: z.array(z.string()).min(1, 'Selecciona al menos un tipo de servicio'),
+  clinicalComplexityLevels: z
+    .array(clinicalComplexityEnum)
+    .min(1, 'Selecciona al menos un nivel de complejidad clínica'),
+  excludedCases: z
+    .array(z.string())
+    .min(1, 'Selecciona al menos un caso que no tomas o que requiere derivación'),
+  emergencyProtocolStatus: emergencyProtocolEnum,
   isAcceptingUsers: z.boolean().default(false),
   acceptsSlidingScale: z.boolean().default(false),
 })
@@ -128,6 +159,8 @@ export const psmIntakeV1Schema = psmIdentityFields
     }
   })
 
+export { arePsmLegalDeclarationsComplete, resolveLegalDeclarations } from '@/lib/intake/psm-operations-compat'
+
 export type PsmIntakeV1 = z.infer<typeof psmIntakeV1Schema>
 
 export const PSM_FIELD_ORDER = [
@@ -144,11 +177,15 @@ export const PSM_FIELD_ORDER = [
   'therapyStyles',
   'especialidades',
   'languages',
-  'licensedCountries',
   'timezone',
   'weeklyTherapyHours',
-  'worksWithUrgencyLevels',
   'maxActiveUsers',
+  'credentialedCountries',
+  'countriesWhereCanReceivePatients',
+  'serviceTypes',
+  'clinicalComplexityLevels',
+  'excludedCases',
+  'emergencyProtocolStatus',
   'cedulaDocumentPath',
   'tituloDocumentPath',
 ] as const
@@ -167,13 +204,19 @@ export const PSM_FIELD_LABELS: Record<string, string> = {
   therapyStyles: 'Enfoque terapéutico',
   especialidades: 'Especialización',
   languages: 'Idiomas',
-  licensedCountries: 'Países donde puedes atender',
-  licensedRegions: 'Regiones con licencia',
+  credentialedCountries: 'País(es) con cédula, licencia o registro',
+  countriesWhereCanReceivePatients: 'Países donde declaras poder recibir pacientes',
+  serviceTypes: 'Tipos de servicio en MotusDAO',
+  clinicalComplexityLevels: 'Complejidad clínica en teleterapia',
+  excludedCases: 'Casos que no tomas o que requieren derivación',
+  emergencyProtocolStatus: 'Protocolo de derivación o emergencia',
   timezone: 'Zona horaria',
   weeklyTherapyHours: 'Horas semanales para terapia',
-  worksWithUrgencyLevels: 'Niveles de urgencia',
-  maxActiveUsers: 'Usuarios activos',
+  maxActiveUsers: 'Cupo máximo de usuarios activos',
   exclusionCriteria: 'Casos que no tomas',
+  worksWithUrgencyLevels: 'Niveles de urgencia',
+  licensedCountries: 'Países con cédula/licencia',
+  licensedRegions: 'Países de recepción declarada',
   cedulaDocumentPath: 'Documento de cédula',
   tituloDocumentPath: 'Documento de título',
   isAcceptingUsers: 'Disponible para recibir usuarios',
@@ -201,16 +244,34 @@ export function resolveWeeklyTherapyHours(data: Partial<OnboardingData>): number
 }
 
 export function buildPsmAvailability(data: Partial<OnboardingData>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+
   const hours = resolveWeeklyTherapyHours(data)
-  if (hours != null && hours > 0) {
-    return { weeklyTherapyHours: hours }
-  }
-  if (data.availabilityNotes?.trim()) {
-    return { notes: data.availabilityNotes.trim() }
-  }
+  if (hours != null && hours > 0) payload.weeklyTherapyHours = hours
+
+  const serviceTypes = resolveServiceTypes(data)
+  if (serviceTypes.length > 0) payload.serviceTypes = serviceTypes
+
+  const complexity = resolveClinicalComplexityLevels(data)
+  if (complexity.length > 0) payload.clinicalComplexityLevels = complexity
+
+  const excluded = resolveExcludedCases(data)
+  if (excluded.length > 0) payload.excludedCases = excluded
+
+  const protocol = resolveEmergencyProtocolStatus(data)
+  if (protocol) payload.emergencyProtocolStatus = protocol
+
+  const legal = resolveLegalDeclarations(data)
+  if (Object.keys(legal).length > 0) payload.legalDeclarations = legal
+
+  if (data.availabilityNotes?.trim()) payload.notes = data.availabilityNotes.trim()
+
+  if (Object.keys(payload).length > 0) return payload
+
   if (data.availability && Object.keys(data.availability).length > 0) {
     return data.availability
   }
+
   return {}
 }
 
@@ -229,6 +290,24 @@ function isFieldFilled(data: Partial<OnboardingData>, key: string): boolean {
       hours >= PSM_MIN_WEEKLY_THERAPY_HOURS &&
       hours <= PSM_MAX_WEEKLY_THERAPY_HOURS
     )
+  }
+  if (key === 'credentialedCountries') {
+    return resolveCredentialedCountries(data).length > 0
+  }
+  if (key === 'countriesWhereCanReceivePatients') {
+    return resolveCountriesWhereCanReceivePatients(data).length > 0
+  }
+  if (key === 'serviceTypes') {
+    return resolveServiceTypes(data).length > 0
+  }
+  if (key === 'clinicalComplexityLevels') {
+    return resolveClinicalComplexityLevels(data).length > 0
+  }
+  if (key === 'excludedCases') {
+    return resolveExcludedCases(data).length > 0
+  }
+  if (key === 'emergencyProtocolStatus') {
+    return Boolean(resolveEmergencyProtocolStatus(data))
   }
   if (key === 'cedulaDocumentPath' || key === 'tituloDocumentPath') {
     return Boolean(data.cedulaDocumentPath || data.tituloDocumentPath)
@@ -281,12 +360,19 @@ const PSM_FIELD_HINTS: Record<string, string> = {
   therapyStyles: 'Selecciona un enfoque arriba o escríbelo en el campo abierto (cómo trabajas).',
   especialidades: 'Indica en qué temas o poblaciones te especializas, arriba o en el campo abierto.',
   languages: 'Indica al menos un idioma en el que atiendes.',
-  licensedCountries: 'Marca los países donde puedes atender legalmente.',
+  credentialedCountries: 'Marca los países donde tienes cédula, licencia o registro profesional.',
+  countriesWhereCanReceivePatients:
+    'Declara en qué países podrías recibir pacientes. MotusDAO revisará credenciales y alcance antes de asignar.',
+  serviceTypes: 'Selecciona al menos un tipo de servicio que ofrecerás en MotusDAO.',
+  clinicalComplexityLevels:
+    'Indica qué complejidad clínica puedes atender con seguridad en teleterapia.',
+  excludedCases:
+    'Selecciona al menos un tipo de caso que no tomas o escríbelo en el campo abierto.',
+  emergencyProtocolStatus: 'Indica si cuentas con un protocolo de derivación o emergencia.',
   timezone: 'Selecciona tu país y ciudad en la lista de zonas horarias.',
   weeklyTherapyHours:
     'Indica cuántas horas a la semana puedes dedicar aproximadamente a sesiones de terapia.',
-  worksWithUrgencyLevels: 'Indica qué niveles de urgencia puedes atender.',
-  maxActiveUsers: 'Define cuántos usuarios activos puedes atender a la vez.',
+  maxActiveUsers: 'Define el cupo máximo de personas que puedes acompañar simultáneamente.',
   cedulaDocumentPath: 'Sube tu cédula profesional o título en PDF o imagen.',
   tituloDocumentPath: 'Sube tu cédula profesional o título en PDF o imagen.',
 }
@@ -357,11 +443,15 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
   ],
   1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages'],
   2: [
-    'licensedCountries',
     'timezone',
     'weeklyTherapyHours',
-    'worksWithUrgencyLevels',
     'maxActiveUsers',
+    'credentialedCountries',
+    'countriesWhereCanReceivePatients',
+    'serviceTypes',
+    'clinicalComplexityLevels',
+    'excludedCases',
+    'emergencyProtocolStatus',
   ],
   3: ['cedulaDocumentPath'],
 }
@@ -387,6 +477,24 @@ export function validatePsmWizardStep(
         hours <= PSM_MAX_WEEKLY_THERAPY_HOURS
       )
     }
+    if (key === 'credentialedCountries') {
+      return resolveCredentialedCountries(data).length === 0
+    }
+    if (key === 'countriesWhereCanReceivePatients') {
+      return resolveCountriesWhereCanReceivePatients(data).length === 0
+    }
+    if (key === 'serviceTypes') {
+      return resolveServiceTypes(data).length === 0
+    }
+    if (key === 'clinicalComplexityLevels') {
+      return resolveClinicalComplexityLevels(data).length === 0
+    }
+    if (key === 'excludedCases') {
+      return resolveExcludedCases(data).length === 0
+    }
+    if (key === 'emergencyProtocolStatus') {
+      return !resolveEmergencyProtocolStatus(data)
+    }
     if (key === 'cedulaDocumentPath') {
       return !data.cedulaDocumentPath && !data.tituloDocumentPath
     }
@@ -408,13 +516,12 @@ export function buildPsmFormDefaults(data: Partial<OnboardingData>) {
   const therapyStyles = data.therapyStyles?.length ? data.therapyStyles : []
   const especialidades = data.especialidades || []
 
-  const licensedCountries =
-    data.licensedCountries && data.licensedCountries.length > 0
-      ? data.licensedCountries
-      : data.pais
-        ? [data.pais]
-        : []
-
+  const credentialedCountries = resolveCredentialedCountries(data)
+  const countriesWhereCanReceivePatients = resolveCountriesWhereCanReceivePatients(data)
+  const clinicalComplexityLevels = resolveClinicalComplexityLevels(data)
+  const excludedCases = resolveExcludedCases(data)
+  const serviceTypes = resolveServiceTypes(data)
+  const emergencyProtocolStatus = resolveEmergencyProtocolStatus(data)
   const narrative = resolveProfessionalNarrative(data)
 
   return {
@@ -434,8 +541,15 @@ export function buildPsmFormDefaults(data: Partial<OnboardingData>) {
     especialidades,
     therapyStyles,
     languages: data.languages?.length ? data.languages : ['es'],
-    licensedCountries,
-    licensedRegions: data.licensedRegions || [],
+    credentialedCountries,
+    countriesWhereCanReceivePatients,
+    licensedCountries: credentialedCountries,
+    licensedRegions: countriesWhereCanReceivePatients,
+    serviceTypes,
+    clinicalComplexityLevels,
+    excludedCases,
+    exclusionCriteria: excludedCases,
+    emergencyProtocolStatus,
     timezone: resolvePsmTimezoneDefault({
       timezone: data.timezone,
       pais: data.pais,
@@ -443,10 +557,7 @@ export function buildPsmFormDefaults(data: Partial<OnboardingData>) {
     }),
     weeklyTherapyHours: resolveWeeklyTherapyHours(data) ?? PSM_MIN_WEEKLY_THERAPY_HOURS,
     modalities: ['video'],
-    worksWithUrgencyLevels: data.worksWithUrgencyLevels?.length
-      ? data.worksWithUrgencyLevels
-      : ['low', 'medium'],
-    exclusionCriteria: data.exclusionCriteria || [],
+    worksWithUrgencyLevels: mapClinicalComplexityToUrgencyLevels(clinicalComplexityLevels),
     maxActiveUsers:
       (data.maxActiveUsers ?? data.maxActivePatients) && (data.maxActiveUsers ?? data.maxActivePatients)! > 0
         ? (data.maxActiveUsers ?? data.maxActivePatients)!
@@ -464,6 +575,13 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
   const narrative = resolveProfessionalNarrative(data)
   const intakeSource: IntakeSource | 'hybrid' =
     data.intakeSource === 'ai_assisted' ? 'ai_assisted' : data.intakeSource || 'manual'
+
+  const credentialedCountries = resolveCredentialedCountries(data)
+  const countriesWhereCanReceivePatients = resolveCountriesWhereCanReceivePatients(data)
+  const clinicalComplexityLevels = resolveClinicalComplexityLevels(data)
+  const excludedCases = resolveExcludedCases(data)
+  const legalDeclarations = resolveLegalDeclarations(data)
+  const termsAccepted = arePsmLegalDeclarationsComplete(data)
 
   return {
     email: data.email!,
@@ -497,13 +615,19 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
     especialidades: data.especialidades || [],
     therapyStyles: data.therapyStyles || [],
     languages: data.languages || ['es'],
-    licensedCountries: data.licensedCountries || (data.pais ? [data.pais] : []),
-    licensedRegions: data.licensedRegions || [],
+    licensedCountries: credentialedCountries.length > 0 ? credentialedCountries : data.pais ? [data.pais] : [],
+    licensedRegions: countriesWhereCanReceivePatients,
+    credentialedCountries,
+    countriesWhereCanReceivePatients,
+    serviceTypes: resolveServiceTypes(data),
+    clinicalComplexityLevels,
+    excludedCases,
+    emergencyProtocolStatus: resolveEmergencyProtocolStatus(data),
     timezone: data.timezone,
     availability: buildPsmAvailability(data),
     modalities: ['video'],
-    worksWithUrgencyLevels: data.worksWithUrgencyLevels || ['low', 'medium'],
-    exclusionCriteria: data.exclusionCriteria || [],
+    worksWithUrgencyLevels: mapClinicalComplexityToUrgencyLevels(clinicalComplexityLevels),
+    exclusionCriteria: excludedCases,
     isAcceptingPatients: data.isAcceptingUsers ?? data.isAcceptingPatients ?? false,
     maxActivePatients: data.maxActiveUsers ?? data.maxActivePatients ?? 10,
     acceptsSlidingScale: data.acceptsSlidingScale ?? false,
@@ -512,9 +636,10 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
     participaInvestigacion: data.participaInvestigacion ?? false,
     participaComunidad: data.participaComunidad ?? false,
 
-    consentToTerms: data.consentToTerms ?? false,
-    consentToPrivacy: data.consentToPrivacy ?? false,
+    consentToTerms: termsAccepted || Boolean(data.consentToTerms),
+    consentToPrivacy: termsAccepted || Boolean(data.consentToPrivacy),
     consentToAIProcessing: data.consentToAIProcessing ?? false,
+    legalDeclarations,
     consentToShareWithPSM: false,
     consentToClinicalMatching: false,
     consentPolicyVersion: 'v1',

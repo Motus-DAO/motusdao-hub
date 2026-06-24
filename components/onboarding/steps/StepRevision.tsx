@@ -12,14 +12,37 @@ import {
   MapPin,
   Heart,
   Award,
-  Edit
+  Edit,
+  FileText,
 } from 'lucide-react'
+import Image from 'next/image'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { UploadedDocumentPreview } from '@/components/onboarding/UploadedDocumentPreview'
+import { getFileNameFromStoragePath } from '@/lib/storage-client'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { deriveConcernFields } from '@/lib/intake-concerns'
-import { buildPsmApiPayload } from '@/lib/intake/psm-intake-v1'
-import { getEspecialidadLabel, getTherapyStyleLabel } from '@/lib/intake/psm-intake-options'
+import { buildPsmApiPayload, resolveWeeklyTherapyHours, arePsmLegalDeclarationsComplete, buildPsmAvailability } from '@/lib/intake/psm-intake-v1'
+import {
+  resolveClinicalComplexityLevels,
+  resolveCountriesWhereCanReceivePatients,
+  resolveCredentialedCountries,
+  resolveEmergencyProtocolStatus,
+  resolveExcludedCases,
+  resolveLegalDeclarations,
+  resolveServiceTypes,
+} from '@/lib/intake/psm-operations-compat'
+import {
+  getEspecialidadLabel,
+  getTherapyStyleLabel,
+  getPaisLabel,
+  getClinicalComplexityLabel,
+  getServiceTypeLabel,
+  getExcludedCaseLabel,
+  getEmergencyProtocolLabel,
+  PSM_LEGAL_DECLARATIONS,
+} from '@/lib/intake/psm-intake-options'
+import type { PsmLegalDeclarationKey } from '@/lib/intake/psm-operations-compat'
 
 interface StepRevisionProps {
   onNext: () => void
@@ -39,7 +62,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
   }
 
   const consentsComplete =
-    role !== 'psm' || Boolean(data.consentToTerms && data.consentToPrivacy)
+    role !== 'psm' || arePsmLegalDeclarationsComplete(data)
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No especificada'
@@ -62,7 +85,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
     }
 
     if (!consentsComplete) {
-      setSubmitError('Debes aceptar los Términos y el Aviso de Privacidad para continuar.')
+      setSubmitError('Debes aceptar todas las declaraciones legales para continuar.')
       return
     }
 
@@ -96,9 +119,9 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
         avatarStoragePath: data.avatarStoragePath,
         motusName: data.motusName,
         mnsTxHash: data.mnsTxHash,
-        consentToTerms: true,
-        consentToPrivacy: true,
-        consentToAIProcessing: false
+        consentToTerms: role === 'psm' ? arePsmLegalDeclarationsComplete(data) : true,
+        consentToPrivacy: role === 'psm' ? arePsmLegalDeclarationsComplete(data) : true,
+        consentToAIProcessing: role === 'psm' ? (data.consentToAIProcessing ?? false) : false,
       }
 
       const rolePayload =
@@ -276,6 +299,30 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
               <span>Información Personal</span>
             </h3>
             <div className="grid md:grid-cols-2 gap-4">
+              {role === 'psm' && data.avatarUrl && (
+                <div className="p-4 glass rounded-xl md:col-span-2">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <User className="w-4 h-4 text-mauve-400" />
+                    <span className="text-sm font-medium">Foto de perfil</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/15 bg-black/20">
+                      <Image
+                        src={data.avatarUrl}
+                        alt="Foto de perfil"
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    {data.avatarStoragePath && (
+                      <p className="text-xs text-emerald-300">
+                        ✓ {getFileNameFromStoragePath(data.avatarStoragePath)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="p-4 glass rounded-xl">
                 <div className="flex items-center space-x-2 mb-2">
                   <User className="w-4 h-4 text-blue-400" />
@@ -432,6 +479,90 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             </div>
           )}
 
+          {/* PSM operations summary */}
+          {role === 'psm' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-mauve-400" />
+                  <span>Operación y alcance profesional</span>
+                </h3>
+                <EditButton onClick={() => goToPsmStep(2)} />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <SummaryCard
+                  title="Horas semanales para terapia"
+                  value={`${resolveWeeklyTherapyHours(data) ?? '—'} h/semana`}
+                />
+                <SummaryCard
+                  title="Cupo máximo de usuarios activos"
+                  value={String(data.maxActiveUsers ?? data.maxActivePatients ?? '—')}
+                />
+                <SummaryCard
+                  title="Países con cédula/licencia/registro"
+                  chips={resolveCredentialedCountries(data).map(getPaisLabel)}
+                  className="md:col-span-2"
+                />
+                <SummaryCard
+                  title="Países donde declara poder recibir pacientes"
+                  chips={resolveCountriesWhereCanReceivePatients(data).map(getPaisLabel)}
+                  className="md:col-span-2"
+                />
+                <SummaryCard
+                  title="Tipos de servicio"
+                  chips={resolveServiceTypes(data).map(getServiceTypeLabel)}
+                  className="md:col-span-2"
+                />
+                <SummaryCard
+                  title="Complejidad clínica aceptada"
+                  chips={resolveClinicalComplexityLevels(data).map(getClinicalComplexityLabel)}
+                  className="md:col-span-2"
+                />
+                <SummaryCard
+                  title="Casos excluidos / derivación"
+                  chips={resolveExcludedCases(data).map(getExcludedCaseLabel)}
+                  className="md:col-span-2"
+                />
+                <SummaryCard
+                  title="Protocolo de emergencia"
+                  value={
+                    resolveEmergencyProtocolStatus(data)
+                      ? getEmergencyProtocolLabel(resolveEmergencyProtocolStatus(data)!)
+                      : 'No indicado'
+                  }
+                  className="md:col-span-2"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* PSM uploaded documents */}
+          {role === 'psm' && (data.cedulaDocumentPath || data.tituloDocumentPath) && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center space-x-2">
+                  <FileText className="w-5 h-5 text-mauve-400" />
+                  <span>Documentos de verificación</span>
+                </h3>
+                <EditButton onClick={() => goToPsmStep(3)} />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {data.cedulaDocumentPath && (
+                  <UploadedDocumentPreview
+                    label="Documento de cédula"
+                    storagePath={data.cedulaDocumentPath}
+                  />
+                )}
+                {data.tituloDocumentPath && (
+                  <UploadedDocumentPreview
+                    label="Documento de título"
+                    storagePath={data.tituloDocumentPath}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Platform Preferences (PSM only) */}
           {role === 'psm' && (
             <div className="space-y-4">
@@ -472,36 +603,41 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
           )}
         </div>
 
-        {/* Consents (PSM only) */}
+        {/* Legal declarations (PSM only) */}
         {role === 'psm' && (
           <div className="mt-6 space-y-3 rounded-xl border border-white/10 bg-white/5 p-5">
             <h3 className="text-lg font-semibold flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-mauve-400" />
-              <span>Consentimientos</span>
+              <span>Declaraciones legales</span>
             </h3>
-            <label className="flex items-start gap-3 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(data.consentToTerms)}
-                onChange={(e) => updateData({ consentToTerms: e.target.checked })}
-                className="mt-1 w-4 h-4"
-              />
-              <span>
-                Acepto los <span className="text-mauve-300">Términos y Condiciones</span> de MotusDAO. *
-              </span>
-            </label>
-            <label className="flex items-start gap-3 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(data.consentToPrivacy)}
-                onChange={(e) => updateData({ consentToPrivacy: e.target.checked })}
-                className="mt-1 w-4 h-4"
-              />
-              <span>
-                He leído y acepto el <span className="text-mauve-300">Aviso de Privacidad</span> y el
-                tratamiento de mis datos profesionales. *
-              </span>
-            </label>
+            <p className="text-xs text-muted-foreground">
+              Debes aceptar todas las declaraciones para enviar tu registro profesional.
+            </p>
+            {PSM_LEGAL_DECLARATIONS.map((item) => (
+              <label key={item.key} className="flex items-start gap-3 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(resolveLegalDeclarations(data)[item.key as PsmLegalDeclarationKey])}
+                  onChange={(e) => {
+                    const nextDeclarations = {
+                      ...resolveLegalDeclarations(data),
+                      [item.key]: e.target.checked,
+                    }
+                    const merged = { ...data, legalDeclarations: nextDeclarations }
+                    updateData({
+                      legalDeclarations: nextDeclarations,
+                      availability: buildPsmAvailability(merged),
+                      consentToTerms:
+                        item.key === 'termsPrivacy' ? e.target.checked : data.consentToTerms,
+                      consentToPrivacy:
+                        item.key === 'termsPrivacy' ? e.target.checked : data.consentToPrivacy,
+                    })
+                  }}
+                  className="mt-1 w-4 h-4"
+                />
+                <span>{item.label} *</span>
+              </label>
+            ))}
             <label className="flex items-start gap-3 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -515,7 +651,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             </label>
             {!consentsComplete && (
               <p className="text-xs text-amber-300">
-                Marca los dos consentimientos obligatorios para poder completar tu registro.
+                Marca todas las declaraciones obligatorias para poder completar tu registro.
               </p>
             )}
           </div>
@@ -594,5 +730,36 @@ function EditButton({ onClick }: { onClick: () => void }) {
       <Edit className="w-3.5 h-3.5" />
       Editar
     </button>
+  )
+}
+
+function SummaryCard({
+  title,
+  value,
+  chips,
+  className,
+}: {
+  title: string
+  value?: string
+  chips?: string[]
+  className?: string
+}) {
+  return (
+    <div className={`p-4 glass rounded-xl ${className ?? ''}`}>
+      <p className="text-sm font-medium text-muted-foreground mb-2">{title}</p>
+      {value && <p className="text-white">{value}</p>}
+      {chips && chips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => (
+            <span
+              key={chip}
+              className="px-2 py-1 bg-mauve-500/20 text-mauve-300 rounded-full text-xs"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

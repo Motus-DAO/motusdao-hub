@@ -67,6 +67,24 @@ export interface OnboardingData {
   therapyStyles?: string[]
   licensedCountries?: string[]
   licensedRegions?: string[]
+  credentialedCountries?: string[]
+  countriesWhereCanReceivePatients?: string[]
+  serviceTypes?: string[]
+  clinicalComplexityLevels?: string[]
+  excludedCases?: string[]
+  emergencyProtocolStatus?: 'own_protocol' | 'institutional_protocol' | 'not_yet' | 'want_motus_guidance'
+  legalDeclarations?: Partial<
+    Record<
+      | 'infoIsTrue'
+      | 'professionalScope'
+      | 'motusCanReview'
+      | 'notEmergency'
+      | 'termsPrivacy'
+      | 'documentsReview'
+      | 'crossBorderReview',
+      boolean
+    >
+  >
   modalities?: Modality[]
   acceptsSlidingScale?: boolean
   worksWithUrgencyLevels?: UrgencyLevel[]

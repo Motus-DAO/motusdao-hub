@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAIClient, getAIModel, getAIProvider, hasAIKey } from '@/lib/ai-client'
+import { getPsmMissingFieldKeys } from '@/lib/intake/psm-intake-v1'
 import { getFieldOrder } from '@/lib/intake-chat-progress'
+import type { OnboardingData } from '@/lib/onboarding-store'
 
 const messageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -70,8 +72,8 @@ const QUESTION_GUIDE = {
   },
   psm: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios',
-    q2: 'professionalNarrative, therapyStyles, especialidades, languages, licensedCountries, timezone, worksWithUrgencyLevels',
-    q3: 'weeklyTherapyHours, maxActiveUsers, exclusionCriteria, isAcceptingUsers (documentos se suben en el formulario)',
+    q2: 'professionalNarrative, therapyStyles, especialidades, languages, timezone',
+    q3: 'weeklyTherapyHours, maxActiveUsers, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes, clinicalComplexityLevels, excludedCases, emergencyProtocolStatus, isAcceptingUsers (documentos y declaraciones legales se completan en el formulario)',
   },
 }
 
@@ -90,9 +92,13 @@ Reglas:
 - No inventes datos. Campos faltantes van en missingFields.
 - Si hay senales de crisis, autolesion o emergencia: riskAlert=crisis_possible, urgencyLevel=crisis (usuario), recomienda ayuda local brevemente.
 - Valores: urgencyLevel low|medium|high|crisis. preferredModality video|chat|in_person|hybrid (solo usuario). preferenciaAsignacion automatica|explorar.
-- Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, licensedCountries, worksWithUrgencyLevels, riskFlags.
+- Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes, clinicalComplexityLevels, excludedCases, riskFlags.
+- clinicalComplexityLevels valores: low_complexity, medium_complexity, high_with_support, no_active_crisis.
+- serviceTypes valores: individual_therapy, psychological_guidance, psychoeducation, clinical_supervision, groups_workshops, courses, psychological_assessment, non_clinical_support, research_interviews.
+- excludedCases: slugs preset (self_harm_crisis, active_psychosis, substance_detox, legal_forensic, minors, active_violence_no_support, unstable_medical_psychiatric, case_by_case_intake) o texto libre para casos adicionales.
+- emergencyProtocolStatus: own_protocol, institutional_protocol, not_yet, want_motus_guidance.
 - Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, preferredModality, languages, consentToAIProcessing=true, consentToShareWithPSM=true, consentToClinicalMatching=true. clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array.
-- PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles (enfoque terapéutico), especialidades (especialización/temas), languages, licensedCountries, timezone, weeklyTherapyHours (horas semanales para terapia, entero 1-80), worksWithUrgencyLevels, maxActiveUsers.
+- PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles, especialidades, languages, timezone, weeklyTherapyHours (1-80), maxActiveUsers, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes (min 1), clinicalComplexityLevels (min 1), excludedCases (min 1), emergencyProtocolStatus. NO autocompletar legalDeclarations.
 - assistantMessage debe ser conversacional y terminar con la siguiente pregunta (excepto en handoff_ready).
 
 Devuelve JSON con: assistantMessage, isComplete, missingFields, confidence, extractedData, riskAlert, phase, questionIndex.`
@@ -172,70 +178,34 @@ function computeMissingFields(
   role: 'usuario' | 'psm',
   data: Record<string, unknown>
 ): string[] {
-  const required =
-    role === 'usuario'
-      ? [
-          'nombre',
-          'apellido',
-          'telefono',
-          'fechaNacimiento',
-          'ciudad',
-          'pais',
-          'problematica',
-          'preferenciaAsignacion',
-          'urgencyLevel',
-          'preferredModality',
-          'languages',
-          'availabilityNotes',
-          'consentToAIProcessing',
-          'consentToShareWithPSM',
-          'consentToClinicalMatching',
-        ]
-      : [
-          'nombre',
-          'apellido',
-          'telefono',
-          'fechaNacimiento',
-          'ciudad',
-          'pais',
-          'cedulaProfesional',
-          'formacionAcademica',
-          'experienciaAnios',
-          'professionalNarrative',
-          'especialidades',
-          'therapyStyles',
-          'languages',
-          'licensedCountries',
-          'timezone',
-          'weeklyTherapyHours',
-          'worksWithUrgencyLevels',
-          'maxActiveUsers',
-        ]
+  if (role === 'psm') {
+    return getPsmMissingFieldKeys(data as Partial<OnboardingData>)
+  }
+
+  const required = [
+    'nombre',
+    'apellido',
+    'telefono',
+    'fechaNacimiento',
+    'ciudad',
+    'pais',
+    'problematica',
+    'preferenciaAsignacion',
+    'urgencyLevel',
+    'preferredModality',
+    'languages',
+    'availabilityNotes',
+    'consentToAIProcessing',
+    'consentToShareWithPSM',
+    'consentToClinicalMatching',
+  ]
 
   return required.filter((key) => {
-    const value =
-      key === 'professionalNarrative'
-        ? (data.professionalNarrative ?? data.biografia)
-        : key === 'maxActiveUsers'
-          ? (data.maxActiveUsers ?? data.maxActivePatients)
-          : key === 'weeklyTherapyHours'
-            ? (data.weeklyTherapyHours ??
-              (typeof data.availability === 'object' && data.availability !== null
-                ? (data.availability as { weeklyTherapyHours?: number }).weeklyTherapyHours
-                : undefined))
-            : data[key]
+    const value = data[key]
     if (value == null) return true
     if (typeof value === 'boolean') return !value
     if (Array.isArray(value)) return value.length === 0
-    if (typeof value === 'number') {
-      if (key === 'weeklyTherapyHours') {
-        return Number.isNaN(value) || value < 1 || value > 80
-      }
-      return Number.isNaN(value)
-    }
-    if (key === 'professionalNarrative') {
-      return String(value ?? '').trim().length < 80
-    }
+    if (typeof value === 'number') return Number.isNaN(value)
     return String(value).trim().length === 0
   })
 }

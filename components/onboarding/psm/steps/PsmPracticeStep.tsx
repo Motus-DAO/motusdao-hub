@@ -18,6 +18,7 @@ import {
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
 import { PsmChipGroup } from '../PsmChipGroup'
+import { PsmSectionBlock } from '../PsmSectionBlock'
 import { PsmTagSelect } from '../PsmTagSelect'
 import { PsmStepValidationBanner } from '../PsmStepValidationBanner'
 
@@ -85,79 +86,86 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
   const onInvalid = () => setShowBlockers(true)
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-8">
       {blockers.length > 0 && <PsmStepValidationBanner blockers={blockers} />}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">
-          Cuéntanos sobre tu práctica profesional *
-        </label>
-        <p className="text-xs text-muted-foreground">
-          Con tus palabras: ¿cómo trabajas, con quién te especializas y qué tipo de acompañamiento
-          ofreces? (mínimo {PSM_MIN_NARRATIVE_LENGTH} caracteres)
-        </p>
-        <textarea
-          {...register('professionalNarrative')}
-          rows={5}
-          placeholder="Ej: Soy psicóloga clínica con enfoque integrativo. Trabajo con adultos en procesos de ansiedad, estrés laboral y transiciones de vida..."
-          className={inputFieldClass(!!errors.professionalNarrative, 'resize-none')}
-        />
-        <div className="flex justify-between text-xs">
-          <span
-            className={
-              narrativeReady
-                ? 'text-emerald-400'
-                : narrative.length > 0
-                  ? 'text-amber-300'
-                  : 'text-muted-foreground'
-            }
-          >
-            {narrative.length} / {PSM_MIN_NARRATIVE_LENGTH} mín.
-            {!narrativeReady && narrative.length > 0 && ` (faltan ${narrativeRemaining})`}
-          </span>
-          {errors.professionalNarrative && (
-            <span className="text-red-400 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Amplía tu descripción: faltan {narrativeRemaining} caracteres
+      <PsmSectionBlock title="Describe tu práctica">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">
+            Cuéntanos sobre tu práctica profesional *
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Con tus palabras: ¿cómo trabajas, con quién te especializas y qué tipo de acompañamiento
+            ofreces? Puedes añadir links a tu sitio web o redes sociales o publicaciones. (mínimo{' '}
+            {PSM_MIN_NARRATIVE_LENGTH} caracteres)
+          </p>
+          <textarea
+            {...register('professionalNarrative')}
+            rows={5}
+            placeholder="Ej: Soy psicóloga clínica con enfoque integrativo. Trabajo con adultos en procesos de ansiedad, estrés laboral y transiciones de vida..."
+            className={inputFieldClass(!!errors.professionalNarrative, 'resize-none')}
+          />
+          <div className="flex justify-between text-xs">
+            <span
+              className={
+                narrativeReady
+                  ? 'text-emerald-400'
+                  : narrative.length > 0
+                    ? 'text-amber-300'
+                    : 'text-muted-foreground'
+              }
+            >
+              {narrative.length} / {PSM_MIN_NARRATIVE_LENGTH} mín.
+              {!narrativeReady && narrative.length > 0 && ` (faltan ${narrativeRemaining})`}
             </span>
-          )}
+            {errors.professionalNarrative && (
+              <span className="text-red-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Amplía tu descripción: faltan {narrativeRemaining} caracteres
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      </PsmSectionBlock>
 
-      <PsmTagSelect
-        label="Enfoque terapéutico *"
-        hint="Cómo trabajas. Marca los que apliquen o agrega el tuyo (ej. EMDR, gestalt)."
-        options={PSM_THERAPY_STYLES}
-        value={watch('therapyStyles') || []}
-        onChange={(next) => setValue('therapyStyles', next, { shouldValidate: true })}
-        hasError={!!errors.therapyStyles}
-        errorMessage={errors.therapyStyles?.message}
-        addPlaceholder="Otro enfoque (ej. EMDR)"
-      />
+      <PsmSectionBlock title="Enfoque y especialización">
+        <PsmTagSelect
+          label="Enfoque terapéutico *"
+          hint="Cómo trabajas. Marca los que apliquen o agrega el tuyo (ej. EMDR, gestalt)."
+          options={PSM_THERAPY_STYLES}
+          value={watch('therapyStyles') || []}
+          onChange={(next) => setValue('therapyStyles', next, { shouldValidate: true })}
+          hasError={!!errors.therapyStyles}
+          errorMessage={errors.therapyStyles?.message}
+          addPlaceholder="Otro enfoque (ej. EMDR)"
+        />
 
-      <PsmTagSelect
-        label="Especialización / temas *"
-        hint="En qué te especializas. Marca temas o poblaciones, o agrega los tuyos."
-        options={PSM_ESPECIALIDADES}
-        value={watch('especialidades') || []}
-        onChange={(next) => setValue('especialidades', next, { shouldValidate: true })}
-        hasError={!!errors.especialidades}
-        errorMessage={errors.especialidades?.message}
-        columns={3}
-        addPlaceholder="Otro tema (ej. perinatal)"
-      />
+        <PsmTagSelect
+          label="Especialización / temas *"
+          hint="En qué te especializas. Marca temas o poblaciones, o agrega los tuyos."
+          options={PSM_ESPECIALIDADES}
+          value={watch('especialidades') || []}
+          onChange={(next) => setValue('especialidades', next, { shouldValidate: true })}
+          hasError={!!errors.especialidades}
+          errorMessage={errors.especialidades?.message}
+          columns={3}
+          addPlaceholder="Otro tema (ej. perinatal)"
+        />
+      </PsmSectionBlock>
 
-      <PsmChipGroup
-        label="Idiomas *"
-        options={PSM_LANGUAGES}
-        selected={watch('languages') || []}
-        onChange={(next) => setValue('languages', next, { shouldValidate: true })}
-        hasError={!!errors.languages}
-      />
+      <PsmSectionBlock title="Idiomas y modalidad">
+        <PsmChipGroup
+          label="Idiomas *"
+          options={PSM_LANGUAGES}
+          selected={watch('languages') || []}
+          onChange={(next) => setValue('languages', next, { shouldValidate: true })}
+          hasError={!!errors.languages}
+        />
 
-      <p className="text-xs text-muted-foreground">
-        Las sesiones en MotusDAO son 100% teleterapia por video.
-      </p>
+        <p className="text-xs text-muted-foreground">
+          Las sesiones en MotusDAO son 100% teleterapia por video.
+        </p>
+      </PsmSectionBlock>
 
       <div className="flex justify-between pt-2">
         <button type="button" onClick={onBack} className="px-6 py-3 text-gray-400 hover:text-white">

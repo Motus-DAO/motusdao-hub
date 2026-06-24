@@ -35,7 +35,7 @@ async function main() {
 
   const user = await prisma.user.findFirst({
     where: eoa
-      ? { eoaAddress: eoa.toLowerCase() }
+      ? { eoaAddress: { equals: eoa, mode: 'insensitive' } }
       : { email: email! },
     select: { id: true, email: true, eoaAddress: true, registrationCompleted: true },
   })

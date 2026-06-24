@@ -8,6 +8,7 @@ import {
   PSM_MIN_NARRATIVE_LENGTH,
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
+import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
 
 const stringArray = z.array(z.string()).default([])
 
@@ -50,7 +51,7 @@ const psmOnboardingSchema = z.object({
   availabilityNotes: z.string().optional(),
   modalities: z.array(z.enum(['video', 'chat', 'in_person', 'hybrid'])).default(['video']),
   worksWithUrgencyLevels: z.array(z.enum(['low', 'medium', 'high', 'crisis'])).default(['low', 'medium']),
-  exclusionCriteria: stringArray,
+  exclusionCriteria: z.array(z.string()).min(1),
   isAcceptingPatients: z.boolean().default(false),
   maxActivePatients: z.number().int().positive().default(10),
   acceptsSlidingScale: z.boolean().default(false),
@@ -137,31 +138,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = psmOnboardingSchema.parse(body)
 
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: data.email },
-          { eoaAddress: data.eoaAddress }
-        ]
-      },
-      include: {
-        profile: true,
-        psm: true
-      }
+    const identity = await resolveOnboardingIdentity({
+      email: data.email,
+      eoaAddress: data.eoaAddress,
     })
 
-    if (
-      existingUser &&
-      (existingUser.email !== data.email || existingUser.eoaAddress !== data.eoaAddress)
-    ) {
+    if (identity.status === 'conflict') {
       return NextResponse.json(
-        {
-          error: 'Ya existe una cuenta con este correo o wallet, pero no pertenecen al mismo registro.',
-          code: 'IDENTITY_CONFLICT'
-        },
+        { error: identity.message, code: identity.code },
         { status: 409 }
       )
     }
+
+    const normalizedEoa = identity.normalizedEoa
+    const existingUser =
+      identity.status === 'update'
+        ? await prisma.user.findUnique({
+            where: { id: identity.user.id },
+            include: { profile: true, psm: true },
+          })
+        : null
 
     const result = await prisma.$transaction(async (tx) => {
       const existingPsm = existingUser?.psm
@@ -181,6 +177,7 @@ export async function POST(request: NextRequest) {
         ? await tx.user.update({
             where: { id: existingUser.id },
             data: {
+              ...(identity.status === 'update' ? identity.identitySync : {}),
               role: 'psm',
               smartWalletAddress: data.smartWalletAddress || existingUser.smartWalletAddress,
               registrationCompleted: true,
@@ -200,7 +197,7 @@ export async function POST(request: NextRequest) {
             data: {
               role: 'psm',
               email: data.email,
-              eoaAddress: data.eoaAddress,
+              eoaAddress: normalizedEoa,
               smartWalletAddress: data.smartWalletAddress || null,
               registrationCompleted: true,
               onboardingStatus: nextOnboardingStatus,

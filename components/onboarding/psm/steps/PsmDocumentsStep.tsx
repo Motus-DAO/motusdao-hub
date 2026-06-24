@@ -8,7 +8,9 @@ import {
   uploadProfessionalDocument,
 } from '@/lib/storage-client'
 import { getPsmWizardStepBlockers } from '@/lib/intake/psm-intake-v1'
+import { PsmSectionBlock } from '../PsmSectionBlock'
 import { PsmStepValidationBanner } from '../PsmStepValidationBanner'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 
 type Props = {
   onContinue: () => void
@@ -48,37 +50,42 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
   const blockers = showBlockers ? getPsmWizardStepBlockers(3, data) : []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {blockers.length > 0 && <PsmStepValidationBanner blockers={blockers} />}
-      <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-        Sube tu documentación profesional para verificación. Solo visible para el equipo
-        administrativo de MotusDAO.
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <FileUploadField
-          label="Documento de cédula"
-          description="PDF o imagen de tu cédula profesional."
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-          hint="PDF o imagen. Máximo 10MB."
-          fileName={getFileNameFromStoragePath(data.cedulaDocumentPath)}
-          onUpload={(file) => uploadDocument(file, 'cedula')}
-          onClear={() => updateData({ cedulaDocumentPath: undefined })}
-        />
-        <FileUploadField
-          label="Documento de título"
-          description="PDF o imagen de tu título universitario."
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-          hint="PDF o imagen. Máximo 10MB."
-          fileName={getFileNameFromStoragePath(data.tituloDocumentPath)}
-          onUpload={(file) => uploadDocument(file, 'titulo')}
-          onClear={() => updateData({ tituloDocumentPath: undefined })}
-        />
-      </div>
+      <PsmSectionBlock title="Verificación documental">
+        <SiweSessionBanner />
 
-      <p className="text-xs text-muted-foreground">
-        Sube al menos uno: cédula profesional o título universitario.
-      </p>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Sube tu documentación profesional para verificación. Solo visible para el equipo
+          administrativo de MotusDAO.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <FileUploadField
+            label="Documento de cédula"
+            description="PDF o imagen de tu cédula profesional."
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            hint="PDF o imagen. Máximo 10MB."
+            fileName={getFileNameFromStoragePath(data.cedulaDocumentPath)}
+            onUpload={(file) => uploadDocument(file, 'cedula')}
+            onClear={() => updateData({ cedulaDocumentPath: undefined })}
+          />
+          <FileUploadField
+            label="Documento de título"
+            description="PDF o imagen de tu título universitario."
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            hint="PDF o imagen. Máximo 10MB."
+            fileName={getFileNameFromStoragePath(data.tituloDocumentPath)}
+            onUpload={(file) => uploadDocument(file, 'titulo')}
+            onClear={() => updateData({ tituloDocumentPath: undefined })}
+          />
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Sube al menos uno: cédula profesional o título universitario.
+        </p>
+      </PsmSectionBlock>
 
       <div className="flex justify-between pt-2">
         <button type="button" onClick={onBack} className="px-6 py-3 text-gray-400 hover:text-white">
