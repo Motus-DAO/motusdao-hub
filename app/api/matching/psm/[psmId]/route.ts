@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import { buildOfficeJitsiUrl, buildOpenJitsiUrl } from '@/lib/jitsi'
 
 /**
  * GET /api/matching/psm/[psmId]
@@ -65,11 +66,13 @@ export async function GET(
     })
 
     return NextResponse.json({
+      openGuestUrl: buildOpenJitsiUrl(psmId),
       activeMatches: activeMatches.map(m => ({
         id: m.id,
         userId: m.userId,
         status: m.status,
         matchedAt: m.matchedAt,
+        officeUrl: buildOfficeJitsiUrl(m.id),
         user: {
           id: m.user.id,
           email: m.user.email,

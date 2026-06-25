@@ -64,6 +64,46 @@ JITSI_APP_SECRET=<same-secret-as-in-jitsi-.env>
 
 **⚠️ IMPORTANT:** `JITSI_APP_SECRET` in Next.js must match `JWT_APP_SECRET` in Jitsi `.env`
 
+## Branding (MotusDAO Consultorio)
+
+Branding files live in [`branding/`](branding/):
+
+- `interface_config.js` — app name, Spanish UI, no Jitsi watermark
+- `css/custom.css` — mauve/iris theme (mounted as `/config/css/custom.css`)
+- `images/watermark.svg` — logo shown in Jitsi chrome
+
+`docker-compose.yml` mounts these into the `web` container automatically.
+
+### JWT roles (moderator vs guest) — required on VPS
+
+Prosody must load `token_affiliation` so JWT `moderator` / `affiliation` claims are enforced.
+Without it, guests can incorrectly receive owner/moderator powers.
+
+In `~/apps/jitsi/.env` (production VPS):
+
+```env
+XMPP_MUC_MODULES=token_affiliation
+ENABLE_AUTO_OWNER=0
+ENABLE_LOBBY=1
+```
+
+Then recreate auth services:
+
+```bash
+cd ~/apps/jitsi
+docker compose up -d --force-recreate --no-deps prosody jicofo
+```
+
+### Deploy branding to production (`jitsi.motusdao.org`)
+
+```bash
+cd ~/apps/jitsi   # not ~/jitsi
+git pull   # or copy branding/ to the VPS
+docker compose restart web
+```
+
+Verify at `https://jitsi.motusdao.org` — toolbar and prejoin UI should use MotusDAO colors and show **MotusDAO Consultorio**.
+
 ## Configuration
 
 ### Local Development

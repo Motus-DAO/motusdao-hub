@@ -19,7 +19,10 @@ import {
   Users,
   Heart,
   Calendar,
-  AtSign
+  AtSign,
+  Video,
+  Link2,
+  Copy
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
@@ -28,6 +31,8 @@ import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { motusNameService } from '@/lib/motus-name-service'
+import { buildVideochatUrl } from '@/lib/jitsi'
+import { useRouter } from 'next/navigation'
 import { asStringArray } from '@/lib/prisma-json'
 
 interface ProfileData {
@@ -55,6 +60,7 @@ interface UserData {
 
 export default function PerfilPage() {
   const { role, setMatrixColor } = useUIStore()
+  const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
   const { authenticated, user, ready } = useWaaP()
@@ -119,6 +125,7 @@ export default function PerfilPage() {
     psmId: string
     status: string
     matchedAt: string
+    officeUrl?: string
     psm: {
       id: string
       email: string
@@ -141,6 +148,7 @@ export default function PerfilPage() {
     userId: string
     status: string
     matchedAt: string
+    officeUrl?: string
     user: {
       id: string
       email: string
@@ -160,6 +168,7 @@ export default function PerfilPage() {
   interface MatchData {
     activeMatch?: ActiveMatch | null
     activeMatches?: PSMActiveMatch[]
+    openGuestUrl?: string
     matchHistory?: UserMatchHistoryItem[] | PSMMatchHistoryItem[]
     capacity?: {
       current: number
@@ -176,6 +185,25 @@ export default function PerfilPage() {
     externalUrl: string
   } | null>(null)
   const [isLoadingSession, setIsLoadingSession] = useState(false)
+
+  type PsmMeetingMode = 'secure' | 'open'
+  const [psmMeetingMode, setPsmMeetingMode] = useState<PsmMeetingMode>('secure')
+  const [copiedOpenLink, setCopiedOpenLink] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = window.localStorage.getItem('psm-meeting-mode')
+    if (saved === 'secure' || saved === 'open') {
+      setPsmMeetingMode(saved)
+    }
+  }, [])
+
+  const handlePsmMeetingModeChange = (mode: PsmMeetingMode) => {
+    setPsmMeetingMode(mode)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('psm-meeting-mode', mode)
+    }
+  }
   
   // Motus Name state
   const [motusName, setMotusName] = useState<string | null>(null)
@@ -925,9 +953,31 @@ export default function PerfilPage() {
                               </div>
                             )}
 
-                            {/* Active session CTA */}
-                            <div className="mt-6 pt-4 border-t border-white/10">
+                            {/* Consultorio + sesión */}
+                            <div className="mt-6 pt-4 border-t border-white/10 space-y-4">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold mb-1">
+                                    Mi consultorio virtual
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Tu espacio privado con {matchData.activeMatch.psm.nombre}. Siempre la misma sala; tu terapeuta te admite desde la recepción.
+                                  </p>
+                                </div>
+                                {matchData.activeMatch.officeUrl && (
+                                  <CTAButton
+                                    size="sm"
+                                    onClick={() => {
+                                      router.push(buildVideochatUrl(matchData.activeMatch!.officeUrl!))
+                                    }}
+                                  >
+                                    <Video className="w-4 h-4 mr-2" />
+                                    Ir a mi consultorio
+                                  </CTAButton>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-white/5">
                                 <div>
                                   <p className="text-sm font-semibold mb-1">
                                     Sesión de terapia
@@ -938,25 +988,24 @@ export default function PerfilPage() {
                                     </p>
                                   ) : activeSession ? (
                                     <p className="text-xs text-green-400">
-                                      Tienes una sesión {activeSession.status === 'accepted' ? 'aceptada' : 'solicitada'} lista para iniciar.
+                                      Tienes una sesión {activeSession.status === 'accepted' ? 'aceptada' : 'solicitada'} programada.
                                     </p>
                                   ) : (
                                     <p className="text-xs text-muted-foreground">
-                                      Aún no tienes una sesión activa. Puedes solicitar una desde MotusAI.
+                                      Puedes solicitar una cita desde MotusAI; el consultorio sigue siendo el mismo.
                                     </p>
                                   )}
                                 </div>
-                                {activeSession && (
+                                {activeSession && matchData.activeMatch.officeUrl && (
                                   <CTAButton
+                                    variant="secondary"
                                     size="sm"
                                     onClick={() => {
-                                      if (typeof window !== 'undefined') {
-                                        window.open(activeSession.externalUrl, '_blank', 'noopener,noreferrer')
-                                      }
+                                      router.push(buildVideochatUrl(matchData.activeMatch!.officeUrl!))
                                     }}
                                   >
                                     <Calendar className="w-4 h-4 mr-2" />
-                                    Unirse a la sesión
+                                    Entrar a sesión programada
                                   </CTAButton>
                                 )}
                               </div>
@@ -1029,8 +1078,114 @@ export default function PerfilPage() {
                         </div>
                       )
                     ) : (
-                      // PSM view: Show matched users
-                      matchData?.activeMatches ? (
+                      // PSM view: meeting mode + patients or open guest link
+                      <div className="space-y-6">
+                        <div className="p-4 rounded-xl border border-white/10 bg-white/5 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold">Modo de videollamada</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Elige si atiendes a un paciente emparejado o compartes un enlace para invitados.
+                              </p>
+                            </div>
+                            <div className="flex rounded-lg border border-white/10 p-1 bg-black/20">
+                              <button
+                                type="button"
+                                onClick={() => handlePsmMeetingModeChange('secure')}
+                                className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                                  psmMeetingMode === 'secure'
+                                    ? 'bg-mauve-500/30 text-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                <Shield className="w-3.5 h-3.5" />
+                                Consultorio seguro
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePsmMeetingModeChange('open')}
+                                className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                                  psmMeetingMode === 'open'
+                                    ? 'bg-amber-500/25 text-foreground'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                <Link2 className="w-3.5 h-3.5" />
+                                Enlace abierto
+                              </button>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`rounded-lg px-4 py-3 text-sm border ${
+                              psmMeetingMode === 'secure'
+                                ? 'border-green-500/30 bg-green-500/10 text-green-100'
+                                : 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                            }`}
+                          >
+                            {psmMeetingMode === 'secure' ? (
+                              <>
+                                <span className="font-semibold">Modo consultorio seguro.</span>{' '}
+                                Solo tú y tu paciente emparejado pueden entrar. El paciente espera en la sala de recepción hasta que lo admitas.
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-semibold">Modo enlace abierto.</span>{' '}
+                                Cualquier persona con cuenta Hub puede unirse, o como invitado solo con su nombre. Tú admites desde la recepción.
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {psmMeetingMode === 'open' ? (
+                          <div className="p-6 glass-card rounded-lg border border-amber-500/20 space-y-4">
+                            <div>
+                              <h4 className="font-semibold flex items-center gap-2">
+                                <Link2 className="w-4 h-4 text-amber-400" />
+                                Tu enlace para invitados
+                              </h4>
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Comparte este enlace con colegas, supervisión o personas que no son tus pacientes en la plataforma. Deben iniciar sesión en MotusDAO Hub.
+                              </p>
+                            </div>
+                            {matchData?.openGuestUrl ? (
+                              <>
+                                <code className="block text-xs bg-muted px-3 py-2 rounded break-all">
+                                  {typeof window !== 'undefined'
+                                    ? `${window.location.origin}${buildVideochatUrl(matchData.openGuestUrl)}`
+                                    : buildVideochatUrl(matchData.openGuestUrl)}
+                                </code>
+                                <div className="flex flex-wrap gap-2">
+                                  <CTAButton
+                                    size="sm"
+                                    onClick={() => {
+                                      router.push(buildVideochatUrl(matchData.openGuestUrl!))
+                                    }}
+                                  >
+                                    <Video className="w-4 h-4 mr-2" />
+                                    Abrir sala de invitados
+                                  </CTAButton>
+                                  <CTAButton
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => {
+                                      const hubUrl = `${window.location.origin}${buildVideochatUrl(matchData.openGuestUrl!)}`
+                                      window.navigator.clipboard?.writeText(hubUrl).then(() => {
+                                        setCopiedOpenLink(true)
+                                        setTimeout(() => setCopiedOpenLink(false), 2000)
+                                      })
+                                    }}
+                                  >
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    {copiedOpenLink ? 'Copiado' : 'Copiar enlace Hub'}
+                                  </CTAButton>
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Cargando enlace...</p>
+                            )}
+                          </div>
+                        ) : matchData?.activeMatches && matchData.activeMatches.length > 0 ? (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between mb-4">
                             <p className="text-sm text-muted-foreground">
@@ -1082,6 +1237,19 @@ export default function PerfilPage() {
                                     <span>{new Date(match.matchedAt).toLocaleDateString('es-ES')}</span>
                                   </div>
                                 </div>
+
+                                {match.officeUrl && (
+                                  <CTAButton
+                                    size="sm"
+                                    className="w-full mt-4"
+                                    onClick={() => {
+                                      router.push(buildVideochatUrl(match.officeUrl!))
+                                    }}
+                                  >
+                                    <Video className="w-4 h-4 mr-2" />
+                                    Abrir consultorio
+                                  </CTAButton>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1123,12 +1291,16 @@ export default function PerfilPage() {
                             </div>
                           )}
                         </div>
-                      ) : (
+                        ) : (
                         <div className="text-center py-8">
                           <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                           <p className="text-muted-foreground">No tienes usuarios emparejados</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Puedes usar el modo enlace abierto para reuniones con invitados.
+                          </p>
                         </div>
-                      )
+                        )}
+                      </div>
                     )}
                   </GlassCard>
                 </motion.div>

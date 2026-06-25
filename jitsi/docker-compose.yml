@@ -11,6 +11,9 @@ services:
     volumes:
       - ${CONFIG}/web:/config:Z
       - ${CONFIG}/web/letsencrypt:/etc/letsencrypt:Z
+      - ./branding/interface_config.js:/config/interface_config.js:ro
+      - ./branding/custom.css:/config/css/custom.css:ro
+      - ./branding/images:/config/images:ro
     environment:
       - ENABLE_AUTH=${ENABLE_AUTH:-1}
       - ENABLE_GUESTS=${ENABLE_GUESTS:-1}

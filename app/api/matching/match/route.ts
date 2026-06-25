@@ -4,6 +4,7 @@ import { asStringArray, toInputJson } from '@/lib/prisma-json'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import { buildOfficeJitsiUrl } from '@/lib/jitsi'
 
 /**
  * POST /api/matching/match
@@ -269,6 +270,7 @@ export async function POST(request: NextRequest) {
         psmId: match.psmId,
         status: match.status,
         matchedAt: match.matchedAt,
+        officeUrl: buildOfficeJitsiUrl(match.id),
         user: {
           id: match.user.id,
           email: match.user.email,

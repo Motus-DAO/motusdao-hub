@@ -317,6 +317,9 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
       </PsmSectionBlock>
 
       <PsmSectionBlock title="Preferencias de plataforma">
+        <p className="text-sm text-muted-foreground">
+          Servicios que me gustaría recibir por parte de MotusDAO.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <PlatformToggle
             icon={<Users className="w-4 h-4 text-blue-400" />}

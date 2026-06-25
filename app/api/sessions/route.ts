@@ -1,18 +1,11 @@
+import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { SessionStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
-
-// Helper: build random Jitsi room URL (configurable for producción)
-const buildJitsiUrl = () => {
-  const domain = process.env.NEXT_PUBLIC_JITSI_DOMAIN || 'meet.jit.si'
-  const roomPrefix = process.env.NEXT_PUBLIC_JITSI_ROOM_PREFIX || 'motusdao-'
-  const random = Math.random().toString(36).substring(2, 10)
-  const roomName = `${roomPrefix}${random}`
-  return `https://${domain}/${roomName}`
-}
+import { buildOfficeJitsiUrl } from '@/lib/jitsi'
 
 /**
  * POST /api/sessions
@@ -23,7 +16,7 @@ const buildJitsiUrl = () => {
  * - Verifica que el usuario exista y sea role === 'usuario'
  * - Verifica que tenga un Match activo con un PSM
  * - Si ya existe una sesión en estado requested/accepted, la devuelve
- * - Si no, crea una nueva sesión con modo video_external y un link de Jitsi
+ * - Si no, crea una nueva sesión de agenda apuntando al consultorio permanente del Match
  */
 export async function POST(request: NextRequest) {
   try {
@@ -120,10 +113,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const url = externalUrl || buildJitsiUrl()
+    const sessionId = randomUUID()
+    const url = externalUrl || buildOfficeJitsiUrl(activeMatch.id)
 
     const session = await prisma.session.create({
       data: {
+        id: sessionId,
         userId: user.id,
         psmId: activeMatch.psmId,
         matchId: activeMatch.id,

@@ -417,12 +417,13 @@ export default function AdminPSMPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
                     {/* Avatar */}
-                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="relative w-16 h-16 overflow-hidden bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       {psm.avatarUrl ? (
                         <Image
                           src={psm.avatarUrl}
                           alt={`${psm.nombre} ${psm.apellido}`}
                           fill
+                          sizes="64px"
                           className="rounded-lg object-cover"
                         />
                       ) : (
@@ -742,11 +743,12 @@ export default function AdminPSMPage() {
                     {selectedPSM.avatarUrl && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Avatar</p>
-                        <div className="relative w-16 h-16">
+                        <div className="relative w-16 h-16 overflow-hidden">
                           <Image
                             src={selectedPSM.avatarUrl}
                             alt={`${selectedPSM.nombre} ${selectedPSM.apellido}`}
                             fill
+                            sizes="64px"
                             className="rounded-lg object-cover"
                           />
                         </div>

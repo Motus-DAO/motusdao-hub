@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireMatchedUserAccess } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import { buildOfficeJitsiUrl } from '@/lib/jitsi'
 
 /**
  * GET /api/matching/user/[userId]
@@ -61,6 +62,7 @@ export async function GET(
         psmId: activeMatch.psmId,
         status: activeMatch.status,
         matchedAt: activeMatch.matchedAt,
+        officeUrl: buildOfficeJitsiUrl(activeMatch.id),
         psm: {
           id: activeMatch.psm.id,
           email: activeMatch.psm.email,

@@ -14,6 +14,10 @@ import {
   Award,
   Edit,
   FileText,
+  Info,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import Image from 'next/image'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -55,6 +59,8 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [tokenURI, setTokenURI] = useState<string | null>(null)
+  const [activeDeclarationModal, setActiveDeclarationModal] = useState<PsmLegalDeclarationKey | null>(null)
+  const [showLegalDetails, setShowLegalDetails] = useState(false)
 
   const goToPsmStep = (sub: number) => {
     setPsmWizardStep(sub)
@@ -63,6 +69,20 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
 
   const consentsComplete =
     role !== 'psm' || arePsmLegalDeclarationsComplete(data)
+  const legalDeclarations = resolveLegalDeclarations(data)
+
+  const toggleAllRequiredDeclarations = (checked: boolean) => {
+    const nextDeclarations = Object.fromEntries(
+      PSM_LEGAL_DECLARATIONS.map((item) => [item.key, checked])
+    ) as Record<PsmLegalDeclarationKey, boolean>
+    const merged = { ...data, legalDeclarations: nextDeclarations }
+    updateData({
+      legalDeclarations: nextDeclarations,
+      availability: buildPsmAvailability(merged),
+      consentToTerms: checked,
+      consentToPrivacy: checked,
+    })
+  }
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No especificada'
@@ -613,38 +633,57 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             <p className="text-xs text-muted-foreground">
               Debes aceptar todas las declaraciones para enviar tu registro profesional.
             </p>
-            {PSM_LEGAL_DECLARATIONS.map((item) => (
-              <label key={item.key} className="flex items-start gap-3 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={Boolean(resolveLegalDeclarations(data)[item.key as PsmLegalDeclarationKey])}
-                  onChange={(e) => {
-                    const nextDeclarations = {
-                      ...resolveLegalDeclarations(data),
-                      [item.key]: e.target.checked,
-                    }
-                    const merged = { ...data, legalDeclarations: nextDeclarations }
-                    updateData({
-                      legalDeclarations: nextDeclarations,
-                      availability: buildPsmAvailability(merged),
-                      consentToTerms:
-                        item.key === 'termsPrivacy' ? e.target.checked : data.consentToTerms,
-                      consentToPrivacy:
-                        item.key === 'termsPrivacy' ? e.target.checked : data.consentToPrivacy,
-                    })
-                  }}
-                  className="mt-1 w-4 h-4"
-                />
-                <span>{item.label} *</span>
-              </label>
-            ))}
-            <label className="flex items-start gap-3 text-sm cursor-pointer">
+            <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 text-sm cursor-pointer">
               <input
                 type="checkbox"
-                checked={Boolean(data.consentToAIProcessing)}
-                onChange={(e) => updateData({ consentToAIProcessing: e.target.checked })}
+                checked={consentsComplete}
+                onChange={(e) => toggleAllRequiredDeclarations(e.target.checked)}
                 className="mt-1 w-4 h-4"
               />
+              <span className="font-medium">
+                Acepto todas las declaraciones legales obligatorias. *
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowLegalDetails((prev) => !prev)}
+              className="inline-flex w-full items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-mauve-200 hover:bg-white/10"
+            >
+              <span>Ver declaraciones incluidas</span>
+              {showLegalDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {showLegalDetails && (
+              <div className="space-y-2">
+                {PSM_LEGAL_DECLARATIONS.map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-black/20 p-3"
+                  >
+                    <p className="text-sm">
+                      <span className={legalDeclarations[item.key as PsmLegalDeclarationKey] ? 'text-emerald-300' : 'text-amber-200'}>
+                        {legalDeclarations[item.key as PsmLegalDeclarationKey] ? 'Aceptada' : 'Pendiente'}:
+                      </span>{' '}
+                      {item.label} *
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDeclarationModal(item.key as PsmLegalDeclarationKey)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-white/15 px-2 py-1 text-xs text-mauve-200 hover:bg-white/10"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                      Ver detalle
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className="flex items-start gap-3 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                checked={Boolean(data.consentToAIProcessing)}
+                onChange={(e) => updateData({ consentToAIProcessing: e.target.checked })}
+                  className="mt-1 w-4 h-4"
+                />
               <span className="text-muted-foreground">
                 Autorizo el uso de IA para apoyar el emparejamiento y mejorar mi perfil (opcional).
               </span>
@@ -654,6 +693,36 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 Marca todas las declaraciones obligatorias para poder completar tu registro.
               </p>
             )}
+          </div>
+        )}
+        {role === 'psm' && activeDeclarationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setActiveDeclarationModal(null)}
+              aria-label="Cerrar detalle legal"
+            />
+            <div className="relative w-full max-w-2xl rounded-xl border border-white/15 bg-[#0b0e12] p-6 shadow-2xl">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <h4 className="text-lg font-semibold text-white">
+                  {LEGAL_DECLARATION_DETAILS[activeDeclarationModal].title}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setActiveDeclarationModal(null)}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-white/10 hover:text-white"
+                  aria-label="Cerrar modal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                {LEGAL_DECLARATION_DETAILS[activeDeclarationModal].body.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -718,6 +787,61 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
       </GlassCard>
     </motion.div>
   )
+}
+
+const LEGAL_DECLARATION_DETAILS: Record<
+  PsmLegalDeclarationKey,
+  { title: string; body: string[] }
+> = {
+  infoIsTrue: {
+    title: 'Información veraz y actualizada',
+    body: [
+      'Declaras que los datos personales, profesionales y documentos enviados son correctos al momento del registro.',
+      'Si cambian tus credenciales, habilitaciones o datos de contacto, deberás actualizar tu perfil para mantenerlo vigente.',
+    ],
+  },
+  professionalScope: {
+    title: 'Alcance profesional y responsabilidad',
+    body: [
+      'Reconoces que solo ofrecerás servicios dentro de tu formación, certificaciones y alcance legal permitido.',
+      'MotusDAO no sustituye tu criterio profesional ni tus obligaciones éticas y regulatorias como especialista.',
+    ],
+  },
+  motusCanReview: {
+    title: 'Revisión y decisiones de MotusDAO',
+    body: [
+      'MotusDAO puede revisar tu perfil y documentación para mantener estándares de calidad y seguridad para usuarios.',
+      'Con base en esa revisión, tu perfil podría aprobarse, rechazarse, limitarse o requerir información adicional.',
+    ],
+  },
+  notEmergency: {
+    title: 'MotusDAO no es servicio de emergencia',
+    body: [
+      'La plataforma no reemplaza servicios de urgencia ni atención inmediata en crisis.',
+      'Ante riesgo inminente o emergencias, el usuario debe ser canalizado a servicios locales de emergencia.',
+    ],
+  },
+  termsPrivacy: {
+    title: 'Términos, privacidad y tratamiento de datos',
+    body: [
+      'Aceptas los términos de uso, el aviso de privacidad y las reglas de tratamiento de datos de MotusDAO.',
+      'Esto incluye el uso de información operativa necesaria para validar perfil, seguridad y funcionamiento de la plataforma.',
+    ],
+  },
+  documentsReview: {
+    title: 'Revisión administrativa de documentos',
+    body: [
+      'Autorizas que el equipo administrativo revise tus documentos para validar identidad y habilitación profesional.',
+      'La revisión se limita a fines de verificación y cumplimiento interno de la plataforma.',
+    ],
+  },
+  crossBorderReview: {
+    title: 'Atención transfronteriza sujeta a revisión',
+    body: [
+      'Si atiendes usuarios fuera de tu país de habilitación, pueden aplicar requisitos o validaciones adicionales.',
+      'MotusDAO puede solicitar evidencia complementaria o restringir cobertura territorial cuando sea necesario.',
+    ],
+  },
 }
 
 function EditButton({ onClick }: { onClick: () => void }) {

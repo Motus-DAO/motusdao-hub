@@ -10,6 +10,8 @@ import { motion } from 'framer-motion'
 import { useUIStore } from '@/lib/store'
 import { marked } from 'marked'
 import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useRouter } from 'next/navigation'
+import { buildVideochatUrl } from '@/lib/jitsi'
 
 interface Message {
   id: string
@@ -45,6 +47,7 @@ const renderMarkdown = (content: string): string => {
 export default function MotusAIPage() {
   const { role } = useUIStore()
   const { user, authenticated, ready } = useWaaP()
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -122,10 +125,7 @@ export default function MotusAIPage() {
         throw new Error('La sesión no tiene un enlace de videollamada válido.')
       }
 
-      // Abrir la videollamada en una nueva pestaña
-      if (typeof window !== 'undefined') {
-        window.open(url, '_blank', 'noopener,noreferrer')
-      }
+      router.push(buildVideochatUrl(url))
     } catch (err) {
       console.error('Error requesting human session:', err)
       setSessionError(

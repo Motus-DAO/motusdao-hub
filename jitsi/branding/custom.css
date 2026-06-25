@@ -1,0 +1,44 @@
+/* MotusDAO Consultorio — Jitsi custom theme */
+
+:root {
+  --motus-mauve: #a855f7;
+  --motus-mauve-dark: #7c3aed;
+  --motus-iris: #6366f1;
+  --motus-bg: #0f0a1a;
+  --motus-surface: rgba(255, 255, 255, 0.06);
+}
+
+body,
+#react body,
+.welcome {
+  background: var(--motus-bg) !important;
+}
+
+.new-toolbox .toolbox-button,
+.toolbox-button {
+  background-color: var(--motus-surface) !important;
+}
+
+.new-toolbox .toolbox-button:hover,
+.toolbox-button:hover {
+  background-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+.prejoin-preview-dropdown-container,
+.premeeting-screen,
+.login-panel {
+  background: var(--motus-bg) !important;
+}
+
+.welcome .header-text-title {
+  color: #f3e8ff !important;
+}
+
+.welcome .header-text-subtitle {
+  color: #c084fc !important;
+}
+
+.lobby-screen,
+.lobby-dialog {
+  background: var(--motus-bg) !important;
+}
