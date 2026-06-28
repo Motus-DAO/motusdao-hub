@@ -23,8 +23,18 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { IA_PARA_PSICOLOGOS } from '@/content/courses/ia-para-psicologos'
+import { PublicCourseDetail } from '@/components/academy/PublicCourseDetail'
 
 export default function IAParaPsicologosPage() {
+  return (
+    <PublicCourseDetail
+      slug="ia-para-psicologos"
+      fallback={<LegacyIAParaPsicologosPage />}
+    />
+  )
+}
+
+function LegacyIAParaPsicologosPage() {
   const totalMinutes = IA_PARA_PSICOLOGOS.agenda.reduce((sum, item) => sum + item.minutes, 0)
   const [expandedPrompts, setExpandedPrompts] = useState<{ [key: string]: boolean }>({})
 
@@ -138,9 +148,9 @@ export default function IAParaPsicologosPage() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <CTAButton size="lg" glow className="flex-1">
+                    <CTAButton size="lg" glow className="flex-1" disabled>
                       <Bot className="w-5 h-5 mr-2" />
-                      Comenzar Curso
+                      Próximamente
                     </CTAButton>
                     <CTAButton variant="secondary" size="lg">
                       <FileText className="w-5 h-5 mr-2" />

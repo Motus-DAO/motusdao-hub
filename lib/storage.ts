@@ -4,15 +4,20 @@ import { getSupabaseAdmin } from './supabase-admin'
 export const STORAGE_BUCKETS = {
   avatars: 'avatars',
   professionalDocuments: 'professional-documents',
+  academyLessons: 'academy-lessons',
 } as const
 
 export type DocumentType = 'cedula' | 'titulo'
 
 const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 const DOCUMENT_MIME_TYPES = [...AVATAR_MIME_TYPES, 'application/pdf'] as const
+const ACADEMY_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const
+const ACADEMY_PDF_MIME_TYPES = ['application/pdf'] as const
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024
 const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
+const ACADEMY_VIDEO_MAX_BYTES = 100 * 1024 * 1024
+const ACADEMY_PDF_MAX_BYTES = 10 * 1024 * 1024
 
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -20,6 +25,8 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/webp': 'webp',
   'image/gif': 'gif',
   'application/pdf': 'pdf',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
 }
 
 export function normalizeWalletAddress(address: string): string {
@@ -128,4 +135,74 @@ export function documentPathBelongsToOwner(
 ): boolean {
   const normalized = normalizeWalletAddress(ownerKey)
   return storagePath.toLowerCase().startsWith(`${normalized}/`)
+}
+
+export async function uploadAcademyVideo(params: {
+  file: File
+  courseId: string
+  lessonId: string
+}): Promise<{ storagePath: string }> {
+  validateFile(params.file, ACADEMY_VIDEO_MIME_TYPES, ACADEMY_VIDEO_MAX_BYTES)
+
+  const ext = getExtension(params.file.type)
+  const storagePath = `${params.courseId}/${params.lessonId}/video.${ext}`
+  const buffer = Buffer.from(await params.file.arrayBuffer())
+
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.academyLessons)
+    .upload(storagePath, buffer, {
+      contentType: params.file.type,
+      upsert: true,
+    })
+
+  if (error) throw new Error(error.message)
+
+  return { storagePath }
+}
+
+export async function uploadAcademyPdf(params: {
+  file: File
+  courseId: string
+  lessonId: string
+  resourceId: string
+}): Promise<{ storagePath: string }> {
+  validateFile(params.file, ACADEMY_PDF_MIME_TYPES, ACADEMY_PDF_MAX_BYTES)
+
+  const storagePath = `${params.courseId}/${params.lessonId}/pdfs/${params.resourceId}.pdf`
+  const buffer = Buffer.from(await params.file.arrayBuffer())
+
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.academyLessons)
+    .upload(storagePath, buffer, {
+      contentType: params.file.type,
+      upsert: true,
+    })
+
+  if (error) throw new Error(error.message)
+
+  return { storagePath }
+}
+
+export async function deleteAcademyMedia(storagePath: string): Promise<void> {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage.from(STORAGE_BUCKETS.academyLessons).remove([storagePath])
+  if (error) throw new Error(error.message)
+}
+
+export async function createSignedAcademyMediaUrl(
+  storagePath: string,
+  expiresInSeconds = 3600
+): Promise<string> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKETS.academyLessons)
+    .createSignedUrl(storagePath, expiresInSeconds)
+
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message || 'Failed to create signed URL')
+  }
+
+  return data.signedUrl
 }

@@ -32,6 +32,20 @@ export function AdminAuthGate({ children }: { children: React.ReactNode }) {
   const checkAccess = useCallback(async () => {
     if (!ready) return
 
+    // Dev-only: skip wallet/SIWE when DEV_BYPASS_ADMIN_AUTH=1
+    try {
+      const bypassRes = await fetch('/api/auth/dev-admin-bypass')
+      if (bypassRes.ok) {
+        const bypass = (await bypassRes.json()) as { enabled?: boolean }
+        if (bypass.enabled) {
+          setAccess('authorized')
+          return
+        }
+      }
+    } catch {
+      // ignore — fall through to normal auth
+    }
+
     if (!authenticated) {
       setAccess('unauthenticated')
       setSessionEoa(null)
