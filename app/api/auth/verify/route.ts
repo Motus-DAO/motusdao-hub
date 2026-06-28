@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { SiweMessage } from 'siwe'
-import { getAddress } from 'viem'
 import { prisma } from '@/lib/prisma'
 import { consumeAuthNonce } from '@/lib/auth/nonce'
 import {
@@ -12,6 +10,7 @@ import {
 } from '@/lib/auth/session'
 import { SESSION_COOKIE_NAME } from '@/lib/auth/constants'
 import { handleAuthError, AuthError } from '@/lib/auth/errors'
+import { verifySiweLogin } from '@/lib/auth/verify-siwe'
 
 const verifySchema = z.object({
   message: z.string().min(1),
@@ -25,14 +24,13 @@ export async function POST(request: NextRequest) {
     const body = verifySchema.parse(await request.json())
     const domain = getRequestDomain(request)
 
-    const siweMessage = new SiweMessage(body.message)
-    const fields = await siweMessage.verify({
+    const { address, nonce } = await verifySiweLogin({
+      message: body.message,
       signature: body.signature,
       domain,
     })
 
-    const address = getAddress(fields.data.address)
-    const nonceValid = await consumeAuthNonce(address, fields.data.nonce)
+    const nonceValid = await consumeAuthNonce(address, nonce)
     if (!nonceValid) {
       throw new AuthError(401, 'Invalid or expired nonce')
     }
@@ -96,10 +94,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const message =
+      error instanceof Error ? error.message : 'Authentication verification failed'
     console.error('[auth/verify] Error:', error)
-    return NextResponse.json(
-      { error: 'Authentication verification failed' },
-      { status: 401 }
-    )
+    return NextResponse.json({ error: message }, { status: 401 })
   }
 }

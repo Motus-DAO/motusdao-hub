@@ -7,6 +7,7 @@ import {
   type Chain,
 } from 'viem'
 import { celoMainnet } from '@/lib/celo'
+import { normalizeSignature } from '@/lib/auth/verify-siwe'
 
 type Eip1193Provider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
@@ -98,36 +99,76 @@ export async function signSiweMessage(
 ): Promise<string> {
   const signerAddress = getAddress(address)
   const signingProvider = resolveSigningProvider(waapProvider)
+  const loginMethod = (waapProvider as WaapProvider).getLoginMethod?.()
   const errors: string[] = []
+  const hexMessage = stringToHex(message)
 
-  // 1. viem signMessage (recommended — handles encoding per provider)
+  // WaaP MPC + WalletConnect: personal_sign(hex, address) is the reliable path.
+  // viem signMessage through the WaaP proxy often returns sigs that fail recovery.
+  const preferPersonalSign =
+    loginMethod === 'waap' ||
+    loginMethod === 'walletconnect' ||
+    signingProvider === waapProvider
+
+  const personalSignAttempts: [unknown, string][] = preferPersonalSign
+    ? [
+        [hexMessage, signerAddress],
+        [signerAddress, hexMessage],
+        [message, signerAddress],
+        [signerAddress, message],
+      ]
+    : [
+        [hexMessage, signerAddress],
+        [message, signerAddress],
+        [signerAddress, hexMessage],
+        [signerAddress, message],
+      ]
+
+  if (preferPersonalSign) {
+    for (const params of personalSignAttempts) {
+      try {
+        const sig = await signWithPersonalSign(
+          signingProvider,
+          message,
+          signerAddress,
+          params
+        )
+        return normalizeSignature(sig)
+      } catch (error) {
+        errors.push(`personal_sign: ${formatSignError(error)}`)
+      }
+    }
+  }
+
+  // viem signMessage (works well for injected MetaMask)
   try {
-    return await signWithViem(signingProvider, message, signerAddress)
+    const sig = await signWithViem(signingProvider, message, signerAddress)
+    return normalizeSignature(sig)
   } catch (error) {
     errors.push(`viem: ${formatSignError(error)}`)
   }
 
-  // 2. personal_sign variants
-  const hexMessage = stringToHex(message)
-  const attempts: [unknown, string][] = [
-    [hexMessage, signerAddress],
-    [message, signerAddress],
-    [signerAddress, hexMessage],
-    [signerAddress, message],
-  ]
-
-  for (const params of attempts) {
-    try {
-      return await signWithPersonalSign(signingProvider, message, signerAddress, params)
-    } catch (error) {
-      errors.push(`personal_sign: ${formatSignError(error)}`)
+  if (!preferPersonalSign) {
+    for (const params of personalSignAttempts) {
+      try {
+        const sig = await signWithPersonalSign(
+          signingProvider,
+          message,
+          signerAddress,
+          params
+        )
+        return normalizeSignature(sig)
+      } catch (error) {
+        errors.push(`personal_sign: ${formatSignError(error)}`)
+      }
     }
   }
 
-  // 3. Fallback: original WaaP provider if we tried injected
+  // Fallback: original WaaP provider if we tried injected
   if (signingProvider !== waapProvider) {
     try {
-      return await signWithViem(waapProvider, message, signerAddress)
+      const sig = await signWithViem(waapProvider, message, signerAddress)
+      return normalizeSignature(sig)
     } catch (error) {
       errors.push(`waap fallback: ${formatSignError(error)}`)
     }

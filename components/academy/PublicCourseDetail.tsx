@@ -437,12 +437,13 @@ export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?
         return
       }
 
-      if (!isSessionReady) {
+      let session = await fetchAppSession()
+      if (!session.authenticated) {
         const signed = await signIn()
         if (!signed) return
+        session = await fetchAppSession()
       }
 
-      const session = await fetchAppSession()
       if (!session.userId) {
         setActionError('No se pudo vincular tu sesión. Intenta firmar de nuevo.')
         return
@@ -487,6 +488,12 @@ export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?
       </div>
     )
   }
+  const handleSignInAndEnroll = async () => {
+    const signed = await signIn()
+    if (!signed) return
+    await handleEnroll()
+  }
+
   if (course) {
     return (
       <CourseDetailView
@@ -499,7 +506,7 @@ export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?
         sessionState={ready ? sessionState : 'loading'}
         signing={signing}
         onLogin={() => void login()}
-        onSignIn={() => void signIn()}
+        onSignIn={() => void handleSignInAndEnroll()}
       />
     )
   }

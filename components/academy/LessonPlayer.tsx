@@ -297,11 +297,14 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
       await login()
       return null
     }
-    if (!isSessionReady) {
+
+    let session = await fetchAppSession()
+    if (!session.authenticated) {
       const signed = await signIn()
       if (!signed) return null
+      session = await fetchAppSession()
     }
-    const session = await fetchAppSession()
+
     if (!session.userId) return null
     setUserId(session.userId)
     return session.userId
@@ -432,6 +435,12 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
   const isEnrolled = Boolean(enrollment) || access.enrolled
   const contentHtml = lesson.contentMDX ? renderMarkdown(lesson.contentMDX) : ''
   const nextLesson = getNextLesson(course, lessonSlug)
+
+  const handleSignInAndEnroll = async () => {
+    const signed = await signIn()
+    if (!signed) return
+    await handleEnroll()
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -604,8 +613,13 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
 
                 {sessionState === 'needs_signature' && (
                   <div className="mt-4">
-                    <CTAButton size="sm" onClick={() => void signIn()} disabled={signing} className="gap-2">
-                      {signing && <Loader2 className="h-4 w-4 animate-spin" />}
+                    <CTAButton
+                      size="sm"
+                      onClick={() => void handleSignInAndEnroll()}
+                      disabled={signing || enrolling}
+                      className="gap-2"
+                    >
+                      {(signing || enrolling) && <Loader2 className="h-4 w-4 animate-spin" />}
                       Firmar para continuar
                     </CTAButton>
                   </div>
