@@ -7,6 +7,10 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from './constants'
 import { AuthError } from './errors'
+import {
+  getDevBypassAdminContext,
+  isDevAdminBypassEnabled,
+} from './dev-bypass'
 
 export type SessionPayload = {
   sub: string | null
@@ -128,6 +132,10 @@ export async function requireSession(
 export async function requireAdmin(
   request: NextRequest
 ): Promise<AuthContext> {
+  if (isDevAdminBypassEnabled()) {
+    return getDevBypassAdminContext()
+  }
+
   const session = await requireSession(request)
   if (!session.userId || session.role !== 'admin') {
     throw new AuthError(403, 'Admin access required')

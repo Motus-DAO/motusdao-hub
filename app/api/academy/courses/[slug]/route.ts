@@ -12,10 +12,14 @@ const publicLessonSelect = {
   isFreePreview: true,
 } as const
 
-export async function GET() {
+type RouteParams = { params: Promise<{ slug: string }> }
+
+export async function GET(_request: Request, { params }: RouteParams) {
   try {
-    const courses = await prisma.course.findMany({
-      where: { isPublished: true },
+    const { slug } = await params
+
+    const course = await prisma.course.findFirst({
+      where: { slug, isPublished: true },
       include: {
         modules: {
           include: {
@@ -28,12 +32,15 @@ export async function GET() {
           orderBy: { order: 'asc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({ courses })
+    if (!course) {
+      return NextResponse.json({ error: 'Curso no encontrado' }, { status: 404 })
+    }
+
+    return NextResponse.json({ course })
   } catch (error) {
-    console.error('Error fetching courses:', error)
+    console.error('Error fetching course by slug:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

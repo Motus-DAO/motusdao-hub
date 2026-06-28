@@ -78,6 +78,7 @@ model Enrollment {
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   paymentLogs PaymentLog[]
+  lessonProgress LessonProgress[]
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
@@ -134,8 +135,27 @@ model Lesson {
   pdfResources  Json?    @db.JsonB
   videoUrl      String?
   module        Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
 
   @@map("lessons")
+}
+
+model LessonProgress {
+  id           String     @id @default(cuid())
+  userId       String
+  lessonId     String
+  enrollmentId String?
+  completed    Boolean    @default(true)
+  completedAt  DateTime?
+  lastPosition Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  enrollment   Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
 }
 
 model Match {
@@ -529,6 +549,7 @@ model User {
   contactMessages       ContactMessage[]
   crisisEvents          CrisisEvent[]
   enrollments           Enrollment[]
+  lessonProgress        LessonProgress[]
   journalEntries        JournalEntry[]
   psmMatches            Match[]            @relation("matches_psmIdTousers")
   userMatches           Match[]            @relation("matches_userIdTousers")
