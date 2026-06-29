@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   FileText,
   Loader2,
   Lock,
+  X,
 } from 'lucide-react'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { CourseProgressBar } from '@/components/academy/CourseProgressBar'
@@ -172,6 +174,66 @@ function PdfResourcesPanel({
   )
 }
 
+function LessonCompleteConfirmDialog({
+  open,
+  confirming,
+  isLastLesson,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  confirming: boolean
+  isLastLesson: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lesson-complete-dialog-title"
+        className="w-full max-w-sm rounded-xl border border-white/10 bg-background p-5 shadow-2xl sm:p-6"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mauve-500/15">
+            <CheckCircle2 className="h-5 w-5 text-mauve-300" />
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={confirming}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <h2 id="lesson-complete-dialog-title" className="mb-2 text-lg font-semibold text-white">
+          ¿Leíste esta lección?
+        </h2>
+        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+          Al confirmar, la marcaremos como completada y actualizaremos tu progreso en el bloque.
+          Puedes regresar a ella en cualquier momento, siempre que tengas acceso a la plataforma.
+        </p>
+
+        <div className="flex justify-end gap-2">
+          <CTAButton type="button" variant="ghost" size="sm" onClick={onClose} disabled={confirming}>
+            Cancelar
+          </CTAButton>
+          <CTAButton type="button" size="sm" onClick={onConfirm} disabled={confirming} className="gap-2">
+            {confirming && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isLastLesson ? 'Completar bloque' : 'Confirmar y continuar'}
+          </CTAButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function LessonPlayer({
   courseSlug: rawCourseSlug,
   lessonSlug,
@@ -180,6 +242,7 @@ export function LessonPlayer({
   lessonSlug: string
 }) {
   const courseSlug = resolveRouteBlockSlug(rawCourseSlug)
+  const router = useRouter()
   const { login, authenticated, ready } = useWaaP()
   const { sessionState, signing, signError, signIn, isSessionReady } = useSiweSession()
 
@@ -195,6 +258,7 @@ export function LessonPlayer({
   const [error, setError] = useState<string | null>(null)
   const [enrolling, setEnrolling] = useState(false)
   const [markingComplete, setMarkingComplete] = useState(false)
+  const [confirmAdvanceOpen, setConfirmAdvanceOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const isLessonComplete = lessonData ? completedIds.has(lessonData.lesson.id) : false
@@ -367,8 +431,8 @@ export function LessonPlayer({
     }
   }
 
-  const handleMarkComplete = async () => {
-    if (!course || !lessonData || !lessonData.access.allowed) return
+  const markLessonComplete = async (): Promise<boolean> => {
+    if (!course || !lessonData || !lessonData.access.allowed) return false
 
     setMarkingComplete(true)
     setActionError(null)
@@ -377,7 +441,7 @@ export function LessonPlayer({
       const activeUserId = userId || (await ensureSession())
       if (!activeUserId) {
         setActionError('Inicia sesión para guardar tu progreso.')
-        return
+        return false
       }
 
       if (!enrollment && !lessonData.lesson.isFreePreview) {
@@ -406,12 +470,14 @@ export function LessonPlayer({
         progress: result.progress,
         completed: result.completed,
       }))
+      return true
     } catch (markError) {
       if (markError instanceof Error && markError.message === 'NOT_ENROLLED') {
         setActionError('Debes inscribirte al bloque para guardar progreso.')
       } else {
         setActionError(markError instanceof Error ? markError.message : 'Error al marcar completada')
       }
+      return false
     } finally {
       setMarkingComplete(false)
     }
@@ -451,8 +517,34 @@ export function LessonPlayer({
 
   const { lesson, access } = lessonData
   const isEnrolled = Boolean(enrollment) || access.enrolled
-  const contentHtml = lesson.contentMDX ? renderMarkdown(lesson.contentMDX) : ''
+  const contentHtml = lesson.contentMDX
+    ? renderMarkdown(lesson.contentMDX, { lessonContent: true })
+    : ''
   const nextLesson = getNextLesson(course, lessonSlug)
+  const isLastLesson = !nextLesson
+
+  const navigateAfterLesson = () => {
+    if (nextLesson) {
+      router.push(`/academia/${courseSlug}/leccion/${nextLesson.slug}`)
+      return
+    }
+    router.push(`/academia/${courseSlug}`)
+  }
+
+  const handleAdvanceClick = () => {
+    if (isLessonComplete) {
+      navigateAfterLesson()
+      return
+    }
+    setConfirmAdvanceOpen(true)
+  }
+
+  const handleConfirmAdvance = async () => {
+    const success = await markLessonComplete()
+    if (!success) return
+    setConfirmAdvanceOpen(false)
+    navigateAfterLesson()
+  }
 
   const handleSignInAndEnroll = async () => {
     const signed = await signIn()
@@ -462,21 +554,21 @@ export function LessonPlayer({
 
   return (
     <div className="min-h-screen bg-background">
-      <Section>
-        <div className="container mx-auto px-6">
+      <Section padding="md">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
-            className="mb-6 flex flex-wrap items-center gap-4"
+            className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4"
           >
-            <Link href={`/academia/${courseSlug}`}>
-              <CTAButton variant="secondary" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {course.title}
+            <Link href={`/academia/${courseSlug}`} className="w-full sm:w-auto">
+              <CTAButton variant="secondary" size="sm" className="max-w-full">
+                <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">{course.title}</span>
               </CTAButton>
             </Link>
             {enrollment && (
-              <div className="min-w-[200px] max-w-xs flex-1">
+              <div className="w-full min-w-0 sm:max-w-xs sm:flex-1">
                 <CourseProgressBar
                   progress={enrollment.progress}
                   completed={enrollment.completed}
@@ -490,17 +582,17 @@ export function LessonPlayer({
             )}
           </motion.div>
 
-          <div className="grid gap-8 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2.5fr)]">
-            <aside>
+          <div className="grid gap-6 lg:grid-cols-[minmax(240px,1fr)_minmax(0,2.5fr)] lg:gap-8">
+            <aside className="order-last lg:order-none">
               <GlassCard className="overflow-hidden lg:sticky lg:top-24">
-                <div className="border-b border-white/10 px-5 py-4">
+                <div className="border-b border-white/10 px-4 py-4 sm:px-5">
                   <p className="text-xs font-medium uppercase text-mauve-400">Contenido</p>
-                  <h2 className="mt-1 text-lg font-semibold">{course.title}</h2>
+                  <h2 className="mt-1 text-base font-semibold leading-snug sm:text-lg">{course.title}</h2>
                 </div>
-                <div className="max-h-[70vh] overflow-y-auto">
+                <div className="max-h-[50vh] overflow-y-auto lg:max-h-[70vh]">
                   {course.modules.map((module, moduleIndex) => (
                     <div key={module.id} className="border-b border-white/10 last:border-b-0">
-                      <p className="px-5 py-3 text-xs font-medium uppercase text-muted-foreground">
+                      <p className="px-4 py-3 text-xs font-medium uppercase text-muted-foreground sm:px-5">
                         Módulo {moduleIndex + 1}: {module.title}
                       </p>
                       <div className="divide-y divide-white/5">
@@ -513,7 +605,7 @@ export function LessonPlayer({
                             <Link
                               key={item.id}
                               href={`/academia/${courseSlug}/leccion/${item.slug}`}
-                              className={`flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
+                              className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors sm:px-5 ${
                                 active
                                   ? 'bg-mauve-500/15 text-mauve-200'
                                   : 'text-muted-foreground hover:bg-white/5 hover:text-white'
@@ -537,8 +629,8 @@ export function LessonPlayer({
               </GlassCard>
             </aside>
 
-            <main className="space-y-6">
-              <GlassCard className="p-6 sm:p-8">
+            <main className="order-first space-y-6 lg:order-none">
+              <GlassCard className="p-4 sm:p-6 md:p-8">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   {lesson.isFreePreview && (
                     <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs text-green-300">
@@ -552,7 +644,7 @@ export function LessonPlayer({
                   )}
                 </div>
 
-                <GradientText as="h1" className="mb-3 text-3xl font-bold">
+                <GradientText as="h1" className="mb-3 text-2xl font-bold sm:text-3xl">
                   {lesson.title}
                 </GradientText>
                 {lesson.summary && (
@@ -573,7 +665,7 @@ export function LessonPlayer({
                     )}
                     {contentHtml ? (
                       <div
-                        className="prose prose-invert max-w-none prose-headings:text-white prose-p:text-muted-foreground prose-a:text-mauve-300"
+                        className="academy-prose"
                         dangerouslySetInnerHTML={{ __html: contentHtml }}
                       />
                     ) : (
@@ -583,27 +675,18 @@ export function LessonPlayer({
                     )}
 
                     <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
-                      <CTAButton
-                        onClick={() => void handleMarkComplete()}
-                        disabled={markingComplete || isLessonComplete}
-                        className="gap-2"
-                        variant={isLessonComplete ? 'secondary' : 'primary'}
-                      >
-                        {markingComplete ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="h-4 w-4" />
-                        )}
-                        {isLessonComplete ? 'Lección completada' : 'Marcar como completada'}
-                      </CTAButton>
-
-                      {nextLesson ? (
-                        <Link href={`/academia/${courseSlug}/leccion/${nextLesson.slug}`}>
-                          <CTAButton variant={isLessonComplete ? 'primary' : 'secondary'} className="gap-2">
-                            Siguiente lección
-                            <ArrowRight className="h-4 w-4" />
-                          </CTAButton>
-                        </Link>
+                      {nextLesson || !isLessonComplete ? (
+                        <CTAButton
+                          onClick={() => void handleAdvanceClick()}
+                          disabled={markingComplete}
+                          className="gap-2"
+                        >
+                          {markingComplete ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : null}
+                          {nextLesson ? 'Siguiente lección' : 'Completar bloque'}
+                          {!markingComplete && <ArrowRight className="h-4 w-4" />}
+                        </CTAButton>
                       ) : isLessonComplete && enrollment?.completed ? (
                         <Link href={`/academia/${courseSlug}`}>
                           <CTAButton variant="primary" className="gap-2">
@@ -613,6 +696,14 @@ export function LessonPlayer({
                         </Link>
                       ) : null}
                     </div>
+
+                    <LessonCompleteConfirmDialog
+                      open={confirmAdvanceOpen}
+                      confirming={markingComplete}
+                      isLastLesson={isLastLesson}
+                      onClose={() => setConfirmAdvanceOpen(false)}
+                      onConfirm={() => void handleConfirmAdvance()}
+                    />
                   </>
                 )}
 

@@ -904,6 +904,129 @@ p[class*="HelpTextContainer"] * {
   -webkit-mask-composite: xor;
 }
 
+/* Academy lesson content — typography + tables (shadcn-inspired, Motus tokens) */
+.academy-prose {
+  @apply max-w-none text-base leading-relaxed text-muted-foreground;
+}
+
+.academy-prose-summary {
+  @apply text-sm leading-relaxed;
+}
+
+.academy-prose-summary p {
+  @apply mb-3 last:mb-0;
+}
+
+.academy-prose-summary strong {
+  @apply font-semibold text-mauve-300;
+}
+
+.academy-prose > :first-child {
+  @apply mt-0;
+}
+
+.academy-prose h1,
+.academy-prose h2 {
+  @apply scroll-m-20 mt-10 mb-4 border-b border-white/10 pb-2 font-heading text-2xl font-semibold tracking-tight text-white first:mt-0;
+}
+
+.academy-prose h3 {
+  @apply scroll-m-20 mt-8 mb-3 font-heading text-xl font-semibold tracking-tight text-mauve-200;
+}
+
+.academy-prose h4 {
+  @apply scroll-m-20 mt-6 mb-2 font-heading text-lg font-semibold tracking-tight text-white;
+}
+
+.academy-prose p {
+  @apply mb-4 leading-7 last:mb-0;
+}
+
+.academy-prose strong {
+  @apply font-semibold text-mauve-300;
+}
+
+.academy-prose a {
+  @apply text-mauve-300 underline decoration-mauve-500/40 underline-offset-4 transition-colors hover:text-mauve-200;
+}
+
+.academy-prose ul,
+.academy-prose ol {
+  @apply my-4 space-y-2 pl-6;
+}
+
+.academy-prose ul {
+  @apply list-disc;
+}
+
+.academy-prose ol {
+  @apply list-decimal;
+}
+
+.academy-prose li {
+  @apply leading-7;
+}
+
+.academy-prose li::marker {
+  @apply text-mauve-400;
+}
+
+.academy-prose blockquote {
+  @apply my-6 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm leading-relaxed text-amber-100/90 not-italic;
+}
+
+.academy-prose blockquote p {
+  @apply mb-0;
+}
+
+.academy-prose pre {
+  @apply my-6 overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-4 font-mono text-sm leading-relaxed text-mauve-200;
+}
+
+.academy-prose code {
+  @apply rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-mauve-200;
+}
+
+.academy-prose pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+
+.academy-prose hr {
+  @apply my-8 border-white/10;
+}
+
+.academy-prose .academy-table-wrapper {
+  @apply my-6 w-full overflow-x-auto rounded-xl border border-white/10;
+}
+
+.academy-prose table {
+  @apply w-full border-collapse text-sm;
+}
+
+.academy-prose thead {
+  @apply bg-white/5;
+}
+
+.academy-prose th {
+  @apply border-b border-white/10 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-mauve-300;
+}
+
+.academy-prose td {
+  @apply border-b border-white/5 px-4 py-3 align-top leading-relaxed text-muted-foreground last:border-b-0;
+}
+
+.academy-prose tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+.academy-prose tbody tr:nth-child(even) {
+  @apply bg-white/[0.02];
+}
+
+.academy-prose tbody tr:hover {
+  @apply bg-mauve-500/5;
+}
+
 /* Custom markdown styling for chat messages */
 .prose h2 {
   @apply text-mauve-300 font-semibold text-base mb-2 mt-4 first:mt-0;

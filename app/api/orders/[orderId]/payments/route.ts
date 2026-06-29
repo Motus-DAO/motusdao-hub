@@ -10,7 +10,7 @@ const paymentSchema = z.object({
   currency: z.string(),
   destination: z.enum(['own_wallet', 'matched_psm', 'dao_treasury']),
   destinationAddress: z.string().min(1),
-  provider: z.enum(['onchain', 'transak', 'manual']).default('onchain'),
+  provider: z.enum(['onchain', 'transak', 'stripe', 'manual']).default('onchain'),
   status: z.enum(['pending', 'confirmed', 'failed', 'refunded']).default('confirmed'),
   transactionHash: z.string().optional(),
   explorerUrl: z.string().optional(),

@@ -82,6 +82,12 @@ motusdao-hub/
    NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id_here
    PRIVY_APP_SECRET=your_privy_app_secret_here
    
+   # Stripe (Academy course checkout)
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
+   
    # Database URL for Prisma (if needed)
    # DATABASE_URL="file:./dev.db"
    ```

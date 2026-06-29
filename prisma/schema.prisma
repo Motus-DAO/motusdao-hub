@@ -657,6 +657,7 @@ enum PaymentStatus {
 enum PaymentProvider {
   onchain
   transak
+  stripe
   manual
 }
 

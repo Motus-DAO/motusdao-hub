@@ -123,6 +123,8 @@ export type EnrollmentSummary = {
   courseId: string
   progress: number
   completed: boolean
+  paid?: boolean
+  purchasedAt?: string | null
 }
 
 export type GatedLessonResponse = {
@@ -209,8 +211,30 @@ export async function fetchUserEnrollments(
     throw new Error('No se pudieron cargar las inscripciones')
   }
 
-  const body = (await response.json()) as { enrollments?: EnrollmentSummary[] }
-  const enrollments = Array.isArray(body.enrollments) ? body.enrollments : []
+  const body = (await response.json()) as {
+    enrollments?: Array<{
+      id: string
+      userId: string
+      courseId: string
+      progress: number
+      completed: boolean
+      purchasedAt?: string | null
+      paid?: boolean
+      orderItems?: Array<{ order?: { status?: string } | null }>
+    }>
+  }
+  const enrollments = (Array.isArray(body.enrollments) ? body.enrollments : []).map((item) => ({
+    id: item.id,
+    userId: item.userId,
+    courseId: item.courseId,
+    progress: item.progress,
+    completed: item.completed,
+    purchasedAt: item.purchasedAt ?? null,
+    paid:
+      item.paid === true ||
+      (Array.isArray(item.orderItems) &&
+        item.orderItems.some((orderItem) => orderItem.order?.status === 'paid')),
+  }))
   setCachedUserEnrollments(userId, enrollments)
   return enrollments
 }
