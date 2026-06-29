@@ -169,7 +169,7 @@ export const PSM_PAISES = [
 export const PSM_WIZARD_STEPS = [
   { id: 0, title: 'Identidad y credenciales', description: 'Datos personales y formación' },
   { id: 1, title: 'Tu práctica', description: 'Enfoque, especialidades y perfil público' },
-  { id: 2, title: 'Video de presentación', description: 'Obligatorio para aparecer en el directorio' },
+  { id: 2, title: 'Video de presentación', description: 'Opcional: sube un archivo o pega un enlace' },
   { id: 3, title: 'Operación', description: 'Capacidad, jurisdicción y límites clínicos' },
   { id: 4, title: 'Documentos', description: 'Verificación profesional' },
 ] as const

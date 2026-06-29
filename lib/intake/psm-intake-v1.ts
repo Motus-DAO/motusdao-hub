@@ -179,7 +179,6 @@ export const PSM_FIELD_ORDER = [
   'languages',
   'tagline',
   'topSpecialties',
-  'introVideoStoragePath',
   'timezone',
   'weeklyTherapyHours',
   'maxActiveUsers',
@@ -321,9 +320,6 @@ function isFieldFilled(data: Partial<OnboardingData>, key: string): boolean {
   if (key === 'topSpecialties') {
     return Array.isArray(data.topSpecialties) && data.topSpecialties.length === 3
   }
-  if (key === 'introVideoStoragePath') {
-    return Boolean(data.introVideoStoragePath?.trim())
-  }
   if (key === 'cedulaDocumentPath' || key === 'tituloDocumentPath') {
     return Boolean(data.cedulaDocumentPath || data.tituloDocumentPath)
   }
@@ -377,7 +373,6 @@ const PSM_FIELD_HINTS: Record<string, string> = {
   languages: 'Indica al menos un idioma en el que atiendes.',
   tagline: 'Escribe una frase corta centrada en el paciente (mín. 10 caracteres).',
   topSpecialties: 'Elige exactamente 3 especialidades principales para tu perfil público.',
-  introVideoStoragePath: 'Sube un video de 30–90 segundos presentándote a futuros pacientes.',
   credentialedCountries: 'Marca los países donde tienes cédula, licencia o registro profesional.',
   countriesWhereCanReceivePatients:
     'Declara en qué países podrías recibir pacientes. MotusDAO revisará credenciales y alcance antes de asignar.',
@@ -460,7 +455,7 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
     'experienciaAnios',
   ],
   1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages', 'tagline', 'topSpecialties'],
-  2: ['introVideoStoragePath'],
+  2: [],
   3: [
     'timezone',
     'weeklyTherapyHours',
@@ -519,9 +514,6 @@ export function validatePsmWizardStep(
     }
     if (key === 'topSpecialties') {
       return !(Array.isArray(data.topSpecialties) && data.topSpecialties.length === 3)
-    }
-    if (key === 'introVideoStoragePath') {
-      return !data.introVideoStoragePath?.trim()
     }
     if (key === 'cedulaDocumentPath') {
       return !data.cedulaDocumentPath && !data.tituloDocumentPath

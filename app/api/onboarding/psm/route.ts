@@ -11,6 +11,7 @@ import {
 import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
 import { buildPsmSlug, ensureUniqueSlug } from '@/lib/psm/slug'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
+import { isStorageMediaRef } from '@/lib/academy/media'
 
 const stringArray = z.array(z.string()).default([])
 
@@ -83,11 +84,15 @@ const psmOnboardingSchema = z.object({
       path: ['cedulaDocumentPath'],
     })
   }
-  if (!data.introVideoStoragePath) {
+  if (
+    data.introVideoUrl &&
+    !isStorageMediaRef(data.introVideoUrl) &&
+    !z.string().url().safeParse(data.introVideoUrl).success
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Debes subir tu video de presentación',
-      path: ['introVideoStoragePath'],
+      message: 'El enlace del video debe ser una URL válida (https://...)',
+      path: ['introVideoUrl'],
     })
   }
   const invalidTop = data.topSpecialties.filter((s) => !data.especialidades.includes(s))
@@ -112,6 +117,7 @@ function buildPsmProfileFields(
     slug: string | null
     introVideoApproved: boolean
     introVideoStoragePath: string | null
+    introVideoUrl: string | null
   } | null,
   slug?: string
 ) {
@@ -138,7 +144,8 @@ function buildPsmProfileFields(
     introVideoUrl: data.introVideoUrl,
     introVideoStoragePath: data.introVideoStoragePath,
     introVideoApproved:
-      existingPsm?.introVideoStoragePath === data.introVideoStoragePath
+      existingPsm?.introVideoStoragePath === data.introVideoStoragePath &&
+      existingPsm?.introVideoUrl === data.introVideoUrl
         ? (existingPsm?.introVideoApproved ?? false)
         : false,
     firstSessionExpectations: data.firstSessionExpectations,
