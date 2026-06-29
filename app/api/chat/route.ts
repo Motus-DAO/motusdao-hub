@@ -90,15 +90,19 @@ export async function POST(req: NextRequest) {
     let contextSnippets = [...clientSnippets];
 
     if (isKnowledgeRagEnabled() && userText && !wantsSupervisorMode(userText)) {
-      const retrieved = await retrieveMotusContext(userText);
-      if (retrieved.snippets.length) {
-        contextSnippets = retrieved.snippets;
-        ragSources = retrieved.sources.map(({ sourcePath, title, namespace, similarity }) => ({
-          sourcePath,
-          title,
-          namespace,
-          similarity,
-        }));
+      try {
+        const retrieved = await retrieveMotusContext(userText);
+        if (retrieved.snippets.length) {
+          contextSnippets = retrieved.snippets;
+          ragSources = retrieved.sources.map(({ sourcePath, title, namespace, similarity }) => ({
+            sourcePath,
+            title,
+            namespace,
+            similarity,
+          }));
+        }
+      } catch (ragError) {
+        console.error('[chat] RAG retrieval failed, continuing without context:', ragError);
       }
     }
 
@@ -154,13 +158,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ mode: "qa", text: answer, ragSources, ragEnabled: isKnowledgeRagEnabled() });
 
   } catch (e: unknown) {
-    console.error('OpenAI API Error:', e);
-    
-    // Handle specific OpenAI errors
+    const provider = getAIProvider();
+    const providerLabel = provider === 'venice' ? 'Venice' : 'OpenAI';
+    console.error(`${providerLabel} API Error:`, e);
+
     if (e instanceof Error) {
       if (e.message.includes('API key')) {
         return NextResponse.json(
-          { error: 'OpenAI API key not configured' },
+          {
+            error:
+              provider === 'venice'
+                ? 'Venice API key not configured'
+                : 'OpenAI API key not configured',
+          },
           { status: 401 }
         );
       }
@@ -172,6 +182,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ error: (e as Error)?.message || "OpenAI error" }, { status: 500 });
+    return NextResponse.json(
+      { error: (e as Error)?.message || `${providerLabel} error` },
+      { status: 500 }
+    );
   }
 }

@@ -35,3 +35,23 @@ export function getAIClient() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 }
 
+export function getEmbeddingModel() {
+  if (getAIProvider() === 'venice') {
+    return process.env.VENICE_EMBEDDING_MODEL || process.env.EMBEDDING_MODEL || 'text-embedding-3-small'
+  }
+
+  return process.env.EMBEDDING_MODEL || 'text-embedding-3-small'
+}
+
+export function hasEmbeddingKey() {
+  if (getAIProvider() === 'venice') {
+    return Boolean(process.env.VENICE_INFERENCE_KEY || process.env.VENICE_API_KEY)
+  }
+
+  return Boolean(process.env.OPENAI_API_KEY)
+}
+
+export function getEmbeddingClient() {
+  return getAIClient()
+}
+

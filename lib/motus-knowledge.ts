@@ -1,5 +1,5 @@
-import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
+import { getEmbeddingClient, getEmbeddingModel, hasEmbeddingKey } from '@/lib/ai-client';
 
 export interface KnowledgeHit {
   sourcePath: string;
@@ -22,7 +22,7 @@ export function isKnowledgeRagEnabled(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.SUPABASE_SERVICE_ROLE_KEY &&
-      process.env.OPENAI_API_KEY
+      hasEmbeddingKey()
   );
 }
 
@@ -35,9 +35,9 @@ export async function searchMotusKnowledge(
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const embedding = await openai.embeddings.create({
-    model: process.env.EMBEDDING_MODEL ?? 'text-embedding-3-small',
+  const client = getEmbeddingClient();
+  const embedding = await client.embeddings.create({
+    model: getEmbeddingModel(),
     input: query,
   });
 
