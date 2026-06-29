@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+const workAdventureFrameAncestors =
+  "frame-ancestors 'self' https://metaverso.motusdao.org https://play.workadventu.re https://*.workadventu.re;";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -14,6 +17,28 @@ const nextConfig: NextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/motusai",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: workAdventureFrameAncestors,
+          },
+        ],
+      },
+      {
+        source: "/motusai/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: workAdventureFrameAncestors,
+          },
+        ],
+      },
+    ];
   },
 };
 
