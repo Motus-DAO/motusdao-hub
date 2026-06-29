@@ -67,6 +67,11 @@ export async function PATCH(
       },
     })
 
+    if (body.action === 'complete' && therapySession.status !== 'completed') {
+      const { incrementPsmSessionStats } = await import('@/lib/psm/session-stats')
+      await incrementPsmSessionStats(updatedSession.psmId, updatedSession.userId)
+    }
+
     await recordClinicalAccess({
       request,
       actorUserId: actorId,

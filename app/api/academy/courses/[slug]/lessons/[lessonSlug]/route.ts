@@ -18,8 +18,13 @@ async function resolveVideoUrlForClient(
   if (!videoUrl) return null
   if (!allowed && isStorageMediaRef(videoUrl)) return null
   if (isStorageMediaRef(videoUrl)) {
-    const storagePath = fromStorageRef(videoUrl)
-    return createSignedAcademyMediaUrl(storagePath)
+    try {
+      const storagePath = fromStorageRef(videoUrl)
+      return await createSignedAcademyMediaUrl(storagePath)
+    } catch (error) {
+      console.error('Failed to sign academy lesson video URL:', error)
+      return null
+    }
   }
   return videoUrl
 }

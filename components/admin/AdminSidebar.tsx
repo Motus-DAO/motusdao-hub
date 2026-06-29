@@ -110,9 +110,8 @@ export function AdminSidebar() {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed left-0 top-0 h-screen w-64 bg-background/80 backdrop-blur-lg border-r border-white/10 z-50 transition-transform duration-300",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0"
+          "fixed left-0 top-0 h-screen w-64 bg-background/80 backdrop-blur-lg border-r border-white/10 z-50 transition-transform duration-300 ease-in-out",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
@@ -133,8 +132,8 @@ export function AdminSidebar() {
               {/* Close button for mobile */}
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-2 hover:bg-white/15 rounded-xl transition-colors"
-                aria-label="Cerrar sidebar"
+                className="p-2 hover:bg-white/15 rounded-xl transition-colors"
+                aria-label="Cerrar menú"
               >
                 <X className="w-5 h-5" />
               </button>

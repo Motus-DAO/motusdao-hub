@@ -31,6 +31,7 @@ import {
 } from '@/lib/academy/public-course'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { findCachedCourseBySlug, isCoursesCacheFresh } from '@/lib/academy/courses-cache'
+import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { useWaaP } from '@/lib/contexts/WaaPProvider'
@@ -55,9 +56,9 @@ function CourseNotFound() {
     <div className="flex min-h-[65vh] items-center justify-center px-6">
       <GlassCard className="max-w-md p-8 text-center">
         <BookOpen className="mx-auto mb-4 h-10 w-10 text-mauve-400" />
-        <h1 className="mb-2 text-2xl font-bold">Curso no encontrado</h1>
+        <h1 className="mb-2 text-2xl font-bold">Bloque no encontrado</h1>
         <p className="mb-6 text-sm text-muted-foreground">
-          Este curso no existe o todavía no está publicado.
+          Este bloque no existe o todavía no está publicado.
         </p>
         <Link href="/academia">
           <CTAButton>Volver a la Academia</CTAButton>
@@ -106,10 +107,10 @@ function EnrollmentCTA({
             <CTAButton size="lg" className="w-full gap-2">
               <Play className="h-4 w-4" />
               {enrollment.completed
-                ? 'Revisar curso'
+                ? 'Revisar bloque'
                 : enrollment.progress > 0
-                  ? 'Continuar curso'
-                  : 'Comenzar curso'}
+                  ? 'Continuar bloque'
+                  : 'Comenzar bloque'}
             </CTAButton>
           </Link>
         ) : (
@@ -265,10 +266,10 @@ function CourseDetailView({
               )}
 
               <div>
-                <h2 className="mb-4 text-2xl font-bold">Contenido del curso</h2>
+                <h2 className="mb-4 text-2xl font-bold">Contenido del bloque</h2>
                 {course.modules.length === 0 ? (
                   <GlassCard className="p-6 text-sm text-muted-foreground">
-                    El contenido de este curso se publicará próximamente.
+                    El contenido de este bloque se publicará próximamente.
                   </GlassCard>
                 ) : (
                   <div className="space-y-4">
@@ -347,7 +348,8 @@ function CourseDetailView({
   )
 }
 
-export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?: ReactNode }) {
+export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; fallback?: ReactNode }) {
+  const slug = resolveRouteBlockSlug(rawSlug)
   const { login, authenticated, ready } = useWaaP()
   const { sessionState, signing, signError, signIn, isSessionReady } = useSiweSession()
 
@@ -411,7 +413,7 @@ export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?
       .catch((fetchError) => {
         if (controller.signal.aborted) return
         if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return
-        setError(fetchError instanceof Error ? fetchError.message : 'No se pudo cargar el curso')
+        setError(fetchError instanceof Error ? fetchError.message : 'No se pudo cargar el bloque')
       })
       .finally(() => {
         if (controller.signal.aborted) return
@@ -473,7 +475,7 @@ export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?
   if (loading && !course) {
     return (
       <div className="flex min-h-[65vh] items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando curso...
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando bloque...
       </div>
     )
   }
@@ -481,7 +483,7 @@ export function PublicCourseDetail({ slug, fallback }: { slug: string; fallback?
     return (
       <div className="flex min-h-[65vh] items-center justify-center px-6">
         <GlassCard className="max-w-md p-8 text-center">
-          <h1 className="mb-2 text-xl font-semibold">No pudimos cargar el curso</h1>
+          <h1 className="mb-2 text-xl font-semibold">No pudimos cargar el bloque</h1>
           <p className="mb-6 text-sm text-muted-foreground">{error}</p>
           <Link href="/academia"><CTAButton>Volver a la Academia</CTAButton></Link>
         </GlassCard>

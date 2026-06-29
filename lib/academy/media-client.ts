@@ -55,6 +55,31 @@ export async function removeLessonVideo(lessonId: string) {
   await parseUploadResponse(response)
 }
 
+export async function uploadCourseCover(courseId: string, file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await authFetch(
+    `/api/admin/courses/${encodeURIComponent(courseId)}/upload-cover`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  )
+
+  const body = await parseUploadResponse(response)
+  return body as { imageUrl: string; storagePath: string }
+}
+
+export async function removeCourseCover(courseId: string) {
+  const response = await authFetch(
+    `/api/admin/courses/${encodeURIComponent(courseId)}/upload-cover`,
+    { method: 'DELETE' }
+  )
+
+  await parseUploadResponse(response)
+}
+
 export async function fetchLessonMediaUrl(lessonId: string, storagePath: string): Promise<string> {
   const params = new URLSearchParams({ storagePath })
   const response = await authFetch(

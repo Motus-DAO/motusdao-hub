@@ -69,9 +69,8 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-64 glass-sidebar border-r border-white/10 transition-transform duration-300",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0 lg:z-40"
+          "fixed left-0 top-0 z-50 h-screen w-64 glass-sidebar border-r border-white/10 transition-transform duration-300 ease-in-out",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex h-screen flex-col">
@@ -96,7 +95,8 @@ export function Sidebar() {
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-white/15 rounded-xl transition-colors"
+              className="p-2 hover:bg-white/15 rounded-xl transition-colors"
+              aria-label="Cerrar menú"
             >
               <X className="w-5 h-5" />
             </button>

@@ -27,6 +27,7 @@ import {
   migrateLegacyLocalProgress,
 } from '@/lib/academy/lesson-progress'
 import { findCachedCourseBySlug, isCoursesCacheFresh } from '@/lib/academy/courses-cache'
+import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import {
   ensurePublishedCourse,
@@ -77,15 +78,15 @@ function LockedLessonPanel({
       <Lock className="mx-auto mb-4 h-10 w-10 text-mauve-400" />
       <h2 className="mb-2 text-xl font-semibold">Contenido bloqueado</h2>
       <p className="mb-6 text-sm text-muted-foreground">
-        Inscríbete en el curso para acceder a esta lección.
+        Inscríbete en el bloque para acceder a esta lección.
       </p>
       <div className="flex flex-wrap justify-center gap-3">
         <CTAButton onClick={onEnroll} disabled={enrolling} className="gap-2">
           {enrolling && <Loader2 className="h-4 w-4 animate-spin" />}
-          Inscribirse al curso
+          Inscribirse al bloque
         </CTAButton>
         <Link href={`/academia/${courseSlug}`}>
-          <CTAButton variant="secondary">Ver curso</CTAButton>
+          <CTAButton variant="secondary">Ver bloque</CTAButton>
         </Link>
       </div>
     </GlassCard>
@@ -171,7 +172,14 @@ function PdfResourcesPanel({
   )
 }
 
-export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; lessonSlug: string }) {
+export function LessonPlayer({
+  courseSlug: rawCourseSlug,
+  lessonSlug,
+}: {
+  courseSlug: string
+  lessonSlug: string
+}) {
+  const courseSlug = resolveRouteBlockSlug(rawCourseSlug)
   const { login, authenticated, ready } = useWaaP()
   const { sessionState, signing, signError, signIn, isSessionReady } = useSiweSession()
 
@@ -265,7 +273,12 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
       }
 
       if (activeEnrollment) {
-        await loadProgress(activeEnrollment, session.userId, match.id, signal)
+        try {
+          await loadProgress(activeEnrollment, session.userId, match.id, signal)
+        } catch (progressError) {
+          if (signal?.aborted || isAbortError(progressError)) return
+          console.warn('[LessonPlayer] Progress load failed:', progressError)
+        }
       }
     } catch (fetchError) {
       if (signal?.aborted || isAbortError(fetchError)) return
@@ -318,7 +331,7 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
     try {
       const activeUserId = userId || (await ensureSession())
       if (!activeUserId) {
-        setActionError('Inicia sesión para inscribirte al curso.')
+        setActionError('Inicia sesión para inscribirte al bloque.')
         return
       }
 
@@ -338,7 +351,12 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
       invalidateUserEnrollmentsCache()
       setEnrollment(created)
       if (created && activeUserId) {
-        await loadProgress(created, activeUserId, course.id)
+        try {
+          await loadProgress(created, activeUserId, course.id)
+        } catch (progressError) {
+          console.warn('[LessonPlayer] Progress load after enroll failed:', progressError)
+        }
+        await loadData()
       } else {
         await loadData()
       }
@@ -370,7 +388,7 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
         })
         if (!enrollResponse.ok) {
           const body = (await enrollResponse.json().catch(() => ({}))) as { error?: string }
-          throw new Error(body.error || 'Debes inscribirte al curso para guardar progreso.')
+          throw new Error(body.error || 'Debes inscribirte al bloque para guardar progreso.')
         }
         const enrollBody = (await enrollResponse.json()) as { enrollment?: EnrollmentSummary }
         if (enrollBody.enrollment) {
@@ -390,7 +408,7 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
       }))
     } catch (markError) {
       if (markError instanceof Error && markError.message === 'NOT_ENROLLED') {
-        setActionError('Debes inscribirte al curso para guardar progreso.')
+        setActionError('Debes inscribirte al bloque para guardar progreso.')
       } else {
         setActionError(markError instanceof Error ? markError.message : 'Error al marcar completada')
       }
@@ -416,7 +434,7 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
           <h1 className="mb-2 text-xl font-semibold">No pudimos cargar la lección</h1>
           <p className="mb-6 text-sm text-muted-foreground">{error || 'Error desconocido'}</p>
           <Link href={`/academia/${courseSlug}`}>
-            <CTAButton>Volver al curso</CTAButton>
+            <CTAButton>Volver al bloque</CTAButton>
           </Link>
         </GlassCard>
       </div>
@@ -590,7 +608,7 @@ export function LessonPlayer({ courseSlug, lessonSlug }: { courseSlug: string; l
                         <Link href={`/academia/${courseSlug}`}>
                           <CTAButton variant="primary" className="gap-2">
                             <CheckCircle2 className="h-4 w-4" />
-                            Curso completado
+                            Bloque completado
                           </CTAButton>
                         </Link>
                       ) : null}

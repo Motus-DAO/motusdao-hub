@@ -177,6 +177,9 @@ export const PSM_FIELD_ORDER = [
   'therapyStyles',
   'especialidades',
   'languages',
+  'tagline',
+  'topSpecialties',
+  'introVideoStoragePath',
   'timezone',
   'weeklyTherapyHours',
   'maxActiveUsers',
@@ -219,6 +222,9 @@ export const PSM_FIELD_LABELS: Record<string, string> = {
   licensedRegions: 'Países de recepción declarada',
   cedulaDocumentPath: 'Documento de cédula',
   tituloDocumentPath: 'Documento de título',
+  tagline: 'Frase de presentación (perfil público)',
+  topSpecialties: 'Tres especialidades principales',
+  introVideoStoragePath: 'Video de presentación',
   isAcceptingUsers: 'Disponible para recibir usuarios',
 }
 
@@ -309,6 +315,15 @@ function isFieldFilled(data: Partial<OnboardingData>, key: string): boolean {
   if (key === 'emergencyProtocolStatus') {
     return Boolean(resolveEmergencyProtocolStatus(data))
   }
+  if (key === 'tagline') {
+    return Boolean(data.tagline?.trim() && data.tagline.trim().length >= 10)
+  }
+  if (key === 'topSpecialties') {
+    return Array.isArray(data.topSpecialties) && data.topSpecialties.length === 3
+  }
+  if (key === 'introVideoStoragePath') {
+    return Boolean(data.introVideoStoragePath?.trim())
+  }
   if (key === 'cedulaDocumentPath' || key === 'tituloDocumentPath') {
     return Boolean(data.cedulaDocumentPath || data.tituloDocumentPath)
   }
@@ -360,6 +375,9 @@ const PSM_FIELD_HINTS: Record<string, string> = {
   therapyStyles: 'Selecciona un enfoque arriba o escríbelo en el campo abierto (cómo trabajas).',
   especialidades: 'Indica en qué temas o poblaciones te especializas, arriba o en el campo abierto.',
   languages: 'Indica al menos un idioma en el que atiendes.',
+  tagline: 'Escribe una frase corta centrada en el paciente (mín. 10 caracteres).',
+  topSpecialties: 'Elige exactamente 3 especialidades principales para tu perfil público.',
+  introVideoStoragePath: 'Sube un video de 30–90 segundos presentándote a futuros pacientes.',
   credentialedCountries: 'Marca los países donde tienes cédula, licencia o registro profesional.',
   countriesWhereCanReceivePatients:
     'Declara en qué países podrías recibir pacientes. MotusDAO revisará credenciales y alcance antes de asignar.',
@@ -441,8 +459,9 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
     'formacionAcademica',
     'experienciaAnios',
   ],
-  1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages'],
-  2: [
+  1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages', 'tagline', 'topSpecialties'],
+  2: ['introVideoStoragePath'],
+  3: [
     'timezone',
     'weeklyTherapyHours',
     'maxActiveUsers',
@@ -453,7 +472,7 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
     'excludedCases',
     'emergencyProtocolStatus',
   ],
-  3: ['cedulaDocumentPath'],
+  4: ['cedulaDocumentPath'],
 }
 
 export function validatePsmWizardStep(
@@ -494,6 +513,15 @@ export function validatePsmWizardStep(
     }
     if (key === 'emergencyProtocolStatus') {
       return !resolveEmergencyProtocolStatus(data)
+    }
+    if (key === 'tagline') {
+      return !(data.tagline?.trim() && data.tagline.trim().length >= 10)
+    }
+    if (key === 'topSpecialties') {
+      return !(Array.isArray(data.topSpecialties) && data.topSpecialties.length === 3)
+    }
+    if (key === 'introVideoStoragePath') {
+      return !data.introVideoStoragePath?.trim()
     }
     if (key === 'cedulaDocumentPath') {
       return !data.cedulaDocumentPath && !data.tituloDocumentPath
@@ -611,6 +639,12 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
     experienciaAnios: data.experienciaAnios ?? 0,
     professionalNarrative: narrative,
     biografia: narrative,
+    tagline: data.tagline!,
+    topSpecialties: data.topSpecialties || [],
+    introVideoUrl: data.introVideoUrl,
+    introVideoStoragePath: data.introVideoStoragePath,
+    firstSessionExpectations: data.firstSessionExpectations,
+    doesNotWorkWithNote: data.doesNotWorkWithNote,
 
     especialidades: data.especialidades || [],
     therapyStyles: data.therapyStyles || [],

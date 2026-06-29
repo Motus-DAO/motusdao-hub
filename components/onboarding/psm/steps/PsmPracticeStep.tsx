@@ -29,7 +29,14 @@ const schema = z.object({
       PSM_MIN_NARRATIVE_LENGTH,
       `Necesitas al menos ${PSM_MIN_NARRATIVE_LENGTH} caracteres en tu descripción`
     ),
+  tagline: z
+    .string()
+    .min(10, 'La frase de presentación debe tener al menos 10 caracteres')
+    .max(120, 'Máximo 120 caracteres'),
   especialidades: z.array(z.string()).min(1, 'Selecciona o escribe al menos una especialidad'),
+  topSpecialties: z
+    .array(z.string())
+    .length(3, 'Elige exactamente 3 especialidades principales'),
   therapyStyles: z.array(z.string()).min(1, 'Selecciona o escribe al menos un enfoque terapéutico'),
   languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
 })
@@ -56,8 +63,10 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       professionalNarrative: resolveProfessionalNarrative(data),
+      tagline: data.tagline || '',
       therapyStyles: data.therapyStyles?.length ? data.therapyStyles : [],
       especialidades: data.especialidades || [],
+      topSpecialties: data.topSpecialties?.length === 3 ? data.topSpecialties : [],
       languages: data.languages?.length ? data.languages : ['es'],
     },
   })
@@ -65,6 +74,23 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
   const narrative = watch('professionalNarrative') || ''
   const narrativeRemaining = Math.max(0, PSM_MIN_NARRATIVE_LENGTH - narrative.length)
   const narrativeReady = narrative.length >= PSM_MIN_NARRATIVE_LENGTH
+
+  const especialidades = watch('especialidades') || []
+  const topSpecialties = watch('topSpecialties') || []
+
+  const toggleTopSpecialty = (value: string) => {
+    const current = getValues('topSpecialties') || []
+    if (current.includes(value)) {
+      setValue(
+        'topSpecialties',
+        current.filter((v) => v !== value),
+        { shouldValidate: true }
+      )
+      return
+    }
+    if (current.length >= 3) return
+    setValue('topSpecialties', [...current, value], { shouldValidate: true })
+  }
 
   const draftData = () => ({
     ...data,
@@ -128,6 +154,25 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
         </div>
       </PsmSectionBlock>
 
+      <PsmSectionBlock title="Perfil público">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Frase de presentación *</label>
+          <p className="text-xs text-muted-foreground">
+            Una línea cálida para pacientes (ej. &quot;Acompaño a adultos en ansiedad y transiciones de
+            vida&quot;).
+          </p>
+          <input
+            {...register('tagline')}
+            maxLength={120}
+            placeholder="¿Con quién trabajas y qué pueden esperar?"
+            className={inputFieldClass(!!errors.tagline)}
+          />
+          {errors.tagline && (
+            <p className="text-xs text-red-400">{errors.tagline.message}</p>
+          )}
+        </div>
+      </PsmSectionBlock>
+
       <PsmSectionBlock title="Enfoque y especialización">
         <PsmTagSelect
           label="Enfoque terapéutico *"
@@ -151,6 +196,42 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
           columns={3}
           addPlaceholder="Otro tema (ej. perinatal)"
         />
+
+        {especialidades.length > 0 && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">
+              Tres especialidades principales * (para tu perfil público)
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Elige exactamente 3 de tus especialidades ({topSpecialties.length}/3).
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {especialidades.map((value) => {
+                const label =
+                  PSM_ESPECIALIDADES.find((e) => e.value === value)?.label ?? value
+                const selected = topSpecialties.includes(value)
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleTopSpecialty(value)}
+                    className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                      selected
+                        ? 'border-mauve-400 bg-mauve-500/25 text-white'
+                        : 'border-white/10 hover:border-mauve-400/40'
+                    }`}
+                  >
+                    {selected ? '★ ' : ''}
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            {errors.topSpecialties && (
+              <p className="text-xs text-red-400">{errors.topSpecialties.message}</p>
+            )}
+          </div>
+        )}
       </PsmSectionBlock>
 
       <PsmSectionBlock title="Idiomas y modalidad">

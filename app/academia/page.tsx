@@ -27,11 +27,8 @@ import {
   type EnrollmentSummary,
   type PublicCourse,
 } from '@/lib/academy/public-course'
+import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { fetchAppSession } from '@/lib/auth/client'
-import {
-  getCachedPublishedCourses,
-  isCoursesCacheFresh,
-} from '@/lib/academy/courses-cache'
 
 const difficultyLabels = {
   beginner: 'Principiante',
@@ -48,46 +45,40 @@ function formatPrice(course: PublicCourse) {
   }).format(amount)
 }
 
-function courseCtaLabel(enrollment: EnrollmentSummary | undefined) {
-  if (!enrollment) return 'Ver curso'
-  if (enrollment.completed) return 'Revisar curso'
-  if (enrollment.progress > 0) return 'Continuar curso'
-  return 'Comenzar curso'
+function blockCtaLabel(enrollment: EnrollmentSummary | undefined) {
+  if (!enrollment) return 'Ver bloque'
+  if (enrollment.completed) return 'Revisar bloque'
+  if (enrollment.progress > 0) return 'Continuar bloque'
+  return 'Comenzar bloque'
 }
 
 export default function AcademiaPage() {
-  const [courses, setCourses] = useState<PublicCourse[]>(() => getCachedPublishedCourses() ?? [])
+  const [courses, setCourses] = useState<PublicCourse[]>([])
   const [enrollmentsByCourseId, setEnrollmentsByCourseId] = useState<Map<string, EnrollmentSummary>>(
     () => new Map()
   )
   const [selectedCategory, setSelectedCategory] = useState('Todos')
-  const [loading, setLoading] = useState(() => getCachedPublishedCourses() === null)
-  const [resolved, setResolved] = useState(() => getCachedPublishedCourses() !== null)
+  const [loading, setLoading] = useState(true)
+  const [resolved, setResolved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    if (isCoursesCacheFresh()) {
-      setResolved(true)
-      return
-    }
-
     const controller = new AbortController()
-    const hasCache = getCachedPublishedCourses() !== null
-    if (!hasCache) setLoading(true)
+    setLoading(true)
     setError(null)
 
-    fetchPublishedCourses(controller.signal)
+    fetchPublishedCourses(controller.signal, { force: true })
       .then((data) => {
         if (controller.signal.aborted) return
-        setCourses(data)
+        setCourses(sortRouteBlockCourses(data))
         setResolved(true)
       })
       .catch((fetchError) => {
         if (controller.signal.aborted) return
         if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return
-        if (!hasCache) setCourses([])
-        setError(fetchError instanceof Error ? fetchError.message : 'No se pudieron cargar los cursos')
+        setCourses([])
+        setError(fetchError instanceof Error ? fetchError.message : 'No se pudieron cargar los bloques')
         setResolved(true)
       })
       .finally(() => {
@@ -171,10 +162,10 @@ export default function AcademiaPage() {
             className="mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4"
           >
             {[
-              { label: 'Cursos disponibles', value: courses.length, icon: BookOpen, color: 'text-blue-400' },
+              { label: 'Bloques disponibles', value: courses.length, icon: BookOpen, color: 'text-blue-400' },
               { label: 'Lecciones publicadas', value: lessonCount, icon: Layers3, color: 'text-green-400' },
               {
-                label: 'Cursos completados',
+                label: 'Bloques completados',
                 value: enrollmentsByCourseId.size > 0 ? completedCount : '—',
                 icon: CheckCircle2,
                 color: 'text-emerald-400',
@@ -215,12 +206,12 @@ export default function AcademiaPage() {
             <div className="mr-3 flex h-8 w-8 items-center justify-center rounded-lg bg-green-600">
               <Play className="h-4 w-4 text-white" />
             </div>
-            <h2 className="text-2xl font-bold">Cursos disponibles</h2>
+            <h2 className="text-2xl font-bold">Bloques de la ruta PSM</h2>
           </div>
 
           {loading ? (
             <GlassCard className="flex min-h-64 items-center justify-center text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando cursos...
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando bloques...
             </GlassCard>
           ) : error ? (
             <GlassCard className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
@@ -232,14 +223,14 @@ export default function AcademiaPage() {
           ) : resolved && courses.length === 0 ? (
             <GlassCard className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
               <GraduationCap className="mb-3 h-12 w-12 text-mauve-400" />
-              <h3 className="text-lg font-semibold">Próximamente nuevos cursos</h3>
+              <h3 className="text-lg font-semibold">Próximamente nuevos bloques</h3>
               <p className="mt-2 max-w-md text-sm text-muted-foreground">
                 Estamos preparando contenido para la Academia MotusDAO. Vuelve pronto para conocer las novedades.
               </p>
             </GlassCard>
           ) : visibleCourses.length === 0 ? (
             <GlassCard className="p-8 text-center text-muted-foreground">
-              No hay cursos publicados en esta categoría.
+              No hay bloques publicados en esta categoría.
             </GlassCard>
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -247,7 +238,7 @@ export default function AcademiaPage() {
                 const duration = courseDuration(course)
                 const lessons = courseLessonCount(course)
                 const enrollment = enrollmentsByCourseId.get(course.id)
-                const ctaLabel = courseCtaLabel(enrollment)
+                const ctaLabel = blockCtaLabel(enrollment)
                 return (
                   <motion.div
                     key={course.id}

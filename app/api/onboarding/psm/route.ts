@@ -9,6 +9,8 @@ import {
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
 import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
+import { buildPsmSlug, ensureUniqueSlug } from '@/lib/psm/slug'
+import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 
 const stringArray = z.array(z.string()).default([])
 
@@ -40,6 +42,12 @@ const psmOnboardingSchema = z.object({
   experienciaAnios: z.number().min(0),
   professionalNarrative: z.string().min(PSM_MIN_NARRATIVE_LENGTH),
   biografia: z.string().optional(),
+  tagline: z.string().min(10).max(120),
+  topSpecialties: z.array(z.string()).length(3),
+  introVideoUrl: z.string().optional(),
+  introVideoStoragePath: z.string().optional(),
+  firstSessionExpectations: z.string().optional(),
+  doesNotWorkWithNote: z.string().optional(),
 
   especialidades: z.array(z.string()).min(1),
   therapyStyles: z.array(z.string()).min(1),
@@ -75,6 +83,21 @@ const psmOnboardingSchema = z.object({
       path: ['cedulaDocumentPath'],
     })
   }
+  if (!data.introVideoStoragePath) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Debes subir tu video de presentación',
+      path: ['introVideoStoragePath'],
+    })
+  }
+  const invalidTop = data.topSpecialties.filter((s) => !data.especialidades.includes(s))
+  if (invalidTop.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Las especialidades principales deben estar en tu lista de especialidades',
+      path: ['topSpecialties'],
+    })
+  }
 })
 
 type PsmOnboardingData = z.infer<typeof psmOnboardingSchema>
@@ -86,7 +109,11 @@ function buildPsmProfileFields(
     isAcceptingPatients: boolean
     cedulaDocumentPath: string | null
     tituloDocumentPath: string | null
-  } | null
+    slug: string | null
+    introVideoApproved: boolean
+    introVideoStoragePath: string | null
+  } | null,
+  slug?: string
 ) {
   const docsChanged = Boolean(
     existingPsm &&
@@ -105,6 +132,17 @@ function buildPsmProfileFields(
       : false
 
   return {
+    slug: slug ?? existingPsm?.slug ?? undefined,
+    tagline: data.tagline,
+    topSpecialties: toInputJson(data.topSpecialties),
+    introVideoUrl: data.introVideoUrl,
+    introVideoStoragePath: data.introVideoStoragePath,
+    introVideoApproved:
+      existingPsm?.introVideoStoragePath === data.introVideoStoragePath
+        ? (existingPsm?.introVideoApproved ?? false)
+        : false,
+    firstSessionExpectations: data.firstSessionExpectations,
+    doesNotWorkWithNote: data.doesNotWorkWithNote,
     cedulaProfesional: data.cedulaProfesional,
     cedulaDocumentPath: data.cedulaDocumentPath,
     tituloDocumentPath: data.tituloDocumentPath,
@@ -122,8 +160,10 @@ function buildPsmProfileFields(
     licensedRegions: toInputJson(data.licensedRegions ?? []),
     timezone: data.timezone,
     availability: toInputJson(data.availability ?? {}),
-    modalities: toInputJson(data.modalities ?? ['video']),
-    acceptsSlidingScale: data.acceptsSlidingScale,
+    modalities: toInputJson(['video']),
+    sessionPrice: PLATFORM_SESSION_PRICE_USD,
+    currency: 'USD',
+    acceptsSlidingScale: false,
     worksWithUrgencyLevels: toInputJson(data.worksWithUrgencyLevels ?? ['low', 'medium']),
     exclusionCriteria: toInputJson(data.exclusionCriteria ?? []),
     participaSupervision: data.participaSupervision,
@@ -236,12 +276,27 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      const psmProfileFields = buildPsmProfileFields(data, existingUser?.psm)
+      const slug =
+        existingUser?.psm?.slug ??
+        (await ensureUniqueSlug(
+          buildPsmSlug({
+            nombre: data.nombre,
+            apellido: data.apellido,
+            topSpecialty: data.topSpecialties[0],
+            userId: user.id,
+          }),
+          async (candidate) => {
+            const row = await tx.pSMProfile.findFirst({ where: { slug: candidate } })
+            return Boolean(row)
+          }
+        ))
+
+      const psmProfileFieldsWithSlug = buildPsmProfileFields(data, existingUser?.psm, slug)
 
       await tx.pSMProfile.upsert({
         where: { userId: user.id },
-        update: psmProfileFields,
-        create: { userId: user.id, ...psmProfileFields }
+        update: psmProfileFieldsWithSlug,
+        create: { userId: user.id, ...psmProfileFieldsWithSlug },
       })
 
       await tx.consentRecord.create({

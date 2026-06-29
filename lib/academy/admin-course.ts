@@ -31,6 +31,14 @@ const courseFields = {
     .transform((value) => value.toUpperCase())
     .optional(),
   isPublished: z.boolean().optional(),
+  imageUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .refine((value) => !value || value.startsWith('https://') || value.startsWith('http://'), {
+      message: 'La URL de portada debe comenzar con http:// o https://',
+    }),
 }
 
 export const createCourseSchema = z.object(courseFields).strict()

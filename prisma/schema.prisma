@@ -360,6 +360,18 @@ model Profile {
 model PSMProfile {
   id                     String             @id @default(cuid())
   userId                 String             @unique
+  slug                   String?            @unique
+  tagline                String?
+  topSpecialties         Json               @default("[]") @db.JsonB
+  introVideoUrl          String?
+  introVideoStoragePath  String?
+  introVideoApproved     Boolean            @default(false)
+  introVideoApprovedAt   DateTime?
+  firstSessionExpectations String?
+  styleTags              Json               @default("[]") @db.JsonB
+  doesNotWorkWithNote    String?
+  completedSessionsCount Int                @default(0)
+  patientCount           Int                @default(0)
   cedulaProfesional      String
   cedulaDocumentPath     String?
   tituloDocumentPath     String?
@@ -491,20 +503,25 @@ model ProviderAvailabilitySlot {
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  authorId  String
-  psmId     String?
-  courseId  String?
-  sessionId String?
-  rating    Int
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author    User     @relation("reviews_author", fields: [authorId], references: [id], onDelete: Cascade)
-  psm       User?    @relation("reviews_psm", fields: [psmId], references: [id])
-  course    Course?  @relation(fields: [courseId], references: [id])
-  session   Session? @relation(fields: [sessionId], references: [id])
+  id          String       @id @default(cuid())
+  authorId    String
+  psmId       String?
+  courseId    String?
+  sessionId   String?
+  rating      Int
+  comment     String?
+  isAnonymous Boolean      @default(false)
+  displayName String?
+  issueTags   Json         @default("[]") @db.JsonB
+  status      ReviewStatus @default(published)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  author      User         @relation("reviews_author", fields: [authorId], references: [id], onDelete: Cascade)
+  psm         User?        @relation("reviews_psm", fields: [psmId], references: [id])
+  course      Course?      @relation(fields: [courseId], references: [id])
+  session     Session?     @relation(fields: [sessionId], references: [id])
 
+  @@unique([authorId, psmId])
   @@index([psmId])
   @@index([courseId])
   @@map("reviews")
@@ -676,6 +693,13 @@ enum VerificationStatus {
   approved
   rejected
   suspended
+}
+
+enum ReviewStatus {
+  pending
+  published
+  flagged
+  removed
 }
 
 enum UrgencyLevel {

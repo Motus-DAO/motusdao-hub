@@ -14,7 +14,9 @@ import {
   X,
 } from 'lucide-react'
 import { authFetch } from '@/lib/auth/client'
+import { uploadCourseCover, removeCourseCover } from '@/lib/academy/media-client'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { FileUploadField } from '@/components/ui/FileUploadField'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 
@@ -26,6 +28,7 @@ type Course = {
   slug: string
   summary: string
   description: string | null
+  imageUrl: string | null
   category: string | null
   difficulty: Difficulty | null
   priceAmount: string | number | null
@@ -39,6 +42,7 @@ type CourseForm = {
   slug: string
   summary: string
   description: string
+  imageUrl: string
   category: string
   difficulty: Difficulty
   priceAmount: string
@@ -51,6 +55,7 @@ const emptyForm: CourseForm = {
   slug: '',
   summary: '',
   description: '',
+  imageUrl: '',
   category: 'General',
   difficulty: 'beginner',
   priceAmount: '',
@@ -75,6 +80,7 @@ function formFromCourse(course: Course): CourseForm {
     slug: course.slug,
     summary: course.summary,
     description: course.description || '',
+    imageUrl: course.imageUrl || '',
     category: course.category || '',
     difficulty: course.difficulty || 'beginner',
     priceAmount: course.priceAmount == null ? '' : String(course.priceAmount),
@@ -95,6 +101,7 @@ export default function AdminCursosPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [form, setForm] = useState<CourseForm>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [coverUploading, setCoverUploading] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -134,7 +141,7 @@ export default function AdminCursosPage() {
   }
 
   const closeDialog = () => {
-    if (saving) return
+    if (saving || coverUploading) return
     setDialogOpen(false)
     setEditingCourse(null)
   }
@@ -393,6 +400,80 @@ export default function AdminCursosPage() {
                 <textarea maxLength={5000} rows={5} value={form.description} onChange={(event) => updateForm('description', event.target.value)} className={`${fieldClass} resize-y`} />
               </label>
 
+              <div className="space-y-3 rounded-lg border border-white/10 bg-white/5 p-4">
+                {editingCourse ? (
+                  <FileUploadField
+                    label="Imagen de portada"
+                    description="Sube JPEG, PNG, WebP o GIF (máx. 5 MB). Se guarda en Supabase al instante."
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    hint="También puedes pegar una URL externa abajo."
+                    previewUrl={form.imageUrl || undefined}
+                    fileName={form.imageUrl ? 'Portada del curso' : undefined}
+                    disabled={saving || coverUploading}
+                    onUpload={async (file) => {
+                      setCoverUploading(true)
+                      setError(null)
+                      try {
+                        const result = await uploadCourseCover(editingCourse.id, file)
+                        updateForm('imageUrl', result.imageUrl)
+                        setNotice('Portada subida correctamente')
+                        await fetchCourses()
+                      } finally {
+                        setCoverUploading(false)
+                      }
+                    }}
+                    onClear={() => {
+                      void (async () => {
+                        setCoverUploading(true)
+                        setError(null)
+                        try {
+                          await removeCourseCover(editingCourse.id)
+                          updateForm('imageUrl', '')
+                          setNotice('Portada eliminada')
+                          await fetchCourses()
+                        } catch (clearError) {
+                          setError(
+                            clearError instanceof Error ? clearError.message : 'No se pudo eliminar la portada'
+                          )
+                        } finally {
+                          setCoverUploading(false)
+                        }
+                      })()
+                    }}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Guarda el curso primero; después podrás subir la portada desde Supabase al editarlo.
+                  </p>
+                )}
+
+                <label className="block space-y-1.5 text-sm font-medium">
+                  URL de portada (opcional)
+                  <input
+                    type="url"
+                    maxLength={2000}
+                    value={form.imageUrl}
+                    onChange={(event) => updateForm('imageUrl', event.target.value)}
+                    placeholder="https://..."
+                    className={fieldClass}
+                    disabled={coverUploading}
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Usa la subida de archivo o pega una URL pública. Si la dejas vacía, el catálogo muestra el gradiente por defecto.
+                </p>
+                {form.imageUrl.trim() ? (
+                  <div
+                    className="h-36 w-full rounded-lg border border-white/10 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${form.imageUrl.trim()})` }}
+                  />
+                ) : (
+                  <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/5 text-xs text-muted-foreground">
+                    Vista previa de portada
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-medium">
                   Categoría
@@ -428,8 +509,8 @@ export default function AdminCursosPage() {
               </label>
 
               <div className="flex justify-end gap-3 pt-2">
-                <CTAButton type="button" variant="ghost" onClick={closeDialog} disabled={saving}>Cancelar</CTAButton>
-                <CTAButton type="submit" disabled={saving} className="gap-2">
+                <CTAButton type="button" variant="ghost" onClick={closeDialog} disabled={saving || coverUploading}>Cancelar</CTAButton>
+                <CTAButton type="submit" disabled={saving || coverUploading} className="gap-2">
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                   {editingCourse ? 'Guardar cambios' : 'Crear curso'}
                 </CTAButton>

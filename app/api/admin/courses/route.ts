@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         priceAmount: body.priceAmount,
         priceCurrency: body.priceCurrency,
         isPublished: body.isPublished ?? false,
+        imageUrl: body.imageUrl || null,
         updatedAt: new Date(),
       },
     })

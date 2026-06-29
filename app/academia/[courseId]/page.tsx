@@ -11,7 +11,7 @@ export default function CourseDetailPage() {
   if (!slug) {
     return (
       <div className="flex min-h-[65vh] items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando curso...
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando bloque...
       </div>
     )
   }

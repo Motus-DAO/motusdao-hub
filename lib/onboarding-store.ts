@@ -97,6 +97,13 @@ export interface OnboardingData {
   participaCursos?: boolean
   participaInvestigacion?: boolean
   participaComunidad?: boolean
+  tagline?: string
+  topSpecialties?: string[]
+  introVideoUrl?: string
+  introVideoStoragePath?: string
+  firstSessionExpectations?: string
+  doesNotWorkWithNote?: string
+  styleTags?: string[]
 
   // MNS / on-chain identity
   motusName?: string

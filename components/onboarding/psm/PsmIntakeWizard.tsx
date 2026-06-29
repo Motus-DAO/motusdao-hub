@@ -11,6 +11,7 @@ import { PsmIdentityStep } from './steps/PsmIdentityStep'
 import { PsmPracticeStep } from './steps/PsmPracticeStep'
 import { PsmOperationsStep } from './steps/PsmOperationsStep'
 import { PsmDocumentsStep } from './steps/PsmDocumentsStep'
+import { PsmMediaStep } from './steps/PsmMediaStep'
 import { StepAIIntake } from '../steps/StepAIIntake'
 import { PsmStepValidationBanner } from './PsmStepValidationBanner'
 
@@ -40,7 +41,7 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
 
   const goToDocumentsFromChat = () => {
     setProfileIntakeMode('manual')
-    setWizardStep(3)
+    setWizardStep(4)
   }
 
   return (
@@ -112,14 +113,20 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
               />
             )}
             {wizardStep === 2 && (
-              <PsmOperationsStep
+              <PsmMediaStep
                 onBack={() => setWizardStep(1)}
                 onContinue={() => setWizardStep(3)}
               />
             )}
             {wizardStep === 3 && (
-              <PsmDocumentsStep
+              <PsmOperationsStep
                 onBack={() => setWizardStep(2)}
+                onContinue={() => setWizardStep(4)}
+              />
+            )}
+            {wizardStep === 4 && (
+              <PsmDocumentsStep
+                onBack={() => setWizardStep(3)}
                 onContinue={handleWizardComplete}
               />
             )}

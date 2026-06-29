@@ -18,6 +18,7 @@ interface Message {
   content: string
   isUser: boolean
   timestamp: Date
+  ragSources?: Array<{ sourcePath: string; title: string; namespace: string; similarity: number }>
 }
 
 // Configure marked for safe rendering
@@ -210,7 +211,8 @@ export default function MotusAIPage() {
         id: (Date.now() + 1).toString(),
         content: responseContent,
         isUser: false,
-        timestamp: new Date()
+        timestamp: new Date(),
+        ragSources: Array.isArray(data.ragSources) ? data.ragSources : undefined,
       }
       
       setMessages(prev => [...prev, aiMessage])
@@ -311,6 +313,18 @@ export default function MotusAIPage() {
                         <p className="text-xs opacity-70 mt-1">
                           {isClient ? message.timestamp.toLocaleTimeString() : '--:--:--'}
                         </p>
+                        {!message.isUser && message.ragSources && message.ragSources.length > 0 && (
+                          <details className="mt-2 text-xs opacity-80">
+                            <summary className="cursor-pointer">Fuentes RAG ({message.ragSources.length})</summary>
+                            <ul className="mt-1 space-y-1 list-disc pl-4">
+                              {message.ragSources.map((src) => (
+                                <li key={`${src.sourcePath}-${src.similarity}`}>
+                                  [{src.namespace}] {src.title} · {src.similarity.toFixed(3)}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
                       </div>
                     </motion.div>
                   ))}

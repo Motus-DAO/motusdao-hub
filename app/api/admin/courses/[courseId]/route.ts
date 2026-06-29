@@ -42,12 +42,14 @@ export async function PATCH(request: NextRequest, { params }: CourseRouteContext
   try {
     const { courseId } = await params
     const body = updateCourseSchema.parse(await request.json())
+    const { description, category, imageUrl, ...rest } = body
     const course = await prisma.course.update({
       where: { id: courseId },
       data: {
-        ...body,
-        description: body.description === '' ? null : body.description,
-        category: body.category === '' ? null : body.category,
+        ...rest,
+        description: description === '' ? null : description,
+        category: category === '' ? null : category,
+        imageUrl: imageUrl === '' ? null : imageUrl,
         updatedAt: new Date(),
       },
     })

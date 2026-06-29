@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { prisma } from '@/lib/prisma'
 
 const publicLessonSelect = {
@@ -14,7 +15,7 @@ const publicLessonSelect = {
 
 export async function GET() {
   try {
-    const courses = await prisma.course.findMany({
+    const rows = await prisma.course.findMany({
       where: { isPublished: true },
       include: {
         modules: {
@@ -28,8 +29,9 @@ export async function GET() {
           orderBy: { order: 'asc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
     })
+
+    const courses = sortRouteBlockCourses(rows)
 
     return NextResponse.json({ courses })
   } catch (error) {

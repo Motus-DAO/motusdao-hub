@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIClient, getAIModel, getAIProvider, hasAIKey } from "@/lib/ai-client";
+import { isKnowledgeRagEnabled, retrieveMotusContext } from "@/lib/motus-knowledge";
 
 const SYSTEM_PROMPT = `Eres el Asistente Oficial de MotusDAO.
 Capacidades:
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     const client = getAIClient();
     const body = await req.json();
     const userMessages = (body?.messages || []) as {role:"user"|"assistant"|"system", content:string}[];
-    const contextSnippets = (body?.contextSnippets || []) as string[];
+    const clientSnippets = (body?.contextSnippets || []) as string[];
 
     if (!userMessages || !Array.isArray(userMessages)) {
       return NextResponse.json(
@@ -81,6 +82,26 @@ export async function POST(req: NextRequest) {
       { role: "system", content: SYSTEM_PROMPT },
     ];
 
+    // Tomar el último mensaje de usuario para rutear modo
+    const lastUser = userMessages.slice().reverse().find(m => m.role === "user");
+    const userText = lastUser?.content || "";
+
+    let ragSources: Array<{ sourcePath: string; title: string; namespace: string; similarity: number }> = [];
+    let contextSnippets = [...clientSnippets];
+
+    if (isKnowledgeRagEnabled() && userText && !wantsSupervisorMode(userText)) {
+      const retrieved = await retrieveMotusContext(userText);
+      if (retrieved.snippets.length) {
+        contextSnippets = retrieved.snippets;
+        ragSources = retrieved.sources.map(({ sourcePath, title, namespace, similarity }) => ({
+          sourcePath,
+          title,
+          namespace,
+          similarity,
+        }));
+      }
+    }
+
     if (contextSnippets.length) {
       input.push({ 
         role: "assistant", 
@@ -88,9 +109,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Tomar el último mensaje de usuario para rutear modo
-    const lastUser = userMessages.slice().reverse().find(m => m.role === "user");
-    const userText = lastUser?.content || "";
+    // Tomar el último mensaje de usuario para rutear modo — userText already computed above
     // Agregar mensajes de usuario con tipos correctos
     userMessages.forEach(msg => {
       input.push({ role: msg.role as "system" | "assistant" | "user", content: msg.content });
@@ -120,7 +139,7 @@ export async function POST(req: NextRequest) {
         }; 
       }
 
-      return NextResponse.json({ mode: "supervisor", ...json });
+      return NextResponse.json({ mode: "supervisor", ...json, ragSources });
     }
 
     // Q&A normal
@@ -132,7 +151,7 @@ export async function POST(req: NextRequest) {
     });
 
     const answer = r.choices[0]?.message?.content?.trim() || "";
-    return NextResponse.json({ mode: "qa", text: answer });
+    return NextResponse.json({ mode: "qa", text: answer, ragSources, ragEnabled: isKnowledgeRagEnabled() });
 
   } catch (e: unknown) {
     console.error('OpenAI API Error:', e);

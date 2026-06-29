@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Shield,
   AlertTriangle,
+  Video,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { fetchSignedDocumentUrl } from '@/lib/storage-client'
@@ -70,6 +71,10 @@ interface PSM {
   participaInvestigacion: boolean
   participaComunidad: boolean
   verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended'
+  slug: string | null
+  introVideoApproved: boolean
+  introVideoStoragePath: string | null
+  tagline: string | null
   onboardingStatus: string
   adminReviewNotes: string
   isAcceptingPatients: boolean
@@ -145,6 +150,33 @@ export default function AdminPSMPage() {
     } catch (error) {
       console.error('Error deleting PSM:', error)
       alert(error instanceof Error ? error.message : 'Error al eliminar el profesional. Por favor, intenta de nuevo.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleIntroVideoAction = async (psm: PSM, action: 'approve' | 'reject') => {
+    const notes =
+      action === 'reject'
+        ? window.prompt('Motivo del rechazo del video (opcional)', '')
+        : null
+    if (action === 'reject' && notes === null) return
+
+    setActionLoading(`${psm.id}:intro-video`)
+    try {
+      const response = await authFetch(`/api/admin/psm/${psm.id}/intro-video`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, notes: notes || undefined }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'No se pudo actualizar el video')
+      }
+      await fetchPSMs()
+      setSelectedPSM(null)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al actualizar video')
     } finally {
       setActionLoading(null)
     }
@@ -616,6 +648,15 @@ export default function AdminPSMPage() {
                   Detalles del Profesional
                 </GradientText>
                 <div className="flex items-center gap-2">
+                  {selectedPSM.introVideoStoragePath && !selectedPSM.introVideoApproved && (
+                    <button
+                      onClick={() => handleIntroVideoAction(selectedPSM, 'approve')}
+                      className="flex items-center gap-2 rounded-lg border border-mauve-500/50 bg-mauve-500/20 px-3 py-1.5 text-sm hover:bg-mauve-500/30"
+                    >
+                      <Video className="h-4 w-4" />
+                      Aprobar video
+                    </button>
+                  )}
                   {selectedPSM.verificationStatus !== 'approved' && (
                     <button
                       onClick={() => handleVerificationAction(selectedPSM, 'approve')}

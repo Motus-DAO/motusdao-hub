@@ -26,7 +26,7 @@ export function Topbar() {
     role, 
     setRole, 
     sidebarOpen, 
-    setSidebarOpen, 
+    toggleSidebar, 
     theme, 
     setTheme
   } = useUIStore()
@@ -157,13 +157,21 @@ export function Topbar() {
   }
 
   return (
-    <header className="fixed top-4 left-0 right-0 z-40 mx-2 sm:mx-4 lg:ml-64 lg:mr-4 glass-navbar max-w-full">
+    <header
+      className={cn(
+        'fixed top-4 left-0 right-0 z-40 mx-2 sm:mx-4 lg:mr-4 glass-navbar max-w-full',
+        'transition-[margin] duration-300 ease-in-out',
+        sidebarOpen ? 'lg:ml-64' : 'lg:ml-4'
+      )}
+    >
       <div className="flex h-12 sm:h-16 items-center justify-between px-3 sm:px-6">
         {/* Left side */}
         <div className="flex items-center space-x-2 sm:space-x-4">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-2 hover:bg-white/10 rounded-xl transition-colors"
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+            aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={sidebarOpen}
           >
             <Menu className="w-5 h-5" />
           </button>

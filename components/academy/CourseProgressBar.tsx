@@ -14,7 +14,7 @@ type CourseProgressBarProps = {
 export function CourseProgressBar({
   progress,
   completed = false,
-  label = 'Progreso del curso',
+  label = 'Progreso del bloque',
   className = '',
   compact = false,
 }: CourseProgressBarProps) {
@@ -54,7 +54,7 @@ export function CourseProgressBar({
           className={`flex items-center gap-2 text-green-300 ${compact ? 'mt-1.5 text-xs' : 'mt-2 text-xs'}`}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
-          ¡Curso completado!
+          ¡Bloque completado!
         </motion.p>
       )}
     </div>

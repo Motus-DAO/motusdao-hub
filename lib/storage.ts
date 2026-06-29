@@ -5,6 +5,8 @@ export const STORAGE_BUCKETS = {
   avatars: 'avatars',
   professionalDocuments: 'professional-documents',
   academyLessons: 'academy-lessons',
+  academyCourses: 'academy-courses',
+  psmIntroVideos: 'psm-intro-videos',
 } as const
 
 export type DocumentType = 'cedula' | 'titulo'
@@ -15,6 +17,7 @@ const ACADEMY_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const
 const ACADEMY_PDF_MIME_TYPES = ['application/pdf'] as const
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024
+const COURSE_COVER_MAX_BYTES = 5 * 1024 * 1024
 const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
 const ACADEMY_VIDEO_MAX_BYTES = 100 * 1024 * 1024
 const ACADEMY_PDF_MAX_BYTES = 10 * 1024 * 1024
@@ -61,6 +64,20 @@ export function getAvatarPublicUrl(storagePath: string): string {
   return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKETS.avatars}/${storagePath}`
 }
 
+export function getCourseCoverPublicUrl(storagePath: string): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured')
+  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKETS.academyCourses}/${storagePath}`
+}
+
+export function courseCoverStoragePathFromUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl) return null
+  const prefix = `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKETS.academyCourses}/`
+  return imageUrl.startsWith(prefix) ? imageUrl.slice(prefix.length) : null
+}
+
 export async function uploadAvatar(params: {
   file: File
   ownerKey: string
@@ -86,6 +103,38 @@ export async function uploadAvatar(params: {
     storagePath,
     publicUrl: getAvatarPublicUrl(storagePath),
   }
+}
+
+export async function uploadCourseCover(params: {
+  file: File
+  courseId: string
+}): Promise<{ storagePath: string; publicUrl: string }> {
+  validateFile(params.file, AVATAR_MIME_TYPES, COURSE_COVER_MAX_BYTES)
+
+  const ext = getExtension(params.file.type)
+  const storagePath = `${params.courseId}/cover.${ext}`
+  const buffer = Buffer.from(await params.file.arrayBuffer())
+
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.academyCourses)
+    .upload(storagePath, buffer, {
+      contentType: params.file.type,
+      upsert: true,
+    })
+
+  if (error) throw new Error(error.message)
+
+  return {
+    storagePath,
+    publicUrl: getCourseCoverPublicUrl(storagePath),
+  }
+}
+
+export async function deleteCourseCover(storagePath: string): Promise<void> {
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage.from(STORAGE_BUCKETS.academyCourses).remove([storagePath])
+  if (error) throw new Error(error.message)
 }
 
 export async function uploadProfessionalDocument(params: {
@@ -198,6 +247,49 @@ export async function createSignedAcademyMediaUrl(
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKETS.academyLessons)
+    .createSignedUrl(storagePath, expiresInSeconds)
+
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message || 'Failed to create signed URL')
+  }
+
+  return data.signedUrl
+}
+
+const PSM_INTRO_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const
+const PSM_INTRO_VIDEO_MAX_BYTES = 100 * 1024 * 1024
+
+export async function uploadPsmIntroVideo(params: {
+  file: File
+  ownerKey: string
+}): Promise<{ storagePath: string }> {
+  validateFile(params.file, PSM_INTRO_VIDEO_MIME_TYPES, PSM_INTRO_VIDEO_MAX_BYTES)
+
+  const ownerKey = normalizeWalletAddress(params.ownerKey)
+  const ext = getExtension(params.file.type)
+  const storagePath = `${ownerKey}/intro-video.${ext}`
+  const buffer = Buffer.from(await params.file.arrayBuffer())
+
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.psmIntroVideos)
+    .upload(storagePath, buffer, {
+      contentType: params.file.type,
+      upsert: true,
+    })
+
+  if (error) throw new Error(error.message)
+
+  return { storagePath }
+}
+
+export async function createSignedPsmIntroVideoUrl(
+  storagePath: string,
+  expiresInSeconds = 7200
+): Promise<string> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKETS.psmIntroVideos)
     .createSignedUrl(storagePath, expiresInSeconds)
 
   if (error || !data?.signedUrl) {
