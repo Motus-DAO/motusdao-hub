@@ -420,7 +420,7 @@ export class MotusNameService {
         calls: [
           // Call 1: Approve cUSD
           {
-            to: CELO_STABLE_TOKENS.cUSD as `0x${string}`,
+            to: CELO_STABLE_TOKENS.USDm as `0x${string}`,
             value: BigInt(0),
             data: approveData as `0x${string}`
           },

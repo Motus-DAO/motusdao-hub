@@ -814,6 +814,13 @@ const LEGAL_DECLARATION_DETAILS: Record<
       'Con base en esa revisión, tu perfil podría aprobarse, rechazarse, limitarse o requerir información adicional.',
     ],
   },
+  noPatientGuarantee: {
+    title: 'Sin promesa de pacientes',
+    body: [
+      'MotusDAO no garantiza volumen de pacientes, ingresos ni continuidad de derivaciones. Formar parte de la red no equivale a recibir usuarios automáticamente.',
+      'La visibilidad de tu perfil y las recomendaciones que la plataforma pueda hacer dependen de la calidad y completitud de tu perfil, tu disponibilidad declarada y los criterios operativos de matching.',
+    ],
+  },
   notEmergency: {
     title: 'MotusDAO no es servicio de emergencia',
     body: [

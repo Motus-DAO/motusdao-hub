@@ -55,3 +55,16 @@ export function getEmbeddingClient() {
   return getAIClient()
 }
 
+export function getVeniceChatOptions(): { stop?: string[] } {
+  if (getAIProvider() !== 'venice') return {}
+
+  return {
+    stop: [
+      '<|eot_id|>',
+      '<|start_header_id|>',
+      '<|end_header_id|>',
+      'assistant<|',
+    ],
+  }
+}
+

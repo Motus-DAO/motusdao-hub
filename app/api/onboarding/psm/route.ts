@@ -50,7 +50,7 @@ const psmOnboardingSchema = z.object({
   firstSessionExpectations: z.string().optional(),
   doesNotWorkWithNote: z.string().optional(),
 
-  especialidades: z.array(z.string()).min(1),
+  especialidades: z.array(z.string()).min(3),
   therapyStyles: z.array(z.string()).min(1),
   languages: z.array(z.string()).default(['es']),
   licensedCountries: z.array(z.string()).min(1),
@@ -60,7 +60,7 @@ const psmOnboardingSchema = z.object({
   availabilityNotes: z.string().optional(),
   modalities: z.array(z.enum(['video', 'chat', 'in_person', 'hybrid'])).default(['video']),
   worksWithUrgencyLevels: z.array(z.enum(['low', 'medium', 'high', 'crisis'])).default(['low', 'medium']),
-  exclusionCriteria: z.array(z.string()).min(1),
+  exclusionCriteria: z.array(z.string()).default([]),
   isAcceptingPatients: z.boolean().default(false),
   maxActivePatients: z.number().int().positive().default(10),
   acceptsSlidingScale: z.boolean().default(false),

@@ -25,8 +25,26 @@ import {
 
 export const PSM_INTAKE_VERSION = 'psm_v1' as const
 export const PSM_MIN_NARRATIVE_LENGTH = 80
+export const PSM_MIN_ESPECIALIDADES = 3
 export const PSM_MIN_WEEKLY_THERAPY_HOURS = 1
 export const PSM_MAX_WEEKLY_THERAPY_HOURS = 80
+
+/** First N specialties become the public-profile highlights (max 3). */
+export function deriveTopSpecialties(especialidades: string[]): string[] {
+  return especialidades.slice(0, PSM_MIN_ESPECIALIDADES)
+}
+
+export function resolveTopSpecialties(data: Partial<OnboardingData>): string[] {
+  const especialidades = data.especialidades || []
+  const explicit = data.topSpecialties || []
+  if (
+    explicit.length === PSM_MIN_ESPECIALIDADES &&
+    explicit.every((item) => especialidades.includes(item))
+  ) {
+    return explicit
+  }
+  return deriveTopSpecialties(especialidades)
+}
 
 const clinicalComplexityEnum = z.enum([
   'low_complexity',
@@ -74,7 +92,9 @@ export const psmPracticeFields = z.object({
 
 /** Block D — clinical scope */
 export const psmClinicalScopeFields = z.object({
-  especialidades: z.array(z.string()).min(1, 'Selecciona al menos una especialidad'),
+  especialidades: z
+    .array(z.string())
+    .min(PSM_MIN_ESPECIALIDADES, `Selecciona al menos ${PSM_MIN_ESPECIALIDADES} especialidades`),
   therapyStyles: z.array(z.string()).min(1, 'Selecciona al menos un enfoque terapéutico'),
   languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
 })
@@ -103,7 +123,7 @@ export const psmOperationsFields = z.object({
     .min(1, 'Selecciona al menos un nivel de complejidad clínica'),
   excludedCases: z
     .array(z.string())
-    .min(1, 'Selecciona al menos un caso que no tomas o que requiere derivación'),
+    .default([]),
   emergencyProtocolStatus: emergencyProtocolEnum,
   isAcceptingUsers: z.boolean().default(false),
   acceptsSlidingScale: z.boolean().default(false),
@@ -186,7 +206,6 @@ export const PSM_FIELD_ORDER = [
   'countriesWhereCanReceivePatients',
   'serviceTypes',
   'clinicalComplexityLevels',
-  'excludedCases',
   'emergencyProtocolStatus',
   'cedulaDocumentPath',
   'tituloDocumentPath',
@@ -210,7 +229,7 @@ export const PSM_FIELD_LABELS: Record<string, string> = {
   countriesWhereCanReceivePatients: 'Países donde declaras poder recibir pacientes',
   serviceTypes: 'Tipos de servicio en MotusDAO',
   clinicalComplexityLevels: 'Complejidad clínica en teleterapia',
-  excludedCases: 'Casos que no tomas o que requieren derivación',
+  excludedCases: 'Casos que prefieres no atender (opcional)',
   emergencyProtocolStatus: 'Protocolo de derivación o emergencia',
   timezone: 'Zona horaria',
   weeklyTherapyHours: 'Horas semanales para terapia',
@@ -308,17 +327,17 @@ function isFieldFilled(data: Partial<OnboardingData>, key: string): boolean {
   if (key === 'clinicalComplexityLevels') {
     return resolveClinicalComplexityLevels(data).length > 0
   }
-  if (key === 'excludedCases') {
-    return resolveExcludedCases(data).length > 0
-  }
   if (key === 'emergencyProtocolStatus') {
     return Boolean(resolveEmergencyProtocolStatus(data))
   }
   if (key === 'tagline') {
     return Boolean(data.tagline?.trim() && data.tagline.trim().length >= 10)
   }
+  if (key === 'especialidades') {
+    return Array.isArray(data.especialidades) && data.especialidades.length >= PSM_MIN_ESPECIALIDADES
+  }
   if (key === 'topSpecialties') {
-    return Array.isArray(data.topSpecialties) && data.topSpecialties.length === 3
+    return resolveTopSpecialties(data).length === PSM_MIN_ESPECIALIDADES
   }
   if (key === 'cedulaDocumentPath' || key === 'tituloDocumentPath') {
     return Boolean(data.cedulaDocumentPath || data.tituloDocumentPath)
@@ -364,15 +383,16 @@ const PSM_FIELD_HINTS: Record<string, string> = {
   ciudad: 'Indica la ciudad donde ejerces o vives.',
   pais: 'Selecciona tu país.',
   cedulaProfesional: 'Ingresa tu número de cédula profesional.',
-  formacionAcademica: 'Describe tu formación académica (título y universidad).',
+  formacionAcademica:
+    'Completa tu título o grado y la universidad. El posgrado es opcional.',
   experienciaAnios: 'Indica tus años de experiencia (0 si estás empezando).',
   professionalNarrative:
     'Cuéntanos con tus palabras cómo trabajas, con quién te especializas y qué acompañamiento ofreces.',
   therapyStyles: 'Selecciona un enfoque arriba o escríbelo en el campo abierto (cómo trabajas).',
-  especialidades: 'Indica en qué temas o poblaciones te especializas, arriba o en el campo abierto.',
+  especialidades: `Selecciona al menos ${PSM_MIN_ESPECIALIDADES} temas o poblaciones en las que te especializas.`,
   languages: 'Indica al menos un idioma en el que atiendes.',
   tagline: 'Escribe una frase corta centrada en el paciente (mín. 10 caracteres).',
-  topSpecialties: 'Elige exactamente 3 especialidades principales para tu perfil público.',
+  topSpecialties: 'Se generan automáticamente a partir de tus 3 primeras especialidades.',
   credentialedCountries: 'Marca los países donde tienes cédula, licencia o registro profesional.',
   countriesWhereCanReceivePatients:
     'Declara en qué países podrías recibir pacientes. MotusDAO revisará credenciales y alcance antes de asignar.',
@@ -380,7 +400,7 @@ const PSM_FIELD_HINTS: Record<string, string> = {
   clinicalComplexityLevels:
     'Indica qué complejidad clínica puedes atender con seguridad en teleterapia.',
   excludedCases:
-    'Selecciona al menos un tipo de caso que no tomas o escríbelo en el campo abierto.',
+    'Opcional: declara casos o poblaciones que prefieres derivar a otros servicios.',
   emergencyProtocolStatus: 'Indica si cuentas con un protocolo de derivación o emergencia.',
   timezone: 'Selecciona tu país y ciudad en la lista de zonas horarias.',
   weeklyTherapyHours:
@@ -454,7 +474,7 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
     'formacionAcademica',
     'experienciaAnios',
   ],
-  1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages', 'tagline', 'topSpecialties'],
+  1: ['professionalNarrative', 'therapyStyles', 'especialidades', 'languages', 'tagline'],
   2: [],
   3: [
     'timezone',
@@ -464,7 +484,6 @@ const WIZARD_STEP_FIELDS: Record<number, (keyof OnboardingData | 'professionalNa
     'countriesWhereCanReceivePatients',
     'serviceTypes',
     'clinicalComplexityLevels',
-    'excludedCases',
     'emergencyProtocolStatus',
   ],
   4: ['cedulaDocumentPath'],
@@ -503,17 +522,17 @@ export function validatePsmWizardStep(
     if (key === 'clinicalComplexityLevels') {
       return resolveClinicalComplexityLevels(data).length === 0
     }
-    if (key === 'excludedCases') {
-      return resolveExcludedCases(data).length === 0
-    }
     if (key === 'emergencyProtocolStatus') {
       return !resolveEmergencyProtocolStatus(data)
+    }
+    if (key === 'especialidades') {
+      return !Array.isArray(data.especialidades) || data.especialidades.length < PSM_MIN_ESPECIALIDADES
     }
     if (key === 'tagline') {
       return !(data.tagline?.trim() && data.tagline.trim().length >= 10)
     }
     if (key === 'topSpecialties') {
-      return !(Array.isArray(data.topSpecialties) && data.topSpecialties.length === 3)
+      return resolveTopSpecialties(data).length !== PSM_MIN_ESPECIALIDADES
     }
     if (key === 'cedulaDocumentPath') {
       return !data.cedulaDocumentPath && !data.tituloDocumentPath
@@ -632,7 +651,7 @@ export function buildPsmApiPayload(data: Partial<OnboardingData>) {
     professionalNarrative: narrative,
     biografia: narrative,
     tagline: data.tagline!,
-    topSpecialties: data.topSpecialties || [],
+    topSpecialties: resolveTopSpecialties(data),
     introVideoUrl: data.introVideoUrl,
     introVideoStoragePath: data.introVideoStoragePath,
     firstSessionExpectations: data.firstSessionExpectations,

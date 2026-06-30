@@ -16,7 +16,7 @@ export interface PaymentParams {
   from: Address // User's wallet address
   to: Address // Recipient address (psychologist)
   amount: string // Amount in human-readable format (e.g., "10.5")
-  currency: 'CELO' | 'USDT' | 'USDC' | 'cUSD' | 'cEUR' | 'cREAL' | 'cCOP' | 'PSY' | 'MOT' | 'cCAD' // Currency type
+  currency: 'CELO' | 'USDT' | 'USDC' | 'USDm' | 'EURm' | 'BRLm' | 'COPm' | 'PSY' | 'MOT' | 'CADm' // Currency type
 }
 
 export interface PaymentResult {
@@ -104,8 +104,7 @@ export async function sendCELOPayment(
 }
 
 /**
- * Send a payment in stablecoin (cUSD, cEUR)
- * Requires ERC20 token transfer
+ * Send a payment in ERC20 stablecoin or utility token
  */
 export async function sendStablecoinPayment(
   wallet: WaaPWallet,
@@ -114,11 +113,13 @@ export async function sendStablecoinPayment(
   try {
     const walletClient = await createPrivyWalletClient(wallet)
     
-    // Get the token address
-    const tokenAddress =
-      params.currency === 'cUSD'
-        ? CELO_STABLE_TOKENS.cUSD
-        : CELO_STABLE_TOKENS.cEUR
+    const tokenAddress = CELO_STABLE_TOKENS[params.currency as keyof typeof CELO_STABLE_TOKENS]
+    if (!tokenAddress) {
+      return {
+        success: false,
+        error: `Token no soportado: ${params.currency}`,
+      }
+    }
 
     // ERC20 transfer function signature: transfer(address to, uint256 amount)
     const amountInWei = parseUnits(params.amount, 18) // Stablecoins have 18 decimals

@@ -133,6 +133,11 @@ export const PSM_LEGAL_DECLARATIONS = [
       'Entiendo que MotusDAO puede revisar, aprobar, rechazar o limitar mi perfil profesional.',
   },
   {
+    key: 'noPatientGuarantee',
+    label:
+      'Reconozco que MotusDAO no me trae ni promete pacientes; la visibilidad y posibles derivaciones dependen de la calidad de mi perfil y de las recomendaciones de la plataforma.',
+  },
+  {
     key: 'notEmergency',
     label: 'Entiendo que MotusDAO no es un servicio de emergencia.',
   },

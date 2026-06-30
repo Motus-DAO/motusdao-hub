@@ -78,6 +78,7 @@ export interface OnboardingData {
       | 'infoIsTrue'
       | 'professionalScope'
       | 'motusCanReview'
+      | 'noPatientGuarantee'
       | 'notEmergency'
       | 'termsPrivacy'
       | 'documentsReview'

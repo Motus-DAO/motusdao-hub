@@ -109,8 +109,7 @@ export function PsmMediaStep({ onContinue, onBack }: Props) {
         <p className="mb-4 text-sm text-muted-foreground">
           Graba un video de 30 a 90 segundos o comparte un enlace (YouTube, Vimeo, Loom, etc.).
           Preséntate con calidez: a quién ayudas, cómo es trabajar contigo y qué pueden esperar.
-          Puedes completar tu registro sin video y añadirlo después; sin video no aparecerás en el
-          directorio público hasta que el equipo lo apruebe.
+          Puedes completar tu registro sin video y añadirlo después; con video tu perfil puede destacar más vs. los que no lo tienen.
         </p>
 
         <FileUploadField

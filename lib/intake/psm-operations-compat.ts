@@ -107,6 +107,7 @@ export const PSM_LEGAL_DECLARATION_KEYS = [
   'infoIsTrue',
   'professionalScope',
   'motusCanReview',
+  'noPatientGuarantee',
   'notEmergency',
   'termsPrivacy',
   'documentsReview',

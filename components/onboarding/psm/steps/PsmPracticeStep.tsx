@@ -11,9 +11,12 @@ import {
   PSM_LANGUAGES,
   PSM_THERAPY_STYLES,
   PSM_ESPECIALIDADES,
+  getEspecialidadLabel,
 } from '@/lib/intake/psm-intake-options'
 import {
   PSM_MIN_NARRATIVE_LENGTH,
+  PSM_MIN_ESPECIALIDADES,
+  deriveTopSpecialties,
   getPsmWizardStepBlockers,
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
@@ -33,10 +36,12 @@ const schema = z.object({
     .string()
     .min(10, 'La frase de presentación debe tener al menos 10 caracteres')
     .max(120, 'Máximo 120 caracteres'),
-  especialidades: z.array(z.string()).min(1, 'Selecciona o escribe al menos una especialidad'),
-  topSpecialties: z
+  especialidades: z
     .array(z.string())
-    .length(3, 'Elige exactamente 3 especialidades principales'),
+    .min(
+      PSM_MIN_ESPECIALIDADES,
+      `Selecciona al menos ${PSM_MIN_ESPECIALIDADES} especialidades`
+    ),
   therapyStyles: z.array(z.string()).min(1, 'Selecciona o escribe al menos un enfoque terapéutico'),
   languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
 })
@@ -66,7 +71,6 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
       tagline: data.tagline || '',
       therapyStyles: data.therapyStyles?.length ? data.therapyStyles : [],
       especialidades: data.especialidades || [],
-      topSpecialties: data.topSpecialties?.length === 3 ? data.topSpecialties : [],
       languages: data.languages?.length ? data.languages : ['es'],
     },
   })
@@ -76,27 +80,17 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
   const narrativeReady = narrative.length >= PSM_MIN_NARRATIVE_LENGTH
 
   const especialidades = watch('especialidades') || []
-  const topSpecialties = watch('topSpecialties') || []
+  const highlightedSpecialties = deriveTopSpecialties(especialidades)
 
-  const toggleTopSpecialty = (value: string) => {
-    const current = getValues('topSpecialties') || []
-    if (current.includes(value)) {
-      setValue(
-        'topSpecialties',
-        current.filter((v) => v !== value),
-        { shouldValidate: true }
-      )
-      return
+  const draftData = () => {
+    const values = getValues()
+    return {
+      ...data,
+      ...values,
+      biografia: values.professionalNarrative,
+      topSpecialties: deriveTopSpecialties(values.especialidades || []),
     }
-    if (current.length >= 3) return
-    setValue('topSpecialties', [...current, value], { shouldValidate: true })
   }
-
-  const draftData = () => ({
-    ...data,
-    ...getValues(),
-    biografia: getValues('professionalNarrative'),
-  })
 
   const blockers = showBlockers ? getPsmWizardStepBlockers(1, draftData()) : []
 
@@ -104,6 +98,7 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
     setShowBlockers(false)
     updateData({
       ...formData,
+      topSpecialties: deriveTopSpecialties(formData.especialidades),
       biografia: formData.professionalNarrative,
     })
     onContinue()
@@ -187,9 +182,9 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
 
         <PsmTagSelect
           label="Especialización / temas *"
-          hint="En qué te especializas. Marca temas o poblaciones, o agrega los tuyos."
+          hint={`Marca al menos ${PSM_MIN_ESPECIALIDADES} temas o poblaciones. Las 3 primeras de tu lista se destacarán en tu perfil (mira la vista previa abajo).`}
           options={PSM_ESPECIALIDADES}
-          value={watch('especialidades') || []}
+          value={especialidades}
           onChange={(next) => setValue('especialidades', next, { shouldValidate: true })}
           hasError={!!errors.especialidades}
           errorMessage={errors.especialidades?.message}
@@ -197,41 +192,29 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
           addPlaceholder="Otro tema (ej. perinatal)"
         />
 
-        {especialidades.length > 0 && (
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">
-              Tres especialidades principales * (para tu perfil público)
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Elige exactamente 3 de tus especialidades ({topSpecialties.length}/3).
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {especialidades.map((value) => {
-                const label =
-                  PSM_ESPECIALIDADES.find((e) => e.value === value)?.label ?? value
-                const selected = topSpecialties.includes(value)
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => toggleTopSpecialty(value)}
-                    className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                      selected
-                        ? 'border-mauve-400 bg-mauve-500/25 text-white'
-                        : 'border-white/10 hover:border-mauve-400/40'
-                    }`}
-                  >
-                    {selected ? '★ ' : ''}
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-            {errors.topSpecialties && (
-              <p className="text-xs text-red-400">{errors.topSpecialties.message}</p>
-            )}
-          </div>
-        )}
+        <div
+          className={`rounded-lg border px-3 py-2 text-xs ${
+            especialidades.length >= PSM_MIN_ESPECIALIDADES
+              ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200'
+              : 'border-white/10 bg-white/[0.02] text-muted-foreground'
+          }`}
+        >
+          {especialidades.length >= PSM_MIN_ESPECIALIDADES ? (
+            <>
+              <span className="font-medium text-emerald-300">Destacadas en tu perfil: </span>
+              {highlightedSpecialties.map(getEspecialidadLabel).join(' · ')}
+              {especialidades.length > PSM_MIN_ESPECIALIDADES && (
+                <span className="block mt-1 text-muted-foreground">
+                  Las demás también aparecen en tu perfil, pero sin destacarse.
+                </span>
+              )}
+            </>
+          ) : (
+            <span>
+              Especialidades seleccionadas: {especialidades.length}/{PSM_MIN_ESPECIALIDADES} mínimo
+            </span>
+          )}
+        </div>
       </PsmSectionBlock>
 
       <PsmSectionBlock title="Idiomas y modalidad">

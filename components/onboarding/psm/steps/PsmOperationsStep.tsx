@@ -69,7 +69,7 @@ const schema = z.object({
     .min(1, 'Selecciona al menos un nivel de complejidad clínica'),
   excludedCases: z
     .array(z.string())
-    .min(1, 'Selecciona al menos un caso que no tomas o que requiere derivación'),
+    .default([]),
   emergencyProtocolStatus: emergencyProtocolEnum,
   isAcceptingUsers: z.boolean().default(false),
   acceptsSlidingScale: z.boolean().default(false),
@@ -279,15 +279,15 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
         )}
 
         <PsmTagSelect
-          label="Casos que no tomas o que requieren derivación *"
-          hint="Esto ayuda a proteger a usuarios, profesionales y a la plataforma. Marca los que apliquen o agrega otros casos."
+          label="Casos que tú prefieres no atender en MotusDAO (opcional)"
+          hint="Si quieres, declara qué tipos de casos normalmente derivas a otros servicios (crisis, riesgo alto, población fuera de tu alcance, etc.). Puedes dejarlo vacío y completarlo después."
           options={PSM_EXCLUSION_CRITERIA}
           value={watch('excludedCases') || []}
           onChange={(next) => setValue('excludedCases', next, { shouldValidate: true })}
           hasError={!!errors.excludedCases}
           errorMessage={errors.excludedCases?.message}
           columns={2}
-          addPlaceholder="Otro caso (ej. trastornos alimentarios activos)"
+          addPlaceholder="Otro caso que no atiendes (ej. trastornos alimentarios activos)"
         />
 
         <fieldset className="space-y-3">

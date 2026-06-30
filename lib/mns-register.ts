@@ -11,6 +11,91 @@ import { celoMainnet, CELO_STABLE_TOKENS } from './celo'
 import { buildCeloWaaPTransaction, ensureCeloNetwork } from './celo-waap'
 import { MNS_ABI, MNS_CONTRACT_ADDRESS, motusNameService } from './motus-name-service'
 
+export interface FaucetResult {
+  success: boolean
+  amount?: string
+  txHash?: string
+  error?: string
+  retryInMinutes?: number
+  skipped?: boolean
+}
+
+/** CELO buffer WaaP reserves per on-chain tx on Celo. */
+export const WAAP_CELO_PER_TX = parseEther('0.13')
+
+export async function getCeloBalance(address: Address): Promise<bigint> {
+  const client = getPublicClient()
+  return client.getBalance({ address })
+}
+
+export async function getRequiredCeloForMnsRegistration(): Promise<bigint> {
+  const priceStr = await motusNameService.getRegistrationPrice()
+  const price = parseUnits(priceStr, 18)
+  const txCount = price > BigInt(0) ? 2 : 1
+  return WAAP_CELO_PER_TX * BigInt(txCount)
+}
+
+/**
+ * Request CELO from the onboarding faucet when balance is below the MNS threshold.
+ * Skips the API call if the wallet already has enough CELO.
+ */
+export async function ensureFaucetCeloForMns(address: Address): Promise<FaucetResult> {
+  try {
+    const required = await getRequiredCeloForMnsRegistration()
+    const balance = await getCeloBalance(address)
+
+    if (balance >= required) {
+      return { success: true, skipped: true }
+    }
+
+    const res = await fetch('/api/faucet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    })
+    const body = await res.json()
+
+    if (!res.ok || !body.success) {
+      if (res.status === 429) {
+        const balanceAfterRateLimit = await getCeloBalance(address)
+        if (balanceAfterRateLimit >= required) {
+          return { success: true, skipped: true }
+        }
+        if (body.retryInMinutes) {
+          return {
+            success: false,
+            error: `Ya reclamaste CELO recientemente. Intenta en ~${body.retryInMinutes} minutos.`,
+            retryInMinutes: body.retryInMinutes,
+          }
+        }
+      }
+      return {
+        success: false,
+        error: body.error || body.message || 'Error al solicitar CELO del faucet',
+      }
+    }
+
+    if (body.txHash) {
+      const client = getPublicClient()
+      await client.waitForTransactionReceipt({
+        hash: body.txHash as `0x${string}`,
+        timeout: 90_000,
+      })
+    }
+
+    return {
+      success: true,
+      amount: body.amount,
+      txHash: body.txHash,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al solicitar CELO',
+    }
+  }
+}
+
 export interface WaaPRegisterResult {
   success: boolean
   txHash?: string
@@ -190,7 +275,7 @@ export async function registerMotusNameWithWaaP(
     )
 
     // WaaP's signer reserves far more than real Celo gas (~0.12 CELO/tx). Buffer per tx.
-    const waapPerTxBuffer = parseEther('0.13')
+    const waapPerTxBuffer = WAAP_CELO_PER_TX
     const txCount = price > BigInt(0) ? 2 : 1
     const requiredCelo = waapPerTxBuffer * BigInt(txCount)
 
@@ -207,7 +292,7 @@ export async function registerMotusNameWithWaaP(
 
     if (price > BigInt(0)) {
       const cUsdBalance = (await client.readContract({
-        address: CELO_STABLE_TOKENS.cUSD,
+        address: CELO_STABLE_TOKENS.USDm,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [from],
@@ -221,7 +306,7 @@ export async function registerMotusNameWithWaaP(
       }
 
       const allowance = (await client.readContract({
-        address: CELO_STABLE_TOKENS.cUSD,
+        address: CELO_STABLE_TOKENS.USDm,
         abi: ERC20_ABI,
         functionName: 'allowance',
         args: [from, MNS_CONTRACT_ADDRESS],
@@ -237,7 +322,7 @@ export async function registerMotusNameWithWaaP(
         const approveTxHash = await sendWaaPTransaction(
           waap,
           from,
-          CELO_STABLE_TOKENS.cUSD as Address,
+          CELO_STABLE_TOKENS.USDm as Address,
           approveData
         )
 

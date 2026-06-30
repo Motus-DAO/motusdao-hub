@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAIClient, getAIModel, getAIProvider, hasAIKey } from "@/lib/ai-client";
+import { getAIClient, getAIModel, getAIProvider, getVeniceChatOptions, hasAIKey } from "@/lib/ai-client";
 import { isKnowledgeRagEnabled, retrieveMotusContext } from "@/lib/motus-knowledge";
+import { isUsableChatOutput, sanitizeModelOutput, SHORT_INPUT_FALLBACK } from "@/lib/ai-output";
+import type OpenAI from "openai";
 
 const SYSTEM_PROMPT = `Eres el Asistente Oficial de MotusDAO.
 Capacidades:
@@ -57,6 +59,32 @@ const SUPERVISOR_SCHEMA = {
 function wantsSupervisorMode(text: string): boolean {
   const t = text.toLowerCase();
   return t.includes("modo supervisor") || t.includes("entra en modo supervisor") || t.includes("activa modo supervisor");
+}
+
+async function createReliableChatCompletion(
+  client: OpenAI,
+  messages: Array<{ role: "system" | "assistant" | "user"; content: string }>,
+  options: { temperature: number; max_tokens: number; response_format?: typeof SUPERVISOR_SCHEMA }
+): Promise<string> {
+  const base = {
+    model: getAIModel(),
+    messages,
+    ...getVeniceChatOptions(),
+    ...options,
+  }
+
+  const attempts = [
+    { ...base, temperature: options.temperature },
+    { ...base, temperature: Math.min(options.temperature, 0.3) },
+  ]
+
+  for (const params of attempts) {
+    const response = await client.chat.completions.create(params)
+    const cleaned = sanitizeModelOutput(response.choices[0]?.message?.content ?? "")
+    if (isUsableChatOutput(cleaned)) return cleaned
+  }
+
+  return SHORT_INPUT_FALLBACK
 }
 
 export async function POST(req: NextRequest) {
@@ -120,16 +148,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (wantsSupervisorMode(userText)) {
-      const r = await client.chat.completions.create({
-        model: getAIModel(),
-        messages: input,
+      const text = await createReliableChatCompletion(client, input, {
         response_format: SUPERVISOR_SCHEMA,
         temperature: 0.7,
-        max_tokens: 1000
+        max_tokens: 1000,
       });
 
-      // Extraer contenido schema
-      const text = r.choices[0]?.message?.content ?? "{}";
       let json;
       try { 
         json = JSON.parse(text); 
@@ -147,14 +171,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Q&A normal
-    const r = await client.chat.completions.create({
-      model: getAIModel(),
-      messages: input,
+    const answer = await createReliableChatCompletion(client, input, {
       temperature: 0.7,
-      max_tokens: 800
+      max_tokens: 800,
     });
 
-    const answer = r.choices[0]?.message?.content?.trim() || "";
     return NextResponse.json({ mode: "qa", text: answer, ragSources, ragEnabled: isKnowledgeRagEnabled() });
 
   } catch (e: unknown) {

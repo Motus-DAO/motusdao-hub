@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Phone, Calendar, MapPin, AlertCircle } from 'lucide-react'
+import { Phone, Calendar, MapPin, AlertCircle, GraduationCap } from 'lucide-react'
 import { FileUploadField } from '@/components/ui/FileUploadField'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import {
@@ -13,6 +13,10 @@ import {
 } from '@/lib/onboarding-form-helpers'
 import { PSM_PAISES } from '@/lib/intake/psm-intake-options'
 import { getPsmWizardStepBlockers } from '@/lib/intake/psm-intake-v1'
+import {
+  composeFormacionAcademica,
+  parseFormacionAcademica,
+} from '@/lib/intake/psm-formacion-academica'
 import { PsmSectionBlock } from '../PsmSectionBlock'
 import { PsmStepValidationBanner } from '../PsmStepValidationBanner'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
@@ -20,6 +24,8 @@ import {
   getFileNameFromStoragePath,
   uploadProfileAvatar,
 } from '@/lib/storage-client'
+
+const parsedFormacion = (stored?: string) => parseFormacionAcademica(stored)
 
 const schema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -35,7 +41,9 @@ const schema = z.object({
   ciudad: z.string().min(1, 'La ciudad es obligatoria'),
   pais: z.string().min(1, 'El país es obligatorio'),
   cedulaProfesional: z.string().min(1, 'La cédula profesional es obligatoria'),
-  formacionAcademica: z.string().min(1, 'La formación académica es obligatoria'),
+  tituloProfesional: z.string().min(1, 'Indica tu título o grado (ej. Licenciatura en Psicología)'),
+  universidad: z.string().min(1, 'Indica la universidad o institución que expidió tu título'),
+  posgrado: z.string().optional(),
   experienciaAnios: z.coerce.number().min(0, 'Los años de experiencia deben ser 0 o mayor'),
 })
 
@@ -49,11 +57,13 @@ type Props = {
 export function PsmIdentityStep({ onContinue }: Props) {
   const { data, updateData } = useOnboardingStore()
   const [showBlockers, setShowBlockers] = useState(false)
+  const initialFormacion = parsedFormacion(data.formacionAcademica)
 
   const {
     register,
     handleSubmit,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
@@ -65,10 +75,26 @@ export function PsmIdentityStep({ onContinue }: Props) {
       ciudad: data.ciudad || '',
       pais: data.pais || '',
       cedulaProfesional: data.cedulaProfesional || '',
-      formacionAcademica: data.formacionAcademica || '',
+      tituloProfesional: initialFormacion.tituloProfesional,
+      universidad: initialFormacion.universidad,
+      posgrado: initialFormacion.posgrado || '',
       experienciaAnios: data.experienciaAnios ?? 0,
     },
   })
+
+  const tituloProfesional = watch('tituloProfesional')
+  const universidad = watch('universidad')
+  const posgrado = watch('posgrado')
+
+  const formacionPreview = useMemo(
+    () =>
+      composeFormacionAcademica({
+        tituloProfesional: tituloProfesional || '',
+        universidad: universidad || '',
+        posgrado: posgrado || '',
+      }),
+    [tituloProfesional, universidad, posgrado]
+  )
 
   const uploadAvatar = async (file: File) => {
     if (!data.eoaAddress) throw new Error('Conecta tu wallet antes de subir tu foto')
@@ -78,13 +104,33 @@ export function PsmIdentityStep({ onContinue }: Props) {
 
   const onSubmit = (formData: FormData) => {
     setShowBlockers(false)
-    updateData({ ...formData, intakeSource: data.intakeSource || 'manual' })
+    const { tituloProfesional, universidad, posgrado, ...identityFields } = formData
+    updateData({
+      ...identityFields,
+      formacionAcademica: composeFormacionAcademica({
+        tituloProfesional,
+        universidad,
+        posgrado,
+      }),
+      intakeSource: data.intakeSource || 'manual',
+    })
     onContinue()
   }
 
   const blockers = showBlockers
-    ? getPsmWizardStepBlockers(0, { ...data, ...(getValues() as FormData) })
+    ? getPsmWizardStepBlockers(0, {
+        ...data,
+        ...getValues(),
+        formacionAcademica: composeFormacionAcademica({
+          tituloProfesional: getValues('tituloProfesional') || '',
+          universidad: getValues('universidad') || '',
+          posgrado: getValues('posgrado') || '',
+        }),
+      })
     : []
+
+  const formacionError =
+    errors.tituloProfesional?.message || errors.universidad?.message
 
   return (
     <form onSubmit={handleSubmit(onSubmit, () => setShowBlockers(true))} className="space-y-8">
@@ -159,25 +205,87 @@ export function PsmIdentityStep({ onContinue }: Props) {
       </PsmSectionBlock>
 
       <PsmSectionBlock title="Credenciales profesionales">
-        <Field label="Cédula profesional *" error={errors.cedulaProfesional?.message}>
+        <Field
+          label="Cédula profesional *"
+          description="Número de cédula o licencia que te habilita para ejercer. No es lo mismo que tu título universitario."
+          error={errors.cedulaProfesional?.message}
+        >
           <input
             {...register('cedulaProfesional')}
             placeholder="Ej: 12345678"
             className={inputFieldClass(!!errors.cedulaProfesional)}
           />
         </Field>
-        <Field label="Formación académica *" error={errors.formacionAcademica?.message}>
-          <input
-            {...register('formacionAcademica')}
-            placeholder="Ej: Licenciatura en Psicología, Universidad Nacional"
-            className={inputFieldClass(!!errors.formacionAcademica)}
-          />
-        </Field>
-        <Field label="Años de experiencia *" error={errors.experienciaAnios?.message}>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+          <div className="flex items-start gap-3">
+            <GraduationCap className="w-5 h-5 text-mauve-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Formación académica *</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tu título de grado y la institución que lo expidió. Si tienes maestría, especialidad
+                o doctorado, puedes agregarlo en el campo opcional. Esto no reemplaza la cédula ni
+                los documentos que subirás más adelante.
+              </p>
+            </div>
+          </div>
+
+          <Field
+            label="Título o grado *"
+            error={errors.tituloProfesional?.message}
+          >
+            <input
+              {...register('tituloProfesional')}
+              placeholder="Ej: Licenciatura en Psicología"
+              className={inputFieldClass(!!errors.tituloProfesional)}
+            />
+          </Field>
+
+          <Field
+            label="Universidad o institución *"
+            error={errors.universidad?.message}
+          >
+            <input
+              {...register('universidad')}
+              placeholder="Ej: Universidad Nacional Autónoma de México"
+              className={inputFieldClass(!!errors.universidad)}
+            />
+          </Field>
+
+          <Field
+            label="Posgrado (opcional)"
+            description="Maestría, especialidad, doctorado u otro posgrado relevante."
+          >
+            <input
+              {...register('posgrado')}
+              placeholder="Ej: Maestría en Psicología Clínica, ITESM"
+              className={inputFieldClass(false)}
+            />
+          </Field>
+
+          {formacionError && !errors.tituloProfesional && !errors.universidad && (
+            <p className="text-red-400 text-sm flex items-center space-x-1">
+              <AlertCircle className="w-4 h-4" />
+              <span>{formacionError}</span>
+            </p>
+          )}
+
+          {formacionPreview && (
+            <div className="rounded-lg border border-mauve-500/20 bg-mauve-500/5 px-3 py-2 text-left">
+              <p className="text-[11px] uppercase tracking-wide text-mauve-300 mb-1">
+                Vista previa en tu perfil
+              </p>
+              <p className="text-sm text-foreground">{formacionPreview}</p>
+            </div>
+          )}
+        </div>
+
+        <Field label="Años de experiencia clínica *" error={errors.experienciaAnios?.message}>
           <input
             {...register('experienciaAnios')}
             type="number"
             min={0}
+            placeholder="0 si estás empezando"
             className={inputFieldClass(!!errors.experienciaAnios)}
           />
         </Field>
@@ -197,16 +305,19 @@ export function PsmIdentityStep({ onContinue }: Props) {
 
 function Field({
   label,
+  description,
   error,
   children,
 }: {
   label: string
+  description?: string
   error?: string
   children: React.ReactNode
 }) {
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium">{label}</label>
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
       {children}
       {error && (
         <p className="text-red-400 text-sm flex items-center space-x-1">

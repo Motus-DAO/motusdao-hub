@@ -9,6 +9,10 @@ import { fieldLabel } from '@/lib/intake-chat-progress'
 import { concernOptions, deriveConcernFields } from '@/lib/intake-concerns'
 import { computePsmIntakeProgress, resolveProfessionalNarrative, resolveWeeklyTherapyHours } from '@/lib/intake/psm-intake-v1'
 import {
+  composeFormacionAcademica,
+  parseFormacionAcademica,
+} from '@/lib/intake/psm-formacion-academica'
+import {
   resolveCredentialedCountries,
   resolveCountriesWhereCanReceivePatients,
   resolveServiceTypes,
@@ -298,11 +302,9 @@ export function IntakeLiveForm({
                       type="number"
                     />
                   </div>
-                  <LiveInput
-                    label={fieldLabel('formacionAcademica')}
-                    value={data.formacionAcademica || ''}
+                  <FormacionAcademicaLiveFields
+                    value={data.formacionAcademica}
                     onChange={(v) => set('formacionAcademica', v)}
-                    textarea
                   />
                   <LiveInput
                     label={fieldLabel('professionalNarrative')}
@@ -432,5 +434,47 @@ export function IntakeLiveForm({
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+function FormacionAcademicaLiveFields({
+  value,
+  onChange,
+}: {
+  value?: string
+  onChange: (composed: string) => void
+}) {
+  const parts = parseFormacionAcademica(value)
+
+  const update = (patch: Partial<typeof parts>) => {
+    onChange(
+      composeFormacionAcademica({
+        tituloProfesional: patch.tituloProfesional ?? parts.tituloProfesional,
+        universidad: patch.universidad ?? parts.universidad,
+        posgrado: patch.posgrado ?? parts.posgrado,
+      })
+    )
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <LiveInput
+          label="Título o grado"
+          value={parts.tituloProfesional}
+          onChange={(v) => update({ tituloProfesional: v })}
+        />
+        <LiveInput
+          label="Universidad o institución"
+          value={parts.universidad}
+          onChange={(v) => update({ universidad: v })}
+        />
+      </div>
+      <LiveInput
+        label="Posgrado (opcional)"
+        value={parts.posgrado || ''}
+        onChange={(v) => update({ posgrado: v })}
+      />
+    </>
   )
 }

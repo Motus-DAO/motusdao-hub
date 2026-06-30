@@ -137,11 +137,11 @@ export default function PagosPage() {
   const [transferMode, setTransferMode] = useState<'send' | 'receive'>('send')
   const [sendAddress, setSendAddress] = useState('')
   const [sendAmount, setSendAmount] = useState('')
-  const [selectedToken, setSelectedToken] = useState<'CELO' | 'USDT' | 'USDC' | 'cUSD' | 'cREAL' | 'cCOP' | 'PSY' | 'MOT' | 'cCAD' | 'cEUR'>('CELO')
+  const [selectedToken, setSelectedToken] = useState<'CELO' | 'USDT' | 'USDC' | 'USDm' | 'BRLm' | 'COPm' | 'PSY' | 'MOT' | 'CADm' | 'EURm'>('CELO')
   const [showQRScanner, setShowQRScanner] = useState(false)
   const [showTokenList, setShowTokenList] = useState(false)
   const [enabledTokens, setEnabledTokens] = useState<Set<string>>(new Set([
-    'CELO', 'USDT', 'USDC', 'cUSD', 'cEUR', 'cREAL', 'cCOP', 'PSY', 'MOT', 'cCAD'
+    'CELO', 'USDT', 'USDC', 'USDm', 'EURm', 'BRLm', 'COPm', 'PSY', 'MOT', 'CADm'
   ]))
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -276,13 +276,13 @@ export default function PagosPage() {
     { symbol: 'CELO', name: 'Celo', category: 'Native', region: 'Global' },
     { symbol: 'USDT', name: 'Tether USD', category: 'Stablecoin', region: 'Global' },
     { symbol: 'USDC', name: 'USD Coin', category: 'Stablecoin', region: 'Global' },
-    { symbol: 'cUSD', name: 'Celo Dollar', category: 'Mento Stablecoin', region: 'Global' },
-    { symbol: 'cREAL', name: 'Celo Real', category: 'Mento Stablecoin', region: 'LATAM (Brasil)' },
-    { symbol: 'cCOP', name: 'Celo Peso Colombiano', category: 'Mento Stablecoin', region: 'LATAM (Colombia)' },
+    { symbol: 'USDm', name: 'Mento Dollar', category: 'Mento Stablecoin', region: 'Global' },
+    { symbol: 'BRLm', name: 'Mento Brazilian Real', category: 'Mento Stablecoin', region: 'LATAM (Brasil)' },
+    { symbol: 'COPm', name: 'Mento Colombian Peso', category: 'Mento Stablecoin', region: 'LATAM (Colombia)' },
     { symbol: 'PSY', name: 'Psychology Token', category: 'Utility', region: 'Global' },
     { symbol: 'MOT', name: 'Motus Token', category: 'Utility', region: 'Global' },
-    { symbol: 'cCAD', name: 'Celo Canadian Dollar', category: 'Mento Stablecoin', region: 'Norteamérica' },
-    { symbol: 'cEUR', name: 'Celo Euro', category: 'Mento Stablecoin', region: 'Europa' }
+    { symbol: 'CADm', name: 'Mento Canadian Dollar', category: 'Mento Stablecoin', region: 'Norteamérica' },
+    { symbol: 'EURm', name: 'Mento Euro', category: 'Mento Stablecoin', region: 'Europa' }
   ]
 
   const toggleToken = (tokenSymbol: string) => {

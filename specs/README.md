@@ -120,6 +120,7 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 | `specs/academy-learner-player.md` | Slice 4: enrollment + lesson player (depends on slice 3). |
 | `specs/academy-lesson-progress.md` | Slice 5: per-lesson progress in DB (replaces localStorage). |
 | `specs/academy-media-upload.md` | Slice 6: lesson video/PDF upload via Supabase storage. |
+| `specs/motusai-chat-ui.md` | MotusAI cinematic chat + RootRouter investigate→QA loop. |
 | `.cursor/hooks.json` | Registers the `stop` loop hook + `loop_limit`. |
 | `.cursor/hooks/qa-loop.mjs` | Deterministic QA gate + loop decision (Node, no extra deps). |
 
