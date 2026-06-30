@@ -118,15 +118,18 @@ export function PsmIdentityStep({ onContinue }: Props) {
   }
 
   const blockers = showBlockers
-    ? getPsmWizardStepBlockers(0, {
-        ...data,
-        ...getValues(),
-        formacionAcademica: composeFormacionAcademica({
-          tituloProfesional: getValues('tituloProfesional') || '',
-          universidad: getValues('universidad') || '',
-          posgrado: getValues('posgrado') || '',
-        }),
-      })
+    ? (() => {
+        const values = getValues() as FormData
+        return getPsmWizardStepBlockers(0, {
+          ...data,
+          ...values,
+          formacionAcademica: composeFormacionAcademica({
+            tituloProfesional: values.tituloProfesional || '',
+            universidad: values.universidad || '',
+            posgrado: values.posgrado || '',
+          }),
+        })
+      })()
     : []
 
   const formacionError =
