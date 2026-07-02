@@ -41,7 +41,7 @@ import { renderMarkdown } from '@/lib/academy/markdown'
 import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet } from '@/lib/wallet'
 
 const difficultyLabels = {
   beginner: 'Principiante',
@@ -446,7 +446,7 @@ function CourseDetailView({
 
 export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; fallback?: ReactNode }) {
   const slug = resolveRouteBlockSlug(rawSlug)
-  const { login, authenticated, ready } = useWaaP()
+  const { login, authenticated, ready } = useWallet()
   const { sessionState, signing, signError, signIn, isSessionReady } = useSiweSession()
 
   const [course, setCourse] = useState<PublicCourse | null>(() => findCachedCourseBySlug(slug))

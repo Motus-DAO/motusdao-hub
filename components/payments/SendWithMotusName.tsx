@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motusNameService } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets } from '@/lib/wallet'
 import { getPrimaryWallet } from '@/lib/wallet-utils'
 import { sendCELOPayment } from '@/lib/payments'
 
@@ -13,8 +13,8 @@ interface SendWithMotusNameProps {
 }
 
 export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps = {}) {
-  const { authenticated } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { authenticated } = useWallet()
+  const { wallets } = useWallets()
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [resolvedAddress, setResolvedAddress] = useState<Address | null>(null)

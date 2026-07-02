@@ -10,7 +10,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { RolePickerModal } from '@/components/onboarding/RolePickerModal'
 import { EmailLoginModal } from '@/components/onboarding/EmailLoginModal'
 import { useUIStore } from '@/lib/store'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet } from '@/lib/wallet'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { ONBOARDING_ROUTE } from '@/lib/onboarding-routes'
 import { 
@@ -58,7 +58,7 @@ const featuredApps = [
 
 export default function Home() {
   const { } = useUIStore()
-  const { authenticated, login } = useWaaP()
+  const { authenticated, login } = useWallet()
   const { isCompleted } = useOnboardingStore()
   const [showEmailLogin, setShowEmailLogin] = useState(false)
   const [showRolePicker, setShowRolePicker] = useState(false)

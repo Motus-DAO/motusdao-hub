@@ -13,7 +13,8 @@ export interface OnboardingData {
   email: string
   eoaAddress: string
   smartWalletAddress?: string
-  privyId?: string
+  authProvider?: 'waap' | 'privy' | 'external'
+  authProviderId?: string
   celoChainId?: number
   walletType?: 'embedded' | 'external' | 'smart-wallet'
   intakeSource?: IntakeSource

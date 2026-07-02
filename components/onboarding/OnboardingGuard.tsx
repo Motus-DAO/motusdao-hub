@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, getWalletIdentity } from '@/lib/wallet'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { fetchRegistrationStatus } from '@/lib/registration'
@@ -18,8 +18,8 @@ function normalizeAddress(address: string | undefined | null): string | null {
 }
 
 export function OnboardingGuard({ children }: OnboardingGuardProps) {
-  const { ready, authenticated, user } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { ready, authenticated, user, providerId } = useWallet()
+  const { wallets } = useWallets()
   const pathname = usePathname()
   const router = useRouter()
   const { data, isCompleted, reset, markCompleted } = useOnboardingStore()
@@ -54,7 +54,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
         const status = await fetchRegistrationStatus({
           email,
           eoaAddress: eoaAddress ?? undefined,
-          privyId: user?.id,
+          identity: getWalletIdentity(user, providerId),
         })
 
         if (cancelled) return

@@ -11,6 +11,7 @@ import {
 import { SESSION_COOKIE_NAME } from '@/lib/auth/constants'
 import { handleAuthError, AuthError } from '@/lib/auth/errors'
 import { verifySiweLogin } from '@/lib/auth/verify-siwe'
+import { buildAuthIdentityUpdate } from '@/lib/auth/identity'
 
 const verifySchema = z.object({
   message: z.string().min(1),
@@ -51,17 +52,16 @@ export async function POST(request: NextRequest) {
     if (
       user &&
       body.authProvider &&
+      body.authProviderId &&
       (body.authProvider !== user.authProvider ||
-        (body.authProviderId && body.authProviderId !== user.authProviderId))
+        body.authProviderId !== user.authProviderId)
     ) {
       await prisma.user.update({
         where: { id: user.id },
-        data: {
+        data: buildAuthIdentityUpdate({
           authProvider: body.authProvider,
-          authProviderId: body.authProviderId ?? user.authProviderId,
-          // Keep privyId in sync during migration from provider-specific naming
-          ...(body.authProviderId ? { privyId: body.authProviderId } : {}),
-        },
+          authProviderId: body.authProviderId,
+        }),
       })
     }
 

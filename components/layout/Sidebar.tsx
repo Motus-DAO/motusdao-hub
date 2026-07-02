@@ -18,7 +18,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet } from '@/lib/wallet'
 import { useState } from 'react'
 import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
 
@@ -38,7 +38,7 @@ const iconMap = {
 export function Sidebar() {
   const { role, sidebarOpen, setSidebarOpen } = useUIStore()
   const pathname = usePathname()
-  const { authenticated } = useWaaP()
+  const { authenticated } = useWallet()
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   const navigationItems = getNavigationItems(role)

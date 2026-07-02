@@ -11,7 +11,7 @@ import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator'
 import { createPublicClient, createWalletClient, custom, http, type Address, type WalletClient, type Account, type Transport, type Chain } from 'viem'
 import { celoMainnet } from '@/lib/celo'
 import { createPimlicoPaymasterConfig, PAYMASTER_DEBUG_INFO } from '@/lib/pimlico-paymaster'
-import { useWaaP, useWaaPWallets, useWaaPProvider } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, useWalletProvider } from '@/lib/wallet'
 
 // FORZAR Celo Mainnet - no importa qué diga el dashboard
 const FORCED_CHAIN = celoMainnet // Chain ID 42220
@@ -72,9 +72,9 @@ export function ZeroDevSmartWalletProvider({
   zeroDevProjectId 
 }: ZeroDevSmartWalletProviderProps) {
   // WaaP hooks (replaces Privy hooks)
-  const { authenticated } = useWaaP()
-  const { wallets } = useWaaPWallets()
-  const { provider: waapProvider, isReady: isWaaPReady } = useWaaPProvider()
+  const { authenticated } = useWallet()
+  const { wallets } = useWallets()
+  const { provider: waapProvider, isReady: isWaaPReady } = useWalletProvider()
   
   const [kernelClient, setKernelClient] = useState<KernelAccountClient | null>(null)
   const [smartAccountAddress, setSmartAccountAddress] = useState<Address | null>(null)

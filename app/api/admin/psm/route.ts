@@ -87,6 +87,8 @@ export async function GET(request: NextRequest) {
         eoaAddress: psm.eoaAddress,
         smartWalletAddress: psm.smartWalletAddress,
         privyId: psm.privyId,
+        authProvider: psm.authProvider,
+        authProviderId: psm.authProviderId,
         nombre: psm.profile?.nombre || '',
         apellido: psm.profile?.apellido || '',
         telefono: psm.profile?.telefono || '',

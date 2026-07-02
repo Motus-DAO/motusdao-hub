@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWalletProvider, useWallets } from '@/lib/wallet'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import {
   establishSiweSession,
@@ -12,8 +12,9 @@ import {
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
 export function useSiweSession() {
-  const { ready, authenticated, user, waapProvider } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { ready, authenticated, user } = useWallet()
+  const { provider } = useWalletProvider()
+  const { wallets } = useWallets()
   const eoaAddress = getEOAAddress(wallets)
 
   const [sessionState, setSessionState] = useState<SiweSessionState>('loading')
@@ -44,7 +45,7 @@ export function useSiweSession() {
   }, [refresh])
 
   const signIn = useCallback(async () => {
-    if (!waapProvider) {
+    if (!provider) {
       setSignError('Wallet no disponible. Recarga la página e intenta de nuevo.')
       return false
     }
@@ -57,7 +58,7 @@ export function useSiweSession() {
       const authProvider = externalWallet ? 'external' : 'waap'
 
       await establishSiweSession({
-        waapProvider,
+        waapProvider: provider,
         authProvider,
         authProviderId: user?.id,
         eoaAddress: eoaAddress ?? undefined,
@@ -82,7 +83,7 @@ export function useSiweSession() {
     } finally {
       setSigning(false)
     }
-  }, [waapProvider, wallets, user?.id, eoaAddress, refresh])
+  }, [provider, wallets, user?.id, eoaAddress, refresh])
 
   return {
     sessionState,

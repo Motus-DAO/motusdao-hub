@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Jura } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { WaaPProviderWrapper } from "@/components/WaaPProviderWrapper";
+import { WalletProviderWrapper } from "@/components/WalletProviderWrapper";
 import { AppShell } from "@/components/layout/AppShell";
 
 const inter = Inter({
@@ -52,11 +52,11 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jura.variable} font-sans antialiased`}
       >
-        <WaaPProviderWrapper>
+        <WalletProviderWrapper>
           <ThemeProvider>
             <AppShell>{children}</AppShell>
           </ThemeProvider>
-        </WaaPProviderWrapper>
+        </WalletProviderWrapper>
       </body>
     </html>
   );

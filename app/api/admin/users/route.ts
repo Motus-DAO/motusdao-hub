@@ -88,6 +88,8 @@ export async function GET(request: NextRequest) {
           eoaAddress: user.eoaAddress || '',
           smartWalletAddress: user.smartWalletAddress || null,
           privyId: user.privyId || null,
+          authProvider: user.authProvider || null,
+          authProviderId: user.authProviderId || null,
           registrationCompleted: user.registrationCompleted || false,
           deletedAt: user.deletedAt ? user.deletedAt.toISOString() : null,
           createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),

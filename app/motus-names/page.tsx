@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
-import { useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallets } from '@/lib/wallet'
 import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
@@ -10,7 +10,7 @@ import { registerMotusName } from '@/lib/mns-register'
 
 export default function MotusNamesPage() {
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
-  const { wallets } = useWaaPWallets()
+  const { wallets } = useWallets()
   const [name, setName] = useState('')
   const [isChecking, setIsChecking] = useState(false)
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)

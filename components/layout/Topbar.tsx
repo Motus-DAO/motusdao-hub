@@ -16,7 +16,7 @@ import {
   Shield
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
@@ -32,8 +32,8 @@ export function Topbar() {
   } = useUIStore()
   
   // WaaP authentication hooks (replaces Privy)
-  const { ready, authenticated, user, login, logout } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { ready, authenticated, user, login, logout, providerId } = useWallet()
+  const { wallets } = useWallets()
   
   // ZeroDev smart wallet hook
   const { smartAccountAddress, isInitializing } = useSmartAccount()
@@ -85,13 +85,13 @@ export function Topbar() {
       if (!ready || !authenticated || !user) return
 
       const userEmail = user?.email?.address || user?.google?.email
-      const privyId = user?.id
+      const walletIdentity = getWalletIdentity(user, providerId)
 
-      if (!userEmail && !privyId) return
+      if (!userEmail && !walletIdentity) return
 
       try {
         const params = new URLSearchParams()
-        if (privyId) params.append('privyId', privyId)
+        appendWalletIdentityParams(params, walletIdentity)
         if (userEmail) params.append('email', userEmail)
 
         const response = await fetch(`/api/profile?${params.toString()}`)

@@ -128,6 +128,19 @@ Historical mistake: `prisma/dev.db` was committed. **Local dev should use Supaba
 
 ---
 
+## Wallet auth identity
+
+| Field | Purpose |
+|-------|---------|
+| `eoaAddress` | Canonical on-chain login key (SIWE) |
+| `authProvider` | Wallet vendor: `waap`, `privy`, `external` |
+| `authProviderId` | Vendor's user id (use this in new code) |
+| `privyId` | Legacy — populated only when `authProvider = privy` |
+
+App hooks: `lib/wallet/` (`useWallet`, `useWallets`). Server helpers: `lib/auth/identity.ts`.
+
+---
+
 ## Related docs
 
 - `env.example` — all variable names

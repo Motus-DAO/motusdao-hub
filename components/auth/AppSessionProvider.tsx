@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet } from '@/lib/wallet'
 import { logoutAppSession } from '@/lib/auth/client'
 
 /**
@@ -10,7 +10,7 @@ import { logoutAppSession } from '@/lib/auth/client'
  * WaaP and MetaMask require a click for personal_sign UI.
  */
 export function AppSessionProvider({ children }: { children: React.ReactNode }) {
-  const { ready, authenticated } = useWaaP()
+  const { ready, authenticated } = useWallet()
 
   useEffect(() => {
     if (ready && !authenticated) {

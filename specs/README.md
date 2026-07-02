@@ -124,7 +124,7 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 | `specs/academy-media-upload.md` | Slice 6: lesson video/PDF upload via Supabase storage. |
 | `specs/motusai-chat-ui.md` | MotusAI cinematic chat + RootRouter investigate→QA loop. |
 | `specs/psm-intake-v1.md` | PSM intake wizard polish spec (frozen journey). |
-| `specs/platform-harmonize.md` | Platform harmonize SDD (taxonomy, phases, data layer). |
+| `specs/auth-provider-agnostic.md` | Wallet/provider abstraction slice (facade + key migrations). |
 | `.cursor/hooks.json` | Registers the `stop` loop hook + `loop_limit`. |
 | `.cursor/hooks/qa-loop.mjs` | Deterministic QA gate + loop decision (Node, no extra deps). |
 | `.github/workflows/ci.yml` | CI: lint, typecheck, prisma validate, build. |

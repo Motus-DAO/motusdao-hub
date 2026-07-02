@@ -2,7 +2,7 @@
 
 import { AnimatedAIChat } from '@/components/ui/animated-ai-chat'
 import { useUIStore } from '@/lib/store'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { buildVideochatUrl } from '@/lib/jitsi'
@@ -10,7 +10,7 @@ import { buildVideochatUrl } from '@/lib/jitsi'
 export default function MotusAIPage() {
   const { role, theme } = useUIStore()
   const isLight = theme === 'light'
-  const { user, authenticated, ready } = useWaaP()
+  const { user, authenticated, ready, providerId } = useWallet()
   const router = useRouter()
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
@@ -25,9 +25,9 @@ export default function MotusAIPage() {
       }
 
       const userEmail = user?.email?.address || user?.google?.email
-      const privyId = user?.id
+      const walletIdentity = getWalletIdentity(user, providerId)
 
-      if (!userEmail && !privyId) {
+      if (!userEmail && !walletIdentity) {
         setSessionError('No se pudo identificar tu usuario. Intenta desde la página de perfil.')
         return
       }
@@ -35,7 +35,7 @@ export default function MotusAIPage() {
       setIsCreatingSession(true)
 
       const params = new URLSearchParams()
-      if (privyId) params.append('privyId', privyId)
+      appendWalletIdentityParams(params, walletIdentity)
       if (userEmail) params.append('email', userEmail)
 
       const profileRes = await fetch(`/api/profile?${params.toString()}`)

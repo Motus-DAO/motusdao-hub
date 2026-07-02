@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useLoginWithEmail, useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useLoginWithEmail, useWallet } from '@/lib/wallet'
 import { z } from 'zod'
 import { 
   Mail, 
@@ -29,7 +29,7 @@ interface EmailLoginModalProps {
 
 export function EmailLoginModal({ isOpen, onClose, onLoggedIn }: EmailLoginModalProps) {
   const { sendCode, loginWithCode } = useLoginWithEmail()
-  const { user, authenticated } = useWaaP()
+  const { user, authenticated } = useWallet()
   
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')

@@ -9,6 +9,7 @@ import {
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
 import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
+import { resolveAuthIdentityFields } from '@/lib/auth/identity'
 import { buildPsmSlug, ensureUniqueSlug } from '@/lib/psm/slug'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 import { isStorageMediaRef } from '@/lib/academy/media'
@@ -19,6 +20,8 @@ const psmOnboardingSchema = z.object({
   email: z.string().email(),
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
+  authProvider: z.enum(['waap', 'privy', 'external']).optional(),
+  authProviderId: z.string().optional(),
   privyId: z.string().optional(),
   intakeSource: z.enum(['manual', 'ai_assisted', 'hybrid']).default('manual'),
   intakeVersion: z.string().default(PSM_INTAKE_VERSION),
@@ -220,6 +223,20 @@ export async function POST(request: NextRequest) {
           ? 'active'
           : 'pending_verification'
 
+      const walletIdentity = resolveAuthIdentityFields({
+        authProvider: data.authProvider,
+        authProviderId: data.authProviderId,
+        privyId: data.privyId,
+        fallback:
+          identity.status === 'update'
+            ? {
+                authProvider: identity.user.authProvider,
+                authProviderId: identity.user.authProviderId,
+                privyId: identity.user.privyId,
+              }
+            : undefined,
+      })
+
       const user = existingUser
         ? await tx.user.update({
             where: { id: existingUser.id },
@@ -237,7 +254,7 @@ export async function POST(request: NextRequest) {
                 : existingUser.mnsRegisteredAt,
               profileNftTxHash: data.profileNftTxHash || existingUser.profileNftTxHash,
               profileNftTokenURI: data.profileNftTokenURI || existingUser.profileNftTokenURI,
-              privyId: data.privyId || existingUser.privyId
+              ...walletIdentity,
             }
           })
         : await tx.user.create({
@@ -254,7 +271,7 @@ export async function POST(request: NextRequest) {
               mnsRegisteredAt: data.mnsTxHash ? new Date() : null,
               profileNftTxHash: data.profileNftTxHash,
               profileNftTokenURI: data.profileNftTokenURI,
-              privyId: data.privyId
+              ...walletIdentity,
             }
           })
 

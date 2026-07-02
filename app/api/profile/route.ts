@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { assertSelfOrAdmin, requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
+import {
+  parseAuthIdentityFromSearchParams,
+  authIdentityLookupConditions,
+} from '@/lib/auth/identity'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
 
 export async function POST(request: NextRequest) {
@@ -79,9 +83,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const email = searchParams.get('email')
-    const privyId = searchParams.get('privyId')
+    const identity = parseAuthIdentityFromSearchParams(searchParams)
 
-    // Find user by userId, email, or privyId
+    // Find user by userId, email, or wallet vendor id
     let user
     if (userId) {
       user = await prisma.user.findUnique({
@@ -92,13 +96,14 @@ export async function GET(request: NextRequest) {
           psm: true
         }
       })
-    } else if (email || privyId) {
+    } else if (email || identity.authProviderId || identity.legacyPrivyId) {
+      const identityConditions = authIdentityLookupConditions(identity)
       user = await prisma.user.findFirst({
         where: {
           OR: [
-            email ? { email } : {},
-            privyId ? { privyId } : {}
-          ].filter(condition => Object.keys(condition).length > 0)
+            ...(email ? [{ email }] : []),
+            ...identityConditions,
+          ],
         },
         include: {
           profile: true,

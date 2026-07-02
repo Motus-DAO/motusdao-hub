@@ -6,6 +6,7 @@ import { deriveConcernFields } from '@/lib/intake-concerns'
 import { createCrisisEventIfNeeded } from '@/lib/crisis'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
 import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
+import { resolveAuthIdentityFields } from '@/lib/auth/identity'
 
 const stringArray = z.array(z.string()).default([])
 const optionalStringArray = z.array(z.string()).optional()
@@ -14,6 +15,8 @@ const userOnboardingSchema = z.object({
   email: z.string().email(),
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
+  authProvider: z.enum(['waap', 'privy', 'external']).optional(),
+  authProviderId: z.string().optional(),
   privyId: z.string().optional(),
   intakeSource: z.enum(['manual', 'ai_assisted']).default('manual'),
   motusName: z.string().optional(),
@@ -89,6 +92,20 @@ export async function POST(request: NextRequest) {
         : null
 
     const result = await prisma.$transaction(async (tx) => {
+      const walletIdentity = resolveAuthIdentityFields({
+        authProvider: data.authProvider,
+        authProviderId: data.authProviderId,
+        privyId: data.privyId,
+        fallback:
+          identity.status === 'update'
+            ? {
+                authProvider: identity.user.authProvider,
+                authProviderId: identity.user.authProviderId,
+                privyId: identity.user.privyId,
+              }
+            : undefined,
+      })
+
       const user = existingUser
         ? await tx.user.update({
             where: { id: existingUser.id },
@@ -106,7 +123,7 @@ export async function POST(request: NextRequest) {
                 : existingUser.mnsRegisteredAt,
               profileNftTxHash: data.profileNftTxHash || existingUser.profileNftTxHash,
               profileNftTokenURI: data.profileNftTokenURI || existingUser.profileNftTokenURI,
-              privyId: data.privyId || existingUser.privyId
+              ...walletIdentity,
             }
           })
         : await tx.user.create({
@@ -123,7 +140,7 @@ export async function POST(request: NextRequest) {
               mnsRegisteredAt: data.mnsTxHash ? new Date() : null,
               profileNftTxHash: data.profileNftTxHash,
               profileNftTokenURI: data.profileNftTokenURI,
-              privyId: data.privyId
+              ...walletIdentity,
             }
           })
 

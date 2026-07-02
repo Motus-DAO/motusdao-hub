@@ -28,7 +28,7 @@ import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback } from 'react'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { sendCELOPayment, sendStablecoinPayment, type PaymentParams } from '@/lib/payments'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
@@ -123,8 +123,8 @@ const QRScanner = dynamic(
 )
 
 export default function PagosPage() {
-  const { authenticated, user, ready } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { authenticated, user, ready, providerId } = useWallet()
+  const { wallets } = useWallets()
   const primaryWallet = getPrimaryWallet(wallets || [])
   const walletAddress = primaryWallet?.address || null
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreferenceData | null>(null)
@@ -452,7 +452,7 @@ export default function PagosPage() {
   const availableProviders = providers.filter(p => p.enabled)
 
   const userEmail = user?.email?.address || user?.google?.email
-  const privyId = user?.id
+  const walletIdentity = getWalletIdentity(user, providerId)
   const daoTreasuryAddress = process.env.NEXT_PUBLIC_DAO_TREASURY_ADDRESS || '0xf229F3Dcea3D7cd3cA5ca41C4C50135D7b37F2b9'
 
   // Fetch user data and payment preference
@@ -464,7 +464,7 @@ export default function PagosPage() {
       try {
         // Get user profile to get userId
         const params = new URLSearchParams()
-        if (privyId) params.append('privyId', privyId)
+        appendWalletIdentityParams(params, walletIdentity)
         if (userEmail) params.append('email', userEmail)
 
         const profileResponse = await fetch(`/api/profile?${params.toString()}`)
@@ -489,7 +489,7 @@ export default function PagosPage() {
     }
 
     fetchData()
-  }, [ready, authenticated, userEmail, privyId])
+  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId])
 
   const handleDestinationChange = async (destination: 'own_wallet' | 'matched_psm' | 'dao_treasury') => {
     if (!userData?.id || isSavingPreference) return

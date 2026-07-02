@@ -13,7 +13,7 @@ import {
   Loader,
   X
 } from 'lucide-react'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, getWalletIdentity } from '@/lib/wallet'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
@@ -41,8 +41,8 @@ interface StepConnectProps {
 }
 
 export function StepConnect({ onNext, onBack }: StepConnectProps) {
-  const { ready, authenticated, user, login } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { ready, authenticated, user, login, providerId } = useWallet()
+  const { wallets } = useWallets()
   const { data, updateData } = useOnboardingStore()
   const [isConnecting, setIsConnecting] = useState(false)
   const [siweSessionReady, setSiweSessionReady] = useState(false)
@@ -122,10 +122,12 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
       // Store the EOA address and email - smart wallet will be created by ZeroDev
       // Only update if email is valid and different from stored
       if (emailToStore && emailToStore.includes('@') && (emailToStore !== data.email || eoaAddress !== data.eoaAddress)) {
+        const walletIdentity = getWalletIdentity(user, providerId)
         updateData({ 
           email: emailToStore,
           eoaAddress: eoaAddress,
-          privyId: user.id,
+          authProvider: walletIdentity?.authProvider,
+          authProviderId: walletIdentity?.authProviderId,
           celoChainId: celoChain.id,
           walletType: walletType
         })
@@ -165,10 +167,12 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
   const onSubmit = (formData: ConnectFormData) => {
     const emailToSave = privyEmail || formData.email
     if (emailToSave) {
+      const walletIdentity = getWalletIdentity(user, providerId)
       updateData({
         email: emailToSave,
         eoaAddress: eoaAddress || data.eoaAddress,
-        privyId: user?.id || data.privyId,
+        authProvider: walletIdentity?.authProvider ?? data.authProvider,
+        authProviderId: walletIdentity?.authProviderId ?? data.authProviderId,
       })
     }
 

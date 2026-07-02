@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionFromRequest } from '@/lib/auth/session'
+import {
+  parseAuthIdentityFromSearchParams,
+  authIdentityLookupConditions,
+} from '@/lib/auth/identity'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSessionFromRequest(request)
     const { searchParams } = new URL(request.url)
     const email = searchParams.get('email')
-    const privyId = searchParams.get('privyId')
     const eoaAddress = searchParams.get('eoaAddress')
     const userId = searchParams.get('userId')
+    const identity = parseAuthIdentityFromSearchParams(searchParams)
 
-    if (!session?.userId && !email && !privyId && !eoaAddress && !userId) {
+    if (
+      !session?.userId &&
+      !email &&
+      !identity.authProviderId &&
+      !identity.legacyPrivyId &&
+      !eoaAddress &&
+      !userId
+    ) {
       return NextResponse.json(
         { error: 'Email, wallet address, user id, or session is required' },
         { status: 400 }
@@ -22,7 +33,7 @@ export async function GET(request: NextRequest) {
       session?.userId ? { id: session.userId } : null,
       userId ? { id: userId } : null,
       email ? { email } : null,
-      privyId ? { privyId } : null,
+      ...authIdentityLookupConditions(identity).map((condition) => condition),
       eoaAddress
         ? { eoaAddress: { equals: eoaAddress, mode: 'insensitive' as const } }
         : null,

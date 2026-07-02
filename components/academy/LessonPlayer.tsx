@@ -42,7 +42,7 @@ import {
 } from '@/lib/academy/public-course'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet } from '@/lib/wallet'
 
 function isAbortError(error: unknown): boolean {
   if (error instanceof DOMException && error.name === 'AbortError') return true
@@ -243,7 +243,7 @@ export function LessonPlayer({
 }) {
   const courseSlug = resolveRouteBlockSlug(rawCourseSlug)
   const router = useRouter()
-  const { login, authenticated, ready } = useWaaP()
+  const { login, authenticated, ready } = useWallet()
   const { sessionState, signing, signError, signIn, isSessionReady } = useSiweSession()
 
   const [course, setCourse] = useState<PublicCourse | null>(() => findCachedCourseBySlug(courseSlug))

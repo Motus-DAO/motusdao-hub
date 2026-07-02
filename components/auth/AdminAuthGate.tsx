@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, useWalletProvider } from '@/lib/wallet'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import {
   authFetch,
@@ -20,8 +20,9 @@ type AdminAccessState =
   | 'authorized'
 
 export function AdminAuthGate({ children }: { children: React.ReactNode }) {
-  const { ready, authenticated, login, user, waapProvider } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { ready, authenticated, login, user } = useWallet()
+  const { provider } = useWalletProvider()
+  const { wallets } = useWallets()
   const eoaAddress = getEOAAddress(wallets)
 
   const [access, setAccess] = useState<AdminAccessState>('loading')
@@ -83,7 +84,7 @@ export function AdminAuthGate({ children }: { children: React.ReactNode }) {
   }, [checkAccess])
 
   const handleSignIn = async () => {
-    if (!waapProvider) {
+    if (!provider) {
       setSignError('Wallet no disponible. Recarga la página e intenta de nuevo.')
       return
     }
@@ -96,7 +97,7 @@ export function AdminAuthGate({ children }: { children: React.ReactNode }) {
       const authProvider = externalWallet ? 'external' : 'waap'
 
       await establishSiweSession({
-        waapProvider,
+        waapProvider: provider,
         authProvider,
         authProviderId: user?.id,
         eoaAddress: eoaAddress ?? undefined,

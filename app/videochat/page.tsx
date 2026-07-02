@@ -18,7 +18,7 @@ import {
 } from '@/lib/jitsi'
 import { fetchAppSession, authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import { useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet } from '@/lib/wallet'
 
 type JitsiInitOptions = {
   roomName?: string
@@ -87,7 +87,7 @@ function getHubLoginHint(roomName: string): string {
 function VideochatInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login, ready: waapReady } = useWaaP()
+  const { login, ready: waapReady } = useWallet()
   const { sessionState, signIn, signing, signError, isSessionReady } = useSiweSession()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const apiRef = useRef<JitsiExternalAPI | null>(null)

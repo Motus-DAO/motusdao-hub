@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useWaaPWallets, useWaaP } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets } from '@/lib/wallet'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { Loader, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
@@ -12,8 +12,8 @@ import { sendCELOPayment } from '@/lib/payments'
 type TransactionStatus = 'idle' | 'preparing' | 'sending' | 'success' | 'error'
 
 export function TestGaslessTransaction() {
-  const { wallets } = useWaaPWallets()
-  const { authenticated, ready } = useWaaP()
+  const { wallets } = useWallets()
+  const { authenticated, ready } = useWallet()
   const [status, setStatus] = useState<TransactionStatus>('idle')
   const [txHash, setTxHash] = useState<string>('')
   const [error, setError] = useState<string>('')

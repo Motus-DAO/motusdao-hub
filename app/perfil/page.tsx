@@ -27,7 +27,7 @@ import {
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
-import { useWaaP, useWaaPWallets } from '@/lib/contexts/WaaPProvider'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { motusNameService } from '@/lib/motus-name-service'
@@ -63,8 +63,8 @@ export default function PerfilPage() {
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
-  const { authenticated, user, ready } = useWaaP()
-  const { wallets } = useWaaPWallets()
+  const { authenticated, user, ready, providerId } = useWallet()
+  const { wallets } = useWallets()
   
   // ZeroDev smart wallet hook
   const { smartAccountAddress } = useSmartAccount()
@@ -74,7 +74,7 @@ export default function PerfilPage() {
   
   // Get email from user
   const userEmail = user?.email?.address || user?.google?.email || 'No disponible'
-  const privyId = user?.id
+  const walletIdentity = getWalletIdentity(user, providerId)
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -219,7 +219,7 @@ export default function PerfilPage() {
 
       try {
         const params = new URLSearchParams()
-        if (privyId) params.append('privyId', privyId)
+        appendWalletIdentityParams(params, walletIdentity)
         if (userEmail) params.append('email', userEmail)
 
         const response = await fetch(`/api/profile?${params.toString()}`)
@@ -266,7 +266,7 @@ export default function PerfilPage() {
     }
 
     fetchProfile()
-  }, [ready, authenticated, userEmail, privyId])
+  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId])
 
   // Fetch match data
   useEffect(() => {

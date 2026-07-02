@@ -1,4 +1,6 @@
 import { authFetch } from '@/lib/auth/client'
+import type { WalletIdentity } from '@/lib/auth/identity'
+import { appendWalletIdentityParams } from '@/lib/wallet/client-identity'
 
 export interface RegistrationStatus {
   registered: boolean
@@ -15,14 +17,19 @@ const DEFAULT_STATUS: RegistrationStatus = {
 
 export async function fetchRegistrationStatus(params: {
   email?: string
-  privyId?: string
   eoaAddress?: string
+  identity?: WalletIdentity | null
+  /** @deprecated use identity */
+  privyId?: string
 }): Promise<RegistrationStatus> {
   const searchParams = new URLSearchParams()
 
   if (params.email) searchParams.set('email', params.email)
-  if (params.privyId) searchParams.set('privyId', params.privyId)
   if (params.eoaAddress) searchParams.set('eoaAddress', params.eoaAddress)
+  appendWalletIdentityParams(searchParams, params.identity)
+  if (!params.identity && params.privyId) {
+    searchParams.set('privyId', params.privyId)
+  }
 
   try {
     const response = await authFetch(
