@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { debugApiGuard } from '@/lib/debug-api'
 
 export async function GET() {
+  const blocked = debugApiGuard()
+  if (blocked) return blocked
+
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`

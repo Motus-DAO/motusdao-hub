@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service'
 import { createPublicClient, http } from 'viem'
 import { celoMainnet } from '@/lib/celo'
+import { debugApiGuard } from '@/lib/debug-api'
 
 // ABI mínimo para leer ownerOf
 const ERC721_ABI = [
@@ -26,6 +27,9 @@ const ERC721_ABI = [
  * GET /api/debug/wallets?name=gerry&address=0x...
  */
 export async function GET(request: Request) {
+  const blocked = debugApiGuard()
+  if (blocked) return blocked
+
   const { searchParams } = new URL(request.url)
   const motusName = searchParams.get('name') || 'gerry'
   const currentSmartWallet = searchParams.get('address')

@@ -18,9 +18,10 @@ Una plataforma integral de salud mental que combina tecnología blockchain, inte
 - **UI Components**: shadcn/ui, Lucide React
 - **Animaciones**: Framer Motion, Three.js
 - **Estado**: Zustand
-- **Base de Datos**: Prisma ORM con SQLite (dev) / PostgreSQL (prod)
-- **Autenticación**: Privy (smart accounts)
-- **Blockchain**: Viem para interacciones con wallets
+- **Base de Datos**: Prisma ORM → **Supabase Postgres** (see `docs/architecture/data-layer.md`)
+- **Storage / RAG**: Supabase Storage + pgvector knowledge chunks
+- **Autenticación**: WaaP (Human.tech) + SIWE; smart wallets optional (ZeroDev, feature-flagged)
+- **Blockchain**: Viem + Celo (MNS, optional account abstraction)
 
 ## 🎨 Diseño
 
@@ -34,24 +35,18 @@ Una plataforma integral de salud mental que combina tecnología blockchain, inte
 
 ```
 motusdao-hub/
-├── app/                    # App Router de Next.js
-│   ├── (app)/             # Rutas principales
-│   │   ├── page.tsx       # Home
-│   │   ├── motusai/       # MotusAI
-│   │   ├── psicoterapia/  # Psicoterapia
-│   │   ├── academia/      # Academia
-│   │   ├── bitacora/      # Bitácora
-│   │   ├── perfil/        # Perfil
-│   │   └── docs/          # Documentación
-│   └── api/               # API Routes
-├── components/            # Componentes reutilizables
-│   ├── ui/               # Componentes base
-│   ├── layout/           # Layout components
-│   ├── forms/            # Formularios
-│   └── three/            # Componentes 3D
-├── lib/                  # Utilidades y configuración
-├── prisma/               # Schema y seeds
-└── styles/               # Estilos globales
+├── app/                    # Next.js App Router (pages + API)
+├── components/             # UI by domain (academy, onboarding, layout, …)
+├── lib/                    # Business logic, auth, storage, Prisma client
+├── prisma/                 # Schema, migrations, seed
+├── specs/                  # SDD feature specs (source of truth for agents)
+├── docs/
+│   ├── architecture/       # System design (data layer, integrations)
+│   └── runbooks/           # Deploy and ops checklists
+├── archive/                # Historical incident docs (not agent truth)
+├── infra/                  # Jitsi + contracts reference docs
+├── AGENTS.md               # Agent read order (Feng Shui + specs)
+└── .cursor/                # QA loop hooks, MCP (RootRouter)
 ```
 
 ## 🚀 Instalación y Configuración

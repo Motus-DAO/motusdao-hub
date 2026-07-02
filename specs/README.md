@@ -127,6 +127,7 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 | `specs/platform-harmonize.md` | Platform harmonize SDD (taxonomy, phases, data layer). |
 | `.cursor/hooks.json` | Registers the `stop` loop hook + `loop_limit`. |
 | `.cursor/hooks/qa-loop.mjs` | Deterministic QA gate + loop decision (Node, no extra deps). |
+| `.github/workflows/ci.yml` | CI: lint, typecheck, prisma validate, build. |
 
 ---
 
