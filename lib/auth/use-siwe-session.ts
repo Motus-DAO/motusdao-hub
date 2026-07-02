@@ -12,7 +12,7 @@ import {
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
 export function useSiweSession() {
-  const { ready, authenticated, user } = useWallet()
+  const { ready, authenticated, user, providerId } = useWallet()
   const { provider } = useWalletProvider()
   const { wallets } = useWallets()
   const eoaAddress = getEOAAddress(wallets)
@@ -54,8 +54,12 @@ export function useSiweSession() {
     setSignError(null)
 
     try {
-      const externalWallet = wallets.find((w) => w.walletClientType === 'external')
-      const authProvider = externalWallet ? 'external' : 'waap'
+      const authProvider =
+        providerId === 'external'
+          ? 'external'
+          : providerId === 'privy'
+            ? 'privy'
+            : 'waap'
 
       await establishSiweSession({
         waapProvider: provider,
@@ -83,7 +87,7 @@ export function useSiweSession() {
     } finally {
       setSigning(false)
     }
-  }, [provider, wallets, user?.id, eoaAddress, refresh])
+  }, [provider, user?.id, eoaAddress, refresh, providerId])
 
   return {
     sessionState,

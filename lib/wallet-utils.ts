@@ -9,7 +9,7 @@
  */
 export interface WaaPWallet {
   address: `0x${string}`
-  walletClientType: 'waap' | 'external'
+  walletClientType: 'waap' | 'privy' | 'external'
   chainId: string
   connected: boolean
 }
@@ -65,6 +65,13 @@ export function identifyEmbeddedWallet(wallets: WaaPWallet[]): WaaPWallet | null
   if (waapWallet) {
     console.log('✅ WaaP embedded wallet (EOA) found:', waapWallet.address)
     return waapWallet
+  }
+
+  const privyWallet = wallets.find(wallet => wallet.walletClientType === 'privy')
+
+  if (privyWallet) {
+    console.log('✅ Privy embedded wallet (EOA) found:', privyWallet.address)
+    return privyWallet
   }
   
   // Check for external wallets (MetaMask, etc.)
@@ -128,6 +135,10 @@ export function getWalletType(wallet: WaaPWallet | null): WalletType {
   
   if (wallet.walletClientType === 'waap') {
     return 'waap'
+  }
+
+  if (wallet.walletClientType === 'privy') {
+    return 'embedded'
   }
   
   return 'external'
@@ -196,6 +207,13 @@ export function getEOAAddress(wallets: WaaPWallet[]): string | null {
   if (waapWallet?.address) {
     console.log('✅ Using WaaP wallet EOA address:', waapWallet.address)
     return waapWallet.address
+  }
+
+  const privyWallet = wallets.find(wallet => wallet.walletClientType === 'privy')
+
+  if (privyWallet?.address) {
+    console.log('✅ Using Privy wallet EOA address:', privyWallet.address)
+    return privyWallet.address
   }
   
   console.warn('⚠️ No EOA address found')

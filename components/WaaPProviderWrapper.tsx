@@ -2,8 +2,8 @@
 
 import { ReactNode, Component, ErrorInfo, useEffect } from 'react'
 import { WaaPProvider } from '@/lib/contexts/WaaPProvider'
-import { OnboardingGuard } from '@/components/onboarding/OnboardingGuard'
-import { AppSessionProvider } from '@/components/auth/AppSessionProvider'
+import { WalletAuthShell } from '@/components/wallet/WalletAuthShell'
+import { WaaPWalletContextBridge } from '@/components/wallet/WaaPWalletContextBridge'
 
 interface WaaPProviderWrapperProps {
   children: ReactNode
@@ -163,11 +163,9 @@ export function WaaPProviderWrapper({ children }: WaaPProviderWrapperProps) {
       <WaaPGlobalErrorHandler>
         <div suppressHydrationWarning>
           <WaaPProvider>
-            <AppSessionProvider>
-              <OnboardingGuard>
-                {children}
-              </OnboardingGuard>
-            </AppSessionProvider>
+            <WaaPWalletContextBridge>
+              <WalletAuthShell>{children}</WalletAuthShell>
+            </WaaPWalletContextBridge>
           </WaaPProvider>
         </div>
       </WaaPGlobalErrorHandler>

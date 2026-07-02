@@ -1,10 +1,6 @@
 'use client'
 
-import {
-  useWaaP,
-  useWaaPProvider,
-  useWaaPWallets,
-} from '@/lib/contexts/WaaPProvider'
+import { useWalletContext } from './WalletContext'
 import type {
   WalletAuthState,
   WalletInfo,
@@ -14,35 +10,48 @@ import type {
 
 export type { WalletAuthProvider } from './provider'
 export type { WalletInfo, WalletProviderId, WalletUser } from './types'
+export { getConfiguredWalletProvider, getPrivyAppId } from './config'
 export { getWalletIdentity, appendWalletIdentityParams } from './client-identity'
 
-export { useLoginWithEmail } from '@/lib/contexts/WaaPProvider'
-
-function inferProvider(wallets: WalletInfo[]): WalletProviderId {
-  if (wallets.some((w) => w.walletClientType === 'external')) return 'external'
-  if (wallets.some((w) => w.walletClientType === 'waap')) return 'waap'
-  return 'unknown'
+function resolveProviderId(
+  configuredProvider: 'waap' | 'privy',
+  wallets: WalletInfo[]
+): WalletProviderId {
+  if (wallets.some((wallet) => wallet.walletClientType === 'external')) {
+    return 'external'
+  }
+  return configuredProvider
 }
 
-export function useWallet(): WalletAuthState & { providerId: WalletProviderId } {
-  const auth = useWaaP()
-  const { wallets } = useWaaPWallets()
+export function useWallet(): WalletAuthState & {
+  providerId: WalletProviderId
+  configuredProvider: 'waap' | 'privy'
+  setupError?: string | null
+} {
+  const ctx = useWalletContext()
+
   return {
-    ready: auth.ready,
-    authenticated: auth.authenticated,
-    user: auth.user,
-    login: auth.login,
-    logout: auth.logout,
-    providerId: inferProvider(wallets as WalletInfo[]),
+    ready: ctx.ready,
+    authenticated: ctx.authenticated,
+    user: ctx.user,
+    login: ctx.login,
+    logout: ctx.logout,
+    providerId: resolveProviderId(ctx.configuredProvider, ctx.wallets),
+    configuredProvider: ctx.configuredProvider,
+    setupError: ctx.setupError,
   }
 }
 
 export function useWallets(): { wallets: WalletInfo[] } {
-  const { wallets } = useWaaPWallets()
-  return { wallets: wallets as WalletInfo[] }
+  const { wallets } = useWalletContext()
+  return { wallets }
 }
 
 export function useWalletProvider(): WalletProviderState {
-  const { provider, isReady } = useWaaPProvider()
-  return { provider, isReady }
+  const { provider, isProviderReady } = useWalletContext()
+  return { provider, isReady: isProviderReady }
+}
+
+export function useLoginWithEmail() {
+  return useWalletContext().emailLogin
 }

@@ -4,6 +4,7 @@ import { asStringArray } from '@/lib/prisma-json'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { isVerificationStatus } from '@/lib/psm-verification'
 import { buildPsmAdminOperationsView } from '@/lib/intake/psm-admin-view'
+import { getPsmMarketplaceVisibility } from '@/lib/psm/marketplace-visibility'
 
 export async function GET(request: NextRequest) {
   try {
@@ -125,6 +126,19 @@ export async function GET(request: NextRequest) {
         rejectedAt: psm.psm?.rejectedAt || null,
         suspendedAt: psm.psm?.suspendedAt || null,
         registrationCompleted: psm.registrationCompleted,
+        marketplace: getPsmMarketplaceVisibility({
+          registrationCompleted: psm.registrationCompleted,
+          onboardingStatus: psm.onboardingStatus,
+          deletedAt: psm.deletedAt,
+          psm: psm.psm
+            ? {
+                verificationStatus: psm.psm.verificationStatus,
+                isAcceptingPatients: psm.psm.isAcceptingPatients,
+                introVideoApproved: psm.psm.introVideoApproved,
+                slug: psm.psm.slug,
+              }
+            : null,
+        }),
         activeMatches: activeMatches.length,
         totalMatches: totalMatches,
         completedSessions,

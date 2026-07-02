@@ -67,7 +67,6 @@ export const PUBLIC_PSM_WHERE = {
     is: {
       verificationStatus: 'approved' as const,
       isAcceptingPatients: true,
-      introVideoApproved: true,
       slug: { not: null },
     },
   },

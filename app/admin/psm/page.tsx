@@ -93,6 +93,10 @@ interface PSM {
     available: number
   }
   registrationCompleted: boolean
+  marketplace: {
+    isMarketplaceVisible: boolean
+    gaps: string[]
+  }
   createdAt: string | Date
   updatedAt: string | Date
 }
@@ -485,7 +489,24 @@ export default function AdminPSMPage() {
                             Pendiente
                           </span>
                         )}
+                        {psm.marketplace?.isMarketplaceVisible ? (
+                          <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs">
+                            Visible en /psicoterapia
+                          </span>
+                        ) : (
+                          <span
+                            className="px-2 py-1 bg-slate-500/20 text-slate-300 rounded text-xs"
+                            title={psm.marketplace?.gaps.join(' · ') || 'No visible en marketplace'}
+                          >
+                            Oculto en /psicoterapia
+                          </span>
+                        )}
                       </div>
+                      {psm.marketplace && !psm.marketplace.isMarketplaceVisible && psm.marketplace.gaps.length > 0 && (
+                        <p className="text-xs text-amber-300/90 mb-2">
+                          Falta para marketplace: {psm.marketplace.gaps.join(' · ')}
+                        </p>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground mb-3">
                         <div className="flex items-center space-x-2">
@@ -568,6 +589,17 @@ export default function AdminPSMPage() {
 
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-end gap-2 ml-4 max-w-xs">
+                    {psm.introVideoStoragePath && !psm.introVideoApproved && (
+                      <button
+                        onClick={() => handleIntroVideoAction(psm, 'approve')}
+                        disabled={actionLoading === `${psm.id}:intro-video`}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-mauve-500/20 border border-mauve-500/40 rounded-lg hover:bg-mauve-500/30 text-sm disabled:opacity-50"
+                        title="Aprobar video intro para priorizar visibilidad del perfil"
+                      >
+                        <Video className="w-4 h-4" />
+                        {actionLoading === `${psm.id}:intro-video` ? 'Actualizando...' : 'Destacar con video'}
+                      </button>
+                    )}
                     {psm.verificationStatus !== 'approved' && (
                       <button
                         onClick={() => handleVerificationAction(psm, 'approve')}
@@ -651,10 +683,14 @@ export default function AdminPSMPage() {
                   {selectedPSM.introVideoStoragePath && !selectedPSM.introVideoApproved && (
                     <button
                       onClick={() => handleIntroVideoAction(selectedPSM, 'approve')}
-                      className="flex items-center gap-2 rounded-lg border border-mauve-500/50 bg-mauve-500/20 px-3 py-1.5 text-sm hover:bg-mauve-500/30"
+                      disabled={actionLoading === `${selectedPSM.id}:intro-video`}
+                      className="flex items-center gap-2 rounded-lg border border-mauve-500/50 bg-mauve-500/20 px-3 py-1.5 text-sm hover:bg-mauve-500/30 disabled:opacity-50"
+                      title="Aprobar video intro para destacar este perfil en la lista pública"
                     >
                       <Video className="h-4 w-4" />
-                      Aprobar video
+                      {actionLoading === `${selectedPSM.id}:intro-video`
+                        ? 'Actualizando...'
+                        : 'Destacar con video'}
                     </button>
                   )}
                   {selectedPSM.verificationStatus !== 'approved' && (

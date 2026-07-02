@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { asStringArray } from '@/lib/prisma-json'
 import {
   buildPublicPsmProfile,
   getPsmReputationStats,
@@ -56,6 +55,7 @@ export async function GET() {
             currency: PLATFORM_SESSION_CURRENCY,
           },
           reputation: publicProfile.reputation,
+          introVideoApproved: Boolean(psm.psm?.introVideoApproved),
           capacity: {
             current: psm.psmMatches.length,
             max: psm.psm?.maxActivePatients || 10,
@@ -66,9 +66,18 @@ export async function GET() {
       })
     )
 
+    const roster = psmsData
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => {
+      const aBoost = a.introVideoApproved ? 1 : 0
+      const bBoost = b.introVideoApproved ? 1 : 0
+      if (aBoost !== bBoost) return bBoost - aBoost
+      return Number(b.isAvailable) - Number(a.isAvailable)
+      })
+
     return NextResponse.json({
       success: true,
-      psms: psmsData.filter(Boolean),
+      psms: roster,
     })
   } catch (error) {
     console.error('Error fetching PSMs:', error)

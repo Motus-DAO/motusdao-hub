@@ -17,8 +17,27 @@
 
 - No removal of Privy support — `privy` remains a valid `authProvider` value.
 - No dropping the `privyId` DB column in this slice (still used when `authProvider === 'privy'`).
-- No second wallet provider implementation yet (Privy adapter comes later).
 - No ZeroDev refactor in this slice.
+
+## 2a. Provider toggle (A/B)
+
+Set in `.env.local` / Vercel:
+
+```env
+# Default — current production path
+NEXT_PUBLIC_WALLET_PROVIDER=waap
+
+# Privy A/B (requires NEXT_PUBLIC_PRIVY_APP_ID)
+NEXT_PUBLIC_WALLET_PROVIDER=privy
+NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
+```
+
+| Env | Tree mounted | Identity written |
+|-----|--------------|------------------|
+| `waap` (default) | `WaaPProviderWrapper` → `WaaPWalletContextBridge` | `authProvider: waap` |
+| `privy` | `PrivyWalletProviderWrapper` → `PrivyWalletContextBridge` | `authProvider: privy`, `privyId` column populated |
+
+App code still uses `useWallet()` — no vendor imports in pages/components.
 
 ## 2b. Identity model (LOCKED)
 
@@ -70,5 +89,6 @@ The loop ends when facade + migrations compile and key flows keep current behavi
 ## 9. Decisions — LOCKED
 
 1. Canonical app-facing hooks are `useWallet`, `useWallets`, `useWalletProvider`.
-2. `WaaP` remains the backing implementation for now (adapter via facade).
-3. Legacy aliases can remain temporarily for backward compatibility.
+2. `NEXT_PUBLIC_WALLET_PROVIDER` selects WaaP vs Privy at build/runtime (default `waap`).
+3. `WaaP` and `Privy` each bridge into `WalletContext`; hooks read context, not vendor SDKs.
+4. Legacy WaaP hooks remain in `lib/contexts/WaaPProvider` for the WaaP tree only.

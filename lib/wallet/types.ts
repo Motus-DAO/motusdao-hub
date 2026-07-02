@@ -12,7 +12,7 @@ export type WalletUser = {
 
 export type WalletInfo = {
   address: Address
-  walletClientType: 'waap' | 'external'
+  walletClientType: 'waap' | 'privy' | 'external'
   chainId: string
   connected: boolean
 }

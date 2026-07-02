@@ -20,7 +20,7 @@ type AdminAccessState =
   | 'authorized'
 
 export function AdminAuthGate({ children }: { children: React.ReactNode }) {
-  const { ready, authenticated, login, user } = useWallet()
+  const { ready, authenticated, login, user, providerId } = useWallet()
   const { provider } = useWalletProvider()
   const { wallets } = useWallets()
   const eoaAddress = getEOAAddress(wallets)
@@ -93,8 +93,12 @@ export function AdminAuthGate({ children }: { children: React.ReactNode }) {
     setSignError(null)
 
     try {
-      const externalWallet = wallets.find((w) => w.walletClientType === 'external')
-      const authProvider = externalWallet ? 'external' : 'waap'
+      const authProvider =
+        providerId === 'external'
+          ? 'external'
+          : providerId === 'privy'
+            ? 'privy'
+            : 'waap'
 
       await establishSiweSession({
         waapProvider: provider,
