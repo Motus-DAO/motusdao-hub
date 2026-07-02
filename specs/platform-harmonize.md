@@ -261,8 +261,11 @@ Deprecated:   privyId → backfill into authProviderId, then drop column
 |----------|----------|
 | Remove ZeroDev? | **No** — keep for future account abstraction |
 | Load on every page? | **No** — lazy load only on routes that need it |
+| Enable ZeroDev now? | **No** — keep dormant while WaaP + ZeroDev bugs are unresolved |
 | Block Academy launch? | **No** |
+| Immediate priority | **Academy monetization first** (course sales + Stripe reliability) |
 | Topbar smart wallet UI? | Show only when `NEXT_PUBLIC_ENABLE_ZERODEV=true` AND user has smart account |
+| Future use cases | Route-level only (e.g., Academy tokenization / lesson-completion NFT minting) |
 
 ### 5.3 Target loading model
 
@@ -486,9 +489,11 @@ Look for `supabase.co`, `neon.tech`, or a VPS IP.
 
 ### Phase — Smart wallet lazy load
 
+- Keep `NEXT_PUBLIC_ENABLE_ZERODEV=false` in all active envs
 - Feature-flag Topbar ZeroDev UI
-- Mount `SmartAccountProvider` only on pagos/motus-names/perfil
-- **Exit:** Lighthouse / TTI improved on home + academy
+- Mount `SmartAccountProvider` only on explicit routes when re-enabled (`pagos`, `motus-names`, `perfil`, future Academy tokenization routes)
+- **Exit (now):** ZeroDev dormant, no impact on Academy enrollment/checkout
+- **Exit (future):** Lighthouse / TTI improved on home + academy when smart-wallet routes are reintroduced
 
 ### Phase 3c — Infra boundary (optional)
 
@@ -507,6 +512,7 @@ Before selling courses publicly:
 - [ ] Stripe webhooks tested on staging
 - [ ] Enrollment + progress persistence verified on prod Postgres (not SQLite)
 - [ ] Admin course publish flow documented in `docs/runbooks/academy-publish.md`
+- [ ] ZeroDev remains dormant for launch (`NEXT_PUBLIC_ENABLE_ZERODEV=false` + no global smart-account mount)
 - [ ] Terms / privacy pages live
 - [ ] Clinical disclaimer on MotusAI (if linked from Academy)
 - [ ] `NEXT_PUBLIC_ENABLE_ZERODEV=false` in production
