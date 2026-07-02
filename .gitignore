@@ -55,3 +55,10 @@ deployments/
 
 # Flatten contracts (archivos temporales)
 flattened.sol
+
+# Local SQLite (dev only — production uses Supabase Postgres)
+prisma/*.db
+prisma/prisma/
+
+# Migration snapshots (keep outside git)
+backups/

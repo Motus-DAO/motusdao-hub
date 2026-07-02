@@ -520,7 +520,7 @@ Before selling courses publicly:
 
 | # | Question | Default if no answer |
 |---|----------|---------------------|
-| 1 | Postgres host for prod? | Document after env audit |
+| 1 | Postgres host for prod? | **Resolved:** Supabase Postgres only — see `docs/architecture/data-layer.md` |
 | 2 | Delete vs archive only for incident docs? | Archive only (safer) |
 | 3 | Jitsi separate repo now or after `infra/jitsi/` move? | After internal move |
 | 4 | Keep Privy adapter stub for future multi-provider? | Yes, behind interface |
