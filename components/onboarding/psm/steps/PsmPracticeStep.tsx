@@ -130,9 +130,9 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
             <span
               className={
                 narrativeReady
-                  ? 'text-emerald-400'
+                  ? 'text-emerald-600 dark:text-emerald-400'
                   : narrative.length > 0
-                    ? 'text-amber-300'
+                    ? 'text-amber-700 dark:text-amber-300'
                     : 'text-muted-foreground'
               }
             >
@@ -195,13 +195,13 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
         <div
           className={`rounded-lg border px-3 py-2 text-xs ${
             especialidades.length >= PSM_MIN_ESPECIALIDADES
-              ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200'
-              : 'border-white/10 bg-white/[0.02] text-muted-foreground'
+              ? 'border-emerald-300/70 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/5 dark:text-emerald-200'
+              : 'border-border bg-muted/30 text-muted-foreground'
           }`}
         >
           {especialidades.length >= PSM_MIN_ESPECIALIDADES ? (
             <>
-              <span className="font-medium text-emerald-300">Destacadas en tu perfil: </span>
+              <span className="font-medium text-emerald-800 dark:text-emerald-300">Destacadas en tu perfil: </span>
               {highlightedSpecialties.map(getEspecialidadLabel).join(' · ')}
               {especialidades.length > PSM_MIN_ESPECIALIDADES && (
                 <span className="block mt-1 text-muted-foreground">

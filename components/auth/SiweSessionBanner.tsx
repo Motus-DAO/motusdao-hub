@@ -21,7 +21,7 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
 
   if (sessionState === 'loading') {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         <Loader className="h-4 w-4 animate-spin" />
         Verificando sesión…
       </div>
@@ -30,11 +30,11 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
 
   if (sessionState === 'ready') {
     return (
-      <div className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+      <div className="flex items-start gap-2 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
         <div>
-          <p className="font-medium text-emerald-200">Sesión verificada</p>
-          <p className="text-emerald-300/90 text-xs">
+          <p className="font-medium text-emerald-800 dark:text-emerald-200">Sesión verificada</p>
+          <p className="text-emerald-700 dark:text-emerald-300/90 text-xs">
             Ya puedes subir documentos y usar funciones que requieren tu wallet.
           </p>
         </div>
@@ -44,35 +44,35 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
 
   if (sessionState === 'no_wallet') {
     return (
-      <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+      <div className="flex items-start gap-2 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <p>Conecta tu wallet antes de continuar.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-4">
-      <div className="flex items-start gap-2 text-sm text-amber-100">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+    <div className="space-y-3 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+      <div className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-100">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <div className="space-y-1">
-          <p className="font-medium text-amber-200">
+          <p className="font-medium text-amber-950 dark:text-amber-200">
             {compact
               ? 'Falta verificar tu wallet'
               : 'Tu wallet está conectada, pero falta un paso más'}
           </p>
-          <p className="text-amber-100/90 text-xs leading-relaxed">
+          <p className="text-amber-800 dark:text-amber-100/90 text-xs leading-relaxed">
             Conectar la wallet no basta para subir archivos: debes firmar un mensaje de
             verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.
           </p>
           {eoaAddress && (
-            <p className="font-mono text-xs text-amber-200/80 break-all">{eoaAddress}</p>
+            <p className="font-mono text-xs text-amber-700 dark:text-amber-200/80 break-all">{eoaAddress}</p>
           )}
         </div>
       </div>
 
       {signError && (
-        <p className="text-sm text-red-300 flex items-start gap-1.5">
+        <p className="text-sm text-red-600 dark:text-red-300 flex items-start gap-1.5">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           {signError}
         </p>

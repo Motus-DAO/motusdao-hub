@@ -65,12 +65,14 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
           </p>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 rounded-xl border border-white/10 p-1">
+        <div className="mb-6 grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1">
           <button
             type="button"
             onClick={() => setProfileIntakeMode('manual')}
             className={`rounded-lg px-4 py-2 text-sm transition-colors ${
-              intakeMode === 'manual' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-white'
+              intakeMode === 'manual'
+                ? 'bg-mauve-500 text-white'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Completar registro
@@ -79,7 +81,9 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
             type="button"
             onClick={() => setProfileIntakeMode('ai')}
             className={`rounded-lg px-4 py-2 text-sm transition-colors ${
-              intakeMode === 'ai' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-white'
+              intakeMode === 'ai'
+                ? 'bg-mauve-500 text-white'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Guiarme con conversación
@@ -133,7 +137,7 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
           </>
         )}
 
-        <div className="flex justify-start pt-6 mt-6 border-t border-white/10">
+        <div className="flex justify-start pt-6 mt-6 border-t border-border">
           {(intakeMode === 'ai' || wizardStep === 0) && (
             <button
               type="button"

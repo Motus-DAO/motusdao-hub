@@ -205,7 +205,7 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
             )}
           </div>
         </div>
-        {capacityHint && <p className="text-xs text-amber-300/90">{capacityHint}</p>}
+        {capacityHint && <p className="text-xs text-amber-800 dark:text-amber-300/90">{capacityHint}</p>}
 
         <label className="flex items-center gap-2 p-3 glass rounded-xl">
           <input {...register('isAcceptingUsers')} type="checkbox" />

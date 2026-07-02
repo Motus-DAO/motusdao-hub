@@ -49,7 +49,7 @@ export function PsmSubStepper({ currentStep, onStepClick, className }: Props) {
                       ? 'bg-mauve-500 ring-2 ring-mauve-400/40 ring-offset-2 ring-offset-transparent'
                       : isComplete
                         ? 'bg-mauve-500/70'
-                        : 'bg-white/10',
+                        : 'bg-foreground/10',
                     interactive &&
                       'cursor-pointer hover:scale-y-125 hover:bg-mauve-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-mauve-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent disabled:cursor-default'
                   )}

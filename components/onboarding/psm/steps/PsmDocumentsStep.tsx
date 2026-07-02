@@ -56,7 +56,7 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
       <PsmSectionBlock title="Verificación documental">
         <SiweSessionBanner />
 
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div className="rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100">
           Sube tu documentación profesional para verificación. Solo visible para el equipo
           administrativo de MotusDAO.
         </div>
@@ -88,7 +88,7 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
       </PsmSectionBlock>
 
       <div className="flex justify-between pt-2">
-        <button type="button" onClick={onBack} className="px-6 py-3 text-gray-400 hover:text-white">
+        <button type="button" onClick={onBack} className="px-6 py-3 text-muted-foreground hover:text-foreground transition-colors">
           Atrás
         </button>
         <button

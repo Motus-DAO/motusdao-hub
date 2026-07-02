@@ -142,7 +142,7 @@ export function FileUploadField({
           type="button"
           disabled={disabled || isUploading}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm font-medium transition hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isUploading ? (
             <Loader className="h-4 w-4 animate-spin" />
@@ -167,21 +167,21 @@ export function FileUploadField({
       </div>
 
       {showSuccess && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-500/35 bg-emerald-500/15 px-4 py-3">
-          <div className="flex min-w-0 items-start gap-2 text-sm text-emerald-100">
-            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 dark:border-emerald-500/35 dark:bg-emerald-500/15">
+          <div className="flex min-w-0 items-start gap-2 text-sm text-emerald-900 dark:text-emerald-100">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <div className="min-w-0">
-              <p className="font-medium text-emerald-200">
+              <p className="font-medium text-emerald-800 dark:text-emerald-200">
                 {justUploaded ? 'Documento subido correctamente' : 'Documento guardado'}
               </p>
-              <p className="truncate text-emerald-300/90">{fileName}</p>
+              <p className="truncate text-emerald-700 dark:text-emerald-300/90">{fileName}</p>
             </div>
           </div>
           {onClear && (
             <button
               type="button"
               onClick={handleClear}
-              className="shrink-0 rounded-lg p-1.5 text-emerald-300/80 transition hover:bg-emerald-500/20 hover:text-white"
+              className="shrink-0 rounded-lg p-1.5 text-emerald-700 transition hover:bg-emerald-500/20 hover:text-emerald-950 dark:text-emerald-300/80 dark:hover:text-white"
               aria-label="Quitar documento"
               title="Quitar documento"
             >
@@ -192,19 +192,19 @@ export function FileUploadField({
       )}
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-500/35 bg-red-500/10 px-4 py-3">
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 dark:border-red-500/35 dark:bg-red-500/10">
           <div className="flex min-w-0 items-start gap-2 text-sm">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             <div>
-              <p className="font-medium text-red-300">No se pudo subir el archivo</p>
-              <p className="text-red-200/90">{error}</p>
+              <p className="font-medium text-red-800 dark:text-red-300">No se pudo subir el archivo</p>
+              <p className="text-red-700 dark:text-red-200/90">{error}</p>
             </div>
           </div>
           {(localPreview || isUploaded) && onClear && (
             <button
               type="button"
               onClick={handleClear}
-              className="shrink-0 rounded-lg p-1.5 text-red-300/80 transition hover:bg-red-500/20 hover:text-white"
+              className="shrink-0 rounded-lg p-1.5 text-red-700 transition hover:bg-red-500/20 hover:text-red-950 dark:text-red-300/80 dark:hover:text-white"
               aria-label="Quitar selección"
               title="Quitar selección"
             >
@@ -215,7 +215,7 @@ export function FileUploadField({
       )}
 
       {showImagePreview && displayPreview && (
-        <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 bg-black/20">
+        <div className="relative inline-block overflow-hidden rounded-xl border border-border bg-muted/30">
           <Image
             src={displayPreview}
             alt={`Vista previa de ${label}`}
@@ -244,8 +244,8 @@ export function FileUploadField({
       )}
 
       {showSuccess && fileName?.match(/\.pdf$/i) && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-200/90">
-          <FileText className="h-4 w-4 shrink-0 text-emerald-400" />
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/5 dark:text-emerald-200/90">
+          <FileText className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>PDF listo para verificación administrativa</span>
         </div>
       )}

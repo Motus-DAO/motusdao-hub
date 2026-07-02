@@ -69,13 +69,13 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-64 glass-sidebar border-r border-white/10 transition-transform duration-300 ease-in-out",
+          "fixed left-0 top-0 z-50 h-screen w-64 glass-sidebar border-r border-border transition-transform duration-300 ease-in-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex h-screen flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
+          <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 relative">
                 <Image
@@ -95,7 +95,7 @@ export function Sidebar() {
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 hover:bg-white/15 rounded-xl transition-colors"
+              className="p-2 hover:bg-foreground/5 rounded-xl transition-colors"
               aria-label="Cerrar menú"
             >
               <X className="w-5 h-5" />
@@ -116,8 +116,8 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                     isActive
-                      ? "bg-mauve-500/20 text-mauve-400 border border-mauve-500/30"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5",
+                      ? "bg-mauve-500/20 text-mauve-700 dark:text-mauve-400 border border-mauve-500/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
                     isBlocked && "opacity-60 cursor-not-allowed"
                   )}
                   onClick={(e) => {
@@ -130,7 +130,7 @@ export function Sidebar() {
                   <Icon 
                     className={cn(
                       "w-5 h-5 transition-colors",
-                      isActive ? "text-mauve-400" : "group-hover:text-foreground"
+                      isActive ? "text-mauve-700 dark:text-mauve-400" : "group-hover:text-foreground"
                     )} 
                   />
                   <span className="font-medium">{item.name}</span>
@@ -140,7 +140,7 @@ export function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-border">
             <div className="text-xs text-muted-foreground text-center">
               <p>MotusDAO Hub v1.0</p>
               <p className="mt-1">Mental Health & Wellness</p>

@@ -14,6 +14,7 @@ import { computeFieldProgress } from '@/lib/intake-chat-progress'
 import { buildPsmAvailability } from '@/lib/intake/psm-intake-v1'
 import { IntakeChatStepper } from '@/components/onboarding/IntakeChatStepper'
 import { IntakeLiveForm } from '@/components/onboarding/IntakeLiveForm'
+import { cn } from '@/lib/utils'
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -41,6 +42,20 @@ const starterByRole: Record<UserRole, string> = {
     'Hola, soy tu asistente de intake de MotusDAO. Empezaré con 3 preguntas breves.\n\n**Pregunta 1:** Cuéntame sobre ti (nombre, ciudad, país) y qué te motiva a buscar apoyo psicológico.',
   psm:
     'Hola, soy tu asistente de intake de MotusDAO. Empezaré con 3 preguntas breves.\n\n**Pregunta 1:** Cuéntame tu nombre, formación académica, cédula profesional y años de experiencia.',
+}
+
+function renderMessageContent(content: string) {
+  const parts = content.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-semibold text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    return part
+  })
 }
 
 function buildInitialChatState(
@@ -235,9 +250,9 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
   const showChatInput = phase !== 'handoff_ready' || messages.some((m) => m.role === 'user')
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Bot className="h-5 w-5 text-mauve-400" />
+        <Bot className="h-5 w-5 text-mauve-600 dark:text-mauve-400" />
         <h3 className="text-lg font-semibold">Intake asistido por IA</h3>
       </div>
 
@@ -250,34 +265,71 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
       />
 
       {phase === 'handoff_ready' && !showChatInput && (
-        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-100">
           Perfil casi listo — completa los campos pendientes en el formulario y continúa al registro.
         </div>
       )}
 
-      <div className="h-80 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ${
-              message.role === 'assistant'
-                ? 'bg-white/10 text-gray-100'
-                : 'bg-mauve-500/20 text-white ml-8'
-            }`}
-          >
-            {message.content}
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader className="h-4 w-4 animate-spin" />
-            Analizando respuesta...
+      <section className="rounded-xl border border-border overflow-hidden">
+        <div className="border-b border-border bg-muted/40 px-4 py-3">
+          <h4 className="text-sm font-semibold text-foreground">Conversación</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Responde las preguntas del asistente. Tus respuestas se reflejan en el formulario.
+          </p>
+        </div>
+
+        <div className="h-80 overflow-y-auto bg-background/60 p-4 space-y-3">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={cn(
+                'max-w-[92%] rounded-xl border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
+                message.role === 'assistant'
+                  ? 'border-border bg-muted/50 text-foreground'
+                  : 'ml-auto border-mauve-500/30 bg-mauve-500/10 text-foreground'
+              )}
+            >
+              {renderMessageContent(message.content)}
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader className="h-4 w-4 animate-spin" />
+              Analizando respuesta...
+            </div>
+          )}
+        </div>
+
+        {showChatInput && (
+          <div className="border-t border-border bg-muted/20 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={3}
+                placeholder="Escribe tu respuesta... (Enter para enviar)"
+                className="min-h-24 flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-mauve-500/40 focus:border-mauve-500/50"
+              />
+              <CTAButton
+                type="button"
+                onClick={() => void sendMessage()}
+                disabled={isLoading || !input.trim()}
+                className="self-stretch sm:self-end min-w-[3rem]"
+              >
+                {isLoading ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </CTAButton>
+            </div>
           </div>
         )}
-      </div>
+      </section>
 
       {riskAlert === 'crisis_possible' && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+        <div className="rounded-xl border border-red-300/70 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
           <div className="flex items-center gap-2 font-medium">
             <AlertCircle className="h-4 w-4" />
             Posible situación de crisis detectada
@@ -290,45 +342,24 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
       )}
 
       {missingFields.length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
+        <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
           Faltan datos: {missingFields.join(', ')}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
-
-      {showChatInput && (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={3}
-            placeholder="Escribe tu respuesta... (Enter para enviar)"
-            className="min-h-24 flex-1 resize-none rounded-xl border border-white/15 bg-transparent px-4 py-3 outline-none focus:ring-2 focus:ring-mauve-500"
-          />
-          <CTAButton
-            type="button"
-            onClick={() => void sendMessage()}
-            disabled={isLoading || !input.trim()}
-            className="self-stretch sm:self-end"
-          >
-            {isLoading ? (
-              <Loader className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </CTAButton>
+      {error && (
+        <div className="rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+          {error}
         </div>
       )}
 
       <IntakeLiveForm
         role={role}
-        defaultOpen
+        alwaysOpen
         highlightKeys={highlightKeys}
       />
 
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2 border-t border-border">
         <CTAButton type="button" onClick={handleContinue}>
           Continuar con datos capturados
         </CTAButton>

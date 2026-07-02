@@ -17,7 +17,7 @@ import Link from 'next/link'
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 relative z-10">
+    <footer className="border-t border-border relative z-10">
       <div className="container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Contact Form */}
@@ -58,7 +58,7 @@ export function Footer() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-white/10">
+              <div className="mt-6 pt-6 border-t border-border">
                 <div className="flex space-x-4">
                   <a
                     href="#"
@@ -92,35 +92,35 @@ export function Footer() {
                 <div className="grid grid-cols-1 gap-3">
                   <Link 
                     href="/" 
-                    className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition-colors group"
+                    className="flex items-center justify-between p-3 hover:bg-foreground/5 rounded-lg transition-colors group"
                   >
                     <span>Inicio</span>
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <Link 
                     href="/motusai" 
-                    className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition-colors group"
+                    className="flex items-center justify-between p-3 hover:bg-foreground/5 rounded-lg transition-colors group"
                   >
                     <span>MotusAI</span>
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <Link 
                     href="/psicoterapia" 
-                    className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition-colors group"
+                    className="flex items-center justify-between p-3 hover:bg-foreground/5 rounded-lg transition-colors group"
                   >
                     <span>Psicoterapia</span>
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <Link 
                     href="/academia" 
-                    className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition-colors group"
+                    className="flex items-center justify-between p-3 hover:bg-foreground/5 rounded-lg transition-colors group"
                   >
                     <span>Academia</span>
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <Link 
                     href="/docs" 
-                    className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition-colors group"
+                    className="flex items-center justify-between p-3 hover:bg-foreground/5 rounded-lg transition-colors group"
                   >
                     <span>Documentación</span>
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -132,7 +132,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-white/10">
+        <div className="mt-12 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-sm text-muted-foreground mb-4 md:mb-0">
               © 2026 MotusDAO. Todos los derechos reservados.

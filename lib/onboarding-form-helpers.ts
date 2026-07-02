@@ -9,7 +9,7 @@ export function inputFieldClass(hasError?: boolean, extra?: string) {
     'w-full px-4 py-3 glass rounded-xl focus-ring smooth-transition',
     hasError
       ? 'border-2 border-red-500/80 ring-2 ring-red-500/25 bg-red-500/5'
-      : 'border border-white/15',
+      : 'border border-border',
     extra
   )
 }

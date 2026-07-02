@@ -112,6 +112,8 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 
 | File | Purpose |
 |------|---------|
+| `specs/platform-harmonize.md` | **ACTIVE** platform SDD: Feng Shui taxonomy, phased harmonize, auth/wallet, data layer. |
+| `AGENTS.md` | Agent entry: Layer 0 + read order + workspace path. |
 | `specs/_TEMPLATE.md` | SDD spec template. Copy per feature. |
 | `specs/academy-platform-decision.md` | **LOCKED** platform decision: EduPath-LMS as primary OSS reference. |
 | `specs/academy-admin-courses.md` | Slice 1: admin course CRUD for the Academy. |

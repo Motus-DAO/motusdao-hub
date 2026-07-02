@@ -220,9 +220,9 @@ export function PsmIdentityStep({ onContinue }: Props) {
           />
         </Field>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
           <div className="flex items-start gap-3">
-            <GraduationCap className="w-5 h-5 text-mauve-400 shrink-0 mt-0.5" />
+            <GraduationCap className="w-5 h-5 text-mauve-600 dark:text-mauve-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium">Formación académica *</p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -275,7 +275,7 @@ export function PsmIdentityStep({ onContinue }: Props) {
 
           {formacionPreview && (
             <div className="rounded-lg border border-mauve-500/20 bg-mauve-500/5 px-3 py-2 text-left">
-              <p className="text-[11px] uppercase tracking-wide text-mauve-300 mb-1">
+              <p className="text-[11px] uppercase tracking-wide text-mauve-700 dark:text-mauve-300 mb-1">
                 Vista previa en tu perfil
               </p>
               <p className="text-sm text-foreground">{formacionPreview}</p>

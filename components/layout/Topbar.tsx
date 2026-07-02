@@ -169,7 +169,7 @@ export function Topbar() {
         <div className="flex items-center space-x-2 sm:space-x-4">
           <button
             onClick={toggleSidebar}
-            className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+            className="p-2 hover:bg-foreground/5 rounded-xl transition-colors"
             aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={sidebarOpen}
           >
@@ -181,7 +181,7 @@ export function Topbar() {
             <button
               ref={roleButtonRef}
               onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-              className="relative min-w-[132px] rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl px-4 h-10 flex items-center gap-2 hover:bg-white/15 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+              className="relative min-w-[132px] rounded-2xl border border-border bg-foreground/5 backdrop-blur-xl px-4 h-10 flex items-center gap-2 hover:bg-foreground/10 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-label="Selector de rol"
             >
               <span className="text-xs sm:text-sm font-medium capitalize">{role}</span>
@@ -196,7 +196,7 @@ export function Topbar() {
                   onClick={() => setShowRoleDropdown(false)}
                 />
                 {/* Dropdown content */}
-                <div className="fixed z-50 min-w-[132px] rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] p-1"
+                <div className="fixed z-50 min-w-[132px] rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-lg p-1"
                      style={{
                        top: `${dropdownPosition.top}px`,
                        right: `${dropdownPosition.right}px`
@@ -206,9 +206,9 @@ export function Topbar() {
                     <button
                       onClick={() => handleRoleChange('usuario')}
                       className={cn(
-                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-white/10 hover:text-foreground cursor-pointer focus:bg-white/15 focus:outline-none transition-colors",
+                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors",
                         role === 'usuario' 
-                          ? "bg-white/15 text-foreground" 
+                          ? "bg-foreground/10 text-foreground" 
                           : "text-foreground/90"
                       )}
                     >
@@ -217,9 +217,9 @@ export function Topbar() {
                     <button
                       onClick={() => handleRoleChange('psm')}
                       className={cn(
-                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-white/10 hover:text-foreground cursor-pointer focus:bg-white/15 focus:outline-none transition-colors",
+                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors",
                         role === 'psm' 
-                          ? "bg-white/15 text-foreground" 
+                          ? "bg-foreground/10 text-foreground" 
                           : "text-foreground/90"
                       )}
                     >
@@ -228,9 +228,9 @@ export function Topbar() {
                     <button
                       onClick={() => handleRoleChange('admin')}
                       className={cn(
-                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-white/10 hover:text-foreground cursor-pointer focus:bg-white/15 focus:outline-none transition-colors flex items-center space-x-2",
+                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors flex items-center space-x-2",
                         role === 'admin' 
-                          ? "bg-white/15 text-foreground" 
+                          ? "bg-foreground/10 text-foreground" 
                           : "text-foreground/90"
                       )}
                     >
@@ -251,7 +251,7 @@ export function Topbar() {
           <div className="relative">
           <button
               onClick={() => setShowThemeDropdown(!showThemeDropdown)}
-            className="p-2 hover:bg-white/15 rounded-xl transition-colors focus-ring"
+            className="p-2 hover:bg-foreground/5 rounded-xl transition-colors focus-ring"
               aria-label="Theme selector"
           >
             {theme === 'light' ? (
@@ -264,7 +264,7 @@ export function Topbar() {
           </button>
 
             {showThemeDropdown && (
-              <div className="absolute top-full right-0 mt-2 w-20 glass-strong border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50">
+              <div className="absolute top-full right-0 mt-2 w-20 glass-strong border border-border rounded-xl shadow-lg z-50">
                 <div className="p-2 space-y-1">
                   <button
                     onClick={() => handleThemeChange('light')}
@@ -272,7 +272,7 @@ export function Topbar() {
                       "w-full flex items-center justify-center p-2 rounded-xl transition-colors",
                       theme === 'light' 
                         ? "bg-yellow-500/20" 
-                        : "hover:bg-white/10"
+                        : "hover:bg-foreground/5"
                     )}
                     title="Light theme"
                   >
@@ -284,7 +284,7 @@ export function Topbar() {
                       "w-full flex items-center justify-center p-2 rounded-xl transition-colors",
                       theme === 'dark' 
                         ? "bg-blue-500/20" 
-                        : "hover:bg-white/10"
+                        : "hover:bg-foreground/5"
                     )}
                     title="Dark theme"
                   >
@@ -296,7 +296,7 @@ export function Topbar() {
                       "w-full flex items-center justify-center p-2 rounded-xl transition-colors",
                       theme === 'matrix' 
                         ? "bg-green-500/20" 
-                        : "hover:bg-white/10"
+                        : "hover:bg-foreground/5"
                     )}
                     title="Matrix theme"
                   >
@@ -312,7 +312,7 @@ export function Topbar() {
             <div className="relative">
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 glass hover:bg-white/15 rounded-xl transition-colors"
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 glass hover:bg-foreground/5 rounded-xl transition-colors"
               >
                 <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-mauve rounded-full flex items-center justify-center flex-shrink-0">
                   <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
@@ -330,10 +330,10 @@ export function Topbar() {
               </button>
 
               {showUserDropdown && (
-                <div className="absolute top-full right-0 mt-2 w-80 glass-strong border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50">
+                <div className="absolute top-full right-0 mt-2 w-80 glass-strong border border-border rounded-xl shadow-lg z-50">
                   <div className="p-3 space-y-3">
                     {/* Email */}
-                    <div className="px-3 py-2 text-sm border-b border-white/10">
+                    <div className="px-3 py-2 text-sm border-b border-border">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-muted-foreground flex items-center space-x-2">
                           <User className="w-4 h-4" />
@@ -347,7 +347,7 @@ export function Topbar() {
                     
                     {/* EOA Address */}
                     {eoaAddress && (
-                      <div className="px-3 py-2 text-sm border-b border-white/10">
+                      <div className="px-3 py-2 text-sm border-b border-border">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-muted-foreground flex items-center space-x-2">
                             <Wallet className="w-4 h-4" />
@@ -355,7 +355,7 @@ export function Topbar() {
                           </span>
                           <button
                             onClick={() => handleCopyAddress(eoaAddress, 'eoa')}
-                            className="flex items-center space-x-1 text-xs hover:text-white transition-colors"
+                            className="flex items-center space-x-1 text-xs hover:text-foreground transition-colors"
                           >
                             {copiedAddress === 'eoa' ? (
                               <>
@@ -378,13 +378,13 @@ export function Topbar() {
                     
                     {/* Smart Wallet Address */}
                     {isInitializing ? (
-                      <div className="px-3 py-2 text-sm border-b border-white/10">
+                      <div className="px-3 py-2 text-sm border-b border-border">
                         <p className="text-xs text-muted-foreground">
                           Inicializando smart wallet...
                         </p>
                       </div>
                     ) : smartAccountAddress ? (
-                      <div className="px-3 py-2 text-sm border-b border-white/10 border-green-500/30">
+                      <div className="px-3 py-2 text-sm border-b border-border border-green-500/30">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-muted-foreground flex items-center space-x-2">
                             <Shield className="w-4 h-4 text-green-500" />
@@ -392,7 +392,7 @@ export function Topbar() {
                           </span>
                           <button
                             onClick={() => handleCopyAddress(smartAccountAddress, 'smart')}
-                            className="flex items-center space-x-1 text-xs hover:text-white transition-colors"
+                            className="flex items-center space-x-1 text-xs hover:text-foreground transition-colors"
                           >
                             {copiedAddress === 'smart' ? (
                               <>
@@ -412,7 +412,7 @@ export function Topbar() {
                         </p>
                       </div>
                     ) : (
-                      <div className="px-3 py-2 text-sm border-b border-white/10">
+                      <div className="px-3 py-2 text-sm border-b border-border">
                         <p className="text-xs text-yellow-500">
                           Smart wallet no disponible
                         </p>
@@ -421,7 +421,7 @@ export function Topbar() {
                     
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center space-x-2 px-3 py-2 text-sm hover:bg-white/15 rounded-xl transition-colors text-red-400"
+                      className="w-full flex items-center space-x-2 px-3 py-2 text-sm hover:bg-foreground/5 rounded-xl transition-colors text-red-400"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Desconectar</span>

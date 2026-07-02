@@ -25,7 +25,7 @@ export function GlassCard({
         variant === 'default' 
           ? "glass" 
           : "glass-strong",
-        hover && "hover:bg-white/20 hover:scale-[1.02] hover:shadow-glow",
+        hover && "hover:bg-foreground/5 hover:scale-[1.02] hover:shadow-glow dark:hover:bg-white/20",
         className,
       )}
       onClick={onClick}
