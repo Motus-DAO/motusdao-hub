@@ -131,7 +131,7 @@ Historical mistake: `prisma/dev.db` was committed. **Local dev should use Supaba
 ## Related docs
 
 - `env.example` — all variable names
-- `docs/runbooks/VERCEL_DATABASE_SETUP.md` — deploy checklist (to be moved in harmonize 3b)
+- `docs/runbooks/VERCEL_DATABASE_SETUP.md` — deploy checklist
 - `specs/platform-harmonize.md` — platform SDD
 
 ---

@@ -3,7 +3,7 @@
 > One source of truth for how agents (and humans) ship features in this repo:
 > small slices, spec-first, independently verified, looped until the
 > Definition of Done is met. Built to match existing conventions
-> (see `docs/psm-intake-v1-spec.md`).
+> (see `specs/psm-intake-v1.md`).
 
 This folder is the **control system**. The Cursor hooks in `.cursor/hooks.json`
 are the **engine** that loops the agent until a spec's exit conditions pass.
@@ -123,6 +123,8 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 | `specs/academy-lesson-progress.md` | Slice 5: per-lesson progress in DB (replaces localStorage). |
 | `specs/academy-media-upload.md` | Slice 6: lesson video/PDF upload via Supabase storage. |
 | `specs/motusai-chat-ui.md` | MotusAI cinematic chat + RootRouter investigate→QA loop. |
+| `specs/psm-intake-v1.md` | PSM intake wizard polish spec (frozen journey). |
+| `specs/platform-harmonize.md` | Platform harmonize SDD (taxonomy, phases, data layer). |
 | `.cursor/hooks.json` | Registers the `stop` loop hook + `loop_limit`. |
 | `.cursor/hooks/qa-loop.mjs` | Deterministic QA gate + loop decision (Node, no extra deps). |
 

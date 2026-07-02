@@ -533,6 +533,8 @@ Before selling courses publicly:
 | Date | Change |
 |------|--------|
 | 2026-07-01 | Initial platform harmonize SDD from Feng Shui inventory |
+| 2026-07-01 | Phase 3a complete — git hygiene, `docs/architecture/data-layer.md` |
+| 2026-07-01 | Phase 3b complete — doc taxonomy (`archive/`, `docs/runbooks/`, `infra/*/docs/`) |
 
 ---
 
