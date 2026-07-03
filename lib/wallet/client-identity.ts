@@ -1,6 +1,10 @@
 import type { WalletIdentity } from '@/lib/auth/identity'
 import type { WalletProviderId, WalletUser } from './types'
 
+export function getUserEmail(user: WalletUser | null | undefined): string | undefined {
+  return user?.email?.address || user?.google?.email || undefined
+}
+
 export function getWalletIdentity(
   user: WalletUser | null | undefined,
   providerId: WalletProviderId

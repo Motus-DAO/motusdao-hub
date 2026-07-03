@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/prisma'
+import {
+  canAccessLessonContent,
+  enrollmentHasPaidAccess,
+} from '@/lib/academy/enrollment-access'
 
 export type EnrollmentProgressSnapshot = {
   progress: number
@@ -109,6 +113,15 @@ export async function markLessonCompleteForUser(params: {
 
   const courseId = lesson.module.courseId
 
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { isFree: true, priceAmount: true },
+  })
+
+  if (!course) {
+    throw new Error('LESSON_NOT_FOUND')
+  }
+
   const enrollment = await prisma.enrollment.findUnique({
     where: {
       userId_courseId: {
@@ -116,10 +129,14 @@ export async function markLessonCompleteForUser(params: {
         courseId,
       },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      purchasedAt: true,
+      orderItems: { include: { order: { select: { status: true } } } },
+    },
   })
 
-  if (!enrollment) {
+  if (!enrollment || !enrollmentHasPaidAccess(course, enrollment)) {
     throw new Error('NOT_ENROLLED')
   }
 

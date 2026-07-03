@@ -21,6 +21,12 @@ export type WalletContextValue = {
   isProviderReady: boolean
   emailLogin: WalletEmailLogin
   setupError?: string | null
+  bootstrapTestSession?: (params: {
+    id: string
+    email: string
+    eoaAddress: string
+    role?: string
+  }) => Promise<void>
 }
 
 const noopEmailLogin: WalletEmailLogin = {

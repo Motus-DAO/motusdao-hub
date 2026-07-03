@@ -1,6 +1,6 @@
 'use client'
 
-import { useWalletContext } from './WalletContext'
+import { useWalletContext, type WalletContextValue } from './WalletContext'
 import type {
   WalletAuthState,
   WalletInfo,
@@ -11,7 +11,7 @@ import type {
 export type { WalletAuthProvider } from './provider'
 export type { WalletInfo, WalletProviderId, WalletUser } from './types'
 export { getConfiguredWalletProvider, getPrivyAppId } from './config'
-export { getWalletIdentity, appendWalletIdentityParams } from './client-identity'
+export { getWalletIdentity, appendWalletIdentityParams, getUserEmail } from './client-identity'
 
 function resolveProviderId(
   configuredProvider: 'waap' | 'privy',
@@ -27,6 +27,7 @@ export function useWallet(): WalletAuthState & {
   providerId: WalletProviderId
   configuredProvider: 'waap' | 'privy'
   setupError?: string | null
+  bootstrapTestSession?: WalletContextValue['bootstrapTestSession']
 } {
   const ctx = useWalletContext()
 
@@ -39,6 +40,7 @@ export function useWallet(): WalletAuthState & {
     providerId: resolveProviderId(ctx.configuredProvider, ctx.wallets),
     configuredProvider: ctx.configuredProvider,
     setupError: ctx.setupError,
+    bootstrapTestSession: ctx.bootstrapTestSession,
   }
 }
 

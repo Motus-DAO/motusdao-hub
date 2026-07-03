@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import type { Address } from 'viem'
+import { logoutAppSession } from '@/lib/auth/client'
 
 // ============================================================================
 // TYPES - Compatible with Privy patterns for easier migration
@@ -50,6 +51,12 @@ interface WaaPContextType {
   // WaaP-specific
   waapProvider: unknown | null
   isWaaPReady: boolean
+  bootstrapTestSession?: (params: {
+    id: string
+    email: string
+    eoaAddress: string
+    role?: string
+  }) => Promise<void>
 }
 
 const WaaPContext = createContext<WaaPContextType>({
@@ -445,6 +452,13 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   // Reference: https://docs.wallet.human.tech/docs/guides/methods#logout
   const logout = useCallback(async () => {
     console.log('[WAAP] Logging out...')
+
+    // Clear server SIWE session first so the next account cannot inherit it
+    try {
+      await logoutAppSession()
+    } catch (error) {
+      console.warn('[WAAP] Failed to clear app session during logout:', error)
+    }
     
     try {
       if (waapProvider) {
@@ -614,6 +628,30 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     }
   }, [waapProvider])
 
+  const bootstrapTestSession = useCallback(
+    async (params: { id: string; email: string; eoaAddress: string; role?: string }) => {
+      const address = params.eoaAddress as Address
+      const waapUser: WaaPUser = {
+        id: params.id,
+        email: { address: params.email },
+        wallet: { address },
+      }
+
+      setAuthenticated(true)
+      setUser(waapUser)
+      setWallets([
+        {
+          address,
+          walletClientType: 'waap',
+          chainId: CELO_CHAIN_ID.toString(),
+          connected: true,
+        },
+      ])
+      localStorage.setItem('waap_user', JSON.stringify(waapUser))
+    },
+    []
+  )
+
   return (
     <WaaPContext.Provider
       value={{
@@ -627,6 +665,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         wallets,
         waapProvider,
         isWaaPReady,
+        bootstrapTestSession,
       }}
     >
       {children}

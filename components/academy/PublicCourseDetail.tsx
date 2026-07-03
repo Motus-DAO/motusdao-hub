@@ -500,59 +500,88 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
   }, [])
 
   useEffect(() => {
-    if (!checkoutSuccess || !course || enrollment || !isSessionReady || !checkoutSessionId) return
+    if (!checkoutSuccess || !course || enrollment || !isSessionReady) return
 
     let cancelled = false
     setPaymentConfirming(true)
     setActionError(null)
 
     const run = async () => {
-      try {
-        const confirmResponse = await authFetch('/api/stripe/confirm-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: checkoutSessionId }),
-        })
+      const startedAt = Date.now()
+      const maxActivationMs = 30000
+      const fetchWithTimeout = async (url: string, init?: RequestInit, timeoutMs = 12000) => {
+        const controller = new AbortController()
+        const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+        try {
+          return await authFetch(url, {
+            ...init,
+            signal: controller.signal,
+          })
+        } finally {
+          window.clearTimeout(timeout)
+        }
+      }
 
-        if (confirmResponse.ok) {
-          const body = (await confirmResponse.json()) as { enrollment?: EnrollmentSummary }
-          if (body.enrollment && !cancelled) {
-            invalidateUserEnrollmentsCache()
-            setEnrollment(body.enrollment)
-            setPaymentConfirming(false)
-            window.history.replaceState({}, '', `/academia/${course.slug}`)
-            return
+      try {
+        if (checkoutSessionId) {
+          const confirmResponse = await fetchWithTimeout('/api/stripe/confirm-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: checkoutSessionId }),
+          })
+
+          if (confirmResponse.ok) {
+            const body = (await confirmResponse.json()) as { enrollment?: EnrollmentSummary }
+            if (body.enrollment && !cancelled) {
+              invalidateUserEnrollmentsCache()
+              setEnrollment(body.enrollment)
+              setPaymentConfirming(false)
+              window.history.replaceState({}, '', `/academia/${course.slug}`)
+              return
+            }
           }
         }
       } catch {
         // Continue with read-only polling below.
       }
 
-      const delays = [800, 1200, 1800, 2500, 3500, 5000]
+      const loadEnrollmentWithTimeout = async (timeoutMs = 6000) => {
+        return await Promise.race([
+          loadEnrollment(course.id, undefined, true),
+          new Promise<null>((resolve) => window.setTimeout(() => resolve(null), timeoutMs)),
+        ])
+      }
+
+      const delays = [600, 900, 1300, 1800, 2400, 3000]
       for (const delay of delays) {
         if (cancelled) return
+        if (Date.now() - startedAt > maxActivationMs) break
         await new Promise((resolve) => window.setTimeout(resolve, delay))
 
-        try {
-          const statusResponse = await authFetch(
-            `/api/stripe/checkout-status?sessionId=${encodeURIComponent(checkoutSessionId)}`
-          )
-          if (statusResponse.ok) {
-            const status = (await statusResponse.json()) as { enrollment?: EnrollmentSummary | null }
-            if (status.enrollment && !cancelled) {
-              invalidateUserEnrollmentsCache()
-              setEnrollment(status.enrollment)
-              setPaymentConfirming(false)
-              window.history.replaceState({}, '', `/academia/${course.slug}`)
-              return
+        if (checkoutSessionId) {
+          try {
+            const statusResponse = await fetchWithTimeout(
+              `/api/stripe/checkout-status?sessionId=${encodeURIComponent(checkoutSessionId)}`,
+              undefined,
+              7000
+            )
+            if (statusResponse.ok) {
+              const status = (await statusResponse.json()) as { enrollment?: EnrollmentSummary | null }
+              if (status.enrollment && !cancelled) {
+                invalidateUserEnrollmentsCache()
+                setEnrollment(status.enrollment)
+                setPaymentConfirming(false)
+                window.history.replaceState({}, '', `/academia/${course.slug}`)
+                return
+              }
             }
+          } catch {
+            // Keep polling.
           }
-        } catch {
-          // Keep polling.
         }
 
         invalidateUserEnrollmentsCache()
-        const match = await loadEnrollment(course.id, undefined, true)
+        const match = await loadEnrollmentWithTimeout(7000)
         if (match && !cancelled) {
           setPaymentConfirming(false)
           window.history.replaceState({}, '', `/academia/${course.slug}`)
@@ -562,7 +591,11 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
 
       if (!cancelled) {
         setPaymentConfirming(false)
-        setActionError('Tu pago fue recibido. Recarga la página en unos segundos para acceder al curso.')
+        setActionError(
+          checkoutSessionId
+            ? 'Tu pago fue recibido, pero la activación tardó más de lo esperado. Recarga la página para continuar.'
+            : 'Tu pago fue recibido, pero faltó el identificador de checkout en el retorno. Recarga la página y verifica tu inscripción.'
+        )
       }
     }
 
@@ -572,6 +605,22 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
       cancelled = true
     }
   }, [checkoutSuccess, checkoutSessionId, course, enrollment, loadEnrollment, isSessionReady])
+
+  // Safety watchdog: never allow infinite "Activando acceso..." UI state.
+  useEffect(() => {
+    if (!checkoutSuccess || enrollment || actionError) return
+
+    const timeout = window.setTimeout(() => {
+      setPaymentConfirming(false)
+      setActionError(
+        'La activación está tardando más de lo esperado. Recarga la página: si el pago ya se confirmó, tu curso aparecerá en tus inscripciones.'
+      )
+    }, 25000)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [checkoutSuccess, enrollment, actionError])
 
   useEffect(() => {
     if (!checkoutSuccess || !enrollment || !course) return

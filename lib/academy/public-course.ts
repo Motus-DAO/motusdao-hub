@@ -149,7 +149,9 @@ export type GatedLessonResponse = {
   access: {
     allowed: boolean
     enrolled: boolean
+    paid: boolean
     requiresEnrollment: boolean
+    requiresPayment?: boolean
   }
   enrollment?: EnrollmentSummary | null
 }

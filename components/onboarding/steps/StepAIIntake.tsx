@@ -265,7 +265,7 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
       />
 
       {phase === 'handoff_ready' && !showChatInput && (
-        <div className="rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-100">
+        <div className="ui-status-banner rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-950/75 dark:text-emerald-100">
           Perfil casi listo — completa los campos pendientes en el formulario y continúa al registro.
         </div>
       )}

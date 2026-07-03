@@ -423,12 +423,12 @@ export function IntakeLiveForm({
               onChange={(v) => set('emergencyProtocolStatus', v as OnboardingData['emergencyProtocolStatus'])}
             />
             {(data.cedulaDocumentPath || data.tituloDocumentPath) && (
-              <div className="rounded-lg border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300/90 space-y-1">
+              <div className="ui-status-banner rounded-lg border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/75 dark:text-emerald-100 space-y-1">
                 {data.cedulaDocumentPath && (
-                  <p>✓ {fieldLabel('cedulaDocumentPath')}: subido</p>
+                  <div>✓ {fieldLabel('cedulaDocumentPath')}: subido</div>
                 )}
                 {data.tituloDocumentPath && (
-                  <p>✓ {fieldLabel('tituloDocumentPath')}: subido</p>
+                  <div>✓ {fieldLabel('tituloDocumentPath')}: subido</div>
                 )}
               </div>
             )}

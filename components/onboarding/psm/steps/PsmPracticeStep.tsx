@@ -193,15 +193,15 @@ export function PsmPracticeStep({ onContinue, onBack }: Props) {
         />
 
         <div
-          className={`rounded-lg border px-3 py-2 text-xs ${
+          className={`ui-status-banner rounded-lg border px-3 py-2 text-xs ${
             especialidades.length >= PSM_MIN_ESPECIALIDADES
-              ? 'border-emerald-300/70 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/5 dark:text-emerald-200'
+              ? 'border-emerald-300/70 bg-emerald-50 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-950/75 dark:text-emerald-100'
               : 'border-border bg-muted/30 text-muted-foreground'
           }`}
         >
           {especialidades.length >= PSM_MIN_ESPECIALIDADES ? (
             <>
-              <span className="font-medium text-emerald-800 dark:text-emerald-300">Destacadas en tu perfil: </span>
+              <span className="font-medium text-emerald-800 dark:text-emerald-100">Destacadas en tu perfil: </span>
               {highlightedSpecialties.map(getEspecialidadLabel).join(' · ')}
               {especialidades.length > PSM_MIN_ESPECIALIDADES && (
                 <span className="block mt-1 text-muted-foreground">

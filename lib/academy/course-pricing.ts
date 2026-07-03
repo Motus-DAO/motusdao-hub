@@ -1,4 +1,4 @@
-type PricedCourse = {
+export type PricedCourse = {
   isFree?: boolean
   priceAmount?: string | number | { toString(): string } | null
 }

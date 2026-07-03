@@ -10,6 +10,7 @@ import {
   BookOpen,
   CheckCircle2,
   Circle,
+  CreditCard,
   FileText,
   Loader2,
   Lock,
@@ -20,6 +21,10 @@ import { CourseProgressBar } from '@/components/academy/CourseProgressBar'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { Section } from '@/components/ui/Section'
+import {
+  courseRequiresPayment,
+  formatCoursePrice,
+} from '@/lib/academy/course-pricing'
 import { renderMarkdown, videoEmbedUrl } from '@/lib/academy/markdown'
 import { fetchLessonMediaUrl } from '@/lib/academy/media-client'
 import type { PdfResource } from '@/lib/academy/media'
@@ -174,16 +179,85 @@ function PdfResourcesPanel({
   )
 }
 
+function LessonPayToContinueDialog({
+  open,
+  paying,
+  courseTitle,
+  priceLabel,
+  error,
+  onClose,
+  onPay,
+}: {
+  open: boolean
+  paying: boolean
+  courseTitle: string
+  priceLabel: string
+  error?: string | null
+  onClose: () => void
+  onPay: () => void
+}) {
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lesson-pay-dialog-title"
+        className="w-full max-w-sm rounded-xl border border-white/10 bg-background p-5 shadow-2xl sm:p-6"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mauve-500/15">
+            <CreditCard className="h-5 w-5 text-mauve-300" />
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={paying}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <h2 id="lesson-pay-dialog-title" className="mb-2 text-lg font-semibold text-white">
+          Desbloquea el bloque completo
+        </h2>
+        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+          Completaste la vista previa de <span className="text-white">{courseTitle}</span>.
+          Para guardar tu progreso y continuar con las siguientes lecciones, adquiere acceso al bloque.
+        </p>
+        <p className="mb-5 text-sm font-medium text-mauve-200">{priceLabel} — pago seguro con Stripe</p>
+
+        {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
+
+        <div className="flex justify-end gap-2">
+          <CTAButton type="button" variant="ghost" size="sm" onClick={onClose} disabled={paying}>
+            Ahora no
+          </CTAButton>
+          <CTAButton type="button" size="sm" onClick={onPay} disabled={paying} className="gap-2">
+            {paying && <Loader2 className="h-4 w-4 animate-spin" />}
+            Pagar ahora
+          </CTAButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LessonCompleteConfirmDialog({
   open,
   confirming,
   isLastLesson,
+  error,
   onClose,
   onConfirm,
 }: {
   open: boolean
   confirming: boolean
   isLastLesson: boolean
+  error?: string | null
   onClose: () => void
   onConfirm: () => void
 }) {
@@ -219,6 +293,8 @@ function LessonCompleteConfirmDialog({
           Al confirmar, la marcaremos como completada y actualizaremos tu progreso en el bloque.
           Puedes regresar a ella en cualquier momento, siempre que tengas acceso a la plataforma.
         </p>
+
+        {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
 
         <div className="flex justify-end gap-2">
           <CTAButton type="button" variant="ghost" size="sm" onClick={onClose} disabled={confirming}>
@@ -259,6 +335,9 @@ export function LessonPlayer({
   const [enrolling, setEnrolling] = useState(false)
   const [markingComplete, setMarkingComplete] = useState(false)
   const [confirmAdvanceOpen, setConfirmAdvanceOpen] = useState(false)
+  const [payToContinueOpen, setPayToContinueOpen] = useState(false)
+  const [stripeEnabled, setStripeEnabled] = useState(false)
+  const [paymentConfirming, setPaymentConfirming] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const isLessonComplete = lessonData ? completedIds.has(lessonData.lesson.id) : false
@@ -368,6 +447,13 @@ export function LessonPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- course ref tracks whether initial load happened
   }, [courseSlug, lessonSlug, loadData])
 
+  useEffect(() => {
+    void fetch('/api/stripe/status')
+      .then((response) => response.json())
+      .then((body: { enabled?: boolean }) => setStripeEnabled(Boolean(body.enabled)))
+      .catch(() => setStripeEnabled(false))
+  }, [])
+
   const ensureSession = async (): Promise<string | null> => {
     if (!ready) return null
     if (!authenticated) {
@@ -444,7 +530,13 @@ export function LessonPlayer({
         return false
       }
 
-      if (!enrollment && !lessonData.lesson.isFreePreview) {
+      if (!enrollment) {
+        if (courseRequiresPayment(course) && stripeEnabled) {
+          setConfirmAdvanceOpen(false)
+          setPayToContinueOpen(true)
+          return false
+        }
+
         const enrollResponse = await authFetch('/api/enrollments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -473,7 +565,12 @@ export function LessonPlayer({
       return true
     } catch (markError) {
       if (markError instanceof Error && markError.message === 'NOT_ENROLLED') {
-        setActionError('Debes inscribirte al bloque para guardar progreso.')
+        if (courseRequiresPayment(course) && stripeEnabled) {
+          setConfirmAdvanceOpen(false)
+          setPayToContinueOpen(true)
+        } else {
+          setActionError('Debes inscribirte al bloque para guardar progreso.')
+        }
       } else {
         setActionError(markError instanceof Error ? markError.message : 'Error al marcar completada')
       }
@@ -516,7 +613,8 @@ export function LessonPlayer({
   }
 
   const { lesson, access } = lessonData
-  const isEnrolled = Boolean(enrollment) || access.enrolled
+  const hasPaidAccess = access.paid || Boolean(enrollment?.paid)
+  const isEnrolled = hasPaidAccess
   const contentHtml = lesson.contentMDX
     ? renderMarkdown(lesson.contentMDX, { lessonContent: true })
     : ''
@@ -531,12 +629,56 @@ export function LessonPlayer({
     router.push(`/academia/${courseSlug}`)
   }
 
+  const needsPaymentToContinue =
+    courseRequiresPayment(course) && stripeEnabled && !hasPaidAccess
+
   const handleAdvanceClick = () => {
     if (isLessonComplete) {
       navigateAfterLesson()
       return
     }
+    setActionError(null)
+    if (needsPaymentToContinue) {
+      setPayToContinueOpen(true)
+      return
+    }
     setConfirmAdvanceOpen(true)
+  }
+
+  const handlePayForCourse = async () => {
+    if (!course) return
+    setPaymentConfirming(true)
+    setActionError(null)
+
+    try {
+      const activeUserId = userId || (await ensureSession())
+      if (!activeUserId) {
+        setActionError('Inicia sesión para continuar con el pago.')
+        return
+      }
+
+      const response = await authFetch('/api/stripe/checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: activeUserId, courseId: course.id }),
+      })
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error || 'No se pudo iniciar el pago')
+      }
+
+      const body = (await response.json()) as { url?: string }
+      if (!body.url) {
+        throw new Error('No se recibió la URL de pago')
+      }
+
+      window.location.href = body.url
+    } catch (payError) {
+      setActionError(payError instanceof Error ? payError.message : 'Error al iniciar el pago')
+    } finally {
+      setPaymentConfirming(false)
+    }
   }
 
   const handleConfirmAdvance = async () => {
@@ -697,11 +839,28 @@ export function LessonPlayer({
                       ) : null}
                     </div>
 
+                    <LessonPayToContinueDialog
+                      open={payToContinueOpen}
+                      paying={paymentConfirming}
+                      courseTitle={course.title}
+                      priceLabel={formatCoursePrice(course)}
+                      error={actionError}
+                      onClose={() => {
+                        setPayToContinueOpen(false)
+                        setActionError(null)
+                      }}
+                      onPay={() => void handlePayForCourse()}
+                    />
+
                     <LessonCompleteConfirmDialog
                       open={confirmAdvanceOpen}
                       confirming={markingComplete}
                       isLastLesson={isLastLesson}
-                      onClose={() => setConfirmAdvanceOpen(false)}
+                      error={actionError}
+                      onClose={() => {
+                        setConfirmAdvanceOpen(false)
+                        setActionError(null)
+                      }}
                       onConfirm={() => void handleConfirmAdvance()}
                     />
                   </>

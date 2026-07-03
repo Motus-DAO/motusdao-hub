@@ -286,6 +286,13 @@ body::after {
   color: rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Status banners control their own text colors in light and dark mode */
+.glass .ui-status-banner,
+.glass .ui-status-banner label,
+.glass .ui-status-banner p {
+  color: unset !important;
+}
+
 .glass .gradient-text {
   background: var(--grad-primary);
   background-clip: text;
@@ -309,6 +316,12 @@ body::after {
 .dark .glass label,
 .dark .glass p:not(.text-muted-foreground) {
   color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.dark .glass .ui-status-banner,
+.dark .glass .ui-status-banner label,
+.dark .glass .ui-status-banner p {
+  color: unset !important;
 }
 
 .dark .glass .gradient-text {
@@ -798,6 +811,12 @@ body::after {
 [data-theme="matrix"] .glass label,
 [data-theme="matrix"] .glass p:not(.text-muted-foreground) {
   color: var(--matrix-text) !important;
+}
+
+[data-theme="matrix"] .glass .ui-status-banner,
+[data-theme="matrix"] .glass .ui-status-banner label,
+[data-theme="matrix"] .glass .ui-status-banner p {
+  color: unset !important;
 }
 
 /* Matrix theme sidebar text colors */

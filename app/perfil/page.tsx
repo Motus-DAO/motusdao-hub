@@ -25,11 +25,13 @@ import {
   Copy
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useUIStore } from '@/lib/store'
-import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams, getUserEmail } from '@/lib/wallet'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
+import { authFetch } from '@/lib/auth/client'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { motusNameService } from '@/lib/motus-name-service'
 import { buildVideochatUrl } from '@/lib/jitsi'
 import { useRouter } from 'next/navigation'
@@ -58,6 +60,18 @@ interface UserData {
   mnsTxHash?: string | null
 }
 
+const EMPTY_PROFILE_DATA: ProfileData = {
+  nombre: '',
+  apellido: '',
+  telefono: '',
+  fechaNacimiento: '',
+  ciudad: '',
+  pais: '',
+  bio: '',
+  language: 'es',
+  avatarUrl: '',
+}
+
 export default function PerfilPage() {
   const { role, setMatrixColor } = useUIStore()
   const router = useRouter()
@@ -72,26 +86,18 @@ export default function PerfilPage() {
   // Get EOA address - prioritizes external wallet (MetaMask) over embedded wallet
   const eoaAddress = getEOAAddress(wallets)
   
-  // Get email from user
-  const userEmail = user?.email?.address || user?.google?.email || 'No disponible'
+  // Email from wallet vendor (undefined when not shared)
+  const resolvedEmail = getUserEmail(user)
+  const displayEmail = resolvedEmail ?? 'No disponible'
   const walletIdentity = getWalletIdentity(user, providerId)
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [needsSession, setNeedsSession] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [profileData, setProfileData] = useState<ProfileData>({
-    nombre: '',
-    apellido: '',
-    telefono: '',
-    fechaNacimiento: '',
-    ciudad: '',
-    pais: '',
-    bio: '',
-    language: 'es',
-    avatarUrl: ''
-  })
+  const [profileData, setProfileData] = useState<ProfileData>(EMPTY_PROFILE_DATA)
   const [userData, setUserData] = useState<UserData | null>(null)
   
   interface UserMatchHistoryItem {
@@ -209,21 +215,59 @@ export default function PerfilPage() {
   const [motusName, setMotusName] = useState<string | null>(null)
   const [isLoadingMotusName, setIsLoadingMotusName] = useState(false)
 
+  const identityKey = useMemo(
+    () => `${user?.id ?? ''}:${eoaAddress?.toLowerCase() ?? ''}`,
+    [user?.id, eoaAddress]
+  )
+
+  const resetProfileView = useCallback(() => {
+    setProfileData(EMPTY_PROFILE_DATA)
+    setUserData(null)
+    setMatchData(null)
+    setActiveSession(null)
+    setMotusName(null)
+    setError(null)
+    setNeedsSession(false)
+    setIsEditing(false)
+    setIsLoadingMatch(false)
+    setIsLoadingSession(false)
+    setIsLoadingMotusName(false)
+  }, [])
+
+  // Drop cached profile UI when wallet disconnects or account identity changes
+  useEffect(() => {
+    if (!ready) return
+    if (!authenticated) {
+      resetProfileView()
+      setIsLoading(false)
+    }
+  }, [ready, authenticated, resetProfileView])
+
   // Fetch profile data from API
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!ready || !authenticated || !userEmail) return
+      if (!ready || !authenticated) return
+      if (!resolvedEmail && !eoaAddress) return
 
+      resetProfileView()
       setIsLoading(true)
-      setError(null)
 
       try {
         const params = new URLSearchParams()
         appendWalletIdentityParams(params, walletIdentity)
-        if (userEmail) params.append('email', userEmail)
+        if (resolvedEmail) params.append('email', resolvedEmail)
 
-        const response = await fetch(`/api/profile?${params.toString()}`)
+        const response = await authFetch(`/api/profile?${params.toString()}`)
         
+        if (response.status === 401) {
+          setNeedsSession(true)
+          setError(
+            'Tu wallet está conectada, pero falta verificar la sesión. Firma el mensaje de verificación para ver tu perfil.'
+          )
+          setIsLoading(false)
+          return
+        }
+
         if (!response.ok) {
           if (response.status === 404) {
             setError('Perfil no encontrado. Por favor completa el registro primero.')
@@ -266,7 +310,7 @@ export default function PerfilPage() {
     }
 
     fetchProfile()
-  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId])
+  }, [ready, authenticated, resolvedEmail, eoaAddress, walletIdentity?.authProviderId, identityKey, resetProfileView])
 
   // Fetch match data
   useEffect(() => {
@@ -504,14 +548,24 @@ export default function PerfilPage() {
   if (error && !profileData.nombre) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GlassCard className="p-8 max-w-md">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{error}</p>
-            <CTAButton onClick={() => window.location.href = '/registro'}>
-              Completar Registro
-            </CTAButton>
+        <GlassCard className="p-8 max-w-md w-full">
+          <div className="text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h2 className="text-2xl font-bold">
+              {needsSession ? 'Verificación requerida' : 'Error'}
+            </h2>
+            <p className="text-muted-foreground">{error}</p>
+            {needsSession ? (
+              <SiweSessionBanner
+                onReadyChange={(ready) => {
+                  if (ready) window.location.reload()
+                }}
+              />
+            ) : (
+              <CTAButton onClick={() => window.location.href = '/registro'}>
+                Completar Registro
+              </CTAButton>
+            )}
           </div>
         </GlassCard>
       </div>
@@ -614,7 +668,7 @@ export default function PerfilPage() {
                           <span className="text-xs text-muted-foreground">Email</span>
                         </div>
                         <p className="text-sm font-mono text-center break-all">
-                          {userData?.email || userEmail}
+                          {userData?.email || displayEmail}
                         </p>
                       </div>
                       
@@ -828,7 +882,7 @@ export default function PerfilPage() {
                       <label className="block text-sm font-medium mb-2">Email</label>
                       <input
                         type="email"
-                        value={userData?.email || userEmail}
+                        value={userData?.email || displayEmail}
                         disabled={true}
                         className="w-full p-3 glass-card border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-mauve-500 focus:border-transparent disabled:opacity-50"
                       />

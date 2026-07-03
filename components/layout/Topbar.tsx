@@ -16,12 +16,15 @@ import {
   Shield
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
+import { useRouter } from 'next/navigation'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams, getUserEmail } from '@/lib/wallet'
+import { authFetch } from '@/lib/auth/client'
 import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 
 export function Topbar() {
+  const router = useRouter()
   const { 
     role, 
     setRole, 
@@ -42,8 +45,8 @@ export function Topbar() {
   const embeddedWallet = identifyEmbeddedWallet(wallets)
   const eoaAddress = embeddedWallet?.address
   
-  // Get email from user
-  const userEmail = user?.email?.address || user?.google?.email || 'No disponible'
+  const resolvedEmail = getUserEmail(user)
+  const displayEmail = resolvedEmail ?? 'No disponible'
   
   const [showRoleDropdown, setShowRoleDropdown] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
@@ -84,17 +87,17 @@ export function Topbar() {
     const syncUserRole = async () => {
       if (!ready || !authenticated || !user) return
 
-      const userEmail = user?.email?.address || user?.google?.email
+      const userEmail = resolvedEmail
       const walletIdentity = getWalletIdentity(user, providerId)
 
-      if (!userEmail && !walletIdentity) return
+      if (!userEmail && !walletIdentity && !eoaAddress) return
 
       try {
         const params = new URLSearchParams()
         appendWalletIdentityParams(params, walletIdentity)
         if (userEmail) params.append('email', userEmail)
 
-        const response = await fetch(`/api/profile?${params.toString()}`)
+        const response = await authFetch(`/api/profile?${params.toString()}`)
         
         if (response.ok) {
           const data = await response.json()
@@ -135,9 +138,12 @@ export function Topbar() {
     login()
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
     setShowUserDropdown(false)
+    await logout()
+    if (window.location.pathname === '/perfil') {
+      router.replace('/')
+    }
   }
 
   const handleCopyAddress = async (address: string, type: string) => {
@@ -341,7 +347,7 @@ export function Topbar() {
                         </span>
                       </div>
                       <p className="font-mono text-xs break-all">
-                        {userEmail}
+                        {displayEmail}
                       </p>
                     </div>
                     

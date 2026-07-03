@@ -341,6 +341,7 @@ Pick spec → export MOTUS_ACTIVE_SPEC → MOTUS_QA_LOOP=1
 | `harmonize-3b-doc-taxonomy.md` | 3b | 3a |
 | `harmonize-3d-ci-agents.md` | 3d | 3b |
 | `auth-provider-agnostic.md` | Identity | 3d |
+| `clinical-security-compliance.md` | Security | auth slice + Academy P0 |
 | `smart-wallet-lazy-load.md` | Perf | auth slice |
 | `harmonize-3c-infra-boundary.md` | 3c | 3d (optional) |
 
@@ -410,11 +411,83 @@ git log --all --full-history -- '.env' '.env.local'
 # Do NOT force-push main without team agreement
 ```
 
+# Do NOT force-push main without team agreement
+```
+
 ---
 
-## 9. Data layer — Prisma Postgres vs Supabase
+## 9. Clinical security & compliance (slice: `specs/clinical-security-compliance.md`)
 
-### 9.1 Who owns what
+> **Why here:** Hub handles mental-health intake, profiles, matching, journal, and clinical
+> document uploads. SIWE + WaaP are necessary but not sufficient. This slice hardens auth,
+> sessions, audit, and ops policy **before** scaling paid Academy + therapist workflows.
+>
+> **Trigger:** After Academy P0 checkout is stable; **before** marketing clinical features
+> beyond current beta. Not a blocker for selling courses, but **is** a blocker for claiming
+> HIPAA/LFPDPPP readiness.
+
+### 9.1 Current baseline (already in repo)
+
+| Control | Status | Anchors |
+|---------|--------|---------|
+| SIWE session (httpOnly JWT) | Shipped | `lib/auth/session.ts`, `app/api/auth/verify/` |
+| Self-or-admin on profile APIs | Shipped | `lib/auth/guards.ts`, `app/api/profile/` |
+| Clinical access audit log | Partial | `clinical_access_logs` + `recordClinicalAccess()` |
+| Encryption at rest (Postgres + Storage) | Provider default | Supabase project settings |
+| Dev admin bypass | **Dev only** | `DEV_BYPASS_ADMIN_AUTH` — must never ship prod |
+| Dev test login | **Dev only** | `DEV_TEST_LOGIN_ENABLED` — must never ship prod |
+
+**Known gaps (2026-07-02):** 7-day session TTL; no idle timeout on clinical pages; audit
+not on every sensitive route; account-switch stale UI fixed in app but session policy
+not yet tightened; no formal BAA / breach runbook.
+
+### 9.2 Target outcomes
+
+1. **Every sensitive API route** enforces server-side auth + authorization (no query-param trust).
+2. **Clinical reads/writes** emit audit rows (who, what, target user, reason).
+3. **Sessions** use shorter TTL + idle timeout on clinical routes; logout clears cookie synchronously.
+4. **Production deploy** fails CI if dev bypass env vars are set.
+5. **Ops docs** cover LFPDPPP/HIPAA-style minimums: BAA checklist, data minimization, breach procedure.
+
+### 9.3 Sub-slices (implement in order)
+
+| Sub-slice | Scope | Exit |
+|-----------|-------|------|
+| **9.3a — Route auth audit** | Inventory all `app/api/**`; add `requireSession` / `requireSelfOrAdmin` / domain guards where missing; document public exceptions | Checklist in child spec §4; no unauthenticated PHI routes |
+| **9.3b — Audit coverage** | Extend `recordClinicalAccess` to profile, documents, matching, journal, session notes; standard `reason` enum | ≥95% of PHI-touching routes audited |
+| **9.3c — Session hardening** | Reduce `SESSION_MAX_AGE_SECONDS`; add idle timeout middleware or client ping for `/perfil`, `/bitacora`, `/mis-usuarios`, `/admin/*`; ensure logout order: SIWE cookie → wallet | Pen-test: account switch shows no stale PHI |
+| **9.3d — Prod guardrails** | CI/build step: fail if `DEV_BYPASS_ADMIN_AUTH` or `DEV_TEST_LOGIN_ENABLED` in Vercel prod; runtime assert in `dev-bypass.ts` / `dev-test-login.ts` | Prod deploy blocked with bypass vars |
+| **9.3e — Compliance runbooks** | `docs/runbooks/clinical-data-handling.md`, `docs/runbooks/breach-response.md`; BAA vendor checklist (Supabase, Vercel, Stripe, Jitsi) | Human sign-off; linked from Terms/Privacy |
+
+### 9.4 Non-goals (this parent slice)
+
+- Full HIPAA certification or legal opinion
+- End-to-end encryption of journal content at application layer (defer unless legal requires)
+- Supabase Auth migration (SIWE remains canonical)
+- Replacing SIWE with password/MFA (document as future enhancement)
+
+### 9.5 Acceptance criteria (parent — child spec expands)
+
+1. **Given** user A logged out and user B logged in on a shared device, **when** visiting `/perfil`, **then** no PHI from user A is visible without a new SIWE session for B.
+2. **Given** a non-admin session, **when** calling another user's profile API, **then** 403 (not 200, not 404 leak).
+3. **Given** prod Vercel env, **when** `DEV_BYPASS_ADMIN_AUTH=1`, **then** deploy check fails.
+4. **Given** any profile/document read, **when** successful, **then** a `clinical_access_logs` row exists.
+
+### 9.6 Dependencies & priority
+
+| Depends on | Blocks |
+|------------|--------|
+| `auth-provider-agnostic.md` (SIWE + `lib/wallet/`) | Scaling PSM matching, journal GA |
+| Academy P0 stable | Public clinical marketing claims |
+| `docs/architecture/data-layer.md` | BAA vendor list |
+
+**Priority:** P1 for clinical GA · P2 for course-only launch (still ship 9.3d early).
+
+---
+
+## 10. Data layer — Prisma Postgres vs Supabase
+
+### 10.1 Who owns what
 
 | System | Owns | Where it lives |
 |--------|------|----------------|
@@ -423,7 +496,7 @@ git log --all --full-history -- '.env' '.env.local'
 | **Supabase Postgres (RAG)** | `knowledge_chunks` embeddings for MotusAI | Same or separate Supabase project |
 | **On-chain (Celo)** | MNS names, clinical profile NFTs | Celo network |
 
-### 9.2 Where does Prisma Postgres live?
+### 10.2 Where does Prisma Postgres live?
 
 **Wherever `DATABASE_URL` points.** Common setups:
 
@@ -441,7 +514,7 @@ git log --all --full-history -- '.env' '.env.local'
 
 So: **you can use Supabase for Postgres AND storage in the same project**, or Postgres on Neon + Supabase only for storage. Check Vercel dashboard → Storage / env vars to see your actual host.
 
-### 9.3 Verify your production DB (run locally)
+### 10.3 Verify your production DB (run locally)
 
 ```bash
 # Redact password before sharing output
@@ -450,13 +523,13 @@ echo $DATABASE_URL | sed 's/:[^@]*@/:***@/'
 
 Look for `supabase.co`, `neon.tech`, or a VPS IP.
 
-### 9.4 Architecture doc to create (phase 3b)
+### 10.4 Architecture doc to create (phase 3b)
 
 `docs/architecture/data-layer.md` — one page with your actual hosts filled in.
 
 ---
 
-## 10. Execution phases (ordered)
+## 11. Execution phases (ordered)
 
 ### Phase 3a — Git hygiene ⬅ start here
 
@@ -495,6 +568,12 @@ Look for `supabase.co`, `neon.tech`, or a VPS IP.
 - **Exit (now):** ZeroDev dormant, no impact on Academy enrollment/checkout
 - **Exit (future):** Lighthouse / TTI improved on home + academy when smart-wallet routes are reintroduced
 
+### Phase — Clinical security & compliance
+
+- `specs/clinical-security-compliance.md` — implement sub-slices 9.3a–9.3e from parent §9
+- **Exit (minimum):** 9.3d prod guardrails + 9.3c session hardening on account-switch paths
+- **Exit (full):** route audit complete, audit coverage ≥95%, runbooks signed off
+
 ### Phase 3c — Infra boundary (optional)
 
 - `git mv jitsi infra/jitsi`, `contracts infra/contracts`
@@ -503,7 +582,7 @@ Look for `supabase.co`, `neon.tech`, or a VPS IP.
 
 ---
 
-## 11. Academy revenue readiness checklist
+## 12. Academy revenue readiness checklist
 
 Before selling courses publicly:
 
@@ -516,13 +595,44 @@ Before selling courses publicly:
 - [ ] Terms / privacy pages live
 - [ ] Clinical disclaimer on MotusAI (if linked from Academy)
 - [ ] `NEXT_PUBLIC_ENABLE_ZERODEV=false` in production
+- [ ] `DEV_BYPASS_ADMIN_AUTH` and `DEV_TEST_LOGIN_ENABLED` unset in production (see §9.3d)
 - [ ] Debug API routes disabled in production
 
 **You can sell courses without:** Jitsi repo split, admin app split, smart wallets, MNS, or full doc archive.
 
 ---
 
-## 12. Open decisions (human input required)
+## 13. Current sprint — Academy monetization execution queue
+
+Use this queue to run section 11 as an operational checklist (not just strategy). Keep this updated during execution.
+
+### 13.1 Scope
+
+- Goal: ship reliable Academy course sales on current stack.
+- Out of scope: Jitsi split, smart-wallet reactivation, MNS, deep infra refactors.
+
+### 13.2 Ordered tasks (do in sequence)
+
+| Order | Task | Owner | Status | Evidence |
+|------:|------|-------|--------|----------|
+| 1 | Stripe webhook reliability test on staging (`checkout.session.completed`, payment mismatch/retry path) | eng | IN PROGRESS | `docs/runbooks/academy-stripe-webhook-staging.md` |
+| 2 | Enrollment + lesson progress persistence verification on prod Postgres | eng | TODO | query/output + UI proof |
+| 3 | Publish ops runbook: `docs/runbooks/academy-publish.md` (publish, rollback, support steps) | eng | TODO | PR/commit hash |
+| 4 | Production env sanity pass (`NEXT_PUBLIC_ENABLE_ZERODEV=false`, debug routes disabled) | eng | TODO | env checklist + deploy evidence |
+
+### 13.3 Exit criteria
+
+- All tasks above marked `DONE`.
+- CI green on `main`.
+- No blocking Academy checkout/enrollment regression open.
+
+### 13.4 Working rule
+
+When any task starts, set it to `IN PROGRESS` and capture evidence before moving to the next.
+
+---
+
+## 14. Open decisions (human input required)
 
 | # | Question | Default if no answer |
 |---|----------|---------------------|
@@ -542,6 +652,7 @@ Before selling courses publicly:
 | 2026-07-01 | Phase 3a complete — git hygiene, `docs/architecture/data-layer.md` |
 | 2026-07-01 | Phase 3b complete — doc taxonomy (`archive/`, `docs/runbooks/`, `infra/*/docs/`) |
 | 2026-07-01 | Phase 3d complete — GitHub CI, debug API production guard, README stack update |
+| 2026-07-02 | §9 Clinical security & compliance slice + `specs/clinical-security-compliance.md` |
 
 ---
 

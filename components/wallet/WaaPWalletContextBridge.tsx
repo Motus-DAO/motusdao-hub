@@ -30,6 +30,7 @@ export function WaaPWalletContextBridge({ children }: WaaPWalletContextBridgePro
           sendCode: auth.sendCode,
           loginWithCode: auth.loginWithCode,
         },
+        bootstrapTestSession: auth.bootstrapTestSession,
       }}
     >
       {children}

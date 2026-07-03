@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
 import { coursePriceAmount, courseRequiresPayment } from '@/lib/academy/course-pricing'
-import { SITE_URL } from '@/lib/constants'
 import { getStripeClient, isStripeConfigured, toStripeUnitAmount } from '@/lib/stripe'
 import { toInputJson } from '@/lib/prisma-json'
 
@@ -85,8 +84,14 @@ export async function POST(request: NextRequest) {
     })
 
     const stripe = getStripeClient()
-    const successUrl = `${SITE_URL}/academia/${course.slug}?checkout=success&session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${SITE_URL}/academia/${course.slug}?checkout=cancelled`
+    const requestOrigin = request.nextUrl.origin
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+    const baseUrl =
+      process.env.NODE_ENV === 'development'
+        ? requestOrigin
+        : configuredSiteUrl || requestOrigin
+    const successUrl = `${baseUrl}/academia/${course.slug}?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${baseUrl}/academia/${course.slug}?checkout=cancelled`
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

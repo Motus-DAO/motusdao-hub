@@ -16,6 +16,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { DevTestLoginPanel } from '@/components/auth/DevTestLoginPanel'
 
 // Validation schemas
 const emailSchema = z.string().email('El correo no es válido')
@@ -179,6 +180,8 @@ export function EmailLoginModal({ isOpen, onClose, onLoggedIn }: EmailLoginModal
 
             {/* Content */}
             <div className="space-y-6">
+              <DevTestLoginPanel onLoggedIn={onLoggedIn} />
+
               {step === 'email' ? (
                 <motion.div
                   key="email-step"

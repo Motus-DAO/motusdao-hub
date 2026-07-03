@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { getSessionFromRequest } from '@/lib/auth/session'
 import { storagePathBelongsToLesson } from '@/lib/academy/media'
+import {
+  canAccessLessonContent,
+} from '@/lib/academy/enrollment-access'
 
 export type LessonMediaAccess = {
   lessonId: string
@@ -24,6 +27,12 @@ export async function resolveLessonMediaAccess(
       module: {
         select: {
           courseId: true,
+          course: {
+            select: {
+              isFree: true,
+              priceAmount: true,
+            },
+          },
         },
       },
     },
@@ -31,6 +40,7 @@ export async function resolveLessonMediaAccess(
 
   if (!lesson?.module?.courseId) return null
 
+  const course = lesson.module.course
   const courseId = lesson.module.courseId
   const adminDenied = await guardAdmin(request)
   const isAdmin = !adminDenied
@@ -63,11 +73,13 @@ export async function resolveLessonMediaAccess(
         courseId,
       },
     },
-    select: { id: true },
+    select: {
+      purchasedAt: true,
+      orderItems: { include: { order: { select: { status: true } } } },
+    },
   })
 
-  const enrolled = Boolean(enrollment)
-  const allowed = lesson.isFreePreview || enrolled
+  const allowed = canAccessLessonContent(course, lesson, enrollment)
 
   return {
     lessonId: lesson.id,

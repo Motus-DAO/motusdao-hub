@@ -8,6 +8,10 @@ import {
   type PdfResource,
 } from '@/lib/academy/media'
 import { createSignedAcademyMediaUrl } from '@/lib/storage'
+import {
+  canAccessLessonContent,
+  enrollmentHasPaidAccess,
+} from '@/lib/academy/enrollment-access'
 
 type RouteParams = { params: Promise<{ slug: string; lessonSlug: string }> }
 
@@ -48,6 +52,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         id: true,
         title: true,
         slug: true,
+        isFree: true,
+        priceAmount: true,
+        priceCurrency: true,
         modules: {
           select: {
             id: true,
@@ -83,6 +90,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const session = await getSessionFromRequest(request)
     let enrolled = false
+    let paid = false
     let enrollment = null
 
     if (session?.userId) {
@@ -99,12 +107,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           courseId: true,
           progress: true,
           completed: true,
+          purchasedAt: true,
+          orderItems: { include: { order: { select: { status: true } } } },
         },
       })
       enrolled = Boolean(enrollment)
+      paid = enrollmentHasPaidAccess(course, enrollment)
     }
 
-    const allowed = lesson.isFreePreview || enrolled
+    const allowed = canAccessLessonContent(course, lesson, enrollment)
     const resolvedVideoUrl = await resolveVideoUrlForClient(lesson.videoUrl, allowed)
     const pdfResources = pdfResourcesForClient(lesson.pdfResources, allowed)
 
@@ -134,9 +145,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       access: {
         allowed,
         enrolled,
-        requiresEnrollment: !lesson.isFreePreview && !enrolled,
+        paid,
+        requiresEnrollment: !lesson.isFreePreview && !paid,
+        requiresPayment: !paid && !course.isFree && Number(course.priceAmount || 0) > 0,
       },
-      enrollment,
+      enrollment: paid && enrollment
+        ? {
+            id: enrollment.id,
+            userId: enrollment.userId,
+            courseId: enrollment.courseId,
+            progress: enrollment.progress,
+            completed: enrollment.completed,
+            paid: true,
+            purchasedAt: enrollment.purchasedAt?.toISOString() ?? null,
+          }
+        : null,
     })
   } catch (error) {
     console.error('Error fetching gated lesson:', error)
