@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 import type { PublicPsmProfile } from '@/lib/psm/public-profile'
 
@@ -40,17 +41,17 @@ function formatSlotDate(iso: string) {
 
 export function TherapistBookingCard({ slug, profile }: Props) {
   const router = useRouter()
+  const { sessionState, signing, signError, signIn } = useSiweSession()
+
   const [slots, setSlots] = useState<Slot[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchAppSession().then((s) => setUserId(s.authenticated ? s.userId : null))
-  }, [])
+  // When the user taps "Agendar" while logged out, we resume booking
+  // automatically once the wallet/SIWE session becomes available.
+  const [pendingBook, setPendingBook] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -79,19 +80,25 @@ export function TherapistBookingCard({ slug, profile }: Props) {
     return [...map.entries()].slice(0, 14)
   }, [slots])
 
-  const book = useCallback(async () => {
+  const submitBooking = useCallback(async () => {
     if (!selectedSlotId) return
-    if (!userId) {
-      setLoginOpen(true)
-      return
-    }
     setBooking(true)
     setError(null)
     try {
+      const session = await fetchAppSession()
+      if (!session.authenticated || !session.userId) {
+        setError('No pudimos verificar tu sesión. Intenta de nuevo.')
+        return
+      }
+      if (session.role && session.role !== 'usuario') {
+        setError('Solo las cuentas de usuario pueden agendar sesiones.')
+        return
+      }
+
       const res = await authFetch(`/api/psm/${slug}/book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, slotId: selectedSlotId }),
+        body: JSON.stringify({ userId: session.userId, slotId: selectedSlotId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'No se pudo agendar')
@@ -101,9 +108,41 @@ export function TherapistBookingCard({ slug, profile }: Props) {
     } finally {
       setBooking(false)
     }
-  }, [selectedSlotId, slug, userId, router])
+  }, [selectedSlotId, slug, router])
+
+  // Drives the "not logged in -> WaaP -> sign -> book" flow from the current
+  // session state. Logged-in users skip straight to booking.
+  const proceedBooking = useCallback(async () => {
+    if (!selectedSlotId) return
+    setError(null)
+
+    // No wallet yet -> open WaaP/email login, resume after connecting.
+    if (sessionState === 'no_wallet') {
+      setPendingBook(true)
+      setLoginOpen(true)
+      return
+    }
+
+    // Wallet connected but no app session -> sign SIWE (silent for WaaP wallets).
+    if (sessionState === 'needs_signature') {
+      const ok = await signIn()
+      if (!ok) return
+    }
+
+    await submitBooking()
+  }, [selectedSlotId, sessionState, signIn, submitBooking])
+
+  // Resume booking once the wallet connects after the login modal.
+  useEffect(() => {
+    if (!pendingBook) return
+    if (sessionState === 'loading' || sessionState === 'no_wallet') return
+    setPendingBook(false)
+    void proceedBooking()
+  }, [pendingBook, sessionState, proceedBooking])
 
   const canBook = profile.capacityAvailable > 0
+  const busy = booking || signing || sessionState === 'loading'
+  const displayError = error ?? signError
 
   return (
     <>
@@ -160,17 +199,22 @@ export function TherapistBookingCard({ slug, profile }: Props) {
           </div>
         )}
 
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {displayError && <p className="mt-3 text-sm text-red-400">{displayError}</p>}
 
         <CTAButton
           className="mt-4 w-full"
-          disabled={!canBook || !selectedSlotId || booking}
-          onClick={book}
+          disabled={!canBook || !selectedSlotId || busy}
+          onClick={proceedBooking}
         >
           {booking ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Agendando...
+            </>
+          ) : signing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Verificando...
             </>
           ) : canBook ? (
             'Agendar sesión'
@@ -183,10 +227,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
 
       <LoginRequiredModal
         isOpen={loginOpen}
-        onClose={() => {
-          setLoginOpen(false)
-          fetchAppSession().then((s) => setUserId(s.authenticated ? s.userId : null))
-        }}
+        onClose={() => setLoginOpen(false)}
       />
     </>
   )
