@@ -11,6 +11,7 @@ import { getPsmWizardStepBlockers } from '@/lib/intake/psm-intake-v1'
 import { PsmSectionBlock } from '../PsmSectionBlock'
 import { PsmStepValidationBanner } from '../PsmStepValidationBanner'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import { StatusBanner } from '@/components/ui/StatusBanner'
 
 type Props = {
   onContinue: () => void
@@ -56,10 +57,10 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
       <PsmSectionBlock title="Verificación documental">
         <SiweSessionBanner />
 
-        <div className="rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100">
-          Sube tu documentación profesional para verificación. Solo visible para el equipo
-          administrativo de MotusDAO.
-        </div>
+        <StatusBanner
+          variant="warning"
+          description="Sube tu documentación profesional para verificación. Solo visible para el equipo administrativo de MotusDAO."
+        />
 
         <div className="grid gap-4 md:grid-cols-2">
           <FileUploadField
