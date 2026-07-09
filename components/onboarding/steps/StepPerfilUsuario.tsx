@@ -208,7 +208,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
           </div>
           <h2 className="text-2xl font-bold mb-2">Información Personal</h2>
           <p className="text-muted-foreground">
-            Cuéntanos sobre ti para personalizar tu experiencia
+            Cuéntanos sobre ti para conectarte con el profesional adecuado
           </p>
         </div>
 

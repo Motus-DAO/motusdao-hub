@@ -35,6 +35,7 @@ export function CTAButton({
         variantClasses[variant],
         sizeClasses[size],
         glow && "shadow-glow hover:shadow-glow",
+        props.disabled && "cursor-not-allowed opacity-50",
         className
       )}
       {...props}

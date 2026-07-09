@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createWalletClient, http, parseEther } from 'viem'
+import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
 import { celoMainnet } from '@/lib/celo'
 import { privateKeyToAccount } from 'viem/accounts'
 
@@ -57,6 +57,11 @@ export async function POST(request: Request) {
       transport: http(),
     })
 
+    const publicClient = createPublicClient({
+      chain: celoMainnet,
+      transport: http(),
+    })
+
     const value = parseEther(FAUCET_AMOUNT)
 
     const txHash = await walletClient.sendTransaction({
@@ -64,7 +69,9 @@ export async function POST(request: Request) {
       value,
     })
 
-    lastClaimByAddress.set(to, now)
+    await publicClient.waitForTransactionReceipt({ hash: txHash })
+
+    lastClaimByAddress.set(to, Date.now())
 
     return NextResponse.json({
       success: true,

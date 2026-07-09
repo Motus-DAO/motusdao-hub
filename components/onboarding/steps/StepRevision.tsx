@@ -47,6 +47,7 @@ import {
   PSM_LEGAL_DECLARATIONS,
 } from '@/lib/intake/psm-intake-options'
 import type { PsmLegalDeclarationKey } from '@/lib/intake/psm-operations-compat'
+import { PLATFORM_USE_CASES } from '@/lib/intake/user-intake-v1'
 
 interface StepRevisionProps {
   onNext: () => void
@@ -54,7 +55,8 @@ interface StepRevisionProps {
 }
 
 export function StepRevision({ onNext, onBack }: StepRevisionProps) {
-  const { data, role, updateData, setCurrentStep, setPsmWizardStep } = useOnboardingStore()
+  const { data, role, usuarioIntakeTrack, updateData, setCurrentStep, setPsmWizardStep } = useOnboardingStore()
+  const isPlatformUser = role === 'usuario' && usuarioIntakeTrack === 'platform'
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
@@ -147,28 +149,38 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
 
       const rolePayload =
         role === 'usuario'
-          ? {
-              tipoAtencion: concernFields.tipoAtencion,
-              problematica: data.problematica,
-              preferenciaAsignacion: data.preferenciaAsignacion,
-              clinicalConcern: concernFields.clinicalConcern,
-              urgencyLevel: data.urgencyLevel || 'medium',
-              preferredModality: data.preferredModality || 'video',
-              preferredTherapyStyle: data.preferredTherapyStyle || [],
-              languages: data.languages || ['es'],
-              timezone: data.timezone,
-              availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
-              budgetMin: data.budgetMin,
-              budgetMax: data.budgetMax,
-              paymentPreference: data.paymentPreference,
-              therapistGenderPreference: data.therapistGenderPreference,
-              priorTherapyExperience: data.priorTherapyExperience,
-              medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
-              riskFlags: data.riskFlags || [],
-              consentToAIProcessing: data.consentToAIProcessing ?? false,
-              consentToShareWithPSM: data.consentToShareWithPSM ?? true,
-              consentToClinicalMatching: data.consentToClinicalMatching ?? true
-            }
+          ? isPlatformUser
+            ? {
+                intakeTrack: 'platform' as const,
+                platformUseCases: data.platformUseCases || [],
+                platformNotes: data.platformNotes,
+                languages: data.languages || ['es'],
+                consentToShareWithPSM: false,
+                consentToClinicalMatching: false,
+              }
+            : {
+                intakeTrack: 'therapy' as const,
+                tipoAtencion: concernFields.tipoAtencion,
+                problematica: data.problematica,
+                preferenciaAsignacion: data.preferenciaAsignacion,
+                clinicalConcern: concernFields.clinicalConcern,
+                urgencyLevel: data.urgencyLevel || 'medium',
+                preferredModality: data.preferredModality || 'video',
+                preferredTherapyStyle: data.preferredTherapyStyle || [],
+                languages: data.languages || ['es'],
+                timezone: data.timezone,
+                availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
+                budgetMin: data.budgetMin,
+                budgetMax: data.budgetMax,
+                paymentPreference: data.paymentPreference,
+                therapistGenderPreference: data.therapistGenderPreference,
+                priorTherapyExperience: data.priorTherapyExperience,
+                medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
+                riskFlags: data.riskFlags || [],
+                consentToAIProcessing: data.consentToAIProcessing ?? false,
+                consentToShareWithPSM: data.consentToShareWithPSM ?? true,
+                consentToClinicalMatching: data.consentToClinicalMatching ?? true,
+              }
           : buildPsmApiPayload(data)
 
       const onboardingRes = await fetch(onboardingEndpoint, {
@@ -377,6 +389,39 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
 
           {/* Role-specific Info */}
           {role === 'usuario' ? (
+            isPlatformUser ? (
+              <div className="space-y-4">
+                <h3 className="flex items-center space-x-2 text-lg font-semibold">
+                  <User className="h-5 w-5 text-mauve-400" />
+                  <span>Uso de la plataforma</span>
+                </h3>
+                <div className="space-y-4">
+                  <div className="rounded-xl p-4 glass">
+                    <p className="mb-2 text-sm font-medium">Intereses seleccionados</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(data.platformUseCases || []).map((useCase) => {
+                        const label =
+                          PLATFORM_USE_CASES.find((item) => item.value === useCase)?.label || useCase
+                        return (
+                          <span
+                            key={useCase}
+                            className="rounded-full bg-mauve-500/20 px-2 py-1 text-xs text-mauve-600 dark:text-mauve-300"
+                          >
+                            {label}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {data.platformNotes && (
+                    <div className="rounded-xl p-4 glass">
+                      <p className="mb-2 text-sm font-medium">Notas adicionales</p>
+                      <p className="text-foreground">{data.platformNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center space-x-2">
                 <Heart className="w-5 h-5 text-mauve-400" />
@@ -421,6 +466,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 </div>
               </div>
             </div>
+            )
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between">

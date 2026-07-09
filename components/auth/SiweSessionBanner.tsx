@@ -35,7 +35,7 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
         variant="success"
         icon={CheckCircle}
         title="Sesión verificada"
-        description="Ya puedes subir documentos y usar funciones que requieren tu wallet."
+        description="Ya puedes usar funciones que requieren tu wallet (Motus Names, pagos y más)."
       />
     )
   }
@@ -62,8 +62,8 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
       }
       description={
         <>
-          Conectar la wallet no basta para subir archivos: debes firmar un mensaje de
-          verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.
+          Conectar la wallet no basta para usar Motus Names y otras funciones on-chain: debes
+          firmar un mensaje de verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.
           {eoaAddress && (
             <span className="mt-1 block break-all font-mono text-xs opacity-90">
               {eoaAddress}

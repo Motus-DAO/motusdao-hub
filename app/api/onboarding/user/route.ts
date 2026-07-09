@@ -11,7 +11,8 @@ import { resolveAuthIdentityFields } from '@/lib/auth/identity'
 const stringArray = z.array(z.string()).default([])
 const optionalStringArray = z.array(z.string()).optional()
 
-const userOnboardingSchema = z.object({
+const userOnboardingSchema = z
+  .object({
   email: z.string().email(),
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
@@ -19,6 +20,7 @@ const userOnboardingSchema = z.object({
   authProviderId: z.string().optional(),
   privyId: z.string().optional(),
   intakeSource: z.enum(['manual', 'ai_assisted']).default('manual'),
+  intakeTrack: z.enum(['platform', 'therapy']).default('therapy'),
   motusName: z.string().optional(),
   mnsTxHash: z.string().optional(),
   profileNftTxHash: z.string().optional(),
@@ -33,9 +35,12 @@ const userOnboardingSchema = z.object({
   avatarUrl: z.string().optional(),
   avatarStoragePath: z.string().optional(),
 
+  platformUseCases: optionalStringArray,
+  platformNotes: z.string().optional(),
+
   tipoAtencion: z.string().optional(),
-  problematica: z.string().min(10),
-  preferenciaAsignacion: z.enum(['automatica', 'explorar']),
+  problematica: z.string().optional(),
+  preferenciaAsignacion: z.enum(['automatica', 'explorar']).optional(),
   clinicalConcern: optionalStringArray,
   urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis']).default('medium'),
   preferredModality: z.enum(['video', 'chat', 'in_person', 'hybrid']).default('video'),
@@ -57,18 +62,57 @@ const userOnboardingSchema = z.object({
   consentToShareWithPSM: z.boolean().default(true),
   consentToClinicalMatching: z.boolean().default(true),
   consentPolicyVersion: z.string().default('v1'),
-  consentLocale: z.string().default('es')
+  consentLocale: z.string().default('es'),
 })
+  .superRefine((data, ctx) => {
+    if (data.intakeTrack === 'therapy') {
+      if (!data.problematica || data.problematica.length < 10) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'El motivo de consulta es obligatorio para usuarios terapéuticos',
+          path: ['problematica'],
+        })
+      }
+      if (!data.preferenciaAsignacion) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'La preferencia de asignación es obligatoria',
+          path: ['preferenciaAsignacion'],
+        })
+      }
+    }
+
+    if (data.intakeTrack === 'platform') {
+      if (!data.platformUseCases?.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Selecciona al menos un uso de la plataforma',
+          path: ['platformUseCases'],
+        })
+      }
+    }
+  })
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const data = userOnboardingSchema.parse(body)
+    const isPlatformTrack = data.intakeTrack === 'platform'
     const concernFields = deriveConcernFields({
       tipoAtencion: data.tipoAtencion,
       clinicalConcern: data.clinicalConcern,
       problematica: data.problematica,
     })
+
+    const platformSummary =
+      data.platformUseCases?.length
+        ? `Uso de plataforma: ${data.platformUseCases.join(', ')}`
+        : 'Usuario de plataforma MotusDAO'
+    const patientProblematica =
+      data.problematica ||
+      data.platformNotes ||
+      platformSummary
+    const patientPreferencia = data.preferenciaAsignacion || 'explorar'
 
     const identity = await resolveOnboardingIdentity({
       email: data.email,
@@ -172,16 +216,22 @@ export async function POST(request: NextRequest) {
       await tx.patientProfile.upsert({
         where: { userId: user.id },
         update: {
-          tipoAtencion: concernFields.tipoAtencion,
-          problematica: data.problematica,
-          preferenciaAsignacion: data.preferenciaAsignacion,
-          clinicalConcern: toInputJson(concernFields.clinicalConcern),
-          urgencyLevel: data.urgencyLevel,
+          tipoAtencion: isPlatformTrack ? 'plataforma' : concernFields.tipoAtencion,
+          problematica: patientProblematica,
+          preferenciaAsignacion: patientPreferencia,
+          clinicalConcern: toInputJson(
+            isPlatformTrack ? data.platformUseCases || [] : concernFields.clinicalConcern
+          ),
+          urgencyLevel: isPlatformTrack ? 'low' : data.urgencyLevel,
           preferredModality: data.preferredModality,
           preferredTherapyStyle: toInputJson(data.preferredTherapyStyle ?? []),
           languages: toInputJson(data.languages?.length ? data.languages : ['es']),
           timezone: data.timezone,
-          availability: toInputJson(data.availability ?? {}),
+          availability: toInputJson(
+            isPlatformTrack
+              ? { platformUseCases: data.platformUseCases || [], notes: data.platformNotes }
+              : data.availability ?? {}
+          ),
           budgetMin: data.budgetMin,
           budgetMax: data.budgetMax,
           paymentPreference: data.paymentPreference,
@@ -192,16 +242,22 @@ export async function POST(request: NextRequest) {
         },
         create: {
           userId: user.id,
-          tipoAtencion: concernFields.tipoAtencion,
-          problematica: data.problematica,
-          preferenciaAsignacion: data.preferenciaAsignacion,
-          clinicalConcern: toInputJson(concernFields.clinicalConcern),
-          urgencyLevel: data.urgencyLevel,
+          tipoAtencion: isPlatformTrack ? 'plataforma' : concernFields.tipoAtencion,
+          problematica: patientProblematica,
+          preferenciaAsignacion: patientPreferencia,
+          clinicalConcern: toInputJson(
+            isPlatformTrack ? data.platformUseCases || [] : concernFields.clinicalConcern
+          ),
+          urgencyLevel: isPlatformTrack ? 'low' : data.urgencyLevel,
           preferredModality: data.preferredModality,
           preferredTherapyStyle: toInputJson(data.preferredTherapyStyle ?? []),
           languages: toInputJson(data.languages?.length ? data.languages : ['es']),
           timezone: data.timezone,
-          availability: toInputJson(data.availability ?? {}),
+          availability: toInputJson(
+            isPlatformTrack
+              ? { platformUseCases: data.platformUseCases || [], notes: data.platformNotes }
+              : data.availability ?? {}
+          ),
           budgetMin: data.budgetMin,
           budgetMax: data.budgetMax,
           paymentPreference: data.paymentPreference,
@@ -234,17 +290,19 @@ export async function POST(request: NextRequest) {
       return user
     })
 
-    await createCrisisEventIfNeeded({
-      userId: result.id,
-      source: data.intakeSource,
-      urgencyLevel: data.urgencyLevel,
-      riskFlags: data.riskFlags,
-      summary: data.problematica,
-      metadata: {
-        clinicalConcern: concernFields.clinicalConcern,
-        preferredModality: data.preferredModality,
-      },
-    })
+    if (!isPlatformTrack) {
+      await createCrisisEventIfNeeded({
+        userId: result.id,
+        source: data.intakeSource,
+        urgencyLevel: data.urgencyLevel,
+        riskFlags: data.riskFlags,
+        summary: patientProblematica,
+        metadata: {
+          clinicalConcern: concernFields.clinicalConcern,
+          preferredModality: data.preferredModality,
+        },
+      })
+    }
 
     await recordClinicalAccess({
       request,
@@ -273,8 +331,9 @@ export async function POST(request: NextRequest) {
         intakeSource: result.intakeSource
       },
       matching: {
-        eligible: data.urgencyLevel !== 'crisis',
-        preference: data.preferenciaAsignacion
+        eligible: !isPlatformTrack && data.urgencyLevel !== 'crisis',
+        preference: patientPreferencia,
+        intakeTrack: data.intakeTrack,
       }
     }, { status: existingUser ? 200 : 201 })
   } catch (error) {
