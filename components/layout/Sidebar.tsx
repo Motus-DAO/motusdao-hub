@@ -13,6 +13,7 @@ import {
   BookOpen, 
   User,
   Video,
+  Calendar,
   X
 } from 'lucide-react'
 import Link from 'next/link'
@@ -33,6 +34,7 @@ const iconMap = {
   BookOpen,
   User,
   Video,
+  Calendar,
 }
 
 export function Sidebar() {

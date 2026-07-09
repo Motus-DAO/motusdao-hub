@@ -286,6 +286,16 @@ body::after {
   color: rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Status banners control their own text colors in light, dark, and matrix themes */
+.glass .ui-status-banner,
+.glass .ui-status-banner :where(p, div, span, li, label, ul) {
+  color: unset !important;
+}
+
+.glass .ui-status-banner .status-banner-error {
+  color: rgb(220 38 38) !important;
+}
+
 .glass .gradient-text {
   background: var(--grad-primary);
   background-clip: text;
@@ -309,6 +319,15 @@ body::after {
 .dark .glass label,
 .dark .glass p:not(.text-muted-foreground) {
   color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.dark .glass .ui-status-banner,
+.dark .glass .ui-status-banner :where(p, div, span, li, label, ul) {
+  color: unset !important;
+}
+
+.dark .glass .ui-status-banner .status-banner-error {
+  color: rgb(252 165 165) !important;
 }
 
 .dark .glass .gradient-text {
@@ -798,6 +817,33 @@ body::after {
 [data-theme="matrix"] .glass label,
 [data-theme="matrix"] .glass p:not(.text-muted-foreground) {
   color: var(--matrix-text) !important;
+}
+
+[data-theme="matrix"] .glass .ui-status-banner,
+[data-theme="matrix"] .glass .ui-status-banner :where(p, div, span, li, label, ul) {
+  color: unset !important;
+}
+
+[data-theme="matrix"] .ui-status-banner[data-variant="warning"] {
+  background-color: rgba(69, 26, 3, 0.92) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: #fde68a !important;
+}
+
+[data-theme="matrix"] .ui-status-banner[data-variant="success"] {
+  background-color: rgba(6, 46, 34, 0.92) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  color: #a7f3d0 !important;
+}
+
+[data-theme="matrix"] .ui-status-banner[data-variant="error"] {
+  background-color: rgba(69, 10, 10, 0.92) !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  color: #fecaca !important;
+}
+
+[data-theme="matrix"] .glass .ui-status-banner .status-banner-error {
+  color: #fca5a5 !important;
 }
 
 /* Matrix theme sidebar text colors */

@@ -86,6 +86,7 @@ export const getNavigationItems = (role: UserRole) => {
     return [
       ...baseItems.slice(0, 2),
       { name: 'Mis usuarios', href: '/mis-usuarios', icon: 'Users' },
+      { name: 'Disponibilidad', href: '/disponibilidad', icon: 'Calendar' },
       { name: 'Supervisión', href: '/supervision', icon: 'Eye' },
       ...baseItems.slice(2),
     ]

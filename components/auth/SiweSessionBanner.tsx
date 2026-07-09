@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle, Loader } from 'lucide-react'
 import { useEffect } from 'react'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { StatusBanner } from '@/components/ui/StatusBanner'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 
 type Props = {
@@ -30,52 +31,52 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
 
   if (sessionState === 'ready') {
     return (
-      <div className="flex items-start gap-2 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
-        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-        <div>
-          <p className="font-medium text-emerald-800 dark:text-emerald-200">Sesión verificada</p>
-          <p className="text-emerald-700 dark:text-emerald-300/90 text-xs">
-            Ya puedes subir documentos y usar funciones que requieren tu wallet.
-          </p>
-        </div>
-      </div>
+      <StatusBanner
+        variant="success"
+        icon={CheckCircle}
+        title="Sesión verificada"
+        description="Ya puedes subir documentos y usar funciones que requieren tu wallet."
+      />
     )
   }
 
   if (sessionState === 'no_wallet') {
     return (
-      <div className="flex items-start gap-2 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <p>Conecta tu wallet antes de continuar.</p>
-      </div>
+      <StatusBanner
+        variant="warning"
+        icon={AlertCircle}
+        title="Conecta tu wallet antes de continuar."
+      />
     )
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-      <div className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-100">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <div className="space-y-1">
-          <p className="font-medium text-amber-950 dark:text-amber-200">
-            {compact
-              ? 'Falta verificar tu wallet'
-              : 'Tu wallet está conectada, pero falta un paso más'}
-          </p>
-          <p className="text-amber-800 dark:text-amber-100/90 text-xs leading-relaxed">
-            Conectar la wallet no basta para subir archivos: debes firmar un mensaje de
-            verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.
-          </p>
+    <StatusBanner
+      variant="warning"
+      icon={AlertCircle}
+      className="space-y-3 py-4"
+      title={
+        compact
+          ? 'Falta verificar tu wallet'
+          : 'Tu wallet está conectada, pero falta un paso más'
+      }
+      description={
+        <>
+          Conectar la wallet no basta para subir archivos: debes firmar un mensaje de
+          verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.
           {eoaAddress && (
-            <p className="font-mono text-xs text-amber-700 dark:text-amber-200/80 break-all">{eoaAddress}</p>
+            <span className="mt-1 block break-all font-mono text-xs opacity-90">
+              {eoaAddress}
+            </span>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {signError && (
-        <p className="text-sm text-red-600 dark:text-red-300 flex items-start gap-1.5">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+        <div className="status-banner-error flex items-start gap-1.5 text-sm">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           {signError}
-        </p>
+        </div>
       )}
 
       <CTAButton
@@ -86,6 +87,6 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
       >
         {signing ? 'Esperando firma en tu wallet…' : 'Firmar mensaje de verificación'}
       </CTAButton>
-    </div>
+    </StatusBanner>
   )
 }

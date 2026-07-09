@@ -167,14 +167,14 @@ export function FileUploadField({
       </div>
 
       {showSuccess && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 dark:border-emerald-500/35 dark:bg-emerald-500/15">
+        <div className="ui-status-banner flex items-start justify-between gap-3 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 dark:border-emerald-500/40 dark:bg-emerald-950/75">
           <div className="flex min-w-0 items-start gap-2 text-sm text-emerald-900 dark:text-emerald-100">
             <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <div className="min-w-0">
-              <p className="font-medium text-emerald-800 dark:text-emerald-200">
+              <div className="font-medium text-emerald-800 dark:text-emerald-100">
                 {justUploaded ? 'Documento subido correctamente' : 'Documento guardado'}
-              </p>
-              <p className="truncate text-emerald-700 dark:text-emerald-300/90">{fileName}</p>
+              </div>
+              <div className="truncate text-emerald-700 dark:text-emerald-200/90">{fileName}</div>
             </div>
           </div>
           {onClear && (
@@ -192,12 +192,12 @@ export function FileUploadField({
       )}
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 dark:border-red-500/35 dark:bg-red-500/10">
+        <div className="ui-status-banner flex items-start justify-between gap-3 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-950/75">
           <div className="flex min-w-0 items-start gap-2 text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             <div>
-              <p className="font-medium text-red-800 dark:text-red-300">No se pudo subir el archivo</p>
-              <p className="text-red-700 dark:text-red-200/90">{error}</p>
+              <div className="font-medium text-red-800 dark:text-red-100">No se pudo subir el archivo</div>
+              <div className="text-red-700 dark:text-red-200/90">{error}</div>
             </div>
           </div>
           {(localPreview || isUploaded) && onClear && (
@@ -244,7 +244,7 @@ export function FileUploadField({
       )}
 
       {showSuccess && fileName?.match(/\.pdf$/i) && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/5 dark:text-emerald-200/90">
+        <div className="ui-status-banner flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/75 dark:text-emerald-100">
           <FileText className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>PDF listo para verificación administrativa</span>
         </div>
