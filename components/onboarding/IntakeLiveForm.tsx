@@ -233,11 +233,6 @@ export function IntakeLiveForm({
                 onChange={(v) => set('urgencyLevel', v)}
               />
               <LiveInput
-                label={fieldLabel('preferredModality')}
-                value={data.preferredModality || ''}
-                onChange={(v) => set('preferredModality', v)}
-              />
-              <LiveInput
                 label={fieldLabel('languages')}
                 value={(data.languages || []).join(', ')}
                 onChange={(v) =>
@@ -248,6 +243,9 @@ export function IntakeLiveForm({
                 }
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Las sesiones con profesionales son por video.
+            </p>
             <LiveInput
               label={fieldLabel('availabilityNotes')}
               value={data.availabilityNotes || ''}
@@ -262,7 +260,7 @@ export function IntakeLiveForm({
           <PsmSectionBlock title="Consentimientos">
             <div className="space-y-2">
               <LiveCheckbox
-                label={fieldLabel('consentToAIProcessing')}
+                label="Acepto que MotusAI procese mis respuestas con VeniceAI (privacidad por diseño) si uso intake asistido"
                 checked={data.consentToAIProcessing ?? false}
                 onChange={(v) => set('consentToAIProcessing', v)}
               />

@@ -493,7 +493,10 @@ export function AnimatedAIChat({
                         whileTap={{ scale: 0.94 }}
                         className={cn(
                           actionButtonClass,
-                          'border border-mauve-500/30 bg-mauve-500/15 text-mauve-200 hover:bg-mauve-500/25 disabled:opacity-50',
+                          isLight
+                            ? 'border border-mauve-500/40 bg-mauve-100 text-mauve-900 hover:bg-mauve-200'
+                            : 'border border-mauve-500/40 bg-mauve-500/20 text-mauve-100 hover:bg-mauve-500/30',
+                          'disabled:opacity-50',
                         )}
                       >
                         <PhoneCall className="h-4 w-4" />
@@ -539,13 +542,13 @@ export function AnimatedAIChat({
               <div className="flex items-center gap-2">
                 <Image src="/venice-logo.svg" alt="Venice" width={14} height={14} className="rounded-sm" />
                 <span className={cn('font-medium', isLight ? 'text-slate-700' : 'text-white/80')}>
-                  MotusAI · apoyo con privacidad
+                  MotusAI · VeniceAI · privacidad en el procesamiento
                 </span>
               </div>
               <p className="mt-1">
                 {isPsm
-                  ? 'No incluyas datos identificables de pacientes. La IA no sustituye juicio clínico ni supervisión profesional.'
-                  : 'MotusAI ofrece orientación de apoyo. No sustituye atención profesional ni emergencias.'}
+                  ? 'No incluyas datos identificables de pacientes. Usamos VeniceAI para procesar con privacidad. La IA no sustituye juicio clínico ni supervisión profesional.'
+                  : 'MotusAI usa VeniceAI para procesar con privacidad. Ofrece orientación de apoyo; no sustituye atención profesional ni emergencias.'}
               </p>
             </div>
           </motion.div>

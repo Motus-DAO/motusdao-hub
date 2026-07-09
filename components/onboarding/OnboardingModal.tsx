@@ -44,8 +44,8 @@ export function OnboardingModal({
       >
         <div
           className={cn(
-            'relative rounded-2xl border border-border bg-card text-card-foreground shadow-2xl',
-            'p-6 md:p-8 text-left'
+            'relative rounded-2xl border border-border bg-background text-foreground shadow-2xl',
+            'p-6 md:p-8 text-left ring-1 ring-black/5 dark:ring-white/10'
           )}
         >
           {onClose && (

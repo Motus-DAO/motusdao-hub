@@ -20,11 +20,9 @@ import { useOnboardingStore, getStepBlockerKeys } from '@/lib/onboarding-store'
 import { StepAIIntake } from './StepAIIntake'
 import { IntakeLiveForm } from '@/components/onboarding/IntakeLiveForm'
 import { deriveConcernFields } from '@/lib/intake-concerns'
-
-const optionalNumber = z.preprocess(
-  value => value === '' || value === undefined || value === null ? undefined : Number(value),
-  z.number().int().nonnegative().optional()
-)
+import { inputFieldClass, onboardingFormSurfaceClass } from '@/lib/onboarding-form-helpers'
+import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
+import { cn } from '@/lib/utils'
 
 const usuarioSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -42,12 +40,9 @@ const usuarioSchema = z.object({
     required_error: 'Debes seleccionar una preferencia de asignación'
   }),
   urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis']),
-  preferredModality: z.enum(['video', 'chat', 'in_person', 'hybrid']),
   preferredTherapyStyle: z.array(z.string()).default([]),
   languages: z.array(z.string()).default(['es']),
   availabilityNotes: z.string().optional(),
-  budgetMin: optionalNumber,
-  budgetMax: optionalNumber,
   paymentPreference: z.string().optional(),
   therapistGenderPreference: z.string().optional(),
   priorTherapyExperience: z.boolean().default(false),
@@ -148,12 +143,9 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       problematica: data.problematica || '',
       preferenciaAsignacion: data.preferenciaAsignacion || undefined,
       urgencyLevel: data.urgencyLevel || 'medium',
-      preferredModality: data.preferredModality || 'video',
       preferredTherapyStyle: data.preferredTherapyStyle || [],
       languages: data.languages || ['es'],
       availabilityNotes: data.availabilityNotes || '',
-      budgetMin: data.budgetMin,
-      budgetMax: data.budgetMax,
       paymentPreference: data.paymentPreference || '',
       therapistGenderPreference: data.therapistGenderPreference || 'no_preference',
       priorTherapyExperience: data.priorTherapyExperience ?? false,
@@ -186,10 +178,11 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
 
     updateData({
       ...formData,
+      preferredModality: 'video',
       tipoAtencion: concernFields.tipoAtencion,
       intakeSource: 'manual',
       clinicalConcern: concernFields.clinicalConcern,
-      availability: formData.availabilityNotes ? { notes: formData.availabilityNotes } : {}
+      availability: formData.availabilityNotes ? { notes: formData.availabilityNotes } : {},
     })
     onNext()
   }
@@ -201,12 +194,12 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       exit={{ opacity: 0, x: -20 }}
       className="w-full max-w-2xl mx-auto"
     >
-      <GlassCard className="p-8">
+      <GlassCard className="border border-border bg-card/95 p-8 shadow-xl">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <User className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Información Personal</h2>
+          <h2 className="text-2xl font-bold mb-2 text-foreground">Información Personal</h2>
           <p className="text-muted-foreground">
             Cuéntanos sobre ti para conectarte con el profesional adecuado
           </p>
@@ -245,7 +238,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 type="text"
                 id="nombre"
                 placeholder="Tu nombre"
-                className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition"
+                className={inputFieldClass()}
               />
               {errors.nombre && (
                 <p className="text-red-400 text-sm flex items-center space-x-1">
@@ -264,7 +257,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 type="text"
                 id="apellido"
                 placeholder="Tus apellidos"
-                className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition"
+                className={inputFieldClass()}
               />
               {errors.apellido && (
                 <p className="text-red-400 text-sm flex items-center space-x-1">
@@ -287,7 +280,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   type="tel"
                   id="telefono"
                   placeholder="+52 55 1234 5678"
-                  className="w-full pl-10 pr-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition"
+                  className={inputFieldClass(false, "pl-10 pr-4")}
                 />
               </div>
               {errors.telefono && (
@@ -308,7 +301,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   {...register('fechaNacimiento')}
                   type="date"
                   id="fechaNacimiento"
-                  className="w-full pl-10 pr-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition"
+                  className={inputFieldClass(false, "pl-10 pr-4")}
                 />
               </div>
               {errors.fechaNacimiento && (
@@ -332,7 +325,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   type="text"
                   id="ciudad"
                   placeholder="Tu ciudad"
-                  className="w-full pl-10 pr-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition"
+                  className={inputFieldClass(false, "pl-10 pr-4")}
                 />
               </div>
               {errors.ciudad && (
@@ -351,7 +344,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 <select
                   {...register('pais')}
                   id="pais"
-                  className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition appearance-none"
+                  className={inputFieldClass(false, "appearance-none")}
                 >
                   <option value="">Selecciona tu país</option>
                   {paises.map(pais => (
@@ -388,7 +381,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   id="problematica"
                   rows={5}
                   placeholder="Escribe con tus palabras qué está pasando, qué te preocupa o qué te gustaría trabajar. No necesitas elegir una categoría perfecta."
-                  className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition resize-none"
+                  className={inputFieldClass(false, "resize-none")}
                 />
                 <p className="text-xs text-muted-foreground">
                   Esta respuesta abierta será la base de tu perfil de intake. Las opciones rápidas de abajo solo ayudan al matching.
@@ -436,7 +429,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   Preferencia de asignación *
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center space-x-3 p-3 glass rounded-xl cursor-pointer hover:bg-white/15 transition-colors">
+                  <label className={cn("flex items-center space-x-3 cursor-pointer transition-colors hover:bg-muted/60", onboardingFormSurfaceClass)}>
                     <input
                       {...register('preferenciaAsignacion')}
                       type="radio"
@@ -451,7 +444,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                     </div>
                   </label>
                   
-                  <label className="flex items-center space-x-3 p-3 glass rounded-xl cursor-pointer hover:bg-white/15 transition-colors">
+                  <label className={cn("flex items-center space-x-3 cursor-pointer transition-colors hover:bg-muted/60", onboardingFormSurfaceClass)}>
                     <input
                       {...register('preferenciaAsignacion')}
                       type="radio"
@@ -474,36 +467,30 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 )}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="urgencyLevel" className="block text-sm font-medium">
-                    Urgencia *
-                  </label>
-                  <select {...register('urgencyLevel')} id="urgencyLevel" className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition">
-                    <option value="low">Baja</option>
-                    <option value="medium">Media</option>
-                    <option value="high">Alta</option>
-                    <option value="crisis">Crisis</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="preferredModality" className="block text-sm font-medium">
-                    Modalidad preferida *
-                  </label>
-                  <select {...register('preferredModality')} id="preferredModality" className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition">
-                    <option value="video">Video</option>
-                    <option value="chat">Chat</option>
-                    <option value="in_person">Presencial</option>
-                    <option value="hybrid">Híbrida</option>
-                  </select>
-                </div>
+              <div className="space-y-2">
+                <label htmlFor="urgencyLevel" className="block text-sm font-medium">
+                  Urgencia *
+                </label>
+                <select
+                  {...register('urgencyLevel')}
+                  id="urgencyLevel"
+                  className={inputFieldClass()}
+                >
+                  <option value="low">Baja</option>
+                  <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="crisis">Crisis</option>
+                </select>
+                <p className={cn('text-xs text-muted-foreground')}>
+                  Las sesiones con profesionales son por video.
+                </p>
               </div>
 
               <div className="space-y-3">
                 <label className="block text-sm font-medium">Enfoque terapéutico preferido</label>
                 <div className="grid grid-cols-2 gap-2">
                   {therapyStyles.map(style => (
-                    <label key={style.value} className="flex items-center gap-2 p-2 glass rounded-xl">
+                    <label key={style.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
                       <input {...register('preferredTherapyStyle')} type="checkbox" value={style.value} />
                       <span className="text-sm">{style.label}</span>
                     </label>
@@ -515,7 +502,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 <label className="block text-sm font-medium">Idiomas *</label>
                 <div className="grid grid-cols-3 gap-2">
                   {languageOptions.map(language => (
-                    <label key={language.value} className="flex items-center gap-2 p-2 glass rounded-xl">
+                    <label key={language.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
                       <input {...register('languages')} type="checkbox" value={language.value} />
                       <span className="text-sm">{language.label}</span>
                     </label>
@@ -533,30 +520,28 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   id="availabilityNotes"
                   rows={3}
                   placeholder="Ej: tardes entre semana, sábados por la mañana..."
-                  className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition resize-none"
+                  className={inputFieldClass(false, 'resize-none')}
                 />
                 {errors.availabilityNotes && <p className="text-red-400 text-sm">{errors.availabilityNotes.message}</p>}
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="budgetMin" className="block text-sm font-medium">Presupuesto mínimo</label>
-                  <input {...register('budgetMin')} type="number" min="0" id="budgetMin" className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition" />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="budgetMax" className="block text-sm font-medium">Presupuesto máximo</label>
-                  <input {...register('budgetMax')} type="number" min="0" id="budgetMax" className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
                   <label htmlFor="paymentPreference" className="block text-sm font-medium">Preferencia de pago</label>
-                  <input {...register('paymentPreference')} id="paymentPreference" placeholder="Tarjeta, cripto, transferencia..." className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition" />
+                  <input
+                    {...register('paymentPreference')}
+                    id="paymentPreference"
+                    placeholder="Tarjeta, cripto, transferencia..."
+                    className={inputFieldClass()}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="therapistGenderPreference" className="block text-sm font-medium">Preferencia de terapeuta</label>
-                  <select {...register('therapistGenderPreference')} id="therapistGenderPreference" className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition">
+                  <select
+                    {...register('therapistGenderPreference')}
+                    id="therapistGenderPreference"
+                    className={inputFieldClass()}
+                  >
                     <option value="no_preference">Sin preferencia</option>
                     <option value="female">Mujer</option>
                     <option value="male">Hombre</option>
@@ -565,7 +550,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 p-3 glass rounded-xl">
+              <label className={cn('flex items-center gap-2', onboardingFormSurfaceClass)}>
                 <input {...register('priorTherapyExperience')} type="checkbox" />
                 <span className="text-sm">He tenido terapia antes</span>
               </label>
@@ -574,14 +559,19 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 <label htmlFor="medicationOrDiagnosisContext" className="block text-sm font-medium">
                   Contexto diagnóstico o medicación (opcional)
                 </label>
-                <textarea {...register('medicationOrDiagnosisContext')} id="medicationOrDiagnosisContext" rows={3} className="w-full px-4 py-3 glass border border-white/15 rounded-xl focus-ring smooth-transition resize-none" />
+                <textarea
+                  {...register('medicationOrDiagnosisContext')}
+                  id="medicationOrDiagnosisContext"
+                  rows={3}
+                  className={inputFieldClass(false, 'resize-none')}
+                />
               </div>
 
               <div className="space-y-3">
                 <label className="block text-sm font-medium">Señales de riesgo</label>
                 <div className="grid md:grid-cols-2 gap-2">
                   {riskFlagOptions.map(flag => (
-                    <label key={flag.value} className="flex items-center gap-2 p-2 glass rounded-xl">
+                    <label key={flag.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
                       <input {...register('riskFlags')} type="checkbox" value={flag.value} />
                       <span className="text-sm">{flag.label}</span>
                     </label>
@@ -589,10 +579,14 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 </div>
               </div>
 
-              <div className="space-y-3 border-t border-white/10 pt-4">
+              <div className="space-y-3 border-t border-border pt-4">
                 <label className="flex items-start gap-2">
                   <input {...register('consentToAIProcessing')} type="checkbox" className="mt-1" />
-                  <span className="text-sm">Acepto que la IA procese mis respuestas si uso intake asistido</span>
+                  <span className="text-sm">
+                    Acepto que MotusAI procese mis respuestas con{' '}
+                    <strong>VeniceAI</strong> (privacidad por diseño: el procesamiento se realiza
+                    sin retención identificable de mis datos) si uso intake asistido
+                  </span>
                 </label>
                 <label className="flex items-start gap-2">
                   <input {...register('consentToShareWithPSM')} type="checkbox" className="mt-1" />
@@ -629,7 +623,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
             <button
               type="button"
               onClick={onBack}
-              className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+              className={onboardingBackButtonClass}
             >
               Atrás
             </button>
