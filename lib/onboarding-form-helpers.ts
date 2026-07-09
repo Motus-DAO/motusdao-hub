@@ -4,15 +4,22 @@ import type { OnboardingData } from '@/lib/onboarding-store'
 import { buildPsmFormDefaults } from '@/lib/intake/psm-intake-v1'
 import { psmFieldLabel } from '@/lib/intake/psm-intake-v1'
 
+/** Opaque, theme-safe inputs for onboarding forms (readable in light + dark). */
 export function inputFieldClass(hasError?: boolean, extra?: string) {
   return cn(
-    'w-full px-4 py-3 glass rounded-xl focus-ring smooth-transition',
+    'w-full px-4 py-3 rounded-xl focus-ring smooth-transition',
+    'bg-background text-foreground border border-border',
+    'placeholder:text-muted-foreground',
+    '[&>option]:bg-background [&>option]:text-foreground',
     hasError
       ? 'border-2 border-red-500/80 ring-2 ring-red-500/25 bg-red-500/5'
-      : 'border border-border',
+      : '',
     extra
   )
 }
+
+export const onboardingFormSurfaceClass =
+  'rounded-xl border border-border bg-card/90 p-4 text-foreground shadow-sm'
 
 export function groupFieldClass(hasError?: boolean) {
   return cn(

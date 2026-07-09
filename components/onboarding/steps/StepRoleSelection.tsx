@@ -11,7 +11,6 @@ import {
   Brain,
   GraduationCap,
   CheckCircle2,
-  Globe,
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -23,21 +22,13 @@ interface StepRoleSelectionProps {
   onBack: () => void
 }
 
-type RoleChoice = 'platform' | 'therapy' | 'psm'
+type RoleChoice = 'usuario' | 'psm'
 
 export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
-  const { role, usuarioIntakeTrack, setRole, setUsuarioIntakeTrack } = useOnboardingStore()
+  const { role, setRole, setUsuarioIntakeTrack } = useOnboardingStore()
 
   const initialChoice: RoleChoice | null =
-    role === 'psm'
-      ? 'psm'
-      : role === 'usuario'
-        ? usuarioIntakeTrack === 'therapy'
-          ? 'therapy'
-          : usuarioIntakeTrack === 'platform'
-            ? 'platform'
-            : null
-        : null
+    role === 'psm' ? 'psm' : role === 'usuario' ? 'usuario' : null
 
   const [selectedChoice, setSelectedChoice] = useState<RoleChoice | null>(initialChoice)
 
@@ -46,12 +37,12 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
 
     if (choice === 'psm') {
       setRole('psm')
-      setUsuarioIntakeTrack('platform')
       return
     }
 
     setRole('usuario')
-    setUsuarioIntakeTrack(choice === 'therapy' ? 'therapy' : 'platform')
+    // Users go through the therapy matching intake (video-only sessions).
+    setUsuarioIntakeTrack('therapy')
   }
 
   const handleContinue = () => {
@@ -59,10 +50,10 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
   }
 
   const cardClass = (choice: RoleChoice) =>
-    `p-6 transition-all duration-300 relative ${
+    `p-6 transition-all duration-300 relative bg-card/95 ${
       selectedChoice === choice
-        ? 'ring-4 ring-mauve-500 bg-mauve-500/20 border-2 border-mauve-500 shadow-lg shadow-mauve-500/20'
-        : 'hover:bg-foreground/5 border border-transparent'
+        ? 'ring-4 ring-mauve-500 bg-mauve-500/15 border-2 border-mauve-500 shadow-lg shadow-mauve-500/20'
+        : 'hover:bg-muted/60 border border-border'
     }`
 
   return (
@@ -70,63 +61,23 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="mx-auto w-full max-w-5xl"
+      className="mx-auto w-full max-w-4xl"
     >
-      <GlassCard className="p-8">
+      <GlassCard className="border border-border bg-card/95 p-8 shadow-xl">
         <div className="mb-8 text-center">
-          <h2 className="mb-2 text-2xl font-bold">Selecciona tu tipo de cuenta</h2>
+          <h2 className="mb-2 text-2xl font-bold text-foreground">Selecciona tu tipo de cuenta</h2>
           <p className="text-muted-foreground">Elige cómo quieres usar MotusDAO</p>
         </div>
 
-        <div className="mb-8 grid gap-6 md:grid-cols-3">
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="relative cursor-pointer"
-            onClick={() => handleChoiceSelect('platform')}
+            onClick={() => handleChoiceSelect('usuario')}
           >
-            <GlassCard className={cardClass('platform')}>
-              {selectedChoice === 'platform' && (
-                <div className="absolute right-4 top-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mauve-500 shadow-lg">
-                    <CheckCircle2 className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-              )}
-              <div className="mb-4 flex items-center space-x-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-mauve-500 to-purple-600">
-                  <Globe className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold">Usuario de la plataforma</h3>
-                  <p className="text-sm text-muted-foreground">MNS, pagos y Hub</p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-purple-400" />
-                  <span>Motus Name Service (.motus)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-400" />
-                  <span>Perfil básico en el Hub</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-green-400" />
-                  <span>Cursos y comunidad</span>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="relative cursor-pointer"
-            onClick={() => handleChoiceSelect('therapy')}
-          >
-            <GlassCard className={cardClass('therapy')}>
-              {selectedChoice === 'therapy' && (
+            <GlassCard className={cardClass('usuario')}>
+              {selectedChoice === 'usuario' && (
                 <div className="absolute right-4 top-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mauve-500 shadow-lg">
                     <CheckCircle2 className="h-5 w-5 text-white" />
@@ -138,22 +89,22 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
                   <User className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold">Busco apoyo terapéutico</h3>
-                  <p className="text-sm text-muted-foreground">Matching con profesionales</p>
+                  <h3 className="text-xl font-semibold text-foreground">Soy Usuario</h3>
+                  <p className="text-sm text-muted-foreground">Busco apoyo en salud mental</p>
                 </div>
               </div>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm text-foreground">
                 <div className="flex items-center gap-2">
                   <Heart className="h-4 w-4 text-red-400" />
-                  <span>Acceso a psicoterapia</span>
+                  <span>Acceso a psicoterapia por video</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Brain className="h-4 w-4 text-blue-400" />
-                  <span>MotusAI personalizado</span>
+                  <span>MotusAI con VeniceAI (privacidad)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-purple-400" />
-                  <span>Bitácora privada</span>
+                  <span>Motus Names, Hub y bitácora</span>
                 </div>
               </div>
             </GlassCard>
@@ -178,11 +129,11 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
                   <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold">Soy profesional (PSM)</h3>
-                  <p className="text-sm text-muted-foreground">Salud mental</p>
+                  <h3 className="text-xl font-semibold text-foreground">Soy Profesional (PSM)</h3>
+                  <p className="text-sm text-muted-foreground">Profesional de la Salud Mental</p>
                 </div>
               </div>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm text-foreground">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-emerald-400" />
                   <span>Gestión de pacientes</span>

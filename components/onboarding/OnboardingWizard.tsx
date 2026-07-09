@@ -9,7 +9,6 @@ import { WizardStepper } from './WizardStepper'
 import { StepConnect } from './steps/StepConnect'
 import { StepRoleSelection } from './steps/StepRoleSelection'
 import { StepPerfilUsuario } from './steps/StepPerfilUsuario'
-import { StepPerfilPlataforma } from './steps/StepPerfilPlataforma'
 import { StepPerfilPSM } from './steps/StepPerfilPSM'
 import { StepRevision } from './steps/StepRevision'
 import { StepBlockchain } from './steps/StepBlockchain'
@@ -24,7 +23,6 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
     currentStep, 
     setCurrentStep, 
     role,
-    usuarioIntakeTrack,
     setRole, 
     isStepValid, 
     canProceed
@@ -108,9 +106,6 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
         return <StepRoleSelection onNext={handleNext} onBack={handleBack} />
       
       case 3:
-        if (role === 'usuario' && usuarioIntakeTrack === 'platform') {
-          return <StepPerfilPlataforma onNext={handleNext} onBack={handleBack} />
-        }
         if (role === 'usuario') {
           return <StepPerfilUsuario onNext={handleNext} onBack={handleBack} />
         } else if (role === 'psm') {

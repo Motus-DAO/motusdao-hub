@@ -165,13 +165,11 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 preferenciaAsignacion: data.preferenciaAsignacion,
                 clinicalConcern: concernFields.clinicalConcern,
                 urgencyLevel: data.urgencyLevel || 'medium',
-                preferredModality: data.preferredModality || 'video',
+                preferredModality: 'video' as const,
                 preferredTherapyStyle: data.preferredTherapyStyle || [],
                 languages: data.languages || ['es'],
                 timezone: data.timezone,
                 availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
-                budgetMin: data.budgetMin,
-                budgetMax: data.budgetMax,
                 paymentPreference: data.paymentPreference,
                 therapistGenderPreference: data.therapistGenderPreference,
                 priorTherapyExperience: data.priorTherapyExperience,
@@ -732,7 +730,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                   className="mt-1 w-4 h-4"
                 />
               <span className="text-muted-foreground">
-                Autorizo el uso de IA para apoyar el emparejamiento y mejorar mi perfil (opcional).
+                Autorizo que MotusAI procese datos de matching con VeniceAI (privacidad por diseño; opcional).
               </span>
             </label>
             {!consentsComplete && (

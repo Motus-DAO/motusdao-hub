@@ -48,8 +48,6 @@ const userOnboardingSchema = z
   languages: z.array(z.string()).default(['es']),
   timezone: z.string().optional(),
   availability: z.record(z.unknown()).default({}),
-  budgetMin: z.number().int().nonnegative().optional(),
-  budgetMax: z.number().int().nonnegative().optional(),
   paymentPreference: z.string().optional(),
   therapistGenderPreference: z.string().optional(),
   priorTherapyExperience: z.boolean().optional(),
@@ -223,7 +221,7 @@ export async function POST(request: NextRequest) {
             isPlatformTrack ? data.platformUseCases || [] : concernFields.clinicalConcern
           ),
           urgencyLevel: isPlatformTrack ? 'low' : data.urgencyLevel,
-          preferredModality: data.preferredModality,
+          preferredModality: 'video',
           preferredTherapyStyle: toInputJson(data.preferredTherapyStyle ?? []),
           languages: toInputJson(data.languages?.length ? data.languages : ['es']),
           timezone: data.timezone,
@@ -232,8 +230,6 @@ export async function POST(request: NextRequest) {
               ? { platformUseCases: data.platformUseCases || [], notes: data.platformNotes }
               : data.availability ?? {}
           ),
-          budgetMin: data.budgetMin,
-          budgetMax: data.budgetMax,
           paymentPreference: data.paymentPreference,
           therapistGenderPreference: data.therapistGenderPreference,
           priorTherapyExperience: data.priorTherapyExperience,
@@ -249,7 +245,7 @@ export async function POST(request: NextRequest) {
             isPlatformTrack ? data.platformUseCases || [] : concernFields.clinicalConcern
           ),
           urgencyLevel: isPlatformTrack ? 'low' : data.urgencyLevel,
-          preferredModality: data.preferredModality,
+          preferredModality: 'video',
           preferredTherapyStyle: toInputJson(data.preferredTherapyStyle ?? []),
           languages: toInputJson(data.languages?.length ? data.languages : ['es']),
           timezone: data.timezone,
@@ -258,8 +254,6 @@ export async function POST(request: NextRequest) {
               ? { platformUseCases: data.platformUseCases || [], notes: data.platformNotes }
               : data.availability ?? {}
           ),
-          budgetMin: data.budgetMin,
-          budgetMax: data.budgetMax,
           paymentPreference: data.paymentPreference,
           therapistGenderPreference: data.therapistGenderPreference,
           priorTherapyExperience: data.priorTherapyExperience,

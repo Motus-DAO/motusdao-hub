@@ -67,7 +67,7 @@ const RESPONSE_SCHEMA = {
 const QUESTION_GUIDE = {
   usuario: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica',
-    q2: 'clinicalConcern, preferenciaAsignacion, urgencyLevel, preferredModality, languages, availabilityNotes, preferredTherapyStyle',
+    q2: 'clinicalConcern, preferenciaAsignacion, urgencyLevel, languages, availabilityNotes, preferredTherapyStyle',
     q3: 'consentToAIProcessing, consentToShareWithPSM, consentToClinicalMatching (y campos opcionales restantes)',
   },
   psm: {
@@ -91,13 +91,14 @@ Reglas:
 - Extrae datos en extractedData con claves exactas. Fusiona con datos actuales; no borres campos ya capturados.
 - No inventes datos. Campos faltantes van en missingFields.
 - Si hay senales de crisis, autolesion o emergencia: riskAlert=crisis_possible, urgencyLevel=crisis (usuario), recomienda ayuda local brevemente.
-- Valores: urgencyLevel low|medium|high|crisis. preferredModality video|chat|in_person|hybrid (solo usuario). preferenciaAsignacion automatica|explorar.
+- Valores: urgencyLevel low|medium|high|crisis. preferredModality siempre es video (no preguntes modalidad). preferenciaAsignacion automatica|explorar.
+- Si usas IA, menciona que MotusAI procesa con VeniceAI (privacidad por diseño).
 - Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes, clinicalComplexityLevels, excludedCases, riskFlags.
 - clinicalComplexityLevels valores: low_complexity, medium_complexity, high_with_support, no_active_crisis.
 - serviceTypes valores: individual_therapy, psychological_guidance, psychoeducation, clinical_supervision, groups_workshops, courses, psychological_assessment, non_clinical_support, research_interviews.
 - excludedCases: slugs preset (self_harm_crisis, active_psychosis, substance_detox, legal_forensic, minors, active_violence_no_support, unstable_medical_psychiatric, case_by_case_intake) o texto libre para casos adicionales.
 - emergencyProtocolStatus: own_protocol, institutional_protocol, not_yet, want_motus_guidance.
-- Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, preferredModality, languages, consentToAIProcessing=true, consentToShareWithPSM=true, consentToClinicalMatching=true. clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array.
+- Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, languages, consentToAIProcessing=true, consentToShareWithPSM=true, consentToClinicalMatching=true. preferredModality siempre video (no preguntar). clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array.
 - PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles, especialidades, languages, timezone, weeklyTherapyHours (1-80), maxActiveUsers, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes (min 1), clinicalComplexityLevels (min 1), emergencyProtocolStatus. excludedCases es opcional. NO autocompletar legalDeclarations.
 - assistantMessage debe ser conversacional y terminar con la siguiente pregunta (excepto en handoff_ready).
 
@@ -192,7 +193,6 @@ function computeMissingFields(
     'problematica',
     'preferenciaAsignacion',
     'urgencyLevel',
-    'preferredModality',
     'languages',
     'availabilityNotes',
     'consentToAIProcessing',
@@ -282,6 +282,7 @@ Devuelve SOLO JSON valido con assistantMessage, isComplete, missingFields, confi
       ...(typeof parsed.extractedData === 'object' && parsed.extractedData !== null
         ? (parsed.extractedData as Record<string, unknown>)
         : {}),
+      ...(body.role === 'usuario' ? { preferredModality: 'video' } : {}),
     }
 
     const normalized = normalizeParsedResponse(
