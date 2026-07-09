@@ -18,6 +18,7 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { useOnboardingStore, isValidCeloAddress } from '@/lib/onboarding-store'
+import { getConnectBlockers, onboardingBackButtonClass } from '@/lib/onboarding-ui'
 import { celoMainnet } from '@/lib/celo'
 import { 
   getEOAAddress
@@ -46,6 +47,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
   const { data, updateData } = useOnboardingStore()
   const [isConnecting, setIsConnecting] = useState(false)
   const [siweSessionReady, setSiweSessionReady] = useState(false)
+  const [connectBlockers, setConnectBlockers] = useState<string[]>([])
 
   const {
     register,
@@ -181,6 +183,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
 
   const onInvalid = () => {
     void trigger()
+    setConnectBlockers(blockerList)
   }
 
   const formEmail = watchedEmail || ''
@@ -195,6 +198,27 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     hasEmail &&
     termsAccepted &&
     siweSessionReady
+
+  const blockerList = getConnectBlockers({
+    authenticated,
+    eoaAddress: eoaAddress ?? undefined,
+    hasEmail,
+    termsAccepted,
+    siweSessionReady,
+  })
+
+  const handleContinueAttempt = () => {
+    if (canProceed) return
+    setConnectBlockers(blockerList)
+  }
+
+  useEffect(() => {
+    if (!canProceed && blockerList.length > 0) {
+      setConnectBlockers(blockerList)
+    } else if (canProceed) {
+      setConnectBlockers([])
+    }
+  }, [canProceed, blockerList])
 
   // Show login screen if not authenticated
   if (!authenticated) {
@@ -251,7 +275,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
             <button
               type="button"
               onClick={onBack}
-              className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+              className={onboardingBackButtonClass}
             >
               Atrás
             </button>
@@ -373,7 +397,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                 id="acceptTerms"
                 className="mt-1 w-4 h-4 text-mauve-600 bg-transparent border-white/20 rounded focus:ring-mauve-500 focus:ring-2"
               />
-              <label htmlFor="acceptTerms" className="text-sm text-gray-300">
+              <label htmlFor="acceptTerms" className="text-sm text-foreground">
                 Acepto los{' '}
                 <a href="/terms" className="text-mauve-400 hover:text-mauve-300 underline">
                   términos y condiciones
@@ -395,7 +419,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                 id="acceptPrivacy"
                 className="mt-1 w-4 h-4 text-mauve-600 bg-transparent border-white/20 rounded focus:ring-mauve-500 focus:ring-2"
               />
-              <label htmlFor="acceptPrivacy" className="text-sm text-gray-300">
+              <label htmlFor="acceptPrivacy" className="text-sm text-foreground">
                 Acepto la{' '}
                 <a href="/privacy" className="text-mauve-400 hover:text-mauve-300 underline">
                   política de privacidad
@@ -423,15 +447,28 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
             <button
               type="button"
               onClick={onBack}
-              className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+              className={onboardingBackButtonClass}
             >
               Atrás
             </button>
             
+            {!canProceed && connectBlockers.length > 0 && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+                <p className="mb-1 font-medium">Para continuar necesitas:</p>
+                <ul className="list-inside list-disc space-y-0.5 text-amber-800 dark:text-amber-200/90">
+                  {connectBlockers.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <CTAButton
               type="submit"
               disabled={!canProceed}
+              onClick={handleContinueAttempt}
               className="flex items-center space-x-2"
+              aria-disabled={!canProceed}
             >
               <span>Continuar</span>
             </CTAButton>

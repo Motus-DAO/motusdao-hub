@@ -2,199 +2,219 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  User, 
-  Heart, 
+import {
+  User,
+  Heart,
   ArrowRight,
   Shield,
   Users,
   Brain,
   GraduationCap,
-  CheckCircle2
+  CheckCircle2,
+  Globe,
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
+import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
 
 interface StepRoleSelectionProps {
   onNext: () => void
   onBack: () => void
 }
 
-export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
-  const { role, setRole } = useOnboardingStore()
-  const [selectedRole, setSelectedRole] = useState<'usuario' | 'psm' | null>(role)
+type RoleChoice = 'platform' | 'therapy' | 'psm'
 
-  const handleRoleSelect = (newRole: 'usuario' | 'psm') => {
-    setSelectedRole(newRole)
-    setRole(newRole)
+export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
+  const { role, usuarioIntakeTrack, setRole, setUsuarioIntakeTrack } = useOnboardingStore()
+
+  const initialChoice: RoleChoice | null =
+    role === 'psm'
+      ? 'psm'
+      : role === 'usuario'
+        ? usuarioIntakeTrack === 'therapy'
+          ? 'therapy'
+          : usuarioIntakeTrack === 'platform'
+            ? 'platform'
+            : null
+        : null
+
+  const [selectedChoice, setSelectedChoice] = useState<RoleChoice | null>(initialChoice)
+
+  const handleChoiceSelect = (choice: RoleChoice) => {
+    setSelectedChoice(choice)
+
+    if (choice === 'psm') {
+      setRole('psm')
+      setUsuarioIntakeTrack('platform')
+      return
+    }
+
+    setRole('usuario')
+    setUsuarioIntakeTrack(choice === 'therapy' ? 'therapy' : 'platform')
   }
 
   const handleContinue = () => {
-    if (selectedRole) {
-      onNext()
-    }
+    if (selectedChoice) onNext()
   }
+
+  const cardClass = (choice: RoleChoice) =>
+    `p-6 transition-all duration-300 relative ${
+      selectedChoice === choice
+        ? 'ring-4 ring-mauve-500 bg-mauve-500/20 border-2 border-mauve-500 shadow-lg shadow-mauve-500/20'
+        : 'hover:bg-foreground/5 border border-transparent'
+    }`
 
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="w-full max-w-4xl mx-auto"
+      className="mx-auto w-full max-w-5xl"
     >
       <GlassCard className="p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold mb-2">Selecciona tu tipo de cuenta</h2>
-          <p className="text-muted-foreground">
-            Elige cómo quieres usar MotusDAO
-          </p>
+        <div className="mb-8 text-center">
+          <h2 className="mb-2 text-2xl font-bold">Selecciona tu tipo de cuenta</h2>
+          <p className="text-muted-foreground">Elige cómo quieres usar MotusDAO</p>
         </div>
 
-        {/* Role Cards */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Usuario Card */}
+        <div className="mb-8 grid gap-6 md:grid-cols-3">
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="cursor-pointer relative"
-            onClick={() => handleRoleSelect('usuario')}
+            className="relative cursor-pointer"
+            onClick={() => handleChoiceSelect('platform')}
           >
-            <GlassCard 
-              className={`p-6 transition-all duration-300 relative ${
-                selectedRole === 'usuario' 
-                  ? 'ring-4 ring-mauve-500 bg-mauve-500/20 border-2 border-mauve-500 shadow-lg shadow-mauve-500/20' 
-                  : 'hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              {/* Checkmark indicator */}
-              {selectedRole === 'usuario' && (
-                <div className="absolute top-4 right-4">
-                  <div className="w-8 h-8 bg-mauve-500 rounded-full flex items-center justify-center shadow-lg">
-                    <CheckCircle2 className="w-5 h-5 text-white" />
+            <GlassCard className={cardClass('platform')}>
+              {selectedChoice === 'platform' && (
+                <div className="absolute right-4 top-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mauve-500 shadow-lg">
+                    <CheckCircle2 className="h-5 w-5 text-white" />
                   </div>
                 </div>
               )}
-              
-              <div className="flex items-center space-x-4 mb-4">
-                <div className={`w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center transition-all ${
-                  selectedRole === 'usuario' ? 'ring-2 ring-mauve-400 scale-110' : ''
-                }`}>
-                  <User className="w-6 h-6 text-white" />
+              <div className="mb-4 flex items-center space-x-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-mauve-500 to-purple-600">
+                  <Globe className="h-6 w-6 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`text-xl font-semibold transition-colors ${
-                    selectedRole === 'usuario' ? 'text-mauve-400' : ''
-                  }`}>
-                    Soy Usuario
-                  </h3>
-                  <p className="text-muted-foreground">Busco apoyo en salud mental</p>
+                <div>
+                  <h3 className="text-xl font-semibold">Usuario de la plataforma</h3>
+                  <p className="text-sm text-muted-foreground">MNS, pagos y Hub</p>
                 </div>
               </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2 text-sm">
-                  <Heart className="w-4 h-4 text-red-400" />
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-purple-400" />
+                  <span>Motus Name Service (.motus)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-400" />
+                  <span>Perfil básico en el Hub</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-green-400" />
+                  <span>Cursos y comunidad</span>
+                </div>
+              </div>
+            </GlassCard>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative cursor-pointer"
+            onClick={() => handleChoiceSelect('therapy')}
+          >
+            <GlassCard className={cardClass('therapy')}>
+              {selectedChoice === 'therapy' && (
+                <div className="absolute right-4 top-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mauve-500 shadow-lg">
+                    <CheckCircle2 className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              )}
+              <div className="mb-4 flex items-center space-x-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-purple-600">
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">Busco apoyo terapéutico</h3>
+                  <p className="text-sm text-muted-foreground">Matching con profesionales</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-red-400" />
                   <span>Acceso a psicoterapia</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Brain className="w-4 h-4 text-blue-400" />
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-blue-400" />
                   <span>MotusAI personalizado</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <GraduationCap className="w-4 h-4 text-green-400" />
-                  <span>Cursos de bienestar</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Shield className="w-4 h-4 text-purple-400" />
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-purple-400" />
                   <span>Bitácora privada</span>
                 </div>
               </div>
             </GlassCard>
           </motion.div>
 
-          {/* PSM Card */}
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="cursor-pointer relative"
-            onClick={() => handleRoleSelect('psm')}
+            className="relative cursor-pointer"
+            onClick={() => handleChoiceSelect('psm')}
           >
-            <GlassCard 
-              className={`p-6 transition-all duration-300 relative ${
-                selectedRole === 'psm' 
-                  ? 'ring-4 ring-mauve-500 bg-mauve-500/20 border-2 border-mauve-500 shadow-lg shadow-mauve-500/20' 
-                  : 'hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              {/* Checkmark indicator */}
-              {selectedRole === 'psm' && (
-                <div className="absolute top-4 right-4">
-                  <div className="w-8 h-8 bg-mauve-500 rounded-full flex items-center justify-center shadow-lg">
-                    <CheckCircle2 className="w-5 h-5 text-white" />
+            <GlassCard className={cardClass('psm')}>
+              {selectedChoice === 'psm' && (
+                <div className="absolute right-4 top-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mauve-500 shadow-lg">
+                    <CheckCircle2 className="h-5 w-5 text-white" />
                   </div>
                 </div>
               )}
-              
-              <div className="flex items-center space-x-4 mb-4">
-                <div className={`w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center transition-all ${
-                  selectedRole === 'psm' ? 'ring-2 ring-mauve-400 scale-110' : ''
-                }`}>
-                  <Users className="w-6 h-6 text-white" />
+              <div className="mb-4 flex items-center space-x-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600">
+                  <Users className="h-6 w-6 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`text-xl font-semibold transition-colors ${
-                    selectedRole === 'psm' ? 'text-mauve-400' : ''
-                  }`}>
-                    Soy Profesional
-                  </h3>
-                  <p className="text-muted-foreground">Profesional de la Salud Mental</p>
+                <div>
+                  <h3 className="text-xl font-semibold">Soy profesional (PSM)</h3>
+                  <p className="text-sm text-muted-foreground">Salud mental</p>
                 </div>
               </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2 text-sm">
-                  <Users className="w-4 h-4 text-emerald-400" />
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-emerald-400" />
                   <span>Gestión de pacientes</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Shield className="w-4 h-4 text-blue-400" />
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-blue-400" />
                   <span>Supervisión de casos</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <GraduationCap className="w-4 h-4 text-purple-400" />
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-purple-400" />
                   <span>Certificaciones</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Heart className="w-4 h-4 text-pink-400" />
-                  <span>Red profesional</span>
                 </div>
               </div>
             </GlassCard>
           </motion.div>
         </div>
 
-        {/* Navigation Buttons */}
         <div className="flex justify-between pt-6">
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
-          >
+          <button type="button" onClick={onBack} className={onboardingBackButtonClass}>
             Atrás
           </button>
-          
+
           <CTAButton
             onClick={handleContinue}
-            disabled={!selectedRole}
+            disabled={!selectedChoice}
             className="flex items-center space-x-2"
           >
             <span>Continuar</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="h-4 w-4" />
           </CTAButton>
         </div>
       </GlassCard>
     </motion.div>
   )
 }
-

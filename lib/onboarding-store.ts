@@ -1,9 +1,14 @@
 import { create } from 'zustand'
 import { isPsmIntakeComplete, getPsmMissingFieldKeys } from '@/lib/intake/psm-intake-v1'
+import {
+  isUsuarioIntakeComplete,
+  type UsuarioIntakeTrack,
+} from '@/lib/intake/user-intake-v1'
 import { persist } from 'zustand/middleware'
 import { formatCeloAddress } from './celo'
 
 export type UserRole = 'usuario' | 'psm'
+export type { UsuarioIntakeTrack }
 export type IntakeSource = 'manual' | 'ai_assisted' | 'hybrid'
 export type UrgencyLevel = 'low' | 'medium' | 'high' | 'crisis'
 export type Modality = 'video' | 'chat' | 'in_person' | 'hybrid'
@@ -55,6 +60,8 @@ export interface OnboardingData {
   consentToClinicalMatching?: boolean
   consentToTerms?: boolean
   consentToPrivacy?: boolean
+  platformUseCases?: string[]
+  platformNotes?: string
   
   // Para PSM
   cedulaProfesional?: string
@@ -118,6 +125,7 @@ interface OnboardingState {
   // Estado del wizard
   currentStep: number
   role: UserRole | null
+  usuarioIntakeTrack: UsuarioIntakeTrack | null
   data: Partial<OnboardingData>
   isCompleted: boolean
   profileIntakeMode: 'manual' | 'ai'
@@ -125,6 +133,7 @@ interface OnboardingState {
   
   // Acciones
   setRole: (role: UserRole) => void
+  setUsuarioIntakeTrack: (track: UsuarioIntakeTrack) => void
   setCurrentStep: (step: number) => void
   setProfileIntakeMode: (mode: 'manual' | 'ai') => void
   setPsmWizardStep: (step: number) => void
@@ -155,6 +164,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       // Estado inicial
       currentStep: 0,
       role: null,
+      usuarioIntakeTrack: null,
       data: initialData,
       isCompleted: false,
       profileIntakeMode: 'manual',
@@ -162,6 +172,8 @@ export const useOnboardingStore = create<OnboardingState>()(
       
       // Acciones
       setRole: (role) => set({ role }),
+
+      setUsuarioIntakeTrack: (track) => set({ usuarioIntakeTrack: track }),
       
       setCurrentStep: (step) => set({ currentStep: step }),
 
@@ -176,6 +188,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       reset: () => set({
         currentStep: 0,
         role: null,
+        usuarioIntakeTrack: null,
         data: initialData,
         isCompleted: false,
         profileIntakeMode: 'manual',
@@ -198,20 +211,9 @@ export const useOnboardingStore = create<OnboardingState>()(
           case 2: // Selección de rol
             return !!role // Role must be selected
           
-          case 3: // Perfil específico (terapéutico o profesional)
+          case 3: // Perfil específico (plataforma, terapéutico o profesional)
             if (role === 'usuario') {
-              return !!(
-                data.nombre &&
-                data.apellido &&
-                data.telefono &&
-                data.fechaNacimiento &&
-                data.ciudad &&
-                data.pais &&
-                data.problematica && 
-                data.preferenciaAsignacion &&
-                data.consentToShareWithPSM &&
-                data.consentToClinicalMatching
-              )
+              return isUsuarioIntakeComplete(get().usuarioIntakeTrack, data)
             } else if (role === 'psm') {
               return isPsmIntakeComplete(data)
             }
@@ -238,6 +240,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       partialize: (state) => ({
         currentStep: state.currentStep,
         role: state.role,
+        usuarioIntakeTrack: state.usuarioIntakeTrack,
         data: state.data,
         isCompleted: state.isCompleted,
         profileIntakeMode: state.profileIntakeMode,
@@ -276,7 +279,7 @@ export const getStepsForRole = (role: UserRole) => {
       baseSteps[0], // Cuenta WaaP
       baseSteps[1], // Celo & dominio
       baseSteps[2], // Rol
-      { id: 3, title: 'Terapéutico', description: 'Perfil terapéutico' },
+      { id: 3, title: 'Perfil', description: 'Información personal' },
       baseSteps[4], // Revisión
       baseSteps[5]  // Listo
     ]
@@ -305,6 +308,8 @@ const FIELD_LABELS: Record<string, string> = {
   tipoAtencion: 'Área principal',
   problematica: 'Motivo de consulta',
   preferenciaAsignacion: 'Preferencia de asignación',
+  platformUseCases: 'Uso de la plataforma',
+  platformNotes: 'Notas adicionales',
   cedulaProfesional: 'Cédula profesional',
   formacionAcademica: 'Formación académica',
   experienciaAnios: 'Años de experiencia',
@@ -320,7 +325,8 @@ const FIELD_LABELS: Record<string, string> = {
 export function getStepBlockerKeys(
   step: number,
   role: UserRole | null,
-  data: Partial<OnboardingData>
+  data: Partial<OnboardingData>,
+  usuarioIntakeTrack: UsuarioIntakeTrack | null = null
 ): string[] {
   const keys: string[] = []
 
@@ -347,10 +353,14 @@ export function getStepBlockerKeys(
       requireField('ciudad')
       requireField('pais')
       if (role === 'usuario') {
-        requireField('problematica')
-        requireField('preferenciaAsignacion')
-        requireField('consentToShareWithPSM')
-        requireField('consentToClinicalMatching')
+        if (usuarioIntakeTrack === 'platform') {
+          if (!data.platformUseCases?.length) keys.push('platformUseCases')
+        } else {
+          requireField('problematica')
+          requireField('preferenciaAsignacion')
+          requireField('consentToShareWithPSM')
+          requireField('consentToClinicalMatching')
+        }
       } else if (role === 'psm') {
         if (!isPsmIntakeComplete(data)) {
           keys.push(...getPsmMissingFieldKeys(data))
@@ -367,9 +377,10 @@ export function getStepBlockerKeys(
 export function getStepBlockers(
   step: number,
   role: UserRole | null,
-  data: Partial<OnboardingData>
+  data: Partial<OnboardingData>,
+  usuarioIntakeTrack: UsuarioIntakeTrack | null = null
 ): string[] {
-  return getStepBlockerKeys(step, role, data).map(
+  return getStepBlockerKeys(step, role, data, usuarioIntakeTrack).map(
     (key) => FIELD_LABELS[key] || key
   )
 }

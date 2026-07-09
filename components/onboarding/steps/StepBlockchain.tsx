@@ -9,14 +9,15 @@ import {
   ExternalLink,
   Shield,
   ArrowRight,
-  X,
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import { motusNameService } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
-import { ensureFaucetCeloForMns, registerMotusName } from '@/lib/mns-register'
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
+import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
+import { ensureFaucetCeloForMns, registerMotusName, resolveWaaPSigningAddress } from '@/lib/mns-register'
 
 interface StepBlockchainProps {
   onNext: () => void
@@ -148,6 +149,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
     }
 
     const targetAddress = data.eoaAddress as `0x${string}`
+    const signingAddress = (await resolveWaaPSigningAddress()) ?? targetAddress
 
     setIsRegisteringName(true)
     setNameResult(null)
@@ -156,7 +158,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
 
     try {
       setOneClickProgress('Verificando CELO para gas en Celo...')
-      const faucetResult = await ensureFaucetCeloForMns(targetAddress)
+      const faucetResult = await ensureFaucetCeloForMns(signingAddress)
 
       if (!faucetResult.success && !faucetResult.skipped) {
         if (faucetResult.retryInMinutes) {
@@ -172,6 +174,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       if (faucetResult.amount) {
         setFaucetMessage(`✅ Recibiste ${faucetResult.amount} CELO para gas.`)
         setFaucetTxHash(faucetResult.txHash || null)
+        setOneClickProgress('Esperando CELO en tu wallet...')
       }
 
       setOneClickProgress('Registrando tu dominio en Celo (confirma en WaaP si te lo pide)...')
@@ -220,10 +223,13 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
     setFaucetMessage('🔄 Enviando CELO a tu wallet...')
 
     try {
+      const signingAddress =
+        (await resolveWaaPSigningAddress()) ?? (data.eoaAddress as `0x${string}`)
+
       const res = await fetch('/api/faucet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: data.eoaAddress })
+        body: JSON.stringify({ address: signingAddress }),
       })
 
       const body = await res.json()
@@ -333,10 +339,10 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                         ? '¡Dominio adquirido con éxito!'
                         : 'Dominio .motus activo'}
                     </p>
-                    <p className="text-lg font-mono font-bold text-white">{displayName}.motus</p>
+                    <p className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-300">{displayName}.motus</p>
                     <p className="text-sm text-muted-foreground">
                       {registrationJustCompleted
-                        ? 'Tu nombre quedó registrado on-chain en Celo Mainnet. Ya puedes continuar con tu registro como PSM.'
+                        ? 'Tu nombre quedó registrado on-chain en Celo Mainnet. Ya puedes continuar con tu registro.'
                         : 'Este dominio ya está vinculado a tu wallet. Puedes continuar con el registro.'}
                     </p>
                     {nameTxHash && (
@@ -522,171 +528,119 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
             </div>
 
             {showMnsSuccessModal && displayName && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 12 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="relative w-full max-w-md"
-                >
-                  <GlassCard className="p-8 text-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none" />
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20">
-                        <CheckCircle className="w-10 h-10 text-white" />
-                      </div>
-                      <h3 className="text-2xl font-bold mb-2">¡Dominio adquirido!</h3>
-                      <p className="text-3xl font-mono font-bold text-emerald-300 mb-3">
-                        {displayName}.motus
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-6">
-                        Tu nombre quedó registrado on-chain en Celo Mainnet. A partir de ahora
-                        puedes recibir pagos con este dominio humano.
-                      </p>
-                      {nameTxHash && (
-                        <a
-                          href={getCeloExplorerUrl(nameTxHash, 'tx')}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-mauve-200 underline inline-flex items-center gap-1 mb-6"
-                        >
-                          Ver transacción en Celo Explorer
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                      <CTAButton
-                        onClick={() => setShowMnsSuccessModal(false)}
-                        className="w-full justify-center"
-                        glow
-                      >
-                        Entendido
-                      </CTAButton>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              </div>
+              <OnboardingModal open onClose={() => setShowMnsSuccessModal(false)} panelClassName="max-w-md">
+                <div className="text-center">
+                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
+                    <CheckCircle className="h-10 w-10 text-white" />
+                  </div>
+                  <h3 className="mb-2 text-2xl font-bold">¡Dominio adquirido!</h3>
+                  <p className="mb-3 font-mono text-3xl font-bold text-emerald-600 dark:text-emerald-300">
+                    {displayName}.motus
+                  </p>
+                  <p className="mb-6 text-sm text-muted-foreground">
+                    Tu nombre quedó registrado on-chain en Celo Mainnet. A partir de ahora puedes
+                    recibir pagos con este dominio humano.
+                  </p>
+                  {nameTxHash && (
+                    <a
+                      href={getCeloExplorerUrl(nameTxHash, 'tx')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mb-6 inline-flex items-center gap-1 text-xs text-mauve-500 underline dark:text-mauve-300"
+                    >
+                      Ver transacción en Celo Explorer
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                  <CTAButton
+                    onClick={() => setShowMnsSuccessModal(false)}
+                    className="w-full justify-center"
+                    glow
+                  >
+                    Entendido
+                  </CTAButton>
+                </div>
+              </OnboardingModal>
             )}
 
             {showSkipMnsModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div
-                  className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                  onClick={() => setShowSkipMnsModal(false)}
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="relative w-full max-w-lg"
-                >
-                  <GlassCard className="p-6 md:p-8 relative text-left">
-                    <button
-                      type="button"
-                      onClick={() => setShowSkipMnsModal(false)}
-                      className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
-                      aria-label="Cerrar"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+              <OnboardingModal open onClose={() => setShowSkipMnsModal(false)} panelClassName="max-w-lg">
+                <div className="flex items-start gap-3 mb-4">
+                  <AlertCircle className="mt-0.5 h-6 w-6 shrink-0 text-amber-500" />
+                  <div>
+                    <h3 className="mb-2 text-xl font-bold">Continuar sin dominio .motus</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {name && isNameAvailable
+                        ? `Elegiste ${name}.motus pero aún no lo has registrado on-chain.`
+                        : 'Aún no has registrado un dominio .motus on-chain.'}{' '}
+                      Si continúas ahora:
+                    </p>
+                  </div>
+                </div>
 
-                    <div className="flex items-start gap-3 mb-4">
-                      <AlertCircle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
-                      <div>
-                        <h3 className="text-xl font-bold mb-2">Continuar sin dominio .motus</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {name && isNameAvailable
-                            ? `Elegiste ${name}.motus pero aún no lo has registrado on-chain.`
-                            : 'Aún no has registrado un dominio .motus on-chain.'}
-                          {' '}Si continúas ahora:
-                        </p>
-                      </div>
-                    </div>
+                <ul className="mb-6 list-inside list-disc space-y-2 text-sm text-muted-foreground">
+                  <li>No tendrás un nombre humano para recibir pagos (solo tu dirección 0x…).</li>
+                  <li>Tu registro en MotusDAO continuará; el dominio queda pendiente.</li>
+                  <li>Podrás registrarlo después en Motus Names dentro del Hub.</li>
+                </ul>
 
-                    <ul className="text-sm text-muted-foreground space-y-2 mb-6 list-disc list-inside">
-                      <li>No tendrás un nombre humano para recibir pagos (solo tu dirección 0x…).</li>
-                      <li>Tu registro como PSM sí avanzará, pero el dominio queda pendiente.</li>
-                      <li>Podrás comprarlo después en Motus Names dentro del Hub.</li>
-                    </ul>
-
-                    <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
-                      <CTAButton
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowSkipMnsModal(false)}
-                      >
-                        Volver y registrar
-                      </CTAButton>
-                      <CTAButton size="sm" variant="secondary" onClick={handleConfirmSkipMns}>
-                        Entiendo, continuar sin dominio
-                      </CTAButton>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              </div>
+                <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
+                  <CTAButton size="sm" variant="ghost" onClick={() => setShowSkipMnsModal(false)}>
+                    Volver y registrar
+                  </CTAButton>
+                  <CTAButton size="sm" variant="secondary" onClick={handleConfirmSkipMns}>
+                    Entiendo, continuar sin dominio
+                  </CTAButton>
+                </div>
+              </OnboardingModal>
             )}
 
             {showMnsInfo && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div
-                  className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                  onClick={() => setShowMnsInfo(false)}
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  className="relative w-full max-w-3xl"
-                >
-                  <GlassCard className="p-6 md:p-8 relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowMnsInfo(false)}
-                      className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
-                      aria-label="Cerrar información de dominios"
-                    >
-                      <ExternalLink className="hidden" />
-                    </button>
+              <OnboardingModal
+                open
+                onClose={() => setShowMnsInfo(false)}
+                panelClassName="max-w-3xl"
+                closeLabel="Cerrar información de dominios"
+              >
+                <h3 className="mb-4 text-2xl font-bold">¿Qué es un dominio .motus?</h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Tu dominio .motus es tu identidad legible dentro de MotusDAO. En lugar de compartir
+                  una dirección larga, puedes usar un nombre humano como{' '}
+                  <span className="font-mono text-mauve-500 dark:text-mauve-300">tunombre.motus</span>.
+                </p>
 
-                    <h3 className="text-2xl font-bold mb-4">¿Qué es un dominio .motus?</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Tu dominio .motus es tu identidad legible dentro de MotusDAO. En lugar de
-                      compartir una dirección larga y complicada, puedes usar un nombre humano
-                      como <span className="font-mono text-mauve-300">tunombre.motus</span>.
-                    </p>
+                <div className="mb-4 grid gap-4 text-sm md:grid-cols-2">
+                  <div className="space-y-2">
+                    <p className="font-semibold">Beneficios principales</p>
+                    <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                      <li>Recibir y enviar dinero usando un nombre humano.</li>
+                      <li>Funciona como tu usuario dentro del ecosistema MotusDAO.</li>
+                      <li>Se almacena on-chain como un NFT transferible.</li>
+                      <li>Puedes personalizarlo con avatar y bio más adelante.</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-semibold">Cómo funciona la compra</p>
+                    <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                      <li>Verificamos que el nombre esté disponible.</li>
+                      <li>Reservas el nombre pagando una pequeña tarifa en USDm (si aplica).</li>
+                      <li>Tu dominio queda asociado a tu wallet.</li>
+                      <li>Más adelante podrás gestionar tus dominios desde Motus Names.</li>
+                    </ul>
+                  </div>
+                </div>
 
-                    <div className="grid md:grid-cols-2 gap-4 mb-4 text-sm">
-                      <div className="space-y-2">
-                        <p className="font-semibold">Beneficios principales</p>
-                        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                          <li>Recibir y enviar dinero usando un nombre humano.</li>
-                          <li>Funciona como tu usuario dentro del ecosistema MotusDAO.</li>
-                          <li>Se almacena on-chain como un NFT transferible.</li>
-                          <li>Puedes personalizarlo con avatar y bio más adelante.</li>
-                        </ul>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="font-semibold">Cómo funciona la compra</p>
-                        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                          <li>Verificamos que el nombre esté disponible.</li>
-                          <li>Reservas el nombre pagando una pequeña tarifa en USDm (si aplica).</li>
-                          <li>Tu dominio queda asociado a tu wallet para siempre (o hasta que lo transfieras).</li>
-                          <li>Más adelante podrás gestionar tus dominios desde el panel de MotusDAO.</li>
-                        </ul>
-                      </div>
-                    </div>
+                <p className="text-xs text-muted-foreground">
+                  Puedes explorar más detalles y registrar dominios adicionales en Motus Names
+                  dentro del Hub una vez que termines tu registro.
+                </p>
 
-                    <p className="text-xs text-muted-foreground">
-                      Puedes explorar más detalles y registrar dominios adicionales en la sección
-                      dedicada de Motus Names dentro del Hub una vez que termines tu registro.
-                    </p>
-
-                    <div className="mt-6 flex justify-end">
-                      <CTAButton size="sm" onClick={() => setShowMnsInfo(false)}>
-                        Entendido
-                      </CTAButton>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              </div>
+                <div className="mt-6 flex justify-end">
+                  <CTAButton size="sm" onClick={() => setShowMnsInfo(false)}>
+                    Entendido
+                  </CTAButton>
+                </div>
+              </OnboardingModal>
             )}
           </div>
         )
@@ -732,7 +686,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
               )}
             </div>
             <h2 className="text-2xl font-bold mb-2">
-              {skippedMns ? 'Registro financiero pendiente de dominio' : '¡Dominio adquirido con éxito!'}
+              {skippedMns ? 'Dominio .motus pendiente' : '¡Dominio adquirido con éxito!'}
             </h2>
             <p className="text-muted-foreground mb-6">
               {skippedMns ? (
@@ -743,7 +697,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                 </>
               ) : (
                 <>
-                  <span className="font-mono text-emerald-300 font-semibold">{displayName}.motus</span>
+                  <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-300">{displayName}.motus</span>
                   {' '}es tuyo. Tu dominio quedó registrado on-chain y ya puedes usarlo para enviar
                   y recibir pagos.
                 </>
@@ -756,7 +710,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                   <CheckCircle className="w-5 h-5 text-emerald-400" />
                   <p className="text-sm font-medium text-emerald-300">Registro confirmado on-chain</p>
                 </div>
-                <p className="text-2xl font-semibold text-white font-mono">{displayName}.motus</p>
+                <p className="text-2xl font-semibold font-mono text-foreground">{displayName}.motus</p>
                 {nameTxHash && (
                   <a
                     href={getCeloExplorerUrl(nameTxHash, 'tx')}
@@ -774,7 +728,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
               <div className="mb-6 p-4 glass rounded-xl border border-amber-500/20 text-left">
                 <p className="text-sm text-amber-300 font-medium mb-1">Dominio no registrado</p>
                 <p className="text-sm text-muted-foreground">
-                  Tenías elegido <span className="font-mono text-white">{displayName}.motus</span> pero no
+                  Tenías elegido <span className="font-mono text-foreground">{displayName}.motus</span> pero no
                   se completó la compra on-chain.
                 </p>
               </div>
@@ -784,7 +738,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
               onClick={onNext}
               className="flex items-center space-x-2 mx-auto"
             >
-              <span>Continuar al registro como PSM</span>
+              <span>Continuar con el registro</span>
               <ArrowRight className="w-4 h-4" />
             </CTAButton>
           </div>
@@ -810,7 +764,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
             <div className="flex justify-center space-x-4">
               <button
                 onClick={onBack}
-                className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+                className={onboardingBackButtonClass}
               >
                 Atrás
               </button>

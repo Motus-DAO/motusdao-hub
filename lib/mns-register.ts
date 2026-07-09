@@ -35,6 +35,39 @@ export async function getRequiredCeloForMnsRegistration(): Promise<bigint> {
   return WAAP_CELO_PER_TX * BigInt(txCount)
 }
 
+/** Poll until CELO balance meets threshold (post-faucet propagation). */
+async function waitForCeloBalance(
+  address: Address,
+  required: bigint,
+  timeoutMs = 30_000
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const balance = await getCeloBalance(address)
+    if (balance >= required) return true
+    await new Promise((resolve) => setTimeout(resolve, 2_000))
+  }
+
+  return (await getCeloBalance(address)) >= required
+}
+
+export async function resolveWaaPSigningAddress(): Promise<Address | null> {
+  const waap = getWaaP()
+  if (!waap) return null
+
+  try {
+    const accounts = (await waap.request({
+      method: 'eth_requestAccounts',
+      params: [],
+    })) as string[]
+
+    return accounts?.[0] ? (accounts[0] as Address) : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Request CELO from the onboarding faucet when balance is below the MNS threshold.
  * Skips the API call if the wallet already has enough CELO.
@@ -81,6 +114,15 @@ export async function ensureFaucetCeloForMns(address: Address): Promise<FaucetRe
         hash: body.txHash as `0x${string}`,
         timeout: 90_000,
       })
+
+      const funded = await waitForCeloBalance(address, required)
+      if (!funded) {
+        return {
+          success: false,
+          error:
+            'CELO enviado pero aún no visible en tu wallet. Espera unos segundos e intenta registrar de nuevo.',
+        }
+      }
     }
 
     return {
@@ -251,6 +293,14 @@ export async function registerMotusNameWithWaaP(
     }
 
     const from = accounts[0] as Address
+
+    if (from.toLowerCase() !== targetAddress.toLowerCase()) {
+      console.warn('[MNS] WaaP signing address differs from stored EOA:', {
+        from,
+        targetAddress,
+      })
+    }
+
     const celoBalance = await client.getBalance({ address: from })
 
     const alreadyOwned = await motusNameService.isOwnedBy(normalizedName, targetAddress)
