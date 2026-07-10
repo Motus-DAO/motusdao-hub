@@ -40,6 +40,7 @@ import {
   getTherapyStyleLabel,
   PSM_LEGAL_DECLARATIONS,
 } from '@/lib/intake/psm-intake-options'
+import { AdminPsmAvailabilityPanel } from '@/components/admin/AdminPsmAvailabilityPanel'
 
 interface PSM {
   id: string
@@ -1119,6 +1120,12 @@ export default function AdminPSMPage() {
                     </div>
                   </div>
                 </GlassCard>
+
+                <AdminPsmAvailabilityPanel
+                  psmId={selectedPSM.id}
+                  psmName={`${selectedPSM.nombre} ${selectedPSM.apellido}`}
+                  slug={selectedPSM.slug}
+                />
 
                 {/* Dates */}
                 <GlassCard className="p-4">

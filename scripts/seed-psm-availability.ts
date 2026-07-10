@@ -1,12 +1,7 @@
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import { PUBLIC_PSM_WHERE } from '../lib/psm/public-profile'
-
-const DEFAULT_TIMEZONE = 'America/Mexico_City'
-const SLOT_DURATION_MINUTES = 50
-const DAYS_AHEAD = 7
-/** Local hours (Mexico City) for demo slots each day */
-const SLOT_HOURS = [10, 14, 16]
+import { seedAvailabilityForPsm } from '../lib/psm/seed-availability'
 
 async function main() {
   const prisma = new PrismaClient()
@@ -45,33 +40,16 @@ async function main() {
         continue
       }
 
-      const slotsToCreate: Array<{
-        psmId: string
-        startsAt: Date
-        endsAt: Date
-        timezone: string
-        notes: string
-      }> = []
-
-      for (let day = 1; day <= DAYS_AHEAD; day += 1) {
-        for (const hour of SLOT_HOURS) {
-          const startsAt = nextSlotStart(now, day, hour)
-          const endsAt = new Date(startsAt.getTime() + SLOT_DURATION_MINUTES * 60 * 1000)
-          slotsToCreate.push({
-            psmId: psm.id,
-            startsAt,
-            endsAt,
-            timezone: DEFAULT_TIMEZONE,
-            notes: 'seed-psm-availability',
-          })
-        }
+      if (dryRun) {
+        results.push({ slug, created: 0, skipped: false })
+        continue
       }
 
-      if (!dryRun) {
-        await prisma.providerAvailabilitySlot.createMany({ data: slotsToCreate })
-      }
+      const { created } = await seedAvailabilityForPsm(psm.id, {
+        notes: 'seed-psm-availability',
+      })
 
-      results.push({ slug, created: slotsToCreate.length, skipped: false })
+      results.push({ slug, created, skipped: false })
     }
 
     console.log(
@@ -89,19 +67,6 @@ async function main() {
   } finally {
     await prisma.$disconnect()
   }
-}
-
-/**
- * Approximate Mexico City local hour using a fixed UTC-6 offset (no DST handling).
- * Good enough for demo seed slots; PSM UI + future calendar sync own timezone truth.
- */
-function nextSlotStart(from: Date, daysAhead: number, hourLocal: number): Date {
-  const base = new Date(from)
-  base.setUTCHours(0, 0, 0, 0)
-  base.setUTCDate(base.getUTCDate() + daysAhead)
-  const utcHour = hourLocal + 6
-  base.setUTCHours(utcHour, 0, 0, 0)
-  return base
 }
 
 void main()

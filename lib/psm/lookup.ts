@@ -16,14 +16,12 @@ export async function findPublicPsmBySlug(slug: string) {
 }
 
 export async function findPsmUserIdBySlug(slug: string): Promise<string | null> {
-  const row = await prisma.pSMProfile.findFirst({
+  const row = await prisma.user.findFirst({
     where: {
-      slug,
-      verificationStatus: 'approved',
-      introVideoApproved: true,
-      isAcceptingPatients: true,
+      ...PUBLIC_PSM_WHERE,
+      psm: { is: { slug } },
     },
-    select: { userId: true },
+    select: { id: true },
   })
-  return row?.userId ?? null
+  return row?.id ?? null
 }
