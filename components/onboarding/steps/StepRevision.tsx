@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useWallet, useWalletProvider } from '@/lib/wallet'
+import { establishSiweSession } from '@/lib/auth/client'
 import { 
   CheckCircle, 
   Mail, 
@@ -56,6 +58,8 @@ interface StepRevisionProps {
 
 export function StepRevision({ onNext, onBack }: StepRevisionProps) {
   const { data, role, usuarioIntakeTrack, updateData, setCurrentStep, setPsmWizardStep } = useOnboardingStore()
+  const { user, providerId } = useWallet()
+  const { provider } = useWalletProvider()
   const isPlatformUser = role === 'usuario' && usuarioIntakeTrack === 'platform'
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -222,6 +226,29 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
             .filter(Boolean)
             .join(' — ')
         )
+      }
+
+      // Refresh SIWE session so JWT includes userId (wallet was signed before DB user existed)
+      if (provider && data.eoaAddress) {
+        try {
+          const authProvider =
+            providerId === 'external'
+              ? 'external'
+              : providerId === 'privy'
+                ? 'privy'
+                : 'waap'
+          await establishSiweSession({
+            waapProvider: provider,
+            authProvider,
+            authProviderId: user?.id,
+            eoaAddress: data.eoaAddress,
+          })
+        } catch (sessionError) {
+          console.warn(
+            'Registro guardado, pero no se pudo actualizar la sesión SIWE:',
+            sessionError
+          )
+        }
       }
 
       try {

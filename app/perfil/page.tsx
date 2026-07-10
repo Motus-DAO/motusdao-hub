@@ -27,9 +27,10 @@ import {
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
-import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams, getWaapAuthEmail } from '@/lib/wallet'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
+import { authFetch } from '@/lib/auth/client'
 import { motusNameService } from '@/lib/motus-name-service'
 import { buildVideochatUrl } from '@/lib/jitsi'
 import { useRouter } from 'next/navigation'
@@ -72,8 +73,8 @@ export default function PerfilPage() {
   // Get EOA address - prioritizes external wallet (MetaMask) over embedded wallet
   const eoaAddress = getEOAAddress(wallets)
   
-  // Get email from user
-  const userEmail = user?.email?.address || user?.google?.email || 'No disponible'
+  // WaaP email (MetaMask / external wallet users enter email during onboarding instead)
+  const waapEmail = getWaapAuthEmail(user)
   const walletIdentity = getWalletIdentity(user, providerId)
 
   const [isEditing, setIsEditing] = useState(false)
@@ -212,7 +213,8 @@ export default function PerfilPage() {
   // Fetch profile data from API
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!ready || !authenticated || !userEmail) return
+      if (!ready || !authenticated) return
+      if (!walletIdentity && !waapEmail && !eoaAddress) return
 
       setIsLoading(true)
       setError(null)
@@ -220,9 +222,10 @@ export default function PerfilPage() {
       try {
         const params = new URLSearchParams()
         appendWalletIdentityParams(params, walletIdentity)
-        if (userEmail) params.append('email', userEmail)
+        if (waapEmail) params.append('email', waapEmail)
+        if (eoaAddress) params.append('eoaAddress', eoaAddress)
 
-        const response = await fetch(`/api/profile?${params.toString()}`)
+        const response = await authFetch(`/api/profile?${params.toString()}`)
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -266,7 +269,7 @@ export default function PerfilPage() {
     }
 
     fetchProfile()
-  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId])
+  }, [ready, authenticated, waapEmail, walletIdentity?.authProviderId, eoaAddress])
 
   // Fetch match data
   useEffect(() => {
@@ -382,7 +385,7 @@ export default function PerfilPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/profile', {
+      const response = await authFetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -614,7 +617,7 @@ export default function PerfilPage() {
                           <span className="text-xs text-muted-foreground">Email</span>
                         </div>
                         <p className="text-sm font-mono text-center break-all">
-                          {userData?.email || userEmail}
+                          {userData?.email || waapEmail || 'Sin correo registrado'}
                         </p>
                       </div>
                       
@@ -828,12 +831,14 @@ export default function PerfilPage() {
                       <label className="block text-sm font-medium mb-2">Email</label>
                       <input
                         type="email"
-                        value={userData?.email || userEmail}
+                        value={userData?.email || waapEmail || ''}
                         disabled={true}
                         className="w-full p-3 glass-card border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-mauve-500 focus:border-transparent disabled:opacity-50"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Email gestionado por Privy
+                        {waapEmail
+                          ? 'Correo verificado por tu proveedor de wallet'
+                          : 'Correo registrado en MotusDAO (requerido con MetaMask u otras wallets externas)'}
                       </p>
                     </div>
 

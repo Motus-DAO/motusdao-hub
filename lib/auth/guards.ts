@@ -22,6 +22,33 @@ export function assertSelfOrAdmin(session: AuthContext, userId: string): void {
   }
 }
 
+/** Allows access when session userId matches, or EOA matches (e.g. MetaMask before session refresh). */
+export function assertSessionCanAccessUser(
+  session: AuthContext,
+  target: { id: string; eoaAddress?: string | null }
+): void {
+  if (isAdmin(session)) return
+
+  if (session.userId && session.userId === target.id) return
+
+  if (
+    session.eoaAddress &&
+    target.eoaAddress &&
+    session.eoaAddress.toLowerCase() === target.eoaAddress.toLowerCase()
+  ) {
+    return
+  }
+
+  if (session.userId) {
+    throw new AuthError(403, 'Not authorized for this user')
+  }
+
+  throw new AuthError(
+    401,
+    'Authenticated user is not linked to an app profile'
+  )
+}
+
 export async function requireSelfOrAdmin(
   request: NextRequest,
   userId: string

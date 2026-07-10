@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { assertSelfOrAdmin, requireSelfOrAdmin } from '@/lib/auth/guards'
+import {
+  assertSelfOrAdmin,
+  assertSessionCanAccessUser,
+  requireSelfOrAdmin,
+} from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import {
   parseAuthIdentityFromSearchParams,
@@ -82,34 +86,65 @@ export async function GET(request: NextRequest) {
     const session = await requireSession(request)
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
-    const email = searchParams.get('email')
+    const emailParam = searchParams.get('email')
+    const email =
+      emailParam && emailParam.includes('@') ? emailParam : null
+    const eoaParam = searchParams.get('eoaAddress')
     const identity = parseAuthIdentityFromSearchParams(searchParams)
 
-    // Find user by userId, email, or wallet vendor id
-    let user
-    if (userId) {
+    const userInclude = {
+      profile: true,
+      patient: true,
+      psm: true,
+    } as const
+
+    // Prefer session-linked lookup, then explicit query params
+    let user =
+      session.userId != null
+        ? await prisma.user.findUnique({
+            where: { id: session.userId },
+            include: userInclude,
+          })
+        : null
+
+    if (!user && session.eoaAddress) {
+      user = await prisma.user.findFirst({
+        where: {
+          deletedAt: null,
+          eoaAddress: { equals: session.eoaAddress, mode: 'insensitive' },
+        },
+        include: userInclude,
+      })
+    }
+
+    if (!user && userId) {
       user = await prisma.user.findUnique({
         where: { id: userId },
-        include: {
-          profile: true,
-          patient: true,
-          psm: true
-        }
+        include: userInclude,
       })
-    } else if (email || identity.authProviderId || identity.legacyPrivyId) {
+    }
+
+    if (!user && (email || identity.authProviderId || identity.legacyPrivyId || eoaParam)) {
       const identityConditions = authIdentityLookupConditions(identity)
       user = await prisma.user.findFirst({
         where: {
+          deletedAt: null,
           OR: [
             ...(email ? [{ email }] : []),
+            ...(eoaParam
+              ? [
+                  {
+                    eoaAddress: {
+                      equals: eoaParam,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                ]
+              : []),
             ...identityConditions,
           ],
         },
-        include: {
-          profile: true,
-          patient: true,
-          psm: true
-        }
+        include: userInclude,
       })
     }
 
@@ -120,7 +155,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    assertSelfOrAdmin(session, user.id)
+    assertSessionCanAccessUser(session, user)
 
     await recordClinicalAccess({
       request,

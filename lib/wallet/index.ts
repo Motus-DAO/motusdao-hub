@@ -11,7 +11,11 @@ import type {
 export type { WalletAuthProvider } from './provider'
 export type { WalletInfo, WalletProviderId, WalletUser } from './types'
 export { getConfiguredWalletProvider, getPrivyAppId } from './config'
-export { getWalletIdentity, appendWalletIdentityParams } from './client-identity'
+export {
+  getWalletIdentity,
+  appendWalletIdentityParams,
+  getWaapAuthEmail,
+} from './client-identity'
 
 function resolveProviderId(
   configuredProvider: 'waap' | 'privy',

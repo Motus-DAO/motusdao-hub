@@ -69,6 +69,7 @@ export function StepExito({ onComplete }: StepExitoProps) {
 
   const handleRedirect = (path: string) => {
     reset()
+    markCompleted()
     router.push(path)
   }
 
