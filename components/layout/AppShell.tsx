@@ -31,6 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen max-w-full">
         <SidebarWrapper />
         <div
+          data-app-shell-scroll
           className={cn(
             'flex flex-1 flex-col min-h-screen overflow-y-auto overflow-x-hidden relative z-10',
             'transition-[margin] duration-300 ease-in-out',

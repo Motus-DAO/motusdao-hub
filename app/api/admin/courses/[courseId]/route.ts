@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { updateCourseSchema } from '@/lib/academy/admin-course'
+import { coursePriceAmount } from '@/lib/academy/course-pricing'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { prisma } from '@/lib/prisma'
 
@@ -50,6 +51,9 @@ export async function PATCH(request: NextRequest, { params }: CourseRouteContext
         description: description === '' ? null : description,
         category: category === '' ? null : category,
         imageUrl: imageUrl === '' ? null : imageUrl,
+        ...(body.priceAmount !== undefined
+          ? { isFree: !(coursePriceAmount({ priceAmount: body.priceAmount }) > 0) }
+          : {}),
         updatedAt: new Date(),
       },
     })

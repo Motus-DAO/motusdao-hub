@@ -118,8 +118,7 @@ export async function GET(request: NextRequest) {
       paid:
         enrollment.orderItems.some((item) => item.order.status === 'paid') ||
         (enrollment.course &&
-          !enrollment.course.isFree &&
-          Number(enrollment.course.priceAmount || 0) > 0 &&
+          courseRequiresPayment(enrollment.course) &&
           Boolean(enrollment.purchasedAt)),
     }))
 

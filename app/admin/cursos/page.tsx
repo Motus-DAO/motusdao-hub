@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { slugifyCourseTitle } from '@/lib/academy/slug'
 import { authFetch } from '@/lib/auth/client'
 import { uploadCourseCover, removeCourseCover } from '@/lib/academy/media-client'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -66,6 +67,8 @@ const emptyForm: CourseForm = {
 const fieldClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none transition focus:border-mauve-500 focus:ring-2 focus:ring-mauve-500/30'
 
+const NEW_CATEGORY_VALUE = '__new__'
+
 function formatPrice(course: Course) {
   const amount = Number(course.priceAmount || 0)
   return new Intl.NumberFormat('es-MX', {
@@ -102,9 +105,31 @@ export default function AdminCursosPage() {
   const [form, setForm] = useState<CourseForm>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null)
+  const [pendingCoverPreview, setPendingCoverPreview] = useState<string | null>(null)
+  const [isNewCategory, setIsNewCategory] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+
+  const categoryOptions = useMemo(() => {
+    const values = new Set<string>(['General'])
+    for (const course of courses) {
+      const value = course.category?.trim()
+      if (value) values.add(value)
+    }
+    const current = form.category.trim()
+    if (current && !isNewCategory) values.add(current)
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'es'))
+  }, [courses, form.category, isNewCategory])
+
+  const clearPendingCover = useCallback(() => {
+    setPendingCoverPreview((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return null
+    })
+    setPendingCoverFile(null)
+  }, [])
 
   const fetchCourses = useCallback(async () => {
     setLoading(true)
@@ -126,9 +151,44 @@ export default function AdminCursosPage() {
     void fetchCourses()
   }, [fetchCourses])
 
+  useEffect(() => {
+    if (!dialogOpen) return
+
+    const shell = document.querySelector<HTMLElement>('[data-app-shell-scroll]')
+    const targets = [document.body, shell].filter((el): el is HTMLElement => Boolean(el))
+    const previous = targets.map((el) => ({
+      el,
+      overflow: el.style.overflow,
+      paddingRight: el.style.paddingRight,
+    }))
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+
+    for (const el of targets) {
+      el.style.overflow = 'hidden'
+      if (scrollbarWidth > 0 && el === document.body) {
+        el.style.paddingRight = `${scrollbarWidth}px`
+      }
+    }
+
+    return () => {
+      for (const entry of previous) {
+        entry.el.style.overflow = entry.overflow
+        entry.el.style.paddingRight = entry.paddingRight
+      }
+    }
+  }, [dialogOpen])
+
+  useEffect(() => {
+    return () => {
+      if (pendingCoverPreview) URL.revokeObjectURL(pendingCoverPreview)
+    }
+  }, [pendingCoverPreview])
+
   const openCreate = () => {
     setEditingCourse(null)
     setForm(emptyForm)
+    clearPendingCover()
+    setIsNewCategory(false)
     setError(null)
     setDialogOpen(true)
   }
@@ -136,6 +196,8 @@ export default function AdminCursosPage() {
   const openEdit = (course: Course) => {
     setEditingCourse(course)
     setForm(formFromCourse(course))
+    clearPendingCover()
+    setIsNewCategory(false)
     setError(null)
     setDialogOpen(true)
   }
@@ -144,10 +206,21 @@ export default function AdminCursosPage() {
     if (saving || coverUploading) return
     setDialogOpen(false)
     setEditingCourse(null)
+    setIsNewCategory(false)
+    clearPendingCover()
   }
 
   const updateForm = <K extends keyof CourseForm>(key: K, value: CourseForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleTitleChange = (title: string) => {
+    setForm((current) => {
+      if (editingCourse) {
+        return { ...current, title }
+      }
+      return { ...current, title, slug: slugifyCourseTitle(title) }
+    })
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -156,8 +229,25 @@ export default function AdminCursosPage() {
     setError(null)
     setNotice(null)
 
+    const autoSlug = editingCourse ? form.slug : slugifyCourseTitle(form.title)
+    if (!autoSlug) {
+      setError('El título debe generar un slug válido (letras o números).')
+      setSaving(false)
+      return
+    }
+
+    const category = form.category.trim()
+    if (!category) {
+      setError('La categoría es obligatoria.')
+      setSaving(false)
+      return
+    }
+
     const payload = {
       ...form,
+      slug: autoSlug,
+      category,
+      imageUrl: pendingCoverFile ? '' : form.imageUrl,
       priceAmount: form.priceAmount === '' ? undefined : Number(form.priceAmount),
     }
 
@@ -175,8 +265,36 @@ export default function AdminCursosPage() {
         throw new Error(await apiError(response, 'No se pudo guardar el curso'))
       }
 
+      const data = (await response.json().catch(() => ({}))) as { course?: Course }
+      const savedCourse = data.course
+      const coverCourseId = editingCourse?.id || savedCourse?.id
+
+      if (pendingCoverFile && coverCourseId) {
+        setCoverUploading(true)
+        try {
+          await uploadCourseCover(coverCourseId, pendingCoverFile)
+        } catch (coverError) {
+          clearPendingCover()
+          setDialogOpen(false)
+          setEditingCourse(null)
+          setIsNewCategory(false)
+          setNotice(
+            editingCourse
+              ? 'Curso actualizado, pero no se pudo subir la portada'
+              : 'Curso creado, pero no se pudo subir la portada'
+          )
+          setError(coverError instanceof Error ? coverError.message : 'No se pudo subir la portada')
+          await fetchCourses()
+          return
+        } finally {
+          setCoverUploading(false)
+        }
+      }
+
+      clearPendingCover()
       setDialogOpen(false)
       setEditingCourse(null)
+      setIsNewCategory(false)
       setNotice(editingCourse ? 'Curso actualizado correctamente' : 'Curso creado correctamente')
       await fetchCourses()
     } catch (submitError) {
@@ -354,13 +472,19 @@ export default function AdminCursosPage() {
       </GlassCard>
 
       {dialogOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="course-dialog-title"
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-background p-5 shadow-2xl sm:p-6"
-          >
+        <div
+          className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
+          role="presentation"
+          onClick={closeDialog}
+        >
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="course-dialog-title"
+              className="w-full max-w-2xl rounded-lg border border-white/10 bg-background p-5 shadow-2xl sm:p-6"
+              onClick={(event) => event.stopPropagation()}
+            >
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 id="course-dialog-title" className="text-xl font-semibold">
@@ -382,11 +506,32 @@ export default function AdminCursosPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-medium">
                   Título *
-                  <input required maxLength={200} value={form.title} onChange={(event) => updateForm('title', event.target.value)} className={fieldClass} />
+                  <input
+                    required
+                    maxLength={200}
+                    value={form.title}
+                    onChange={(event) => handleTitleChange(event.target.value)}
+                    className={fieldClass}
+                  />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
                   Slug *
-                  <input required maxLength={200} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={form.slug} onChange={(event) => updateForm('slug', event.target.value)} placeholder="nombre-del-curso" className={fieldClass} />
+                  <input
+                    required
+                    maxLength={200}
+                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                    value={form.slug}
+                    onChange={(event) => updateForm('slug', event.target.value)}
+                    placeholder="se-genera-del-titulo"
+                    className={fieldClass}
+                    readOnly={!editingCourse}
+                    title={editingCourse ? undefined : 'Se genera automáticamente a partir del título'}
+                  />
+                  {!editingCourse && (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Se genera automáticamente del título.
+                    </span>
+                  )}
                 </label>
               </div>
 
@@ -401,19 +546,27 @@ export default function AdminCursosPage() {
               </label>
 
               <div className="space-y-3 rounded-lg border border-white/10 bg-white/5 p-4">
-                {editingCourse ? (
-                  <FileUploadField
-                    label="Imagen de portada"
-                    description="Sube JPEG, PNG, WebP o GIF (máx. 5 MB). Se guarda en Supabase al instante."
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    hint="También puedes pegar una URL externa abajo."
-                    previewUrl={form.imageUrl || undefined}
-                    fileName={form.imageUrl ? 'Portada del curso' : undefined}
-                    disabled={saving || coverUploading}
-                    onUpload={async (file) => {
+                <FileUploadField
+                  label="Imagen de portada"
+                  description={
+                    editingCourse
+                      ? 'Sube JPEG, PNG, WebP o GIF (máx. 5 MB). Se guarda en Supabase al instante.'
+                      : 'Sube JPEG, PNG, WebP o GIF (máx. 5 MB). Se subirá al crear el curso.'
+                  }
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  hint="También puedes pegar una URL externa abajo."
+                  previewUrl={pendingCoverPreview || form.imageUrl || undefined}
+                  fileName={
+                    pendingCoverFile?.name ||
+                    (form.imageUrl ? 'Portada del curso' : undefined)
+                  }
+                  disabled={saving || coverUploading}
+                  onUpload={async (file) => {
+                    if (editingCourse) {
                       setCoverUploading(true)
                       setError(null)
                       try {
+                        clearPendingCover()
                         const result = await uploadCourseCover(editingCourse.id, file)
                         updateForm('imageUrl', result.imageUrl)
                         setNotice('Portada subida correctamente')
@@ -421,13 +574,24 @@ export default function AdminCursosPage() {
                       } finally {
                         setCoverUploading(false)
                       }
-                    }}
-                    onClear={() => {
+                      return
+                    }
+
+                    setPendingCoverPreview((current) => {
+                      if (current) URL.revokeObjectURL(current)
+                      return URL.createObjectURL(file)
+                    })
+                    setPendingCoverFile(file)
+                    updateForm('imageUrl', '')
+                  }}
+                  onClear={() => {
+                    if (editingCourse) {
                       void (async () => {
                         setCoverUploading(true)
                         setError(null)
                         try {
                           await removeCourseCover(editingCourse.id)
+                          clearPendingCover()
                           updateForm('imageUrl', '')
                           setNotice('Portada eliminada')
                           await fetchCourses()
@@ -439,33 +603,38 @@ export default function AdminCursosPage() {
                           setCoverUploading(false)
                         }
                       })()
-                    }}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Guarda el curso primero; después podrás subir la portada desde Supabase al editarlo.
-                  </p>
-                )}
+                      return
+                    }
+
+                    clearPendingCover()
+                    updateForm('imageUrl', '')
+                  }}
+                />
 
                 <label className="block space-y-1.5 text-sm font-medium">
                   URL de portada (opcional)
                   <input
                     type="url"
                     maxLength={2000}
-                    value={form.imageUrl}
-                    onChange={(event) => updateForm('imageUrl', event.target.value)}
+                    value={pendingCoverFile ? '' : form.imageUrl}
+                    onChange={(event) => {
+                      clearPendingCover()
+                      updateForm('imageUrl', event.target.value)
+                    }}
                     placeholder="https://..."
                     className={fieldClass}
-                    disabled={coverUploading}
+                    disabled={coverUploading || Boolean(pendingCoverFile)}
                   />
                 </label>
                 <p className="text-xs text-muted-foreground">
                   Usa la subida de archivo o pega una URL pública. Si la dejas vacía, el catálogo muestra el gradiente por defecto.
                 </p>
-                {form.imageUrl.trim() ? (
+                {(pendingCoverPreview || form.imageUrl.trim()) ? (
                   <div
                     className="h-36 w-full rounded-lg border border-white/10 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${form.imageUrl.trim()})` }}
+                    style={{
+                      backgroundImage: `url(${pendingCoverPreview || form.imageUrl.trim()})`,
+                    }}
                   />
                 ) : (
                   <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/5 text-xs text-muted-foreground">
@@ -475,10 +644,42 @@ export default function AdminCursosPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-1.5 text-sm font-medium">
-                  Categoría
-                  <input maxLength={100} value={form.category} onChange={(event) => updateForm('category', event.target.value)} className={fieldClass} />
-                </label>
+                <div className="space-y-1.5 text-sm font-medium">
+                  <label htmlFor="course-category">Categoría</label>
+                  <select
+                    id="course-category"
+                    value={isNewCategory ? NEW_CATEGORY_VALUE : form.category || 'General'}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      if (value === NEW_CATEGORY_VALUE) {
+                        setIsNewCategory(true)
+                        updateForm('category', '')
+                        return
+                      }
+                      setIsNewCategory(false)
+                      updateForm('category', value)
+                    }}
+                    className={fieldClass}
+                  >
+                    {categoryOptions.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                    <option value={NEW_CATEGORY_VALUE}>+ Nueva categoría…</option>
+                  </select>
+                  {isNewCategory && (
+                    <input
+                      required
+                      maxLength={100}
+                      value={form.category}
+                      onChange={(event) => updateForm('category', event.target.value)}
+                      placeholder="Nombre de la nueva categoría"
+                      className={fieldClass}
+                      autoFocus
+                    />
+                  )}
+                </div>
                 <label className="space-y-1.5 text-sm font-medium">
                   Dificultad
                   <select value={form.difficulty} onChange={(event) => updateForm('difficulty', event.target.value as Difficulty)} className={fieldClass}>
@@ -511,11 +712,12 @@ export default function AdminCursosPage() {
               <div className="flex justify-end gap-3 pt-2">
                 <CTAButton type="button" variant="ghost" onClick={closeDialog} disabled={saving || coverUploading}>Cancelar</CTAButton>
                 <CTAButton type="submit" disabled={saving || coverUploading} className="gap-2">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {(saving || coverUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
                   {editingCourse ? 'Guardar cambios' : 'Crear curso'}
                 </CTAButton>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

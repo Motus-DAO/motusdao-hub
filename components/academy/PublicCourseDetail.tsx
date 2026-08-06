@@ -507,6 +507,7 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
     setActionError(null)
 
     const run = async () => {
+      let lastConfirmError: string | null = null
       try {
         const confirmResponse = await authFetch('/api/stripe/confirm-checkout', {
           method: 'POST',
@@ -523,6 +524,9 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
             window.history.replaceState({}, '', `/academia/${course.slug}`)
             return
           }
+        } else {
+          const body = (await confirmResponse.json().catch(() => ({}))) as { error?: string }
+          lastConfirmError = body.error || `No se pudo confirmar el pago (${confirmResponse.status})`
         }
       } catch {
         // Continue with read-only polling below.
@@ -562,7 +566,10 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
 
       if (!cancelled) {
         setPaymentConfirming(false)
-        setActionError('Tu pago fue recibido. Recarga la página en unos segundos para acceder al curso.')
+        setActionError(
+          lastConfirmError ||
+            'Tu pago fue recibido, pero no pudimos activar el acceso automáticamente. Recarga en unos segundos o vuelve a abrir el curso desde Academia.'
+        )
       }
     }
 

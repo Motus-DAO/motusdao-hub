@@ -8,7 +8,7 @@ export function coursePriceAmount(course: PricedCourse): number {
 }
 
 export function courseRequiresPayment(course: PricedCourse): boolean {
-  if (course.isFree) return false
+  // priceAmount is the source of truth; isFree can lag behind admin edits
   return coursePriceAmount(course) > 0
 }
 

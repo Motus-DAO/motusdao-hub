@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
-import { handleAuthError } from '@/lib/auth/session'
+import { getRequestOrigin, handleAuthError } from '@/lib/auth/session'
 import { coursePriceAmount, courseRequiresPayment } from '@/lib/academy/course-pricing'
 import { SITE_URL } from '@/lib/constants'
 import { getStripeClient, isStripeConfigured, toStripeUnitAmount } from '@/lib/stripe'
@@ -12,6 +12,29 @@ const checkoutSchema = z.object({
   userId: z.string().min(1),
   courseId: z.string().min(1),
 })
+
+/** Prefer the browser origin so localhost checkout returns to localhost, not prod. */
+function checkoutReturnBase(request: NextRequest): string {
+  const originHeader = request.headers.get('origin')
+  if (originHeader) {
+    try {
+      return new URL(originHeader).origin
+    } catch {
+      // fall through
+    }
+  }
+
+  const referer = request.headers.get('referer')
+  if (referer) {
+    try {
+      return new URL(referer).origin
+    } catch {
+      // fall through
+    }
+  }
+
+  return getRequestOrigin(request) || SITE_URL.replace(/\/$/, '')
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,8 +108,9 @@ export async function POST(request: NextRequest) {
     })
 
     const stripe = getStripeClient()
-    const successUrl = `${SITE_URL}/academia/${course.slug}?checkout=success&session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${SITE_URL}/academia/${course.slug}?checkout=cancelled`
+    const returnBase = checkoutReturnBase(request)
+    const successUrl = `${returnBase}/academia/${course.slug}?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${returnBase}/academia/${course.slug}?checkout=cancelled`
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

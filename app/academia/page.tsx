@@ -31,6 +31,7 @@ import {
   type EnrollmentSummary,
   type PublicCourse,
 } from '@/lib/academy/public-course'
+import { formatCoursePrice } from '@/lib/academy/course-pricing'
 import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { fetchAppSession } from '@/lib/auth/client'
 
@@ -41,12 +42,7 @@ const difficultyLabels = {
 }
 
 function formatPrice(course: PublicCourse) {
-  const amount = Number(course.priceAmount || 0)
-  if (course.isFree || amount === 0) return 'Gratis'
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: course.priceCurrency || 'MXN',
-  }).format(amount)
+  return formatCoursePrice(course)
 }
 
 function blockCtaLabel(enrollment: EnrollmentSummary | undefined) {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { createCourseSchema, cuid } from '@/lib/academy/admin-course'
+import { coursePriceAmount } from '@/lib/academy/course-pricing'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = createCourseSchema.parse(await request.json())
+    const priceAmount = body.priceAmount
+    const isFree = !(coursePriceAmount({ priceAmount }) > 0)
     const course = await prisma.course.create({
       data: {
         id: cuid(),
@@ -36,8 +39,9 @@ export async function POST(request: NextRequest) {
         description: body.description || null,
         category: body.category || undefined,
         difficulty: body.difficulty,
-        priceAmount: body.priceAmount,
+        priceAmount: priceAmount,
         priceCurrency: body.priceCurrency,
+        isFree,
         isPublished: body.isPublished ?? false,
         imageUrl: body.imageUrl || null,
         updatedAt: new Date(),
