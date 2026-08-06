@@ -36,6 +36,19 @@ export async function uploadLessonPdf(lessonId: string, file: File, name?: strin
   return body as { pdfResources: PdfResource[] }
 }
 
+export async function uploadLessonImage(lessonId: string, file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await authFetch(`/api/admin/lessons/${encodeURIComponent(lessonId)}/upload-image`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  const body = await parseUploadResponse(response)
+  return body as { imageUrl: string; storagePath: string }
+}
+
 export async function deleteLessonPdf(lessonId: string, resourceId: string) {
   const response = await authFetch(
     `/api/admin/lessons/${encodeURIComponent(lessonId)}/pdf/${encodeURIComponent(resourceId)}`,

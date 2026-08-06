@@ -15,12 +15,14 @@ const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const DOCUMENT_MIME_TYPES = [...AVATAR_MIME_TYPES, 'application/pdf'] as const
 const ACADEMY_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const
 const ACADEMY_PDF_MIME_TYPES = ['application/pdf'] as const
+const ACADEMY_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024
 const COURSE_COVER_MAX_BYTES = 5 * 1024 * 1024
 const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
 const ACADEMY_VIDEO_MAX_BYTES = 100 * 1024 * 1024
 const ACADEMY_PDF_MAX_BYTES = 10 * 1024 * 1024
+const ACADEMY_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -232,6 +234,34 @@ export async function uploadAcademyPdf(params: {
   if (error) throw new Error(error.message)
 
   return { storagePath }
+}
+
+export async function uploadAcademyLessonImage(params: {
+  file: File
+  courseId: string
+  lessonId: string
+  resourceId: string
+}): Promise<{ storagePath: string; publicUrl: string }> {
+  validateFile(params.file, ACADEMY_IMAGE_MIME_TYPES, ACADEMY_IMAGE_MAX_BYTES)
+
+  const ext = getExtension(params.file.type)
+  const storagePath = `${params.courseId}/${params.lessonId}/images/${params.resourceId}.${ext}`
+  const buffer = Buffer.from(await params.file.arrayBuffer())
+
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.academyCourses)
+    .upload(storagePath, buffer, {
+      contentType: params.file.type,
+      upsert: true,
+    })
+
+  if (error) throw new Error(error.message)
+
+  return {
+    storagePath,
+    publicUrl: getCourseCoverPublicUrl(storagePath),
+  }
 }
 
 export async function deleteAcademyMedia(storagePath: string): Promise<void> {
