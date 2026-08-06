@@ -9,6 +9,9 @@ type FulfillStripeCourseParams = {
   currency: string
   stripeSessionId: string
   stripePaymentIntentId?: string | null
+  stripeSubscriptionId?: string | null
+  accessExpiresAt?: Date | null
+  billingInterval?: 'one_time' | 'monthly'
 }
 
 export async function fulfillStripeCourseCheckout(params: FulfillStripeCourseParams) {
@@ -20,6 +23,9 @@ export async function fulfillStripeCourseCheckout(params: FulfillStripeCoursePar
     currency,
     stripeSessionId,
     stripePaymentIntentId,
+    stripeSubscriptionId,
+    accessExpiresAt,
+    billingInterval,
   } = params
 
   return prisma.$transaction(async (tx) => {
@@ -63,6 +69,8 @@ export async function fulfillStripeCourseCheckout(params: FulfillStripeCoursePar
         metadata: toInputJson({
           stripeSessionId,
           stripePaymentIntentId,
+          stripeSubscriptionId,
+          billingInterval,
         }),
       },
     })
@@ -76,6 +84,8 @@ export async function fulfillStripeCourseCheckout(params: FulfillStripeCoursePar
           ...(typeof order.metadata === 'object' && order.metadata ? order.metadata : {}),
           stripeSessionId,
           stripePaymentIntentId,
+          stripeSubscriptionId,
+          billingInterval,
         }),
       },
     })
@@ -84,6 +94,8 @@ export async function fulfillStripeCourseCheckout(params: FulfillStripeCoursePar
       where: { userId_courseId: { userId, courseId } },
       update: {
         purchasedAt: new Date(),
+        accessExpiresAt: billingInterval === 'monthly' ? accessExpiresAt ?? null : null,
+        stripeSubscriptionId: stripeSubscriptionId ?? undefined,
         updatedAt: new Date(),
       },
       create: {
@@ -93,6 +105,8 @@ export async function fulfillStripeCourseCheckout(params: FulfillStripeCoursePar
         progress: 0,
         completed: false,
         purchasedAt: new Date(),
+        accessExpiresAt: billingInterval === 'monthly' ? accessExpiresAt ?? null : null,
+        stripeSubscriptionId: stripeSubscriptionId ?? null,
         updatedAt: new Date(),
       },
     })

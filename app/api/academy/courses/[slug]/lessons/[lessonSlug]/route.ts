@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionFromRequest } from '@/lib/auth/session'
+import { hasActiveEnrollmentAccess } from '@/lib/academy/enrollment-access'
 import {
   fromStorageRef,
   isStorageMediaRef,
@@ -48,6 +49,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         id: true,
         title: true,
         slug: true,
+        billingInterval: true,
+        priceAmount: true,
+        isFree: true,
         modules: {
           select: {
             id: true,
@@ -99,9 +103,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           courseId: true,
           progress: true,
           completed: true,
+          purchasedAt: true,
+          accessExpiresAt: true,
         },
       })
-      enrolled = Boolean(enrollment)
+      enrolled = hasActiveEnrollmentAccess(enrollment, course)
     }
 
     const allowed = lesson.isFreePreview || enrolled

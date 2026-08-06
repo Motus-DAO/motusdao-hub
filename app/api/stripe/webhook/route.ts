@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
+import {
+  handleStripeInvoicePaid,
+  handleStripeSubscriptionDeleted,
+  handleStripeSubscriptionUpdated,
+  recordSubscriptionRenewalPayment,
+} from '@/lib/academy/stripe-subscription'
 import { fulfillCourseFromStripeSession } from '@/lib/academy/stripe-session'
+import { getInvoiceSubscriptionId } from '@/lib/academy/stripe-api-helpers'
 import { getStripeClient, getStripeWebhookSecret } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
@@ -30,9 +37,36 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session
-      await fulfillCourseFromStripeSession(session)
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await fulfillCourseFromStripeSession(session)
+        break
+      }
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice
+        if (invoice.billing_reason === 'subscription_cycle') {
+          const subscriptionId = getInvoiceSubscriptionId(invoice)
+          if (subscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+            await handleStripeInvoicePaid(invoice)
+            await recordSubscriptionRenewalPayment(subscription, invoice)
+          }
+        }
+        break
+      }
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        await handleStripeSubscriptionUpdated(subscription)
+        break
+      }
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        await handleStripeSubscriptionDeleted(subscription)
+        break
+      }
+      default:
+        break
     }
 
     return NextResponse.json({ received: true })

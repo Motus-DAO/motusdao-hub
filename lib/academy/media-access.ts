@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { hasActiveEnrollmentAccess } from '@/lib/academy/enrollment-access'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { getSessionFromRequest } from '@/lib/auth/session'
 import { storagePathBelongsToLesson } from '@/lib/academy/media'
@@ -63,10 +64,15 @@ export async function resolveLessonMediaAccess(
         courseId,
       },
     },
-    select: { id: true },
+    select: { id: true, purchasedAt: true, accessExpiresAt: true },
   })
 
-  const enrolled = Boolean(enrollment)
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { billingInterval: true, priceAmount: true, isFree: true },
+  })
+
+  const enrolled = course ? hasActiveEnrollmentAccess(enrollment, course) : Boolean(enrollment)
   const allowed = lesson.isFreePreview || enrolled
 
   return {

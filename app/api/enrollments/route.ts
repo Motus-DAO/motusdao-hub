@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { courseRequiresPayment } from '@/lib/academy/course-pricing'
+import { coursePriceAmount, courseRequiresPayment } from '@/lib/academy/course-pricing'
+import { hasActiveEnrollmentAccess } from '@/lib/academy/enrollment-access'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
-import { isStripeConfigured } from '@/lib/stripe'
+import { getStripeClient, isStripeConfigured } from '@/lib/stripe'
 
 const enrollmentSchema = z.object({
   userId: z.string().min(1),
@@ -113,13 +114,55 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
+    const subscriptionIds = Array.from(
+      new Set(
+        enrollments
+          .filter(
+            (enrollment) =>
+              enrollment.course?.billingInterval === 'monthly' && Boolean(enrollment.stripeSubscriptionId)
+          )
+          .map((enrollment) => enrollment.stripeSubscriptionId!)
+      )
+    )
+
+    const subscriptionById = new Map<
+      string,
+      { cancelAtPeriodEnd: boolean; status: string | null; canceledAt: string | null }
+    >()
+
+    if (subscriptionIds.length > 0 && isStripeConfigured()) {
+      const stripe = getStripeClient()
+      await Promise.all(
+        subscriptionIds.map(async (subscriptionId) => {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+            subscriptionById.set(subscriptionId, {
+              cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+              status: subscription.status ?? null,
+              canceledAt:
+                typeof subscription.canceled_at === 'number'
+                  ? new Date(subscription.canceled_at * 1000).toISOString()
+                  : null,
+            })
+          } catch (error) {
+            console.warn('Could not load Stripe subscription status', subscriptionId, error)
+          }
+        })
+      )
+    }
+
     const shaped = enrollments.map((enrollment) => ({
       ...enrollment,
-      paid:
-        enrollment.orderItems.some((item) => item.order.status === 'paid') ||
-        (enrollment.course &&
-          courseRequiresPayment(enrollment.course) &&
-          Boolean(enrollment.purchasedAt)),
+      paid: hasActiveEnrollmentAccess(enrollment, enrollment.course),
+      subscriptionStatus: enrollment.stripeSubscriptionId
+        ? (subscriptionById.get(enrollment.stripeSubscriptionId)?.status ?? null)
+        : null,
+      cancelAtPeriodEnd: enrollment.stripeSubscriptionId
+        ? Boolean(subscriptionById.get(enrollment.stripeSubscriptionId)?.cancelAtPeriodEnd)
+        : false,
+      subscriptionCanceledAt: enrollment.stripeSubscriptionId
+        ? (subscriptionById.get(enrollment.stripeSubscriptionId)?.canceledAt ?? null)
+        : null,
     }))
 
     return NextResponse.json({ enrollments: shaped })

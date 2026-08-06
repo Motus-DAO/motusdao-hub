@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
+  AlertTriangle,
   Award,
   BookOpen,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
   Play,
   ShoppingBag,
   Star,
+  X,
 } from 'lucide-react'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { CourseProgressBar } from '@/components/academy/CourseProgressBar'
@@ -31,9 +33,9 @@ import {
   type EnrollmentSummary,
   type PublicCourse,
 } from '@/lib/academy/public-course'
-import { formatCoursePrice } from '@/lib/academy/course-pricing'
+import { formatCoursePriceInCurrency, type CourseCurrency } from '@/lib/academy/course-pricing'
 import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
-import { fetchAppSession } from '@/lib/auth/client'
+import { authFetch, fetchAppSession } from '@/lib/auth/client'
 
 const difficultyLabels = {
   beginner: 'Principiante',
@@ -41,8 +43,22 @@ const difficultyLabels = {
   advanced: 'Avanzado',
 }
 
-function formatPrice(course: PublicCourse) {
-  return formatCoursePrice(course)
+const DISPLAY_CURRENCY_KEY = 'academy-display-currency'
+
+function currencyToggleClass(active: boolean) {
+  return `rounded-md px-3 py-1.5 text-xs font-semibold transition sm:text-sm ${
+    active
+      ? 'bg-mauve-500/25 text-mauve-200 ring-1 ring-mauve-400/40'
+      : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+  }`
+}
+
+function formatPrice(
+  course: PublicCourse,
+  displayCurrency: CourseCurrency,
+  usdToMxn?: number | null
+) {
+  return formatCoursePriceInCurrency(course, displayCurrency, usdToMxn)
 }
 
 function blockCtaLabel(enrollment: EnrollmentSummary | undefined) {
@@ -63,15 +79,51 @@ export default function AcademiaPage() {
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [purchasedOpen, setPurchasedOpen] = useState(false)
+  const [usdToMxn, setUsdToMxn] = useState<number | null>(null)
+  const [displayCurrency, setDisplayCurrency] = useState<CourseCurrency>('USD')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [cancelingEnrollmentId, setCancelingEnrollmentId] = useState<string | null>(null)
+  const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null)
+  const [cancelModal, setCancelModal] = useState<{
+    enrollment: EnrollmentSummary
+    course: PublicCourse
+  } | null>(null)
 
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem('academy-purchased-open')
       if (saved === 'true') setPurchasedOpen(true)
+      const currency = window.localStorage.getItem(DISPLAY_CURRENCY_KEY)
+      if (currency === 'MXN' || currency === 'USD') setDisplayCurrency(currency)
     } catch {
       // ignore
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch('/api/fx/usd-mxn')
+      .then(async (response) => {
+        if (!response.ok) return
+        const body = (await response.json()) as { rate?: number }
+        if (!cancelled && body.rate && body.rate > 0) setUsdToMxn(body.rate)
+      })
+      .catch(() => {
+        // Keep base-currency-only labels if FX fails.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const setCurrencyPreference = (currency: CourseCurrency) => {
+    setDisplayCurrency(currency)
+    try {
+      window.localStorage.setItem(DISPLAY_CURRENCY_KEY, currency)
+    } catch {
+      // ignore
+    }
+  }
 
   const togglePurchasedPanel = () => {
     setPurchasedOpen((prev) => {
@@ -117,9 +169,11 @@ export default function AcademiaPage() {
     fetchAppSession()
       .then((session) => {
         if (!session.userId) {
+          setCurrentUserId(null)
           setEnrollmentsByCourseId(new Map())
           return []
         }
+        setCurrentUserId(session.userId)
         return fetchUserEnrollments(session.userId, controller.signal, { force: true })
       })
       .then((enrollments) => {
@@ -131,7 +185,10 @@ export default function AcademiaPage() {
         setEnrollmentsByCourseId(next)
       })
       .catch(() => {
-        if (!controller.signal.aborted) setEnrollmentsByCourseId(new Map())
+        if (!controller.signal.aborted) {
+          setCurrentUserId(null)
+          setEnrollmentsByCourseId(new Map())
+        }
       })
 
     return () => controller.abort()
@@ -155,9 +212,60 @@ export default function AcademiaPage() {
   )
   const myPurchasedCourses = useMemo(
     () =>
-      courses.filter((course) => enrollmentsByCourseId.get(course.id)?.paid),
+      courses.filter((course) => {
+        const enrollment = enrollmentsByCourseId.get(course.id)
+        if (!enrollment) return false
+        if (course.billingInterval === 'monthly') {
+          return Boolean(enrollment.stripeSubscriptionId || enrollment.purchasedAt)
+        }
+        return Boolean(enrollment.paid)
+      }),
     [courses, enrollmentsByCourseId]
   )
+
+  const openCancelModal = (enrollment: EnrollmentSummary, course: PublicCourse) => {
+    setCancelModal({ enrollment, course })
+  }
+
+  const handleCancelSubscription = async (enrollment: EnrollmentSummary) => {
+    if (!currentUserId) {
+      setSubscriptionNotice('Inicia sesión para cancelar tu membresía.')
+      return
+    }
+
+    if (!enrollment.stripeSubscriptionId) {
+      setSubscriptionNotice('Esta membresía aún no tiene una suscripción de Stripe enlazada.')
+      return
+    }
+
+    setSubscriptionNotice(null)
+    setCancelingEnrollmentId(enrollment.id)
+    try {
+      const response = await authFetch('/api/stripe/subscriptions/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUserId,
+          enrollmentId: enrollment.id,
+        }),
+      })
+
+      const body = (await response.json().catch(() => ({}))) as { message?: string; error?: string }
+      if (!response.ok) {
+        throw new Error(body.error || 'No se pudo cancelar la suscripción')
+      }
+
+      setSubscriptionNotice(body.message || 'Tu membresía se cancelará al final del periodo actual.')
+      setReloadKey((value) => value + 1)
+    } catch (cancelError) {
+      setSubscriptionNotice(
+        cancelError instanceof Error ? cancelError.message : 'No se pudo cancelar la suscripción'
+      )
+    } finally {
+      setCancelingEnrollmentId(null)
+      setCancelModal(null)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -264,16 +372,28 @@ export default function AcademiaPage() {
                       className="overflow-hidden"
                     >
                       <div className="border-t border-white/10 p-4 pt-0 sm:p-5 sm:pt-0">
+                        {subscriptionNotice && (
+                          <p className="mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground">
+                            {subscriptionNotice}
+                          </p>
+                        )}
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           {myPurchasedCourses.map((course, index) => {
                             const enrollment = enrollmentsByCourseId.get(course.id)!
+                            const isMonthly = course.billingInterval === 'monthly'
+                            const isMembershipActive = isMonthly ? Boolean(enrollment.paid) : true
+                            const isCancellationScheduled = isMonthly && enrollment.cancelAtPeriodEnd === true
                             const lessonSlug = firstLessonSlug(course)
                             const duration = courseDuration(course)
                             const lessons = courseLessonCount(course)
-                            const href = lessonSlug
+                            const href = !isMembershipActive
+                              ? `/academia/${course.slug}`
+                              : lessonSlug
                               ? `/academia/${course.slug}/leccion/${lessonSlug}`
                               : `/academia/${course.slug}`
-                            const ctaLabel = blockCtaLabel(enrollment)
+                            const ctaLabel = !isMembershipActive
+                              ? 'Renovar membresía'
+                              : blockCtaLabel(enrollment)
 
                             return (
                               <motion.div
@@ -283,13 +403,32 @@ export default function AcademiaPage() {
                                 transition={{ duration: 0.3, delay: index * 0.04 }}
                               >
                                 <GlassCard className="overflow-hidden border-green-500/20 bg-green-500/5">
-                                  <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                                    <div className="min-w-0 flex-1">
+                                  <div className="p-4 sm:p-5">
+                                    <div className="min-w-0">
                                       <div className="mb-2 flex flex-wrap items-center gap-2">
                                         <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-300">
                                           <CreditCard className="h-3 w-3" />
                                           Comprado
                                         </span>
+                                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                                          {isMonthly ? 'Membresía mensual' : 'Pago único'}
+                                        </span>
+                                        {isMonthly && (
+                                          <span
+                                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                              isMembershipActive
+                                                ? 'border border-green-400/25 bg-green-500/10 text-green-300'
+                                                : 'border border-amber-400/25 bg-amber-500/10 text-amber-300'
+                                            }`}
+                                          >
+                                            {isMembershipActive ? 'Activa' : 'Inactiva'}
+                                          </span>
+                                        )}
+                                        {isCancellationScheduled && (
+                                          <span className="inline-flex items-center rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-300">
+                                            Cancelación programada
+                                          </span>
+                                        )}
                                         {enrollment.completed && (
                                           <span className="inline-flex items-center gap-1 rounded-full bg-green-600/20 px-2.5 py-0.5 text-xs font-medium text-green-200">
                                             <CheckCircle2 className="h-3 w-3" />
@@ -297,7 +436,7 @@ export default function AcademiaPage() {
                                           </span>
                                         )}
                                       </div>
-                                      <h3 className="truncate text-lg font-semibold">{course.title}</h3>
+                                      <h3 className="text-lg font-semibold leading-tight sm:text-xl">{course.title}</h3>
                                       <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{course.summary}</p>
                                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                                         <span className="flex items-center gap-1">
@@ -317,12 +456,32 @@ export default function AcademiaPage() {
                                         className="mt-4"
                                       />
                                     </div>
-                                    <Link href={href} className="shrink-0">
-                                      <CTAButton size="lg" className="w-full gap-2 sm:w-auto">
-                                        <Play className="h-4 w-4" />
-                                        {ctaLabel}
-                                      </CTAButton>
-                                    </Link>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                      <Link href={href} className="min-w-0 flex-1">
+                                        <CTAButton size="lg" className="w-full gap-2">
+                                          <Play className="h-4 w-4" />
+                                          {ctaLabel}
+                                        </CTAButton>
+                                      </Link>
+                                      {isMonthly && isMembershipActive && (
+                                        <CTAButton
+                                          size="sm"
+                                          variant="secondary"
+                                          className="min-w-[170px]"
+                                          onClick={() => openCancelModal(enrollment, course)}
+                                          disabled={
+                                            cancelingEnrollmentId === enrollment.id ||
+                                            isCancellationScheduled
+                                          }
+                                        >
+                                          {isCancellationScheduled
+                                            ? 'Cancelación programada'
+                                            : cancelingEnrollmentId === enrollment.id
+                                            ? 'Cancelando...'
+                                            : 'Cancelar membresía'}
+                                        </CTAButton>
+                                      )}
+                                    </div>
                                   </div>
                                 </GlassCard>
                               </motion.div>
@@ -356,11 +515,30 @@ export default function AcademiaPage() {
             </motion.div>
           )}
 
-          <div className="mb-5 flex items-center sm:mb-6">
-            <div className="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600">
-              <Play className="h-4 w-4 text-white" />
+          <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center">
+              <div className="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600">
+                <Play className="h-4 w-4 text-white" />
+              </div>
+              <h2 className="text-xl font-bold sm:text-2xl">Bloques de la ruta PSM</h2>
             </div>
-            <h2 className="text-xl font-bold sm:text-2xl">Bloques de la ruta PSM</h2>
+            <div
+              role="group"
+              aria-label="Moneda de precios"
+              className="flex w-fit gap-1 self-start rounded-lg border border-white/10 bg-white/5 p-1 sm:self-auto"
+            >
+              {(['USD', 'MXN'] as const).map((currency) => (
+                <button
+                  key={currency}
+                  type="button"
+                  onClick={() => setCurrencyPreference(currency)}
+                  className={currencyToggleClass(displayCurrency === currency)}
+                  aria-pressed={displayCurrency === currency}
+                >
+                  {currency}
+                </button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
@@ -436,10 +614,18 @@ export default function AcademiaPage() {
                                 {difficultyLabels[course.difficulty]}
                               </span>
                             )}
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
+                              {course.billingInterval === 'monthly' ? 'Membresía mensual' : 'Pago único'}
+                            </span>
                             {enrollment?.paid && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-green-400/25 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
                                 <CreditCard className="h-3 w-3" />
                                 Comprado
+                              </span>
+                            )}
+                            {course.billingInterval === 'monthly' && enrollment && !enrollment.paid && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+                                Membresía inactiva
                               </span>
                             )}
                             {enrollment?.completed && (
@@ -470,7 +656,9 @@ export default function AcademiaPage() {
                           </div>
 
                           <div className="flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                            <span className="font-semibold text-mauve-300">{formatPrice(course)}</span>
+                            <span className="font-semibold text-mauve-300">
+                              {formatPrice(course, displayCurrency, usdToMxn)}
+                            </span>
                             <span
                               className={`rounded-lg px-4 py-2 text-center text-sm font-medium text-white transition ${
                                 enrollment?.completed
@@ -491,6 +679,69 @@ export default function AcademiaPage() {
           )}
         </div>
       </Section>
+
+      {cancelModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setCancelModal(null)}
+        >
+          <GlassCard
+            className="relative w-full max-w-lg border-white/20 p-6 sm:p-7"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setCancelModal(null)}
+              className="absolute right-3 top-3 rounded-md p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+              aria-label="Cerrar modal"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">Cancelar membresía</h3>
+                <p className="text-sm text-muted-foreground">Se aplicará al final del periodo actual.</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+              <p className="font-medium">{cancelModal.course.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Mantendrás acceso hasta la fecha de expiración ya registrada.
+              </p>
+            </div>
+
+            {cancelModal.enrollment.cancelAtPeriodEnd && (
+              <p className="mt-3 rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                Esta membresía ya tiene cancelación programada.
+              </p>
+            )}
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <CTAButton variant="secondary" onClick={() => setCancelModal(null)}>
+                Conservar membresía
+              </CTAButton>
+              <CTAButton
+                onClick={() => handleCancelSubscription(cancelModal.enrollment)}
+                disabled={
+                  cancelingEnrollmentId === cancelModal.enrollment.id ||
+                  cancelModal.enrollment.cancelAtPeriodEnd === true
+                }
+              >
+                {cancelModal.enrollment.cancelAtPeriodEnd === true
+                  ? 'Cancelación ya programada'
+                  : cancelingEnrollmentId === cancelModal.enrollment.id
+                  ? 'Cancelando...'
+                  : 'Confirmar cancelación'}
+              </CTAButton>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   )
 }

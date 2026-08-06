@@ -14,6 +14,8 @@ import {
   X,
 } from 'lucide-react'
 import { slugifyCourseTitle } from '@/lib/academy/slug'
+import { formatCoursePrice, formatMoneyAmount, type CourseCurrency } from '@/lib/academy/course-pricing'
+import { convertAmount } from '@/lib/academy/fx'
 import { authFetch } from '@/lib/auth/client'
 import { uploadCourseCover, removeCourseCover } from '@/lib/academy/media-client'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -34,6 +36,7 @@ type Course = {
   difficulty: Difficulty | null
   priceAmount: string | number | null
   priceCurrency: string
+  billingInterval?: 'one_time' | 'monthly' | string | null
   isPublished: boolean
   updatedAt: string
 }
@@ -47,7 +50,8 @@ type CourseForm = {
   category: string
   difficulty: Difficulty
   priceAmount: string
-  priceCurrency: string
+  priceCurrency: CourseCurrency
+  billingInterval: 'one_time' | 'monthly'
   isPublished: boolean
 }
 
@@ -61,20 +65,24 @@ const emptyForm: CourseForm = {
   difficulty: 'beginner',
   priceAmount: '',
   priceCurrency: 'MXN',
+  billingInterval: 'one_time',
   isPublished: false,
 }
 
 const fieldClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none transition focus:border-mauve-500 focus:ring-2 focus:ring-mauve-500/30'
 
+const currencyToggleClass = (active: boolean) =>
+  `flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+    active
+      ? 'bg-mauve-500/20 text-mauve-200 ring-1 ring-mauve-400/40'
+      : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+  }`
+
 const NEW_CATEGORY_VALUE = '__new__'
 
 function formatPrice(course: Course) {
-  const amount = Number(course.priceAmount || 0)
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: course.priceCurrency || 'MXN',
-  }).format(amount)
+  return formatCoursePrice(course)
 }
 
 function formFromCourse(course: Course): CourseForm {
@@ -87,7 +95,8 @@ function formFromCourse(course: Course): CourseForm {
     category: course.category || '',
     difficulty: course.difficulty || 'beginner',
     priceAmount: course.priceAmount == null ? '' : String(course.priceAmount),
-    priceCurrency: course.priceCurrency || 'MXN',
+    priceCurrency: course.priceCurrency === 'USD' ? 'USD' : 'MXN',
+    billingInterval: course.billingInterval === 'monthly' ? 'monthly' : 'one_time',
     isPublished: course.isPublished,
   }
 }
@@ -108,6 +117,7 @@ export default function AdminCursosPage() {
   const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null)
   const [pendingCoverPreview, setPendingCoverPreview] = useState<string | null>(null)
   const [isNewCategory, setIsNewCategory] = useState(false)
+  const [usdToMxn, setUsdToMxn] = useState<number | null>(null)
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -122,6 +132,14 @@ export default function AdminCursosPage() {
     if (current && !isNewCategory) values.add(current)
     return Array.from(values).sort((a, b) => a.localeCompare(b, 'es'))
   }, [courses, form.category, isNewCategory])
+
+  const convertedPreview = useMemo(() => {
+    const amount = Number(form.priceAmount)
+    if (!(amount > 0) || !usdToMxn) return null
+    const other: CourseCurrency = form.priceCurrency === 'USD' ? 'MXN' : 'USD'
+    const converted = convertAmount(amount, form.priceCurrency, other, usdToMxn)
+    return { other, converted }
+  }, [form.priceAmount, form.priceCurrency, usdToMxn])
 
   const clearPendingCover = useCallback(() => {
     setPendingCoverPreview((current) => {
@@ -150,6 +168,23 @@ export default function AdminCursosPage() {
   useEffect(() => {
     void fetchCourses()
   }, [fetchCourses])
+
+  useEffect(() => {
+    if (!dialogOpen || usdToMxn != null) return
+    let cancelled = false
+    void fetch('/api/fx/usd-mxn')
+      .then(async (response) => {
+        if (!response.ok) return
+        const body = (await response.json()) as { rate?: number }
+        if (!cancelled && body.rate && body.rate > 0) setUsdToMxn(body.rate)
+      })
+      .catch(() => {
+        // Preview stays hidden if FX is unavailable.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [dialogOpen, usdToMxn])
 
   useEffect(() => {
     if (!dialogOpen) return
@@ -690,15 +725,79 @@ export default function AdminCursosPage() {
                 </label>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+              <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
                 <label className="space-y-1.5 text-sm font-medium">
                   Precio
-                  <input type="number" min="0" step="0.01" value={form.priceAmount} onChange={(event) => updateForm('priceAmount', event.target.value)} placeholder="0.00" className={fieldClass} />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.priceAmount}
+                    onChange={(event) => updateForm('priceAmount', event.target.value)}
+                    placeholder="0.00"
+                    className={fieldClass}
+                  />
                 </label>
-                <label className="space-y-1.5 text-sm font-medium">
-                  Moneda
-                  <input required minLength={3} maxLength={3} value={form.priceCurrency} onChange={(event) => updateForm('priceCurrency', event.target.value.toUpperCase())} className={fieldClass} />
-                </label>
+                <div className="space-y-1.5 text-sm font-medium">
+                  <span id="course-currency-label">Moneda de cobro</span>
+                  <div
+                    role="group"
+                    aria-labelledby="course-currency-label"
+                    className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1"
+                  >
+                    {(['MXN', 'USD'] as const).map((currency) => (
+                      <button
+                        key={currency}
+                        type="button"
+                        onClick={() => updateForm('priceCurrency', currency)}
+                        className={currencyToggleClass(form.priceCurrency === currency)}
+                        aria-pressed={form.priceCurrency === currency}
+                      >
+                        {currency}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs font-normal text-muted-foreground">
+                    Precio base del curso. El cliente podrá pagar en MXN o USD.
+                  </p>
+                  {convertedPreview && (
+                    <p className="text-xs font-normal text-mauve-300">
+                      ≈ {formatMoneyAmount(convertedPreview.converted, convertedPreview.other)} al tipo
+                      de cambio actual
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-sm font-medium">
+                <span id="course-billing-label">Tipo de cobro</span>
+                <div
+                  role="group"
+                  aria-labelledby="course-billing-label"
+                  className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1"
+                >
+                  {(
+                    [
+                      { value: 'one_time' as const, label: 'Pago único' },
+                      { value: 'monthly' as const, label: 'Membresía mensual' },
+                    ] as const
+                  ).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => updateForm('billingInterval', value)}
+                      className={currencyToggleClass(form.billingInterval === value)}
+                      aria-pressed={form.billingInterval === value}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs font-normal text-muted-foreground">
+                  {form.billingInterval === 'monthly'
+                    ? 'Stripe cobrará cada mes. El acceso expira si cancelan o falla el pago.'
+                    : 'Un solo pago da acceso permanente al curso.'}
+                </p>
               </div>
 
               <label className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">

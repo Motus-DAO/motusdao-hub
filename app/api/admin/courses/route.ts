@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
         difficulty: body.difficulty,
         priceAmount: priceAmount,
         priceCurrency: body.priceCurrency,
+        billingInterval: body.billingInterval ?? 'one_time',
         isFree,
         isPublished: body.isPublished ?? false,
         imageUrl: body.imageUrl || null,

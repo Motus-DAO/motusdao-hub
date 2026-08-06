@@ -45,6 +45,7 @@ export type PublicCourse = {
   reviewCount: number | null
   priceAmount: string | number | null
   priceCurrency: string
+  billingInterval?: 'one_time' | 'monthly' | string | null
   isFree: boolean
   modules: PublicModule[]
 }
@@ -125,6 +126,11 @@ export type EnrollmentSummary = {
   completed: boolean
   paid?: boolean
   purchasedAt?: string | null
+  accessExpiresAt?: string | null
+  stripeSubscriptionId?: string | null
+  cancelAtPeriodEnd?: boolean
+  subscriptionStatus?: string | null
+  subscriptionCanceledAt?: string | null
 }
 
 export type GatedLessonResponse = {
@@ -219,6 +225,11 @@ export async function fetchUserEnrollments(
       progress: number
       completed: boolean
       purchasedAt?: string | null
+      accessExpiresAt?: string | null
+      stripeSubscriptionId?: string | null
+      cancelAtPeriodEnd?: boolean
+      subscriptionStatus?: string | null
+      subscriptionCanceledAt?: string | null
       paid?: boolean
       orderItems?: Array<{ order?: { status?: string } | null }>
     }>
@@ -230,10 +241,12 @@ export async function fetchUserEnrollments(
     progress: item.progress,
     completed: item.completed,
     purchasedAt: item.purchasedAt ?? null,
-    paid:
-      item.paid === true ||
-      (Array.isArray(item.orderItems) &&
-        item.orderItems.some((orderItem) => orderItem.order?.status === 'paid')),
+    accessExpiresAt: item.accessExpiresAt ?? null,
+    stripeSubscriptionId: item.stripeSubscriptionId ?? null,
+    cancelAtPeriodEnd: item.cancelAtPeriodEnd === true,
+    subscriptionStatus: item.subscriptionStatus ?? null,
+    subscriptionCanceledAt: item.subscriptionCanceledAt ?? null,
+    paid: item.paid === true,
   }))
   setCachedUserEnrollments(userId, enrollments)
   return enrollments

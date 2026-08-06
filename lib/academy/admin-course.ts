@@ -25,11 +25,11 @@ const courseFields = {
     .max(9_999_999_999.99)
     .optional(),
   priceCurrency: z
-    .string()
-    .trim()
-    .length(3, 'La moneda debe tener 3 caracteres')
-    .transform((value) => value.toUpperCase())
+    .enum(['MXN', 'USD'], {
+      errorMap: () => ({ message: 'La moneda debe ser MXN o USD' }),
+    })
     .optional(),
+  billingInterval: z.enum(['one_time', 'monthly']).optional(),
   isPublished: z.boolean().optional(),
   imageUrl: z
     .string()

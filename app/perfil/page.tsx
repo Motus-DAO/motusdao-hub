@@ -22,7 +22,10 @@ import {
   AtSign,
   Video,
   Link2,
-  Copy
+  Copy,
+  CreditCard,
+  AlertTriangle,
+  X
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
@@ -57,6 +60,25 @@ interface UserData {
   registrationCompleted: boolean
   motusName?: string | null
   mnsTxHash?: string | null
+}
+
+interface UserEnrollmentItem {
+  id: string
+  userId: string
+  courseId: string
+  purchasedAt?: string | null
+  accessExpiresAt?: string | null
+  stripeSubscriptionId?: string | null
+  paid?: boolean
+  cancelAtPeriodEnd?: boolean
+  subscriptionStatus?: string | null
+  subscriptionCanceledAt?: string | null
+  course?: {
+    id: string
+    title: string
+    slug: string
+    billingInterval?: 'one_time' | 'monthly' | string | null
+  } | null
 }
 
 export default function PerfilPage() {
@@ -190,6 +212,11 @@ export default function PerfilPage() {
   type PsmMeetingMode = 'secure' | 'open'
   const [psmMeetingMode, setPsmMeetingMode] = useState<PsmMeetingMode>('secure')
   const [copiedOpenLink, setCopiedOpenLink] = useState(false)
+  const [enrollments, setEnrollments] = useState<UserEnrollmentItem[]>([])
+  const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false)
+  const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null)
+  const [cancelingEnrollmentId, setCancelingEnrollmentId] = useState<string | null>(null)
+  const [cancelModalEnrollment, setCancelModalEnrollment] = useState<UserEnrollmentItem | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -374,6 +401,72 @@ export default function PerfilPage() {
       fetchSession()
     }
   }, [userData?.id, userData?.role])
+
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      if (!userData?.id) return
+
+      setIsLoadingEnrollments(true)
+      try {
+        const response = await authFetch(`/api/enrollments?userId=${encodeURIComponent(userData.id)}`)
+        if (!response.ok) return
+        const body = (await response.json()) as { enrollments?: UserEnrollmentItem[] }
+        setEnrollments(Array.isArray(body.enrollments) ? body.enrollments : [])
+      } catch (fetchError) {
+        console.error('Error fetching enrollments for profile:', fetchError)
+      } finally {
+        setIsLoadingEnrollments(false)
+      }
+    }
+
+    void fetchEnrollments()
+  }, [userData?.id])
+
+  const monthlyMemberships = enrollments.filter(
+    (enrollment) =>
+      enrollment.course?.billingInterval === 'monthly' &&
+      Boolean(enrollment.stripeSubscriptionId || enrollment.purchasedAt)
+  )
+
+  const handleCancelMembership = async (enrollment: UserEnrollmentItem) => {
+    if (!userData?.id) return
+    if (!enrollment.stripeSubscriptionId) {
+      setSubscriptionNotice('Esta membresía aún no tiene una suscripción de Stripe enlazada.')
+      return
+    }
+
+    setSubscriptionNotice(null)
+    setCancelingEnrollmentId(enrollment.id)
+    try {
+      const response = await authFetch('/api/stripe/subscriptions/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userData.id,
+          enrollmentId: enrollment.id,
+        }),
+      })
+
+      const body = (await response.json().catch(() => ({}))) as { message?: string; error?: string }
+      if (!response.ok) {
+        throw new Error(body.error || 'No se pudo cancelar la membresía')
+      }
+
+      setSubscriptionNotice(body.message || 'Tu membresía se cancelará al final del periodo actual.')
+      const refreshed = await authFetch(`/api/enrollments?userId=${encodeURIComponent(userData.id)}`)
+      if (refreshed.ok) {
+        const refreshedBody = (await refreshed.json()) as { enrollments?: UserEnrollmentItem[] }
+        setEnrollments(Array.isArray(refreshedBody.enrollments) ? refreshedBody.enrollments : [])
+      }
+    } catch (cancelError) {
+      setSubscriptionNotice(
+        cancelError instanceof Error ? cancelError.message : 'No se pudo cancelar la membresía'
+      )
+    } finally {
+      setCancelingEnrollmentId(null)
+      setCancelModalEnrollment(null)
+    }
+  }
 
   const handleSave = async () => {
     if (!userData?.id) {
@@ -1311,6 +1404,93 @@ export default function PerfilPage() {
                 </motion.div>
               )}
 
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.45 }}
+                className="mt-8"
+              >
+                <GlassCard className="p-8">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center">
+                    <CreditCard className="w-6 h-6 mr-3 text-mauve-500" />
+                    Membresías activas
+                  </h3>
+
+                  {subscriptionNotice && (
+                    <p className="mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground">
+                      {subscriptionNotice}
+                    </p>
+                  )}
+
+                  {isLoadingEnrollments ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader className="w-6 h-6 animate-spin text-mauve-500" />
+                    </div>
+                  ) : monthlyMemberships.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No tienes membresías mensuales activas o históricas.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {monthlyMemberships.map((enrollment) => {
+                        const active = Boolean(enrollment.paid)
+                        const cancellationScheduled = enrollment.cancelAtPeriodEnd === true
+                        return (
+                          <div
+                            key={enrollment.id}
+                            className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div>
+                              <p className="font-semibold">
+                                {enrollment.course?.title || 'Curso'}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Estado: {active ? 'Activa' : 'Inactiva'}
+                                {enrollment.accessExpiresAt
+                                  ? ` · acceso hasta ${new Date(enrollment.accessExpiresAt).toLocaleDateString('es-MX')}`
+                                  : ''}
+                              </p>
+                              {cancellationScheduled && (
+                                <p className="mt-1 text-xs text-amber-300">
+                                  Cancelación programada al final del periodo
+                                </p>
+                              )}
+                            </div>
+                            {active ? (
+                              <CTAButton
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setCancelModalEnrollment(enrollment)}
+                                disabled={cancelingEnrollmentId === enrollment.id || cancellationScheduled}
+                              >
+                                {cancellationScheduled
+                                  ? 'Cancelación programada'
+                                  : cancelingEnrollmentId === enrollment.id
+                                  ? 'Cancelando...'
+                                  : 'Cancelar membresía'}
+                              </CTAButton>
+                            ) : (
+                              <CTAButton
+                                size="sm"
+                                onClick={() =>
+                                  window.location.assign(
+                                    enrollment.course?.slug
+                                      ? `/academia/${enrollment.course.slug}`
+                                      : '/academia'
+                                  )
+                                }
+                              >
+                                Renovar membresía
+                              </CTAButton>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </GlassCard>
+              </motion.div>
+
               {/* Settings */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1368,6 +1548,71 @@ export default function PerfilPage() {
           </div>
         </div>
       </Section>
+
+      {cancelModalEnrollment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setCancelModalEnrollment(null)}
+        >
+          <GlassCard
+            className="relative w-full max-w-lg border-white/20 p-6 sm:p-7"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setCancelModalEnrollment(null)}
+              className="absolute right-3 top-3 rounded-md p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+              aria-label="Cerrar modal"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">Cancelar membresía</h3>
+                <p className="text-sm text-muted-foreground">
+                  La cancelación aplica al final del periodo actual.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+              <p className="font-medium">{cancelModalEnrollment.course?.title || 'Curso'}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Mantendrás acceso hasta la fecha de expiración indicada en tu membresía.
+              </p>
+            </div>
+
+            {cancelModalEnrollment.cancelAtPeriodEnd && (
+              <p className="mt-3 rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                Esta membresía ya tiene cancelación programada.
+              </p>
+            )}
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <CTAButton variant="secondary" onClick={() => setCancelModalEnrollment(null)}>
+                Conservar membresía
+              </CTAButton>
+              <CTAButton
+                onClick={() => handleCancelMembership(cancelModalEnrollment)}
+                disabled={
+                  cancelingEnrollmentId === cancelModalEnrollment.id ||
+                  cancelModalEnrollment.cancelAtPeriodEnd === true
+                }
+              >
+                {cancelModalEnrollment.cancelAtPeriodEnd === true
+                  ? 'Cancelación ya programada'
+                  : cancelingEnrollmentId === cancelModalEnrollment.id
+                  ? 'Cancelando...'
+                  : 'Confirmar cancelación'}
+              </CTAButton>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   )
 }

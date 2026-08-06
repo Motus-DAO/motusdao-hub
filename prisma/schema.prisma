@@ -46,6 +46,7 @@ model Course {
   modules          Module[]
   priceAmount      Decimal?          @db.Decimal(12, 2)
   priceCurrency    String            @default("MXN")
+  billingInterval  CourseBillingInterval @default(one_time)
   isFree           Boolean           @default(true)
 
   @@map("courses")
@@ -73,6 +74,7 @@ model Enrollment {
   completed Boolean  @default(false)
   purchasedAt DateTime?
   accessExpiresAt DateTime?
+  stripeSubscriptionId String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -726,6 +728,11 @@ enum SessionStatus {
   accepted
   completed
   cancelled
+}
+
+enum CourseBillingInterval {
+  one_time
+  monthly
 }
 
 enum CourseDifficulty {

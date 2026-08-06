@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { getRequestOrigin, handleAuthError } from '@/lib/auth/session'
-import { coursePriceAmount, courseRequiresPayment } from '@/lib/academy/course-pricing'
+import { courseRequiresPayment, normalizeCourseCurrency, resolveCheckoutCharge } from '@/lib/academy/course-pricing'
+import { hasActiveEnrollmentAccess, isMonthlyCourse, normalizeBillingInterval } from '@/lib/academy/enrollment-access'
+import { getUsdToMxnRate } from '@/lib/academy/fx'
 import { SITE_URL } from '@/lib/constants'
 import { getStripeClient, isStripeConfigured, toStripeUnitAmount } from '@/lib/stripe'
 import { toInputJson } from '@/lib/prisma-json'
@@ -11,6 +13,7 @@ import { toInputJson } from '@/lib/prisma-json'
 const checkoutSchema = z.object({
   userId: z.string().min(1),
   courseId: z.string().min(1),
+  currency: z.enum(['MXN', 'USD']).optional(),
 })
 
 /** Prefer the browser origin so localhost checkout returns to localhost, not prod. */
@@ -72,18 +75,29 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (existingEnrollment) {
+    if (existingEnrollment && hasActiveEnrollmentAccess(existingEnrollment, course)) {
       return NextResponse.json({ error: 'Ya estás inscrito en este curso' }, { status: 409 })
     }
 
-    const unitAmount = coursePriceAmount(course)
-    const currency = (course.priceCurrency || 'MXN').toLowerCase()
+    const billingInterval = normalizeBillingInterval(course.billingInterval)
+    const isSubscription = isMonthlyCourse(course)
+
+    const payCurrency = normalizeCourseCurrency(body.currency || course.priceCurrency)
+    const fx = await getUsdToMxnRate()
+    const charge = resolveCheckoutCharge(course, payCurrency, fx)
+    const unitAmount = charge.amount
+    const priceCurrency = charge.currency
+    const currency = priceCurrency.toLowerCase()
     const stripeAmount = toStripeUnitAmount(unitAmount, currency)
+
+    if (!(unitAmount > 0) || !(stripeAmount > 0)) {
+      return NextResponse.json({ error: 'El monto convertido no es válido' }, { status: 400 })
+    }
 
     const order = await prisma.order.create({
       data: {
         userId: body.userId,
-        currency: course.priceCurrency || 'MXN',
+        currency: priceCurrency,
         subtotalAmount: unitAmount,
         totalAmount: unitAmount,
         notes: `Academy course: ${course.title}`,
@@ -91,6 +105,13 @@ export async function POST(request: NextRequest) {
           courseId: course.id,
           courseSlug: course.slug,
           provider: 'stripe',
+          priceCurrency,
+          billingInterval,
+          baseCurrency: normalizeCourseCurrency(course.priceCurrency),
+          baseAmount: Number(course.priceAmount),
+          fxUsdMxn: fx.rate,
+          fxSource: fx.source,
+          fxDate: fx.date,
         }),
         items: {
           create: {
@@ -99,7 +120,7 @@ export async function POST(request: NextRequest) {
             quantity: 1,
             unitAmount,
             totalAmount: unitAmount,
-            currency: course.priceCurrency || 'MXN',
+            currency: priceCurrency,
             courseId: course.id,
           },
         },
@@ -113,7 +134,7 @@ export async function POST(request: NextRequest) {
     const cancelUrl = `${returnBase}/academia/${course.slug}?checkout=cancelled`
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
+      mode: isSubscription ? 'subscription' : 'payment',
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: order.id,
@@ -121,6 +142,8 @@ export async function POST(request: NextRequest) {
         orderId: order.id,
         userId: body.userId,
         courseId: course.id,
+        priceCurrency,
+        billingInterval,
       },
       line_items: [
         {
@@ -128,9 +151,16 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency,
             unit_amount: stripeAmount,
+            ...(isSubscription
+              ? {
+                  recurring: { interval: 'month' as const },
+                }
+              : {}),
             product_data: {
               name: course.title,
-              description: course.summary.slice(0, 500),
+              description: isSubscription
+                ? `${course.summary.slice(0, 480)} (membresía mensual)`
+                : course.summary.slice(0, 500),
             },
           },
         },
@@ -144,6 +174,13 @@ export async function POST(request: NextRequest) {
           courseId: course.id,
           courseSlug: course.slug,
           provider: 'stripe',
+          priceCurrency,
+          billingInterval,
+          baseCurrency: normalizeCourseCurrency(course.priceCurrency),
+          baseAmount: Number(course.priceAmount),
+          fxUsdMxn: fx.rate,
+          fxSource: fx.source,
+          fxDate: fx.date,
           stripeSessionId: session.id,
         }),
       },

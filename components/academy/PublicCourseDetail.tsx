@@ -22,9 +22,13 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { Section } from '@/components/ui/Section'
 import {
+  courseAmountsInBothCurrencies,
   courseRequiresPayment,
-  formatCoursePrice,
+  formatCoursePriceInCurrency,
+  formatMoneyAmount,
+  type CourseCurrency,
 } from '@/lib/academy/course-pricing'
+import { isMonthlyCourse } from '@/lib/academy/enrollment-access'
 import {
   courseDuration,
   courseLearningOutcomes,
@@ -49,8 +53,22 @@ const difficultyLabels = {
   advanced: 'Avanzado',
 }
 
-function formatPrice(course: PublicCourse) {
-  return formatCoursePrice(course)
+const DISPLAY_CURRENCY_KEY = 'academy-display-currency'
+
+function formatPrice(
+  course: PublicCourse,
+  currency: CourseCurrency,
+  usdToMxn?: number | null
+) {
+  return formatCoursePriceInCurrency(course, currency, usdToMxn)
+}
+
+function currencyToggleClass(active: boolean) {
+  return `flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+    active
+      ? 'bg-mauve-500/20 text-mauve-200 ring-1 ring-mauve-400/40'
+      : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+  }`
 }
 
 function CourseNotFound() {
@@ -83,6 +101,9 @@ function EnrollmentCTA({
   stripeEnabled,
   checkoutSuccess,
   checkoutPhase,
+  payCurrency,
+  usdToMxn,
+  onPayCurrencyChange,
   onEnroll,
   onLogin,
   onSignIn,
@@ -99,16 +120,24 @@ function EnrollmentCTA({
   stripeEnabled: boolean
   checkoutSuccess: boolean
   checkoutPhase: 'activating' | 'ready' | 'error'
+  payCurrency: CourseCurrency
+  usdToMxn: number | null
+  onPayCurrencyChange: (currency: CourseCurrency) => void
   onEnroll: () => void
   onLogin: () => void
   onSignIn: () => void
 }) {
   const continueSlug = firstLessonSlug(course)
-  const priceLabel = formatPrice(course)
+  const priceLabel = formatPrice(course, payCurrency, usdToMxn)
   const paidCourse = courseRequiresPayment(course)
+  const monthlyMembership = isMonthlyCourse(course)
   const usesStripeCheckout = paidCourse && stripeEnabled
+  const amounts =
+    usdToMxn && usdToMxn > 0 ? courseAmountsInBothCurrencies(course, usdToMxn) : null
+  const selectedAmount = amounts?.[payCurrency]
+  const expiredMembership = Boolean(enrollment && !enrollment.paid && monthlyMembership)
 
-  if (enrollment) {
+  if (enrollment?.paid) {
     return (
       <>
         {checkoutSuccess && (
@@ -159,19 +188,52 @@ function EnrollmentCTA({
     )
   }
 
-  if (checkoutSuccess && !enrollment) {
+  if (checkoutSuccess && !enrollment?.paid) {
     return <CheckoutSuccessPanel phase={checkoutPhase} errorMessage={actionError} />
   }
 
   return (
     <>
-      <p className="mb-4 text-center text-sm text-muted-foreground">
+      {expiredMembership && (
+        <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-200">
+          Tu membresía expiró. Renueva para recuperar el acceso al contenido.
+        </p>
+      )}
+      <p className="mb-3 text-center text-sm text-muted-foreground">
         {priceLabel === 'Gratis'
           ? 'Acceso gratuito'
           : usesStripeCheckout
-            ? `${priceLabel} — pago seguro con Stripe`
+            ? monthlyMembership
+              ? `${priceLabel} — membresía mensual con Stripe`
+              : `${priceLabel} — pago seguro con Stripe`
             : `${priceLabel} — inscripción sin pago en v1`}
       </p>
+      {usesStripeCheckout && (
+        <div className="mb-4 space-y-2">
+          <div
+            role="group"
+            aria-label="Moneda de pago"
+            className="mx-auto flex w-fit gap-1 rounded-lg border border-white/10 bg-white/5 p-1"
+          >
+            {(['USD', 'MXN'] as const).map((currency) => (
+              <button
+                key={currency}
+                type="button"
+                onClick={() => onPayCurrencyChange(currency)}
+                className={currencyToggleClass(payCurrency === currency)}
+                aria-pressed={payCurrency === currency}
+              >
+                {currency}
+              </button>
+            ))}
+          </div>
+          {selectedAmount != null && (
+            <p className="text-center text-xs text-muted-foreground">
+              Stripe cobrará {formatMoneyAmount(selectedAmount, payCurrency)}
+            </p>
+          )}
+        </div>
+      )}
       {sessionState === 'no_wallet' ? (
         <CTAButton size="lg" className="w-full" onClick={onLogin}>
           Iniciar sesión para {usesStripeCheckout ? 'comprar' : 'inscribirse'}
@@ -196,7 +258,11 @@ function EnrollmentCTA({
               ) : (
                 <>
                   <CreditCard className="h-4 w-4" />
-                  Comprar e inscribirse
+                  {expiredMembership
+                    ? 'Renovar membresía'
+                    : monthlyMembership
+                      ? 'Suscribirse e inscribirse'
+                      : 'Comprar e inscribirse'}
                 </>
               )}
             </>
@@ -226,6 +292,9 @@ function CourseDetailView({
   stripeEnabled,
   checkoutSuccess,
   checkoutPhase,
+  payCurrency,
+  usdToMxn,
+  onPayCurrencyChange,
   onLogin,
   onSignIn,
 }: {
@@ -242,6 +311,9 @@ function CourseDetailView({
   stripeEnabled: boolean
   checkoutSuccess: boolean
   checkoutPhase: 'activating' | 'ready' | 'error'
+  payCurrency: CourseCurrency
+  usdToMxn: number | null
+  onPayCurrencyChange: (currency: CourseCurrency) => void
   onLogin: () => void
   onSignIn: () => void
 }) {
@@ -300,6 +372,9 @@ function CourseDetailView({
                   stripeEnabled={stripeEnabled}
                   checkoutSuccess={checkoutSuccess}
                   checkoutPhase={checkoutPhase}
+                  payCurrency={payCurrency}
+                  usdToMxn={usdToMxn}
+                  onPayCurrencyChange={onPayCurrencyChange}
                   onEnroll={onEnroll}
                   onLogin={onLogin}
                   onSignIn={onSignIn}
@@ -363,7 +438,9 @@ function CourseDetailView({
                         <p className="mt-1 text-xs text-muted-foreground">{course.reviewCount || 0} reseñas</p>
                       </div>
                       <div>
-                        <p className="font-semibold text-mauve-300">{formatPrice(course)}</p>
+                        <p className="font-semibold text-mauve-300">
+                          {formatPrice(course, payCurrency, usdToMxn)}
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">Acceso</p>
                       </div>
                     </div>
@@ -461,12 +538,48 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
   const [redirectingToCourse, setRedirectingToCourse] = useState(false)
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null)
+  const [payCurrency, setPayCurrency] = useState<CourseCurrency>('USD')
+  const [usdToMxn, setUsdToMxn] = useState<number | null>(null)
 
   useEffect(() => {
     void fetch('/api/stripe/status')
       .then((response) => response.json())
       .then((body: { enabled?: boolean }) => setStripeEnabled(Boolean(body.enabled)))
       .catch(() => setStripeEnabled(false))
+  }, [])
+
+  useEffect(() => {
+    try {
+      const currency = window.localStorage.getItem(DISPLAY_CURRENCY_KEY)
+      if (currency === 'MXN' || currency === 'USD') setPayCurrency(currency)
+    } catch {
+      // keep USD default
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch('/api/fx/usd-mxn')
+      .then(async (response) => {
+        if (!response.ok) return
+        const body = (await response.json()) as { rate?: number }
+        if (!cancelled && body.rate && body.rate > 0) setUsdToMxn(body.rate)
+      })
+      .catch(() => {
+        // Dual-currency UI falls back to base price only.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const setCurrencyPreference = useCallback((currency: CourseCurrency) => {
+    setPayCurrency(currency)
+    try {
+      window.localStorage.setItem(DISPLAY_CURRENCY_KEY, currency)
+    } catch {
+      // ignore
+    }
   }, [])
 
   const loadEnrollment = useCallback(async (courseId: string, signal?: AbortSignal, force = false) => {
@@ -500,7 +613,7 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
   }, [])
 
   useEffect(() => {
-    if (!checkoutSuccess || !course || enrollment || !isSessionReady || !checkoutSessionId) return
+    if (!checkoutSuccess || !course || enrollment?.paid || !isSessionReady || !checkoutSessionId) return
 
     let cancelled = false
     setPaymentConfirming(true)
@@ -557,7 +670,7 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
 
         invalidateUserEnrollmentsCache()
         const match = await loadEnrollment(course.id, undefined, true)
-        if (match && !cancelled) {
+        if (match?.paid && !cancelled) {
           setPaymentConfirming(false)
           window.history.replaceState({}, '', `/academia/${course.slug}`)
           return
@@ -581,7 +694,7 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
   }, [checkoutSuccess, checkoutSessionId, course, enrollment, loadEnrollment, isSessionReady])
 
   useEffect(() => {
-    if (!checkoutSuccess || !enrollment || !course) return
+    if (!checkoutSuccess || !enrollment?.paid || !course) return
 
     const lessonSlug = firstLessonSlug(course)
     if (!lessonSlug) return
@@ -672,7 +785,11 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
         const response = await authFetch('/api/stripe/checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: session.userId, courseId: course.id }),
+          body: JSON.stringify({
+            userId: session.userId,
+            courseId: course.id,
+            currency: payCurrency,
+          }),
         })
 
         if (!response.ok) {
@@ -758,6 +875,9 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
         stripeEnabled={stripeEnabled}
         checkoutSuccess={checkoutSuccess}
         checkoutPhase={checkoutPhase}
+        payCurrency={payCurrency}
+        usdToMxn={usdToMxn}
+        onPayCurrencyChange={setCurrencyPreference}
         onLogin={() => void login()}
         onSignIn={() => void handleSignInAndEnroll()}
       />
