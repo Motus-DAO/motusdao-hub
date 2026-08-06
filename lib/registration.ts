@@ -10,18 +10,17 @@ export interface RegistrationStatus {
   userId?: string
 }
 
-const DEFAULT_STATUS: RegistrationStatus = {
-  registered: false,
-  registrationCompleted: false,
-}
-
+/**
+ * Returns null when the check fails (network/HTTP error) so callers do not
+ * treat a transport failure as "user is unregistered".
+ */
 export async function fetchRegistrationStatus(params: {
   email?: string
   eoaAddress?: string
   identity?: WalletIdentity | null
   /** @deprecated use identity */
   privyId?: string
-}): Promise<RegistrationStatus> {
+}): Promise<RegistrationStatus | null> {
   const searchParams = new URLSearchParams()
 
   if (params.email) searchParams.set('email', params.email)
@@ -42,12 +41,12 @@ export async function fetchRegistrationStatus(params: {
         response.status,
         await response.text().catch(() => '')
       )
-      return DEFAULT_STATUS
+      return null
     }
 
     return response.json()
   } catch (error) {
     console.warn('[registration] check-registration error:', error)
-    return DEFAULT_STATUS
+    return null
   }
 }

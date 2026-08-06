@@ -17,6 +17,10 @@ function normalizeAddress(address: string | undefined | null): string | null {
   return address.toLowerCase()
 }
 
+function isRegistroPath(pathname: string): boolean {
+  return pathname === ONBOARDING_ROUTE || pathname.startsWith(`${ONBOARDING_ROUTE}/`)
+}
+
 export function OnboardingGuard({ children }: OnboardingGuardProps) {
   const { ready, authenticated, user, providerId } = useWallet()
   const { wallets } = useWallets()
@@ -27,8 +31,9 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
   useEffect(() => {
     if (!ready || !authenticated) return
 
-    // Admin and other exempt routes skip registration polling
-    if (isOnboardingExemptPath(pathname)) return
+    // Admin/docs/etc. skip registration polling. /registro still checks so
+    // completed users are redirected out of the wizard.
+    if (isOnboardingExemptPath(pathname) && !isRegistroPath(pathname)) return
 
     const email = user?.email?.address || user?.google?.email
     const eoaAddress = getEOAAddress(wallets)
@@ -59,17 +64,25 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
 
         if (cancelled) return
 
+        // Transport/API failure — do not force onboarding or clear completion
+        if (!status) return
+
         if (status.registrationCompleted) {
           markCompleted()
-        } else if (isCompleted) {
+          if (isRegistroPath(pathname)) {
+            router.replace('/')
+          }
+          return
+        }
+
+        if (isCompleted) {
           useOnboardingStore.setState({ isCompleted: false })
         }
 
-        if (!status.registrationCompleted && !isOnboardingExemptPath(pathname)) {
+        if (!isOnboardingExemptPath(pathname)) {
           router.replace(ONBOARDING_ROUTE)
         }
       } catch (error) {
-        // Non-fatal: registration check uses session cookie; failures should not block the app
         console.warn('[OnboardingGuard] Registration check failed:', error)
       }
     }
@@ -93,6 +106,8 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
     reset,
     markCompleted,
     router,
+    providerId,
+    user,
   ])
 
   return <>{children}</>
