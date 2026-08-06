@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -40,9 +41,17 @@ import {
   type GatedLessonResponse,
   type PublicCourse,
 } from '@/lib/academy/public-course'
+import {
+  courseRequiresPayment,
+  formatCoursePrice,
+  type CourseCurrency,
+} from '@/lib/academy/course-pricing'
+import { isMonthlyCourse } from '@/lib/academy/enrollment-access'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { useWallet } from '@/lib/wallet'
+
+const DISPLAY_CURRENCY_KEY = 'academy-display-currency'
 
 function isAbortError(error: unknown): boolean {
   if (error instanceof DOMException && error.name === 'AbortError') return true
@@ -67,30 +76,58 @@ function LessonNotFound() {
 }
 
 function LockedLessonPanel({
+  course,
   courseSlug,
   onEnroll,
   enrolling,
+  stripeEnabled,
+  payCurrency,
 }: {
+  course: PublicCourse
   courseSlug: string
   onEnroll: () => void
   enrolling: boolean
+  stripeEnabled: boolean
+  payCurrency: CourseCurrency
 }) {
+  const paidCourse = courseRequiresPayment(course)
+  const monthlyMembership = isMonthlyCourse(course)
+  const usesStripeCheckout = paidCourse && stripeEnabled
+  const priceLabel = formatCoursePrice(course)
+
+  const description = usesStripeCheckout
+    ? monthlyMembership
+      ? `Este bloque requiere una membresía mensual (${priceLabel}) para acceder a esta lección.`
+      : `Este bloque requiere pago (${priceLabel}) para acceder a esta lección.`
+    : paidCourse && !stripeEnabled
+      ? 'Este bloque requiere pago, pero el checkout no está disponible en este momento.'
+      : 'Inscríbete en el bloque para acceder a esta lección.'
+
+  const ctaLabel = usesStripeCheckout
+    ? monthlyMembership
+      ? 'Suscribirse e inscribirse'
+      : 'Comprar e inscribirse'
+    : 'Inscribirse al bloque'
+
   return (
     <GlassCard className="p-8 text-center">
       <Lock className="mx-auto mb-4 h-10 w-10 text-mauve-400" />
       <h2 className="mb-2 text-xl font-semibold">Contenido bloqueado</h2>
-      <p className="mb-6 text-sm text-muted-foreground">
-        Inscríbete en el bloque para acceder a esta lección.
-      </p>
+      <p className="mb-6 text-sm text-muted-foreground">{description}</p>
       <div className="flex flex-wrap justify-center gap-3">
         <CTAButton onClick={onEnroll} disabled={enrolling} className="gap-2">
           {enrolling && <Loader2 className="h-4 w-4 animate-spin" />}
-          Inscribirse al bloque
+          {enrolling ? 'Procesando…' : ctaLabel}
         </CTAButton>
         <Link href={`/academia/${courseSlug}`}>
           <CTAButton variant="secondary">Ver bloque</CTAButton>
         </Link>
       </div>
+      {usesStripeCheckout && (
+        <p className="mt-4 text-xs text-muted-foreground">
+          Pago seguro con Stripe · moneda: {payCurrency}
+        </p>
+      )}
     </GlassCard>
   )
 }
@@ -187,15 +224,61 @@ function LessonCompleteConfirmDialog({
   onClose: () => void
   onConfirm: () => void
 }) {
-  if (!open) return null
+  const [mounted, setMounted] = useState(false)
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+
+    const shell = document.querySelector<HTMLElement>('[data-app-shell-scroll]')
+    const targets = [document.body, shell].filter((el): el is HTMLElement => Boolean(el))
+    const previous = targets.map((el) => ({
+      el,
+      overflow: el.style.overflow,
+      paddingRight: el.style.paddingRight,
+    }))
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+
+    for (const el of targets) {
+      el.style.overflow = 'hidden'
+      if (scrollbarWidth > 0 && el === document.body) {
+        el.style.paddingRight = `${scrollbarWidth}px`
+      }
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !confirming) onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      for (const entry of previous) {
+        entry.el.style.overflow = entry.overflow
+        entry.el.style.paddingRight = entry.paddingRight
+      }
+    }
+  }, [open, confirming, onClose])
+
+  if (!open || !mounted) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="presentation"
+      onClick={() => {
+        if (!confirming) onClose()
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="lesson-complete-dialog-title"
         className="w-full max-w-sm rounded-xl border border-white/10 bg-background p-5 shadow-2xl sm:p-6"
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mauve-500/15">
@@ -230,7 +313,8 @@ function LessonCompleteConfirmDialog({
           </CTAButton>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -257,6 +341,8 @@ export function LessonPlayer({
   const [missing, setMissing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [enrolling, setEnrolling] = useState(false)
+  const [stripeEnabled, setStripeEnabled] = useState(false)
+  const [payCurrency, setPayCurrency] = useState<CourseCurrency>('USD')
   const [markingComplete, setMarkingComplete] = useState(false)
   const [confirmAdvanceOpen, setConfirmAdvanceOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -368,6 +454,22 @@ export function LessonPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- course ref tracks whether initial load happened
   }, [courseSlug, lessonSlug, loadData])
 
+  useEffect(() => {
+    void fetch('/api/stripe/status')
+      .then((response) => response.json())
+      .then((body: { enabled?: boolean }) => setStripeEnabled(Boolean(body.enabled)))
+      .catch(() => setStripeEnabled(false))
+  }, [])
+
+  useEffect(() => {
+    try {
+      const currency = window.localStorage.getItem(DISPLAY_CURRENCY_KEY)
+      if (currency === 'MXN' || currency === 'USD') setPayCurrency(currency)
+    } catch {
+      // keep USD default
+    }
+  }, [])
+
   const ensureSession = async (): Promise<string | null> => {
     if (!ready) return null
     if (!authenticated) {
@@ -396,6 +498,31 @@ export function LessonPlayer({
       const activeUserId = userId || (await ensureSession())
       if (!activeUserId) {
         setActionError('Inicia sesión para inscribirte al bloque.')
+        return
+      }
+
+      if (courseRequiresPayment(course) && stripeEnabled) {
+        const response = await authFetch('/api/stripe/checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: activeUserId,
+            courseId: course.id,
+            currency: payCurrency,
+          }),
+        })
+
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string }
+          throw new Error(body.error || 'No se pudo iniciar el pago')
+        }
+
+        const body = (await response.json()) as { url?: string }
+        if (!body.url) {
+          throw new Error('No se recibió la URL de pago')
+        }
+
+        window.location.href = body.url
         return
       }
 
@@ -653,9 +780,12 @@ export function LessonPlayer({
 
                 {!access.allowed ? (
                   <LockedLessonPanel
+                    course={course}
                     courseSlug={courseSlug}
                     onEnroll={handleEnroll}
                     enrolling={enrolling}
+                    stripeEnabled={stripeEnabled}
+                    payCurrency={payCurrency}
                   />
                 ) : (
                   <>
