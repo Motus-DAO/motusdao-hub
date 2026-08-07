@@ -103,7 +103,7 @@ export default function QRScanner({ onScanSuccess, onScanError, onClose }: QRSca
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <GlassCard className="w-full max-w-md mx-4 p-6 relative">
+      <GlassCard variant="strong" className="w-full max-w-md mx-4 p-6 relative">
         <button
           onClick={handleClose}
           className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"

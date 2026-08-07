@@ -13,9 +13,6 @@ import {
   DollarSign,
   Shield,
   Zap,
-  Info,
-  User,
-  Building2,
   Loader,
   QrCode,
   ChevronDown,
@@ -35,6 +32,11 @@ import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
 import { motusNameService } from '@/lib/motus-name-service'
 import type { Address } from 'viem'
 import { getPrimaryWallet } from '@/lib/wallet-utils'
+import {
+  motusUserToRipioExternalRef,
+  type RipioRampFlow,
+} from '@/lib/ripio/ramps-widget'
+import { RipioRampsMockPanel } from '@/components/payments/RipioRampsMockPanel'
 
 const paymentSteps = [
   {
@@ -42,8 +44,8 @@ const paymentSteps = [
     title: 'Onramp',
     description: 'Convierte tu dinero fiat a criptomonedas',
     icon: DollarSign,
-    status: 'coming-soon',
-    details: 'Integración con Transak y MiniPay próximamente'
+    status: 'active',
+    details: 'Ripio Ramps Widget (mock hasta llaves partner)'
   },
   {
     step: 2,
@@ -81,17 +83,6 @@ const features = [
   }
 ]
 
-interface PaymentPreferenceData {
-  id: string
-  userId: string
-  defaultDestination: 'own_wallet' | 'matched_psm' | 'dao_treasury'
-  hasMatchedPSM: boolean
-  matchedPSM: {
-    id: string
-    smartWalletAddress: string | null
-  } | null
-}
-
 interface UserData {
   id: string
   email: string
@@ -99,13 +90,24 @@ interface UserData {
   smartWalletAddress?: string | null
 }
 
-type OnrampProvider = 'transak' | 'mtpelerin' | 'privy'
+type OnrampProvider = 'ripio' | 'transak' | 'mtpelerin' | 'privy'
 
 interface ProviderConfig {
   id: OnrampProvider
   name: string
   enabled: boolean
   description: string
+}
+
+type RipioWidgetTokenResponse = {
+  mode?: 'mock' | 'live' | 'error'
+  flow?: RipioRampFlow
+  address?: string
+  widgetUrl?: string
+  error?: string
+  details?: string
+  hint?: string
+  reason?: string
 }
 
 const QRScanner = dynamic(
@@ -127,12 +129,11 @@ export default function PagosPage() {
   const { wallets } = useWallets()
   const primaryWallet = getPrimaryWallet(wallets || [])
   const walletAddress = primaryWallet?.address || null
-  const [paymentPreference, setPaymentPreference] = useState<PaymentPreferenceData | null>(null)
-  const [isLoadingPreference, setIsLoadingPreference] = useState(false)
-  const [isSavingPreference, setIsSavingPreference] = useState(false)
   const [isStartingOnramp, setIsStartingOnramp] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<OnrampProvider | null>(null)
   const [mtPelerinUrl, setMtPelerinUrl] = useState<string | null>(null)
+  const [ripioMockFlow, setRipioMockFlow] = useState<RipioRampFlow | null>(null)
+  const [ripioMockAddress, setRipioMockAddress] = useState<string | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [transferMode, setTransferMode] = useState<'send' | 'receive'>('send')
   const [sendAddress, setSendAddress] = useState('')
@@ -428,147 +429,141 @@ export default function PagosPage() {
   }, [sendSuccess, walletAddress, enabledTokens])
 
   // Configuración de proveedores con flags de habilitación desde env vars
+  // Ripio se muestra por defecto; ocúltalo con NEXT_PUBLIC_RIPIO_RAMPS_ENABLED=false
+  const ripioRampsEnabled =
+    process.env.NEXT_PUBLIC_RIPIO_RAMPS_ENABLED !== 'false'
+
   const providers: ProviderConfig[] = [
     {
-      id: 'transak',
-      name: 'Transak Lite',
-      enabled: !!process.env.NEXT_PUBLIC_TRANSAK_ENABLED, // Flag para habilitar/deshabilitar
-      description: 'Compra cripto con tarjeta de crédito/débito (Transak Lite)'
+      id: 'ripio',
+      name: 'Ripio Ramps',
+      enabled: ripioRampsEnabled && authenticated,
+      description:
+        'Compra cripto con fiat (on-ramp) o retira a tu banco (off-ramp). Modo mock hasta llaves partner.'
     },
-    {
-      id: 'mtpelerin',
-      name: 'Mt Pelerin',
-      enabled: !!process.env.NEXT_PUBLIC_MTPELERIN_WIDGET_URL,
-      description: 'On-ramp integrado con soporte para MXN y Celo'
-    },
-    {
-      id: 'privy',
-      name: 'Privy (via Ramp/Coinbase)',
-      enabled: authenticated && !!wallets?.[0] && !!process.env.NEXT_PUBLIC_PRIVY_ONRAMP_PROVIDER, // Requiere wallet + proveedor configurado
-      description: 'On-ramp facilitado por Privy con proveedores externos'
-    }
   ]
 
   const availableProviders = providers.filter(p => p.enabled)
 
   const userEmail = user?.email?.address || user?.google?.email
   const walletIdentity = getWalletIdentity(user, providerId)
-  const daoTreasuryAddress = process.env.NEXT_PUBLIC_DAO_TREASURY_ADDRESS || '0xf229F3Dcea3D7cd3cA5ca41C4C50135D7b37F2b9'
 
-  // Fetch user data and payment preference
+  // Fetch Motus user id for stable Ripio external_ref
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchUser = async () => {
       if (!ready || !authenticated || !userEmail) return
 
-      setIsLoadingPreference(true)
       try {
-        // Get user profile to get userId
         const params = new URLSearchParams()
         appendWalletIdentityParams(params, walletIdentity)
-        if (userEmail) params.append('email', userEmail)
+        params.append('email', userEmail)
 
         const profileResponse = await fetch(`/api/profile?${params.toString()}`)
         if (profileResponse.ok) {
           const profileData = await profileResponse.json()
           setUserData(profileData.user)
-
-          // Get payment preference
-          if (profileData.user?.id) {
-            const prefResponse = await fetch(`/api/payment-preferences?userId=${profileData.user.id}`)
-            if (prefResponse.ok) {
-              const prefData = await prefResponse.json()
-              setPaymentPreference(prefData.preference)
-            }
-          }
         }
       } catch (err) {
-        console.error('Error fetching payment preference:', err)
-      } finally {
-        setIsLoadingPreference(false)
+        console.error('Error fetching profile for Ripio:', err)
       }
     }
 
-    fetchData()
+    void fetchUser()
   }, [ready, authenticated, userEmail, walletIdentity?.authProviderId])
 
-  const handleDestinationChange = async (destination: 'own_wallet' | 'matched_psm' | 'dao_treasury') => {
-    if (!userData?.id || isSavingPreference) return
+  const handleStartRipioRamp = async (flow: RipioRampFlow) => {
+    if (!authenticated) {
+      alert('Necesitas iniciar sesión y conectar tu wallet antes de usar Ripio.')
+      return
+    }
 
-    setIsSavingPreference(true)
+    const destinationAddress = walletAddress
+
+    if (!destinationAddress) {
+      alert('Conecta tu wallet para usar Ripio.')
+      return
+    }
+
+    const userSeed =
+      userData?.id ||
+      walletIdentity?.authProviderId ||
+      user?.id ||
+      destinationAddress
+
+    const externalRef = motusUserToRipioExternalRef(String(userSeed))
+
+    const confirmed = window.confirm(
+      `Vas a abrir Ripio Ramps (${flow === 'onramp' ? 'on-ramp / compra' : 'off-ramp / retiro'}).\n\n` +
+        `Tu wallet: ${destinationAddress}\n\n` +
+        `Sin llaves partner se abrirá el mock/demo. ¿Continuar?`
+    )
+
+    if (!confirmed) return
+
     try {
-      const response = await fetch('/api/payment-preferences', {
-        method: 'PUT',
+      setIsStartingOnramp(true)
+      setSelectedProvider('ripio')
+
+      const response = await fetch('/api/ripio/widget-token', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: userData.id,
-          defaultDestination: destination
-        })
+          address: destinationAddress,
+          externalRef,
+          flow,
+        }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setPaymentPreference(data.preference)
-      } else {
-        const error = await response.json()
-        console.error('Error updating preference:', error)
+      const data = (await response.json()) as RipioWidgetTokenResponse
+
+      if (data.mode === 'mock') {
+        setRipioMockAddress(destinationAddress)
+        setRipioMockFlow(flow)
+        return
       }
+
+      if (!response.ok || data.mode !== 'live' || !data.widgetUrl) {
+        throw new Error(
+          [data.error, data.hint, data.details].filter(Boolean).join('\n') ||
+            'No se pudo iniciar Ripio'
+        )
+      }
+
+      window.open(data.widgetUrl, '_blank', 'noopener,noreferrer')
     } catch (err) {
-      console.error('Error updating preference:', err)
+      console.error('Error iniciando Ripio Ramps:', err)
+      alert(
+        'Error al iniciar Ripio Ramps.\n\n' +
+          (err instanceof Error ? err.message : 'Error desconocido') +
+          '\n\nSi aún no tienes llaves partner, el mock debería abrirse automáticamente cuando RIPIO_CLIENT_ID no esté configurado.'
+      )
     } finally {
-      setIsSavingPreference(false)
-    }
-  }
-
-  const getDestinationAddress = () => {
-    if (!paymentPreference) return null
-
-    switch (paymentPreference.defaultDestination) {
-      case 'own_wallet':
-        return walletAddress
-      case 'matched_psm':
-        return paymentPreference.matchedPSM?.smartWalletAddress
-      case 'dao_treasury':
-        return daoTreasuryAddress
-      default:
-        return null
-    }
-  }
-
-  const getDestinationLabel = () => {
-    if (!paymentPreference) return '—'
-
-    switch (paymentPreference.defaultDestination) {
-      case 'own_wallet':
-        return 'Mi wallet'
-      case 'matched_psm':
-        return 'Mi psicólogo/a'
-      case 'dao_treasury':
-        return 'Tesorería de la DAO'
-      default:
-        return 'Destino desconocido'
+      setIsStartingOnramp(false)
     }
   }
 
   const handleStartOnramp = async (provider: OnrampProvider) => {
+    if (provider === 'ripio') {
+      await handleStartRipioRamp('onramp')
+      return
+    }
+
     if (!authenticated) {
       alert('Necesitas iniciar sesión y conectar tu wallet antes de usar el on-ramp.')
       return
     }
 
-    const destinationAddress = getDestinationAddress()
+    const destinationAddress = walletAddress
 
     if (!destinationAddress) {
-      alert('No se encontró una dirección de destino válida. Revisa tu selección de destino de fondos.')
+      alert('Conecta tu wallet antes de usar el on-ramp.')
       return
     }
 
-    const destinationLabel = getDestinationLabel()
-
     const confirmed = window.confirm(
       `Vas a comprar cripto con ${providers.find(p => p.id === provider)?.name} y enviarla a:\n\n` +
-        `Destino: ${destinationLabel}\n` +
-        `Dirección: ${destinationAddress}\n\n` +
-        `¿Confirmas que este es el destino correcto de tus fondos?`
+        `Wallet: ${destinationAddress}\n\n` +
+        `¿Confirmas?`
     )
 
     if (!confirmed) return
@@ -1645,7 +1640,7 @@ export default function PagosPage() {
             </GlassCard>
           </motion.div>
 
-          {/* Payment Destination Selection - Moved down, marked as coming soon */}
+          {/* Ripio On-ramp / Off-ramp */}
           {authenticated && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1655,280 +1650,84 @@ export default function PagosPage() {
             >
               <GlassCard className="p-8">
                 <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold mb-2 flex items-center justify-center">
-                    <Wallet className="w-6 h-6 mr-3 text-mauve-500" />
-                    Destino de Fondos
-                  </h2>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Configuración para cuando las rampas estén disponibles
+                  <h2 className="text-2xl font-bold mb-2">Ripio — On-ramp / Off-ramp</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Compra cripto con fiat o retira a tu banco. Los fondos van a tu wallet conectada.
                   </p>
-                  <div className="inline-flex items-center px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full mb-4">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Próximamente
-                  </div>
                 </div>
-                <p className="text-muted-foreground mb-6 text-center">
-                  Selecciona dónde quieres que vayan tus fondos cuando hagas on-ramp (convierte fiat a cripto)
-                </p>
 
-                {isLoadingPreference ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader className="w-6 h-6 animate-spin text-mauve-500" />
+                {availableProviders.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Clock className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Ripio no está disponible todavía.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Inicia sesión y conecta tu wallet para usar el mock de Ripio.
+                    </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {/* Own Wallet Option */}
-                    <button
-                      onClick={() => handleDestinationChange('own_wallet')}
-                      disabled={isSavingPreference}
-                      className={`w-full p-6 glass-card rounded-lg border-2 transition-all text-left ${
-                        paymentPreference?.defaultDestination === 'own_wallet'
-                          ? 'border-mauve-500 bg-mauve-500/10'
-                          : 'border-white/10 hover:border-white/20'
-                      } ${isSavingPreference ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-4">
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            paymentPreference?.defaultDestination === 'own_wallet'
-                              ? 'bg-mauve-500'
-                              : 'bg-white/10'
-                          }`}>
-                            <Wallet className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-lg mb-1">Mi Wallet</h3>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Los fondos irán a tu propia wallet WaaP
-                            </p>
-                            {walletAddress ? (
-                              <p className="text-xs font-mono text-muted-foreground break-all">
-                                {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
-                              </p>
-                            ) : (
-                              <p className="text-xs text-yellow-500">Wallet no disponible aún</p>
-                            )}
-                          </div>
-                        </div>
-                        {paymentPreference?.defaultDestination === 'own_wallet' && (
-                          <CheckCircle className="w-6 h-6 text-mauve-500 flex-shrink-0" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Matched PSM Option */}
-                    {paymentPreference?.hasMatchedPSM && paymentPreference?.matchedPSM ? (
-                      <button
-                        onClick={() => handleDestinationChange('matched_psm')}
-                        disabled={isSavingPreference}
-                        className={`w-full p-6 glass-card rounded-lg border-2 transition-all text-left ${
-                          paymentPreference?.defaultDestination === 'matched_psm'
+                  <div className="mx-auto max-w-md">
+                    {providers.map((provider) => (
+                      <div
+                        key={provider.id}
+                        className={`p-4 glass-card rounded-lg border-2 transition-all text-left ${
+                          selectedProvider === provider.id
                             ? 'border-mauve-500 bg-mauve-500/10'
-                            : 'border-white/10 hover:border-white/20'
-                        } ${isSavingPreference ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            : 'border-white/10'
+                        }`}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-4">
-                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                              paymentPreference?.defaultDestination === 'matched_psm'
-                                ? 'bg-mauve-500'
-                                : 'bg-white/10'
-                            }`}>
-                              <User className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-lg mb-1">Mi Psicólogo/a</h3>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Los fondos irán directamente a tu profesional emparejado
-                              </p>
-                              {paymentPreference.matchedPSM.smartWalletAddress ? (
-                                <p className="text-xs font-mono text-muted-foreground break-all">
-                                  {paymentPreference.matchedPSM.smartWalletAddress.slice(0, 10)}...{paymentPreference.matchedPSM.smartWalletAddress.slice(-8)}
-                                </p>
-                              ) : (
-                                <p className="text-xs text-yellow-500">Wallet del profesional no disponible</p>
-                              )}
-                            </div>
-                          </div>
-                          {paymentPreference?.defaultDestination === 'matched_psm' && (
-                            <CheckCircle className="w-6 h-6 text-mauve-500 flex-shrink-0" />
+                        <div className="mb-3 flex items-start justify-between">
+                          <h4 className="font-semibold text-sm">{provider.name}</h4>
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        </div>
+                        <p className="mb-3 text-xs text-muted-foreground">
+                          {provider.description}
+                        </p>
+
+                        <div className="mt-2 flex flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleStartRipioRamp('onramp')}
+                            disabled={isStartingOnramp || !walletAddress}
+                            className="w-full rounded-lg border border-mauve-500/40 bg-mauve-500/15 px-3 py-2.5 text-xs font-semibold text-mauve-200 hover:bg-mauve-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Comprar (on-ramp)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStartRipioRamp('offramp')}
+                            disabled={isStartingOnramp || !walletAddress}
+                            className="w-full rounded-lg border border-white/15 px-3 py-2.5 text-xs font-semibold hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Retirar a banco (off-ramp)
+                          </button>
+                          {!walletAddress ? (
+                            <p className="text-[10px] text-yellow-500">
+                              Conecta tu wallet para habilitar ambos flujos.
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground break-all">
+                              Wallet: {walletAddress}
+                            </p>
                           )}
                         </div>
-                      </button>
-                    ) : (
-                      <div className="w-full p-6 glass-card rounded-lg border border-white/10 opacity-50">
-                        <div className="flex items-start space-x-4">
-                          <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center">
-                            <User className="w-6 h-6 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-lg mb-1 text-muted-foreground">Mi Psicólogo/a</h3>
-                            <p className="text-sm text-muted-foreground">
-                              No disponible - Necesitas estar emparejado con un profesional
-                            </p>
-                          </div>
-                        </div>
                       </div>
-                    )}
-
-                    {/* DAO Treasury Option */}
-                    <button
-                      onClick={() => handleDestinationChange('dao_treasury')}
-                      disabled={isSavingPreference}
-                      className={`w-full p-6 glass-card rounded-lg border-2 transition-all text-left ${
-                        paymentPreference?.defaultDestination === 'dao_treasury'
-                          ? 'border-mauve-500 bg-mauve-500/10'
-                          : 'border-white/10 hover:border-white/20'
-                      } ${isSavingPreference ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-4">
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            paymentPreference?.defaultDestination === 'dao_treasury'
-                              ? 'bg-mauve-500'
-                              : 'bg-white/10'
-                          }`}>
-                            <Building2 className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-lg mb-1">Tesorería DAO</h3>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Los fondos irán a la tesorería de MotusDAO
-                            </p>
-                            <p className="text-xs font-mono text-muted-foreground break-all">
-                              {daoTreasuryAddress.slice(0, 10)}...{daoTreasuryAddress.slice(-8)}
-                            </p>
-                          </div>
-                        </div>
-                        {paymentPreference?.defaultDestination === 'dao_treasury' && (
-                          <CheckCircle className="w-6 h-6 text-mauve-500 flex-shrink-0" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Current Selection Display */}
-                    {getDestinationAddress() && (
-                      <div className="mt-6 p-4 glass-card rounded-lg border border-mauve-500/30">
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Dirección de destino actual:
-                        </p>
-                        <p className="text-sm font-mono break-all">
-                          {getDestinationAddress()}
-                        </p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
 
-                {/* Provider Selection inside Destino de Fondos */}
-                <div className="mt-10 border-t border-white/10 pt-6">
-                  <h3 className="text-xl font-semibold mb-2 text-center">
-                    Selecciona tu Proveedor de On-Ramp
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-6 text-center">
-                    Elige el proveedor que prefieras para comprar cripto con tarjeta y enviarlo al destino seleccionado.
-                  </p>
-
-                  {availableProviders.length === 0 ? (
-                    <div className="text-center py-6">
-                      <Clock className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground mb-1">
-                        No hay proveedores de on-ramp configurados actualmente.
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Contacta al equipo de MotusDAO para habilitar los proveedores.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {providers.map((provider) => (
-                        <button
-                          key={provider.id}
-                          onClick={() => handleStartOnramp(provider.id)}
-                          disabled={!provider.enabled || isStartingOnramp || !getDestinationAddress()}
-                          className={`p-4 glass-card rounded-lg border-2 transition-all text-left ${
-                            provider.enabled
-                              ? selectedProvider === provider.id
-                                ? 'border-mauve-500 bg-mauve-500/10'
-                                : 'border-white/10 hover:border-white/20 cursor-pointer'
-                              : 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-semibold text-sm">{provider.name}</h4>
-                            {provider.enabled ? (
-                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            ) : (
-                              <Clock className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-1">
-                            {provider.description}
-                          </p>
-                          {!provider.enabled && (
-                            <p className="text-[11px] text-yellow-500 mt-1">
-                              Próximamente disponible
-                            </p>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {isStartingOnramp && (
-                    <div className="mt-4 text-center">
-                      <Loader className="w-5 h-5 animate-spin text-mauve-500 mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">
-                        Iniciando {providers.find(p => p.id === selectedProvider)?.name}...
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {isStartingOnramp && (
+                  <div className="mt-4 text-center">
+                    <Loader className="w-5 h-5 animate-spin text-mauve-500 mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">
+                      Iniciando {providers.find(p => p.id === selectedProvider)?.name}...
+                    </p>
+                  </div>
+                )}
               </GlassCard>
             </motion.div>
           )}
-
-          {/* Current Status */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="mb-12"
-          >
-            <GlassCard className="p-8">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Info className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Estado Actual del Sistema</h3>
-                  <p className="text-muted-foreground mb-4">
-                    El sistema de pagos está configurado con Pimlico paymaster para gasless transactions.
-                    La integración con wallets a través de Privy está activa. Las funcionalidades de onramp 
-                    y split de pagos estarán disponibles en futuras actualizaciones.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">Conexión de wallet (Privy)</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">Pimlico Paymaster configurado (gasless transactions)</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm">Onramp con múltiples proveedores (Transak, Mt Pelerin, Privy)</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm">Sistema de split de pagos</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
 
           {/* Mt Pelerin On/Off-Ramp iFrame */}
           {mtPelerinUrl && selectedProvider === 'mtpelerin' && (
@@ -1955,7 +1754,7 @@ export default function PagosPage() {
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
                   Este widget es proporcionado por Mt Pelerin. Asegúrate de que la dirección mostrada en el flujo
-                  coincida con el destino que seleccionaste aquí.
+                  coincida con tu wallet conectada.
                 </p>
                 <div className="w-full">
                   <iframe
@@ -1968,6 +1767,18 @@ export default function PagosPage() {
                 </div>
               </GlassCard>
             </motion.div>
+          )}
+
+          {ripioMockFlow && ripioMockAddress && (
+            <RipioRampsMockPanel
+              flow={ripioMockFlow}
+              address={ripioMockAddress}
+              onClose={() => {
+                setRipioMockFlow(null)
+                setRipioMockAddress(null)
+                setSelectedProvider(null)
+              }}
+            />
           )}
         </div>
       </Section>
