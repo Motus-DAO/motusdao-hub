@@ -50,10 +50,10 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
   }
 
   const cardClass = (choice: RoleChoice) =>
-    `p-6 transition-all duration-300 relative bg-card/95 ${
+    `p-6 transition-all duration-300 relative ${
       selectedChoice === choice
         ? 'ring-4 ring-mauve-500 bg-mauve-500/15 border-2 border-mauve-500 shadow-lg shadow-mauve-500/20'
-        : 'hover:bg-muted/60 border border-border'
+        : 'hover:bg-foreground/5 border border-border'
     }`
 
   return (
@@ -63,7 +63,7 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
       exit={{ opacity: 0, x: -20 }}
       className="mx-auto w-full max-w-4xl"
     >
-      <GlassCard className="border border-border bg-card/95 p-8 shadow-xl">
+      <GlassCard className="p-8">
         <div className="mb-8 text-center">
           <h2 className="mb-2 text-2xl font-bold text-foreground">Selecciona tu tipo de cuenta</h2>
           <p className="text-muted-foreground">Elige cómo quieres usar MotusDAO</p>

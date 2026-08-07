@@ -67,7 +67,7 @@ export function RolePickerModal({ isOpen, onClose }: RolePickerModalProps) {
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative w-full max-w-4xl"
         >
-          <GlassCard className="p-8">
+          <GlassCard variant="strong" className="p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div>

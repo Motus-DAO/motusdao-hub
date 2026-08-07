@@ -194,7 +194,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       exit={{ opacity: 0, x: -20 }}
       className="w-full max-w-2xl mx-auto"
     >
-      <GlassCard className="border border-border bg-card/95 p-8 shadow-xl">
+      <GlassCard className="p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <User className="w-8 h-8 text-white" />

@@ -4,6 +4,7 @@ import { ReactNode, MouseEventHandler, CSSProperties } from "react"
 interface GlassCardProps {
   children: ReactNode
   className?: string
+  /** default = page cards; strong = modals / overlays that need higher opacity */
   variant?: 'default' | 'strong'
   hover?: boolean
   onClick?: MouseEventHandler<HTMLDivElement>
@@ -25,7 +26,7 @@ export function GlassCard({
         variant === 'default' 
           ? "glass" 
           : "glass-strong",
-        hover && "hover:bg-foreground/5 hover:scale-[1.02] hover:shadow-glow dark:hover:bg-white/20",
+        hover && "hover:bg-foreground/5 hover:scale-[1.02] hover:shadow-glow dark:hover:bg-white/10",
         className,
       )}
       onClick={onClick}

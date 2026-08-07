@@ -88,12 +88,12 @@ const config: Config = {
           900: "#312e81",
           950: "#1e1b4b",
         },
-        // Glass and neumorphism colors
+        // Glass and neumorphism colors (aligned with --glass-* / Chat topbar)
         glass: {
-          light: "rgba(255, 255, 255, 0.1)",
-          dark: "rgba(0, 0, 0, 0.1)",
-          border: "rgba(255, 255, 255, 0.15)",
-          'border-light': "rgba(0, 0, 0, 0.1)",
+          light: "rgba(255, 255, 255, 0.55)",
+          dark: "rgba(255, 255, 255, 0.06)",
+          border: "rgba(255, 255, 255, 0.14)",
+          'border-light': "rgba(0, 0, 0, 0.08)",
         },
         neo: {
           light: "rgba(255, 255, 255, 0.8)",

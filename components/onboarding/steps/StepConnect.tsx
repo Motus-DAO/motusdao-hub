@@ -212,13 +212,39 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     setConnectBlockers(blockerList)
   }
 
+  // Sync blockers when readiness changes — compare by content to avoid
+  // setState loops (getConnectBlockers returns a new array each render).
   useEffect(() => {
-    if (!canProceed && blockerList.length > 0) {
-      setConnectBlockers(blockerList)
-    } else if (canProceed) {
-      setConnectBlockers([])
+    if (canProceed) {
+      setConnectBlockers((prev) => (prev.length === 0 ? prev : []))
+      return
     }
-  }, [canProceed, blockerList])
+
+    const next = getConnectBlockers({
+      authenticated,
+      eoaAddress: eoaAddress ?? undefined,
+      hasEmail,
+      termsAccepted,
+      siweSessionReady,
+    })
+
+    setConnectBlockers((prev) => {
+      if (
+        prev.length === next.length &&
+        prev.every((item, i) => item === next[i])
+      ) {
+        return prev
+      }
+      return next
+    })
+  }, [
+    canProceed,
+    authenticated,
+    eoaAddress,
+    hasEmail,
+    termsAccepted,
+    siweSessionReady,
+  ])
 
   // Show login screen if not authenticated
   if (!authenticated) {

@@ -159,7 +159,15 @@ export function Topbar() {
   return (
     <header
       className={cn(
-        'fixed top-4 left-0 right-0 z-40 mx-2 sm:mx-4 lg:mr-4 glass-navbar max-w-full',
+        'fixed top-4 left-0 right-0 z-40 mx-2 sm:mx-4 lg:mr-4 max-w-full',
+        // Avril glass-nav-modal + Hub-Psi rounded float (Chat-MotusAI exact)
+        'rounded-3xl border backdrop-blur-xl backdrop-saturate-150',
+        theme === 'light' &&
+          'border-black/10 bg-white/55 shadow-[0_8px_40px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.55)]',
+        theme === 'dark' &&
+          'border-white/14 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.12)]',
+        theme === 'matrix' &&
+          'rounded-none border-[var(--matrix-border)] bg-black/90 shadow-[0_8px_24px_rgba(0,0,0,0.5),0_0_20px_rgba(0,255,65,0.1)] backdrop-blur-[10px]',
         'transition-[margin] duration-300 ease-in-out',
         sidebarOpen ? 'lg:ml-64' : 'lg:ml-4'
       )}
