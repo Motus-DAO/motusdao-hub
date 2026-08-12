@@ -62,3 +62,6 @@ prisma/prisma/
 
 # Migration snapshots (keep outside git)
 backups/
+# Exception: Academy course JSON exports (admin/DB restore points)
+!prisma/data/backups/
+!prisma/data/backups/**/*.json

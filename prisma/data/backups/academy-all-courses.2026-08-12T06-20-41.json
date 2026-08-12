@@ -1,0 +1,981 @@
+{
+  "exportedAt": "2026-08-12T06:20:42.977Z",
+  "source": "scripts/export-academy-courses.ts",
+  "note": "Full Course → Module → Lesson snapshot for restore. Enrollments/progress are NOT included.",
+  "courseCount": 6,
+  "courses": [
+    {
+      "id": "course_genesis_clinica_digital",
+      "title": "01 — Génesis",
+      "slug": "01-genesis",
+      "summary": "Gratis: entiende el por qué de MotusDAO y el recorrido del Profesional.",
+      "description": "**01 — Génesis** — Comunidad Motus (gratuita).\n\nEntiende la visión, el mapa de los 5 bloques y cómo operar en el ecosistema: metaverso, salas Jitsi, consultorios digitales y la app web **app.motusdao.org**.\n\n**Módulo 1:** Bienvenida y mapa de ruta.\n**Módulo 2:** Entornos digitales (metaverso, Jitsi, consultorios, app).",
+      "imageUrl": "https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/cover.png",
+      "isPublished": true,
+      "createdAt": "2026-06-29T07:01:18.250Z",
+      "updatedAt": "2026-08-12T01:16:58.874Z",
+      "category": "Ruta PSM",
+      "difficulty": "beginner",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": "Academia de Psicología Digital",
+      "lastUpdated": null,
+      "learningOutcomes": [
+        "Explicar por qué existe MotusDAO y qué no promete.",
+        "Ubicarte en los 5 bloques y sus productos asociados.",
+        "Distinguir metaverso, Jitsi, consultorios digitales y app.motusdao.org.",
+        "Identificar tu siguiente paso hacia Fundamentos."
+      ],
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": null,
+      "priceCurrency": "USD",
+      "billingInterval": "one_time",
+      "isFree": true,
+      "modules": [
+        {
+          "id": "module_genesis_bienvenida",
+          "courseId": "course_genesis_clinica_digital",
+          "title": "Bienvenida al ecosistema",
+          "summary": "Por qué existe MotusDAO, mapa de la ruta y cómo usar la Academia.",
+          "order": 1,
+          "createdAt": "2026-06-29T07:01:18.429Z",
+          "updatedAt": "2026-06-29T07:01:18.242Z",
+          "lessons": [
+            {
+              "id": "lesson_genesis_bienvenida-motusdao",
+              "title": "Bienvenida: qué es MotusDAO y la Academia",
+              "slug": "bienvenida-motusdao-academia",
+              "contentMDX": "# Bienvenida: qué es MotusDAO\n\nMotusDAO es un ecosistema para profesionales de la salud mental que combina **formación**, **comunidad** y **herramientas digitales** con un enfoque ético en IA y tecnología.\n\n**Génesis** es el punto de entrada: entender **por qué** existe MotusDAO y cómo puedes participar sin compromiso económico inicial (Comunidad Motus — gratuita).\n\n| Es | No es |\n|---|---|\n| Formación y comunidad profesional | Terapia ni atención clínica |\n| Puerta al ecosistema | Certificación oficial ni garantía de pacientes |\n\n> Si necesitas atención clínica, busca un profesional habilitado en tu jurisdicción.",
+              "order": 1,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:18.588Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_bienvenida",
+              "summary": "Misión, visión y el por qué del ecosistema.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_genesis_mapa-ruta",
+              "title": "Mapa de la ruta (5 bloques)",
+              "slug": "mapa-ruta-profesional",
+              "contentMDX": "# Mapa de la ruta profesional\n\n```\n01 Génesis → 02 Fundamentos → 03 Praxis → 04 Validación → 05 Portal Clínico\n```\n\n| Bloque | Producto / cobro | Qué haces |\n|---|---|---|\n| **01 Génesis** | Comunidad Motus — **gratis** | Entiendes el por qué y los entornos digitales |\n| **02 Fundamentos** | Membresía Práctica Digital — **USD 20/mes · 120/año** | Psicoterapia digital, encuadre, ética |\n| **03 Praxis** | Talleres **USD 15** + supervisión **USD 50** | Formación continua y supervisión clínica |\n| **04 Validación** | Pase clínico **USD 50/mes · 480/año** | Revisión documental; invitación al portal |\n| **05 Portal Clínico** | **USD 50/mes** pase + **USD 35/mes** supervisión | Operar consultorio, perfil y herramientas |\n\n## Dos rutas de entrada\n\n**Ruta comunitaria** — Paso a paso: comunidad → membresía → talleres → supervisiones → validación → pase.\n\n**Ruta directa al Portal** — Para profesionales con experiencia documentable; revisión acelerada en Validación.\n\nEstás en **01 — Génesis**. Tu siguiente paso es **02 — Fundamentos** cuando quieras estructura de pago.",
+              "order": 2,
+              "duration": 18,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:18.748Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_bienvenida",
+              "summary": "Génesis → Fundamentos → Praxis → Validación → Portal Clínico.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_genesis_que-entrega-motusdao",
+              "title": "Qué MotusDAO sí entrega y qué no",
+              "slug": "que-entrega-motusdao",
+              "contentMDX": "# Qué MotusDAO sí entrega y qué no\n\n**Sí:** formación, comunidad, herramientas (según etapa), verificación documental interna, constancia de participación.\n\n**No:** certificación oficial externa, licencia para ejercer, garantía de pacientes, aval clínico automático por talleres.\n\nUsa lenguaje responsable: \"constancia de participación\", no \"certificación MotusDAO\".",
+              "order": 3,
+              "duration": 15,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:18.826Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_bienvenida",
+              "summary": "Disclaimers: formación vs habilitación.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_genesis_como-usar-academia",
+              "title": "Cómo usar la Academia",
+              "slug": "como-usar-academia",
+              "contentMDX": "# Cómo usar la Academia\n\n1. **Catálogo** (`/academia`) — Los 5 bloques de la ruta PSM.\n2. **Detalle del bloque** — Módulos y lecciones.\n3. **Player** — Marca lecciones completadas con tu cuenta.\n\nLas lecciones **preview** en Génesis son gratuitas sin inscripción completa.\n\n**Siguiente módulo:** Entornos digitales MotusDAO (metaverso, Jitsi, app).",
+              "order": 4,
+              "duration": 12,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:18.908Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_bienvenida",
+              "summary": "Catálogo de bloques, lecciones y progreso.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        },
+        {
+          "id": "module_genesis_entornos",
+          "courseId": "course_genesis_clinica_digital",
+          "title": "Entornos digitales MotusDAO",
+          "summary": "Metaverso, salas Jitsi, consultorios y la app web.",
+          "order": 2,
+          "createdAt": "2026-06-29T07:01:18.983Z",
+          "updatedAt": "2026-06-29T07:01:18.242Z",
+          "lessons": [
+            {
+              "id": "lesson_genesis_metaverso-intro",
+              "title": "Metaverso y espacios inmersivos",
+              "slug": "metaverso-motusdao",
+              "contentMDX": "# Metaverso dentro de MotusDAO\n\nMotusDAO incluye **espacios inmersivos** (metaverso) para formación, encuentros comunitarios y ejercicios colaborativos entre psicólogos.\n\n## Para qué sirve\n\n- Talleres y dinámicas grupales con presencia espacial.\n- Encuentros de comunidad con moderación.\n- Exploración de formatos híbridos entre lo presencial y lo digital.\n\n## Qué no implica\n\nEl metaverso **no sustituye** el juicio clínico ni el encuadre terapéutico. Es un **entorno adicional** dentro del ecosistema, no obligatorio para toda la ruta.",
+              "order": 1,
+              "duration": 22,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:19.057Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_entornos",
+              "summary": "Formación y encuentros en entornos inmersivos.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_genesis_jitsi-consultorios",
+              "title": "Salas Jitsi y consultorios digitales",
+              "slug": "jitsi-consultorios-digitales",
+              "contentMDX": "# Salas Jitsi y consultorios digitales\n\n## Salas Jitsi MotusDAO\n\nLas **salas Jitsi** integradas en el ecosistema están pensadas para videollamada clínica con criterios de **privacidad y control** superiores a herramientas genéricas como Google Meet o Zoom en contexto de salud mental:\n\n- Menor dependencia de ecosistemas comerciales no orientados a datos sensibles.\n- Configuración alineada al encuadre MotusDAO.\n- Integración con el flujo profesional del Hub.\n\n## Consultorios digitales\n\nLos **consultorios digitales** son donde ocurren las **sesiones terapéuticas** dentro de la plataforma: espacio acotado, vinculado a tu perfil profesional y a los permisos de tu etapa en la ruta.\n\n> Usar Jitsi o consultorio MotusDAO no elimina tu responsabilidad ética ni legal como profesional.",
+              "order": 2,
+              "duration": 25,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:19.127Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_entornos",
+              "summary": "Videollamada clínica con criterios de privacidad.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_genesis_app-motusdao",
+              "title": "App web: app.motusdao.org",
+              "slug": "app-motusdao-org",
+              "contentMDX": "# La app web: app.motusdao.org\n\n**Todo el ecosistema también opera desde la aplicación web** — no necesitas el metaverso para avanzar.\n\nDesde **app.motusdao.org** puedes:\n\n- Acceder a la Academia y bloques de la ruta.\n- Usar **salas Jitsi** y **consultorios digitales** para sesiones.\n- Gestionar tu perfil profesional (según permisos).\n- Participar en comunidad y formación.\n\n## Dos caminos, un ecosistema\n\n| Camino | Cuándo elegirlo |\n|---|---|\n| **App web** | Operación diaria, sesiones, academia, perfil |\n| **Metaverso** | Encuentros inmersivos, talleres experienciales |\n\n## Cierre de Génesis\n\n- [ ] Entiendo el por qué de MotusDAO.\n- [ ] Conozco los 5 bloques y sus productos.\n- [ ] Sé la diferencia entre metaverso, Jitsi, consultorio y app web.\n\n**Siguiente bloque:** **02 — Fundamentos** (Membresía de Práctica Digital — USD 20/mes).",
+              "order": 3,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:19.210Z",
+              "updatedAt": "2026-06-29T07:01:18.242Z",
+              "moduleId": "module_genesis_entornos",
+              "summary": "Mismo ecosistema sin entrar al metaverso.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "course_validacion",
+      "title": "04 — Validación",
+      "slug": "04-validacion",
+      "summary": "Revisión documental y Pase clínico: USD 50/mes o USD 480/año (sobre USD 600) para habilitar el Portal.",
+      "description": "Bloque **04 — Validación**.\n\nDocumenta avance, credenciales y encuadre. Si cumples criterios, puedes adquirir el **Pase clínico**:\n\n**USD 50/mes** o **USD 480/año** (referencia comercial sobre USD 600 anuales).\n\n**Módulo 1 — Documentar avance:** evidencia y verificación.\n\n**Módulo 2 — Pase clínico:** invitación al Portal Clínico.",
+      "imageUrl": "https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_validacion/cover.png",
+      "isPublished": true,
+      "createdAt": "2026-06-29T06:26:34.211Z",
+      "updatedAt": "2026-08-07T12:49:28.272Z",
+      "category": "Ruta PSM",
+      "difficulty": "intermediate",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": "Academia de Psicología Digital",
+      "lastUpdated": null,
+      "learningOutcomes": [
+        "Documentar tu avance en la ruta con evidencia ordenada.",
+        "Reunir credenciales y requisitos profesionales aplicables.",
+        "Entender el Pase clínico (USD 50/mes · 480/año) y criterios de invitación al Portal.",
+        "Distinguir ruta comunitaria vs entrada directa al Portal."
+      ],
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": "50",
+      "priceCurrency": "USD",
+      "billingInterval": "monthly",
+      "isFree": false,
+      "modules": [
+        {
+          "id": "module_validacion_documentar",
+          "courseId": "course_validacion",
+          "title": "Documentar avance y requisitos",
+          "summary": "Evidencia, credenciales y encuadre.",
+          "order": 1,
+          "createdAt": "2026-06-29T06:26:34.292Z",
+          "updatedAt": "2026-06-29T07:01:21.495Z",
+          "lessons": [
+            {
+              "id": "lesson_validacion_que-es",
+              "title": "Qué es el bloque Validación",
+              "slug": "que-es-validacion",
+              "contentMDX": "# Qué es el bloque Validación\n\nValidación es el bloque donde se revisa si una persona está lista para avanzar hacia **funciones más profesionales** dentro del ecosistema.\n\nEl foco es:\n\n- ordenar evidencia;\n- revisar credenciales;\n- documentar encuadre;\n- definir si corresponde supervisión, pase beta o aplicación al Portal Clínico.\n\n## Qué haces en este bloque\n\n1. Documentas tu avance en la ruta.\n2. Reúnes credenciales y requisitos profesionales.\n3. Revisas tu encuadre clínico.\n4. Defines si corresponde supervisión.\n5. Recibes retroalimentación cuando aplique.\n6. Preparas tu posible aplicación al Pase Motus Beta o al Portal Clínico.\n\n## Qué puede desbloquear\n\n- invitación al **Pase Motus Beta**;\n- acceso a funciones beta;\n- posibilidad de avanzar al Portal Clínico;\n- mayor claridad sobre requisitos profesionales.",
+              "order": 1,
+              "duration": 16,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:34.365Z",
+              "updatedAt": "2026-06-29T07:01:21.495Z",
+              "moduleId": "module_validacion_documentar",
+              "summary": "Revisión de preparación para funciones profesionales en el ecosistema.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_validacion_credenciales",
+              "title": "Credenciales y verificación documental",
+              "slug": "credenciales-verificacion",
+              "contentMDX": "# Credenciales y verificación documental\n\n## Verificación interna MotusDAO\n\nPuede incluir revisión de:\n\n- identidad;\n- cédula profesional o equivalente aplicable;\n- formación declarada;\n- código de conducta y encuadre.\n\n## Lenguaje permitido\n\n| Sí | No |\n|---|---|\n| \"Cédula consultada en el Registro Nacional el [fecha]\" | \"Calidad clínica verificada\" (si solo se revisó identidad) |\n| \"Profesional verificado\" con procedimiento documentado | \"Especialista certificado por MotusDAO\" |\n| \"Verificación documental interna\" | \"Licencia\" o \"certificación oficial\" |\n\n## Evidencia de la ruta\n\nOrganiza:\n\n- constancias de talleres (Praxis);\n- registros de membresía activa;\n- supervisiones tomadas (si aplica);\n- actualización de encuadre y protocolo de crisis.",
+              "order": 2,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:34.443Z",
+              "updatedAt": "2026-06-29T07:01:21.495Z",
+              "moduleId": "module_validacion_documentar",
+              "summary": "Identidad, cédula, formación y lenguaje de profesional verificado.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        },
+        {
+          "id": "module_validacion_pase",
+          "courseId": "course_validacion",
+          "title": "Pase Motus Beta y siguiente paso",
+          "summary": "Invitación, criterios y transición a Operar.",
+          "order": 2,
+          "createdAt": "2026-06-29T06:26:34.526Z",
+          "updatedAt": "2026-06-29T07:01:21.495Z",
+          "lessons": [
+            {
+              "id": "lesson_validacion_pase-beta",
+              "title": "Pase clínico",
+              "slug": "pase-clinico",
+              "contentMDX": "# Pase clínico\n\nTras revisión documental, MotusDAO puede **invitarte** a adquirir el **Pase clínico**.\n\n## Referencia de inversión\n\n- **USD 50/mes**\n- **USD 480/año** (sobre USD 600 anuales de referencia)\n\n## Qué habilita\n\n- Acceso al **05 — Portal Clínico** (operación con herramientas según permisos).\n- Continuidad de verificación y conducta interna.\n\n## Qué no es\n\n- Licencia para ejercer ni certificación oficial.\n- Garantía de pacientes o ingresos.\n\n## Dos rutas\n\n**Comunitaria** — Genesis → Fundamentos → Praxis → Validación → Pase.\n\n**Directa** — Profesionales con experiencia documentable; revisión acelerada en este bloque.",
+              "order": 1,
+              "duration": 18,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:34.598Z",
+              "updatedAt": "2026-06-29T07:01:21.495Z",
+              "moduleId": "module_validacion_pase",
+              "summary": "USD 50/mes o USD 480/año — habilita acceso al Portal.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_validacion_cierre",
+              "title": "Cierre de Validación",
+              "slug": "cierre-validacion-portal",
+              "contentMDX": "# Cierre de Validación\n\n## Checklist\n\n- [ ] Evidencia de ruta organizada (talleres, membresía, supervisiones).\n- [ ] Credenciales cargadas y revisadas.\n- [ ] Encuadre actualizado.\n- [ ] Entiendo diferencia entre pase beta, verificación y Portal Clínico.\n\n## Siguiente bloque: 05 — Portal Clínico\n\nSi cuentas con experiencia clínica documentable y cumples criterios de onboarding, puedes **aplicar al acceso beta** del Portal Clínico.\n\nSi aún construyes tu práctica, la ruta comunitaria puede ser mejor entrada — sin atajos éticos.",
+              "order": 2,
+              "duration": 12,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:34.673Z",
+              "updatedAt": "2026-06-29T07:01:21.495Z",
+              "moduleId": "module_validacion_pase",
+              "summary": "Checklist antes del bloque Portal Clínico.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "course_portal_clinico",
+      "title": "05 — Portal Clínico",
+      "slug": "05-portal-clinico",
+      "summary": "Opera en el portal: pase USD 50/mes + supervisión USD 35/mes para permanecer activo.",
+      "description": "Bloque **05 — Portal Clínico**.\n\nOperación recurrente con **pase clínico USD 50/mes** (o anual desde Validación) más **supervisión USD 35/mes** para permanecer activo en el portal.\n\n**Módulo 1 — Acceso:** requisitos y onboarding.\n\n**Módulo 2 — Operar:** consultorio, perfil y límites.\n\n> No garantizamos pacientes. Supervisión Portal (USD 35/mes) ≠ supervisión Praxis (USD 50/sesión).",
+      "imageUrl": "https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_portal_clinico/cover.png",
+      "isPublished": true,
+      "createdAt": "2026-06-29T06:26:34.896Z",
+      "updatedAt": "2026-08-07T12:48:39.637Z",
+      "category": "Ruta PSM",
+      "difficulty": "advanced",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": "Academia de Psicología Digital",
+      "lastUpdated": null,
+      "learningOutcomes": [
+        "Entender costos recurrentes: pase USD 50/mes + supervisión Portal USD 35/mes.",
+        "Completar onboarding y configuración de perfil profesional.",
+        "Operar consultorio digital y herramientas según permisos.",
+        "Distinguir supervisión mensual del Portal vs supervisión en Praxis."
+      ],
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": "50",
+      "priceCurrency": "USD",
+      "billingInterval": "monthly",
+      "isFree": false,
+      "modules": [
+        {
+          "id": "module_portal_acceso",
+          "courseId": "course_portal_clinico",
+          "title": "Aplicar al acceso beta",
+          "summary": "Requisitos, documentación y onboarding.",
+          "order": 1,
+          "createdAt": "2026-06-29T06:26:34.979Z",
+          "updatedAt": "2026-06-29T07:01:22.262Z",
+          "lessons": [
+            {
+              "id": "lesson_portal_que-es",
+              "title": "Qué es el Portal Clínico",
+              "slug": "que-es-portal-clinico",
+              "contentMDX": "# Qué es el Portal Clínico\n\nEl Portal Clínico es el bloque **profesional** de MotusDAO.\n\nEstá pensado para psicólogos **activos** con experiencia clínica documentable que quieren operar con herramientas digitales dentro del ecosistema.\n\n## Para quién es\n\nProfesionales que quieren entrar **sin recorrer toda la formación desde cero**, si cumplen:\n\n- cédula profesional o equivalente aplicable;\n- experiencia clínica comprobable;\n- onboarding obligatorio;\n- aceptación de criterios éticos y operativos;\n- revisión de encuadre.\n\n## Qué haces en este bloque\n\n1. Aplicas al acceso beta.\n2. Presentas documentación profesional.\n3. Completas el onboarding.\n4. Configuras tu perfil.\n5. Accedes a herramientas digitales.\n6. Participas según permisos otorgados.",
+              "order": 1,
+              "duration": 18,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:35.057Z",
+              "updatedAt": "2026-06-29T07:01:22.262Z",
+              "moduleId": "module_portal_acceso",
+              "summary": "Bloque profesional para operar con herramientas digitales.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_portal_requisitos",
+              "title": "Requisitos y rutas de entrada",
+              "slug": "requisitos-portal-clinico",
+              "contentMDX": "# Requisitos y rutas de entrada\n\n## Entrada directa\n\nPara profesionales con trayectoria documentable que cumplen onboarding y revisión. **No es el camino por defecto.**\n\n## Ruta comunitaria (referencia)\n\n1. Comunidad gratuita.\n2. Membresía de Práctica Digital.\n3. ~seis talleres en Praxis.\n4. ~tres supervisiones.\n5. Pase comunitario.\n\nCosto acumulado orientativo del primer año: **USD 560–650**.\n\n## Siguiente paso\n\nSi ya tienes experiencia clínica documentable, puedes aplicar al Portal Clínico beta.\n\nSi todavía construyes tu práctica, la ruta comunitaria puede ser mejor entrada.",
+              "order": 2,
+              "duration": 16,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:35.142Z",
+              "updatedAt": "2026-06-29T07:01:22.262Z",
+              "moduleId": "module_portal_acceso",
+              "summary": "Entrada directa vs ruta comunitaria.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        },
+        {
+          "id": "module_portal_operar",
+          "courseId": "course_portal_clinico",
+          "title": "Operar en el ecosistema",
+          "summary": "Herramientas, perfil público y límites.",
+          "order": 2,
+          "createdAt": "2026-06-29T06:26:35.216Z",
+          "updatedAt": "2026-06-29T07:01:22.262Z",
+          "lessons": [
+            {
+              "id": "lesson_portal_herramientas",
+              "title": "Qué puede habilitar el Portal",
+              "slug": "herramientas-portal-clinico",
+              "contentMDX": "# Qué puede habilitar el Portal\n\nEl Portal Clínico puede habilitar, según permisos:\n\n- **consultorio digital** y salas Jitsi;\n- perfil profesional en el ecosistema;\n- herramientas de práctica en **app.motusdao.org**;\n- posibilidad de recibir consultas (sin garantía).\n\n## Costos recurrentes\n\n- **Pase clínico:** USD 50/mes (o anual desde Validación).\n- **Supervisión Portal:** **USD 35/mes** para permanecer activo.\n\n> La supervisión en **03 — Praxis** (USD 50/sesión) es un producto distinto.",
+              "order": 1,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:35.297Z",
+              "updatedAt": "2026-06-29T07:01:22.262Z",
+              "moduleId": "module_portal_operar",
+              "summary": "Consultorio virtual, biblioteca y espacios restringidos.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_portal_cierre",
+              "title": "Cierre de la ruta MotusDAO",
+              "slug": "cierre-ruta-portal-clinico",
+              "contentMDX": "# Cierre de la ruta MotusDAO\n\nHas recorrido los **5 bloques** de la Academia:\n\n| Bloque | Producto |\n|---|---|\n| 01 | Génesis — Comunidad gratis |\n| 02 | Fundamentos — Membresía USD 20/mes |\n| 03 | Praxis — Talleres USD 15 + supervisión USD 50 |\n| 04 | Validación — Pase USD 50/mes |\n| 05 | Portal — Pase + supervisión USD 35/mes |\n\n## Compromiso continuo\n\n- Actualizar encuadre y protocolos.\n- Participar en formación continua (Praxis).\n- Mantener lenguaje ético en perfil y marketing.\n- Revalidar credenciales cuando MotusDAO lo requiera.\n\n## Recordatorio final\n\nMotusDAO entrega **formación, comunidad, herramientas y verificación documental interna** cuando aplica.\n\n**No** entrega certificación oficial externa, licencia para ejercer ni garantía de pacientes.\n\nGracias por construir práctica digital con criterio clínico y responsabilidad.",
+              "order": 2,
+              "duration": 14,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:35.375Z",
+              "updatedAt": "2026-06-29T07:01:22.262Z",
+              "moduleId": "module_portal_operar",
+              "summary": "Recorrido completo Entender → Operar.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cmsh1j2cgd50cbd39cb4aeeb3",
+      "title": "Curso Psicoterapia Online",
+      "slug": "curso-online",
+      "summary": "Curso de Psicoterapia Online",
+      "description": "Curso de Psicoterapia Online Global",
+      "imageUrl": null,
+      "isPublished": true,
+      "createdAt": "2026-08-06T04:53:29.633Z",
+      "updatedAt": "2026-08-07T12:41:47.749Z",
+      "category": "General",
+      "difficulty": "intermediate",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": null,
+      "lastUpdated": null,
+      "learningOutcomes": null,
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": "1600",
+      "priceCurrency": "MXN",
+      "billingInterval": "one_time",
+      "isFree": false,
+      "modules": [
+        {
+          "id": "cmsh1mglgcb17db638e0fee06",
+          "courseId": "cmsh1j2cgd50cbd39cb4aeeb3",
+          "title": "Modulo 1",
+          "summary": "Modulo A",
+          "order": 1,
+          "createdAt": "2026-08-06T04:56:08.070Z",
+          "updatedAt": "2026-08-06T04:57:35.065Z",
+          "lessons": [
+            {
+              "id": "cmsh1smzp1ddd258628dd645f",
+              "title": "Bloque 0: Bienvenido a MotusDAO Psychology.",
+              "slug": "introduccion-teorica",
+              "contentMDX": "# Bloque 0 — Bienvenido a MotusDAO Psychology\n\n**Teoría · Práctica · Lecturas**\n\n## Teoría\n\n### Misión del Bloque\n\nAcabas de ingresar a un ecosistema internacional de formación, supervisión clínica, certificación y desarrollo profesional para psicólogos.\n\nEn este bloque conocerás:\n\n- Qué es MotusDAO\n- Cómo funciona la Academia\n- Cómo utilizar PsyChat\n- Cómo acceder a talleres y encuentros clínicos\n- Cómo obtener tu certificación\n- Cómo avanzar hacia el Pase Clínico\n\n### ¿Por qué esto importa?\n\nLa psicología está cambiando.\n\nMuchos profesionales enfrentan dificultades para conseguir pacientes, crecer profesionalmente o construir una práctica sostenible sin depender de plataformas costosas, múltiples herramientas o estrategias de marketing que poco tienen que ver con la clínica.\n\nMotusDAO existe para ofrecer una alternativa.\n\nUn espacio donde puedes formarte, practicar, conectar con colegas y desarrollar nuevas oportunidades profesionales dentro de la psicología digital.\n\nTu objetivo no es solamente completar un curso.\n\n**Tu objetivo es comenzar hoy a construir una mejor práctica profesional para el mañana.**\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **MotusDAO** | Ecosistema global de psicología digital |\n| **Academia** | Espacio de formación clínica y desarrollo profesional |\n| **PsyChat** | Supervisor clínico asistido por inteligencia artificial |\n| **Encuentros Clínicos** | Espacios de práctica, discusión y supervisión |\n| **Certificación** | Proceso de validación de competencias |\n\n## Video\n\n### Bienvenido a MotusDAO Psychology\n\nSesión de 2 minutos.\n\n**Bienvenida a MotusDAO**\n\nComienza tu viaje de transformación profesional en psicología clínica.\n\nEste camino te brindará las herramientas, la comunidad y el respaldo para generar un impacto real.\n\n## Lo que encontrarás en MotusDAO\n\n- Certificación\n- Derivación\n- Supervisión\n- Formación\n- Comunidad de especialistas\n- Ecosistema\n\n## Certificado NFT\n\nAl finalizar el recorrido recibirás un **Certificado NFT** correspondiente al programa.\n\n---\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 0–4 · Versión 1 · 2025  \n\n*No transferible*\n",
+              "order": 1,
+              "duration": 1,
+              "isPublished": true,
+              "createdAt": "2026-08-06T05:00:56.295Z",
+              "updatedAt": "2026-08-07T15:59:15.956Z",
+              "moduleId": "cmsh1mglgcb17db638e0fee06",
+              "summary": "Acabas de ingresar a un ecosistema internacional de formación, supervisión clínica, certificación y desarrollo profesional para psicólogos.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsi7mcg5979182eaceead79f",
+                  "name": "Bloque 1 y Bloque 4! CalabazeLogix_MotusDAO.pdf",
+                  "uploadedAt": "2026-08-07T00:31:47.162Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsh1smzp1ddd258628dd645f/pdfs/cmsi7mcg5979182eaceead79f.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=TXBTIO-g-0E&t=1195s"
+            }
+          ]
+        },
+        {
+          "id": "cmsi7taai27672f6b16b39ae9",
+          "courseId": "cmsh1j2cgd50cbd39cb4aeeb3",
+          "title": "Relación Terapéutica y Transferencia",
+          "summary": "La relación terapéutica es el espacio donde ocurre el cambio clínico.\nEn este bloque aprenderás a reconocer cómo se construye una alianza terapéutica efectiva, identificar fenómenos transferenciales y comprender las reglas implícitas que organizan la comunicación entre terapeuta y paciente.\nAl finalizar, podrás observar patrones relacionales que suelen pasar desapercibidos y utilizarlos como información clínica relevante para la intervención.",
+          "order": 2,
+          "createdAt": "2026-08-07T00:37:10.363Z",
+          "updatedAt": "2026-08-07T00:37:10.362Z",
+          "lessons": [
+            {
+              "id": "cmsig27nafe79921353cbab4d",
+              "title": "Relación Terapéutica y Transferencia",
+              "slug": "relacion-terapeutica-y-transferencia",
+              "contentMDX": "# Bloque 1 — Relación Terapéutica y Transferencia\n\n## Teoría\n\n### Misión del Bloque\n\nLa relación terapéutica es el espacio donde ocurre el cambio clínico.\n\nEn este bloque aprenderás a reconocer cómo se construye una alianza terapéutica efectiva, identificar fenómenos transferenciales y comprender las reglas implícitas que organizan la comunicación entre terapeuta y paciente.\n\nAl finalizar, podrás observar patrones relacionales que suelen pasar desapercibidos y utilizarlos como información clínica relevante para la intervención.\n\n### ¿Por qué esto importa?\n\nMuchos terapeutas escuchan únicamente el **contenido** de una sesión:\n\n- Lo que el paciente dice\n\nPero la información más importante suele encontrarse en su **lógica**:\n\n- Lo que repite\n- Lo que evita decir\n- La forma en que se relaciona con el terapeuta\n- Las expectativas que deposita en la relación terapéutica\n\nComprender estos elementos permite intervenir con mayor precisión y profundidad clínica.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Relación Terapéutica** | El vínculo de trabajo que permite desarrollar el proceso clínico |\n| **Transferencia** | Patrones sintomáticos que el paciente reproduce dentro de la relación terapéutica |\n| **Escucha Clínica** | Capacidad para identificar lógicas y elementos presentes en el síntoma |\n| **Encuadre Terapéutico** | Principios que organizan la comunicación y el vínculo entre terapeuta y paciente |\n\n## Video\n\n### Caso Clínico Inicial\n\n#### Viñeta clínica\n\n**Paciente:**\n\n> Me siento deprimido y no entiendo por qué sigo regresando a relaciones que me hacen daño.\n\n**Durante la sesión:**\n\n- Lleva varios años en una relación abusiva\n- Ha intentado terminar la relación en múltiples ocasiones\n- Después de cada ruptura vuelve con la misma pareja\n- Refiere sentirse triste, agotado y sin esperanza\n- Expresa temor a quedarse solo\n- Describe una necesidad constante de sentirse protegido, sin una razón aparente\n\n#### Antes de continuar, reflexiona\n\n- ¿Qué patrón parece repetirse?\n- ¿Qué está buscando este paciente dentro de la relación?\n- ¿Qué necesidad(es) podría estar sosteniendo este síntoma?\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nAnaliza una sesión clínica propia e identifica:\n\n- Alianza terapéutica\n- Resistencias\n- Repeticiones\n- Manifestaciones transferenciales\n\n## Lectura\n\n**¡Calabaza Lógix!** (Capítulos 1–3)\n\n### ¿Qué aprenderás?\n\nIdentificar ejemplos de:\n\n- Existencia\n- Universalidad\n- Negación Universal\n- Negación Existencial\n\nAplicados al análisis de diálogos clínicos.\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Reconocer fenómenos transferenciales básicos\n- Comprender la función de la relación terapéutica\n- Detectar patrones relacionales en una sesión\n- Identificar información clínica más allá del contenido explícito\n- Analizar la interacción terapeuta-paciente desde una perspectiva estructural\n\n### Qué debes buscar\n\n- Repeticiones\n- Relaciones entre conceptos\n- Estructuras lógicas\n\n### Qué puedes ignorar por ahora\n\n- Formalismos complejos\n- Simbología avanzada\n\n## Idea clave\n\n> Es a través del marco psicoterapéutico y de la relación transferencial (psicoterapéutica) que el usuario puede elaborar la lógica de su síntoma en el aquí y ahora.\n\n---\n\n### ¡Felicidades! — Bloque 1 Completado\n\n**Relación Terapéutica y Transferencia**\n\nHas consolidado tu capacidad para comprender la dinámica relacional, identificar patrones de transferencia y fortalecer el vínculo terapéutico desde una mirada clínica profunda.\n\n### Certificado NFT\n\nAl completar este bloque has desbloqueado el progreso hacia la certificación del programa.\n\n**Fundamentales A.C.A. – Curso Avanzado**  \nBloque 1 · Relación Terapéutica y Transferencia  \nVersión 1 · 2025  \n\n*NFT no transferible*\n",
+              "order": 0,
+              "duration": 15,
+              "isPublished": true,
+              "createdAt": "2026-08-07T04:28:03.768Z",
+              "updatedAt": "2026-08-07T12:43:10.060Z",
+              "moduleId": "cmsi7taai27672f6b16b39ae9",
+              "summary": "La relación terapéutica es el espacio donde ocurre el cambio clínico.\nEn este bloque aprenderás a reconocer cómo se construye una alianza terapéutica efectiva, identificar fenómenos transferenciales y comprender las reglas implícitas que organizan la comunicación entre terapeuta y paciente.\nAl finalizar, podrás observar patrones relacionales que suelen pasar desapercibidos y utilizarlos como información clínica relevante para la intervención.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsig2f3lfe79179838755abf",
+                  "name": "Bloque 1 y Bloque 4! CalabazeLogix_MotusDAO.pdf",
+                  "uploadedAt": "2026-08-07T04:28:14.498Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsig27nafe79921353cbab4d/pdfs/cmsig2f3lfe79179838755abf.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=zc8p6K7gMU8&t=3s"
+            },
+            {
+              "id": "cmsig5w428f9651b550a3b6e1",
+              "title": "Formalización Clínica",
+              "slug": "formalizacion-clinica",
+              "contentMDX": "# Bloque 2 — Formalización Clínica\n\n## Teoría\n\n### Misión del Bloque\n\nLa práctica clínica requiere transformar la observación en conocimiento organizado.\n\nEn este bloque aprenderás a estructurar la información obtenida durante la psicoterapia, construir hipótesis clínicas verificables y desarrollar una forma consistente de formalizar tus intervenciones.\n\nAl finalizar, podrás organizar casos clínicos mediante una lógica estructural que facilite el análisis, la supervisión y la toma de decisiones terapéuticas.\n\n### ¿Por qué esto importa?\n\nObservar no es suficiente.\n\nEl trabajo clínico exige convertir la información obtenida en hipótesis que puedan verificarse, modificarse y utilizarse para orientar la intervención.\n\nFormalizar un caso permite distinguir entre impresiones subjetivas y conocimiento clínico estructurado, mejorando la precisión diagnóstica y la continuidad del tratamiento.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Verificación Clínica** | Proceso de comprobación de hipótesis mediante observación terapéutica |\n| **Síntoma Estructural** | Elemento que organiza la repetición sintomática dentro del caso |\n| **Formalización Clínica** | Proceso de organización lógica de la información obtenida durante la psicoterapia |\n| **Hipótesis Clínica** | Explicación provisional que orienta la intervención |\n\n## Video\n\n### Caso Clínico Inicial\n\n**Paciente:**\n\n> Vengo porque quiero aprender a gestionar mis emociones. Soy muy inestable.\n\n**Durante la sesión:**\n\n- La paciente se define a sí misma como una persona \"inestable\" emocionalmente\n- Refiere que le cuesta mucho estar quieta o tranquila\n- Al profundizar en esa dificultad, asocia la inquietud con los momentos en los que se encuentra sin pareja\n- Expresa que cuando está sola siente la necesidad de volver a una relación\n- Identifica que podría estar buscando proporcionar constantemente o recibir seguridad en el vínculo con el otro\n- Esta necesidad parece extenderse a diferentes objetos de relación, incluyendo la pareja, el analista e incluso su propia imagen de sí misma\n\n#### Antes de continuar, reflexiona\n\n- ¿Qué significado tiene para la paciente la palabra \"inestable\"?\n- ¿Qué relación existe entre la sensación de inquietud y la ausencia de pareja?\n- ¿Qué síntoma analítico se repite cuando experimenta soledad?\n\n**Video:** Sesión Completa (2 minutos).\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nPublica una formalización clínica breve en el **Foro de Debate e Investigación**.\n\nReflexiona sobre la forma en que formalizas tu marco psicoterapéutico y tu técnica. Es fundamental traducir el lenguaje natural de tus notas y observaciones a un lenguaje formal que permita analizar y comunicar tu práctica clínica.\n\nResponde las siguientes preguntas:\n\n- ¿Cómo te contactan los pacientes?\n- ¿Cómo los conduces a la primera sesión?\n- ¿Cómo determinas cuándo finalizar una sesión?\n- ¿Cómo los atiendes en las sesiones posteriores?\n- ¿Cómo determinas cuándo interrumpir o finalizar el proceso psicoterapéutico?\n\n## Lecturas\n\n**Resumen: La Trenza Intelectual – Bach, Escher y Gödel — Parte 4**\n\n### ¿Qué aprenderás?\n\n- Estructuras organizativas\n- Relaciones lógicas complejas\n- Sistemas formales\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Construir formalizaciones clínicas\n- Organizar información relevante\n- Formular hipótesis verificables\n- Estructurar procesos psicoterapéuticos\n- Sistematizar tu práctica clínica\n\n### Qué debes buscar\n\n- Reglas\n- Organización\n- Estructuras verificables\n\n### Qué puedes anotar por ahora\n\n- Modelos de organización lógica\n- Patrones autorreferenciales\n\n## Idea clave\n\n> La formalización clínica consiste en transformar observaciones aisladas en estructuras organizadas que permitan comprender, verificar y comunicar el funcionamiento de un caso.\n\nPresta especial atención a:\n\n- Conexiones\n- Estructuras repetitivas\n- Sistemas dinámicos\n\n---\n\n### ¡Felicidades! — Bloque 2 Completado\n\n**Formalización Clínica**\n\nHas desarrollado la capacidad de organizar la información clínica de manera estructurada, construir hipótesis verificables y sistematizar tu práctica psicoterapéutica para facilitar el análisis, la supervisión y la toma de decisiones clínicas.\n\n### Certificado NFT\n\nAl completar este bloque has desbloqueado el progreso hacia la certificación del programa.\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 2–4 · Versión 1 · 2025  \n\n*NFT no transferible*\n",
+              "order": 1,
+              "duration": 15,
+              "isPublished": true,
+              "createdAt": "2026-08-07T04:30:55.444Z",
+              "updatedAt": "2026-08-07T15:53:06.605Z",
+              "moduleId": "cmsi7taai27672f6b16b39ae9",
+              "summary": "La práctica clínica requiere transformar la observación en conocimiento organizado.\nEn este bloque aprenderás a estructurar la información obtenida durante la psicoterapia, construir hipótesis clínicas verificables y desarrollar una forma consistente de formalizar tus intervenciones.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsig5zh88f96a3083d027e31",
+                  "name": "Bloque 2 La_Trenza_Intelectual_PIII_CIV_modificado.pdf",
+                  "uploadedAt": "2026-08-07T04:31:00.739Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsig5w428f9651b550a3b6e1/pdfs/cmsig5zh88f96a3083d027e31.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=p49BmczfSSQ"
+            },
+            {
+              "id": "cmsigan6n8f9629947cb27b36",
+              "title": "Cuadro de Oposición y Argumentación Clínica",
+              "slug": "cuadro-de-oposicion-y-argumentacion-clinica",
+              "contentMDX": "# Bloque 3 — Cuadro de Oposición y Argumentación Clínica\n\n## Teoría\n\n### Misión del Bloque\n\nEl discurso de un paciente no solo comunica información.\n\nTambién revela contradicciones, supuestos, omisiones y estructuras argumentativas que sostienen sus síntomas.\n\nEn este bloque aprenderás a utilizar el **Cuadro de Oposición Lógica** como herramienta para analizar el discurso clínico y construir intervenciones más precisas.\n\n### ¿Por qué esto importa?\n\nMuchos terapeutas escuchan categorías o diagnósticos.\n\nPero pocos analizan la **lógica** que organiza esas categorías.\n\nCuando identificamos contradicciones y patrones argumentativos podemos acceder a información clínica del síntoma que normalmente permanece codificada u oculta.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Argumentación Clínica** | Estructura lógica mediante la cual el paciente organiza su experiencia |\n| **Contradicción** | Dos afirmaciones incompatibles entre sí |\n| **Cuadro de Oposición** | Herramienta lógica para analizar las relaciones entre diferentes afirmaciones |\n| **Omisión** | Información clínicamente relevante que permanece ausente dentro del discurso |\n\n## Video\n\n### Proposiciones Clínicas\n\n#### Afirmaciones\n\n**Manifiestas**\n\nAquellas expresadas explícitamente por el paciente durante la sesión.\n\n**Sintomáticas**\n\nAquellas que pueden inferirse a partir de la lógica del discurso, las contradicciones o las repeticiones observadas.\n\n#### Ejercicio\n\nEscribe dos ejemplos de proposiciones clínicas obtenidas a partir del caso presentado.\n\n**Video:** Sesión Completa (2 minutos).\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nRevisa los ejercicios del Cuadro de Oposición.\n\nPosteriormente:\n\n1. Construye tres ejemplos clínicos\n2. Analiza las relaciones argumentativas presentes en cada uno\n3. Publica tus ejemplos en el **Foro de Debate e Investigación**\n\n**Material de apoyo:** PDF — Cuadrantes del Cuadro de Oposición.\n\n## Lecturas\n\n**Cuadro de Oposición Argumentativo**\n\n### ¿Qué aprenderás?\n\n- Relaciones lógicas básicas\n- Oposición\n- Contradicción\n- Organización del discurso y estructura mental\n\n**Material complementario:** PDF — Cuadrantes.\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Analizar estructuras argumentativas\n- Detectar contradicciones clínicas\n- Utilizar el cuadro de oposición como herramienta clínica\n- Construir hipótesis basadas en el discurso\n- Diseñar intervenciones más precisas\n\n### Qué debes buscar\n\nObserva cómo, sin importar la posición argumentativa, el yo busca cerrarse sobre sí mismo mediante un significado o una proposición categórica.\n\nIdentifica:\n\n- Repeticiones argumentativas\n- Contradicciones\n- Universalizaciones\n- Negaciones\n- Omisiones relevantes\n\n### Material adicional\n\nEn este bloque no hay material adicional.\n\n## Idea clave\n\n> El objetivo es lograr identificar y posteriormente abrir la proposición argumentativa del síntoma en el aquí y ahora junto con el paciente.\n\nEsto requiere calma, atención y tacto clínico.\n\nLa proposición sintomática puede aparecer en cualquier momento del proceso terapéutico, incluso desde el primer segundo de la sesión.\n\nPor ejemplo, un retraso, una forma particular de saludar o una respuesta inicial pueden constituir información clínica relevante cuando son interrogadas dentro del proceso terapéutico.\n\n---\n\n### ¡Felicidades! — Bloque 3 Completado\n\n**Cuadro de Oposición y Argumentación Clínica**\n\nHas fortalecido tu capacidad para analizar la estructura lógica del discurso clínico, identificar contradicciones y construir intervenciones fundamentadas en la organización argumentativa del síntoma.\n\n### Certificado NFT\n\nAl completar este bloque has desbloqueado el progreso hacia la certificación del programa.\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 3–5 · Versión 1 · 2025  \n\n*NFT no transferible*\n",
+              "order": 2,
+              "duration": 15,
+              "isPublished": true,
+              "createdAt": "2026-08-07T04:34:37.153Z",
+              "updatedAt": "2026-08-07T15:56:40.870Z",
+              "moduleId": "cmsi7taai27672f6b16b39ae9",
+              "summary": "El discurso de un paciente no solo comunica información.\nTambién revela contradicciones, supuestos, omisiones y estructuras argumentativas que sostienen sus síntomas.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsigaob88f96e012ebf62aad",
+                  "name": "Bloque 3 Cuadrante Lógico.pdf",
+                  "uploadedAt": "2026-08-07T04:34:39.338Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsigan6n8f9629947cb27b36/pdfs/cmsigaob88f96e012ebf62aad.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=7xWHOiBVhiI"
+            },
+            {
+              "id": "cmsigdyo6fe79cd21347bf1cb",
+              "title": "Ética y Análisis Conversacional",
+              "slug": "etica-y-analisis-conversacional",
+              "contentMDX": "# Bloque 4 — Ética y Análisis Conversacional\n\n## Teoría\n\n### Misión del Bloque\n\nToda intervención clínica produce efectos.\n\nPor esta razón, el trabajo psicoterapéutico requiere integrar técnica, lógica y ética.\n\nEn este bloque aprenderás a identificar dinámicas de poder, fenómenos de sugestión y dilemas éticos que aparecen durante el proceso terapéutico.\n\nAl finalizar, podrás evaluar críticamente tus intervenciones y fortalecer la responsabilidad profesional en tu práctica clínica.\n\n### ¿Por qué esto importa?\n\nUna intervención técnicamente correcta puede ser éticamente problemática.\n\nLa influencia del terapeuta puede afectar:\n\n- La autonomía del paciente\n- La toma de decisiones\n- La construcción de significado\n\nPor ello es necesario analizar cómo intervenimos y qué efectos generan nuestras intervenciones dentro del proceso terapéutico.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Análisis Conversacional** | Estudio de las dinámicas presentes dentro del intercambio terapéutico |\n| **Sugestión** | Influencia involuntaria que puede modificar la posición del paciente |\n| **Ética Clínica** | Conjunto de principios que orientan una práctica psicoterapéutica responsable |\n| **Neutralidad** | Capacidad del terapeuta para facilitar la exploración clínica sin imponer sus propios prejuicios, valores o interpretaciones |\n\n## Video\n\n### Caso Clínico Inicial\n\n**Paciente:**\n\n> Mi perra se escapó el otro día y la pasé muy mal.\n\n**Durante la sesión:**\n\n- Describe una intensa angustia mientras la buscaba\n- Dice que pensó que la perra estaba \"muy sola\"\n- Expresa culpa por no haberla cuidado lo suficiente\n- Llora al hablar de la situación\n- Repite varias veces la idea de la soledad\n- Ante una intervención del analista, menciona que es adoptada\n- Recuerda que durante su infancia su madre trabajaba mucho\n- Refiere que a veces sentía que era olvidada\n- Comienza a asociar la situación actual con experiencias tempranas de abandono\n\n#### Antes de continuar, reflexiona\n\n- ¿La angustia surge por la perra que se escapó o por algo propio que la situación despertó?\n- ¿Qué efecto produce la intervención: \"Mencionas mucho la soledad\"?\n- ¿Qué experiencia de la historia de la paciente parece proyectarse sobre la perra?\n\n**Video:** Sesión Completa (2 minutos).\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nParticipa en el **Dispositivo de Verificación de Casos Clínicos**.\n\nPresenta una intervención propia y analiza:\n\n- Riesgos éticos\n- Efectos observados\n- Alternativas posibles\n\n## Lecturas\n\n**¡Calabaza LógiX!** (Capítulos 4–6)\n\n### ¿Qué aprenderás?\n\n- Comprender un proceso psicoterapéutico utilizando el recorrido lógico completo del Cuadrante\n- Identificar las posiciones lógicas que deben detectar los supervisores clínicos durante el análisis de un caso\n\n**Material de apoyo:** `CalabazaLogix_MotusDAO.pdf`\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Evaluar la dimensión ética de tus intervenciones\n- Identificar dinámicas de sugestión\n- Aplicar herramientas de análisis conversacional\n- Mantener una posición clínica responsable\n- Integrar lógica, técnica y ética en la práctica profesional\n\n### Qué debes buscar\n\nEl Cuadrante permite identificar la posición lógica que ocupa un sujeto frente a su síntoma.\n\nObserva especialmente:\n\n- La posición argumentativa del paciente\n- Los cambios en la conversación\n- Los efectos de cada intervención\n- Los movimientos clínicos que favorecen la elaboración del síntoma\n\n### Qué puedes ignorar por ahora\n\nPor el momento no es necesario dominar todos los modelos de supervisión clínica.\n\nEn esta etapa basta con comprender que, para el psicoterapeuta, el Cuadrante facilita intervenciones más precisas y, para el supervisor, permite reconocer dónde se encuentra un caso, qué mantiene fija su estructura y qué movimientos clínicos pueden favorecer el cambio.\n\n## Idea clave\n\n> El recorrido lógico de una psicoterapia se sostiene mediante un marco psicoterapéutico y una adecuada relación transferencial, permitiendo que el paciente elabore la lógica de su síntoma en el aquí y ahora.\n\nLa técnica clínica solo adquiere valor cuando está acompañada por una práctica ética y una escucha responsable.\n\n---\n\n### ¡Felicidades! — Bloque 4 Completado\n\n**Ética y Análisis Conversacional**\n\nHas fortalecido tu capacidad para evaluar críticamente tus intervenciones, comprender los efectos éticos de la práctica clínica e integrar el análisis conversacional como una herramienta para realizar intervenciones más responsables y precisas.\n\n### Certificado NFT\n\nAl completar este bloque has completado el recorrido del Curso Avanzado Fundamentales A.C.A.\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 4–4 · Versión 1 · 2026  \n\n*NFT no transferible*\n",
+              "order": 3,
+              "duration": 60,
+              "isPublished": true,
+              "createdAt": "2026-08-07T04:37:12.007Z",
+              "updatedAt": "2026-08-07T12:47:44.779Z",
+              "moduleId": "cmsi7taai27672f6b16b39ae9",
+              "summary": "Toda intervención clínica produce efectos.\nPor esta razón, el trabajo psicoterapéutico requiere integrar técnica, lógica y ética.\nEn este bloque aprenderás a identificar dinámicas de poder, fenómenos de sugestión y dilemas éticos que aparecen durante el proceso terapéutico.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsige0lxfe791e079d13fa7d",
+                  "name": "Bloque 1 y Bloque 4! CalabazeLogix_MotusDAO.pdf",
+                  "uploadedAt": "2026-08-07T04:37:15.576Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsigdyo6fe79cd21347bf1cb/pdfs/cmsige0lxfe791e079d13fa7d.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=r15r1gIozyU"
+            }
+          ]
+        },
+        {
+          "id": "cmsj4uywtd32f0098c2e508ec",
+          "courseId": "cmsh1j2cgd50cbd39cb4aeeb3",
+          "title": "Formalización Clínica",
+          "summary": "La práctica clínica requiere transformar la observación en conocimiento organizado.\nEn este bloque aprenderás a estructurar la información obtenida durante la psicoterapia, construir hipótesis clínicas verificables y desarrollar una forma consistente de formalizar tus intervenciones.",
+          "order": 3,
+          "createdAt": "2026-08-07T16:02:16.254Z",
+          "updatedAt": "2026-08-07T16:02:16.253Z",
+          "lessons": [
+            {
+              "id": "cmsj4x0l4b2a9b5e51397a6b6",
+              "title": "Formalización Clínica",
+              "slug": "formalizacion-clinica",
+              "contentMDX": "# Bloque 2 — Formalización Clínica\n\n## Teoría\n\n### Misión del Bloque\n\nLa práctica clínica requiere transformar la observación en conocimiento organizado.\n\nEn este bloque aprenderás a estructurar la información obtenida durante la psicoterapia, construir hipótesis clínicas verificables y desarrollar una forma consistente de formalizar tus intervenciones.\n\nAl finalizar, podrás organizar casos clínicos mediante una lógica estructural que facilite el análisis, la supervisión y la toma de decisiones terapéuticas.\n\n### ¿Por qué esto importa?\n\nObservar no es suficiente.\n\nEl trabajo clínico exige convertir la información obtenida en hipótesis que puedan verificarse, modificarse y utilizarse para orientar la intervención.\n\nFormalizar un caso permite distinguir entre impresiones subjetivas y conocimiento clínico estructurado, mejorando la precisión diagnóstica y la continuidad del tratamiento.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Verificación Clínica** | Proceso de comprobación de hipótesis mediante observación terapéutica |\n| **Síntoma Estructural** | Elemento que organiza la repetición sintomática dentro del caso |\n| **Formalización Clínica** | Proceso de organización lógica de la información obtenida durante la psicoterapia |\n| **Hipótesis Clínica** | Explicación provisional que orienta la intervención |\n\n## Video\n\n### Caso Clínico Inicial\n\n**Paciente:**\n\n> Vengo porque quiero aprender a gestionar mis emociones. Soy muy inestable.\n\n**Durante la sesión:**\n\n- La paciente se define a sí misma como una persona \"inestable\" emocionalmente\n- Refiere que le cuesta mucho estar quieta o tranquila\n- Al profundizar en esa dificultad, asocia la inquietud con los momentos en los que se encuentra sin pareja\n- Expresa que cuando está sola siente la necesidad de volver a una relación\n- Identifica que podría estar buscando proporcionar constantemente o recibir seguridad en el vínculo con el otro\n- Esta necesidad parece extenderse a diferentes objetos de relación, incluyendo la pareja, el analista e incluso su propia imagen de sí misma\n\n#### Antes de continuar, reflexiona\n\n- ¿Qué significado tiene para la paciente la palabra \"inestable\"?\n- ¿Qué relación existe entre la sensación de inquietud y la ausencia de pareja?\n- ¿Qué síntoma analítico se repite cuando experimenta soledad?\n\n**Video:** Sesión Completa (2 minutos).\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nPublica una formalización clínica breve en el **Foro de Debate e Investigación**.\n\nReflexiona sobre la forma en que formalizas tu marco psicoterapéutico y tu técnica. Es fundamental traducir el lenguaje natural de tus notas y observaciones a un lenguaje formal que permita analizar y comunicar tu práctica clínica.\n\nResponde las siguientes preguntas:\n\n- ¿Cómo te contactan los pacientes?\n- ¿Cómo los conduces a la primera sesión?\n- ¿Cómo determinas cuándo finalizar una sesión?\n- ¿Cómo los atiendes en las sesiones posteriores?\n- ¿Cómo determinas cuándo interrumpir o finalizar el proceso psicoterapéutico?\n\n## Lecturas\n\n**Resumen: La Trenza Intelectual – Bach, Escher y Gödel — Parte 4**\n\n### ¿Qué aprenderás?\n\n- Estructuras organizativas\n- Relaciones lógicas complejas\n- Sistemas formales\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Construir formalizaciones clínicas\n- Organizar información relevante\n- Formular hipótesis verificables\n- Estructurar procesos psicoterapéuticos\n- Sistematizar tu práctica clínica\n\n### Qué debes buscar\n\n- Reglas\n- Organización\n- Estructuras verificables\n\n### Qué puedes anotar por ahora\n\n- Modelos de organización lógica\n- Patrones autorreferenciales\n\n## Idea clave\n\n> La formalización clínica consiste en transformar observaciones aisladas en estructuras organizadas que permitan comprender, verificar y comunicar el funcionamiento de un caso.\n\nPresta especial atención a:\n\n- Conexiones\n- Estructuras repetitivas\n- Sistemas dinámicos\n\n---\n\n### ¡Felicidades! — Bloque 2 Completado\n\n**Formalización Clínica**\n\nHas desarrollado la capacidad de organizar la información clínica de manera estructurada, construir hipótesis verificables y sistematizar tu práctica psicoterapéutica para facilitar el análisis, la supervisión y la toma de decisiones clínicas.\n\n### Certificado NFT\n\nAl completar este bloque has desbloqueado el progreso hacia la certificación del programa.\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 2–4 · Versión 1 · 2025  \n\n*NFT no transferible*\n",
+              "order": 0,
+              "duration": 15,
+              "isPublished": true,
+              "createdAt": "2026-08-07T16:03:51.738Z",
+              "updatedAt": "2026-08-11T07:25:34.444Z",
+              "moduleId": "cmsj4uywtd32f0098c2e508ec",
+              "summary": "La práctica clínica requiere transformar la observación en conocimiento organizado.\nEn este bloque aprenderás a estructurar la información obtenida durante la psicoterapia, construir hipótesis clínicas verificables y desarrollar una forma consistente de formalizar tus intervenciones.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsj4x4aib2a9c9495789913f",
+                  "name": "Bloque 2 La_Trenza_Intelectual_PIII_CIV_modificado.pdf",
+                  "uploadedAt": "2026-08-07T16:03:57.791Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsj4x0l4b2a9b5e51397a6b6/pdfs/cmsj4x4aib2a9c9495789913f.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=p49BmczfSSQ"
+            }
+          ]
+        },
+        {
+          "id": "cmsj4y6q7d32f624020416974",
+          "courseId": "cmsh1j2cgd50cbd39cb4aeeb3",
+          "title": "Cuadro de Oposición y Argumentación Clínica",
+          "summary": "El discurso de un paciente no solo comunica información.\nTambién revela contradicciones, supuestos, omisiones y estructuras argumentativas que sostienen sus síntomas.",
+          "order": 4,
+          "createdAt": "2026-08-07T16:04:46.352Z",
+          "updatedAt": "2026-08-07T16:04:46.351Z",
+          "lessons": [
+            {
+              "id": "cmsj50vzcb2a97c1835950d80",
+              "title": "Cuadro de Oposición y Argumentación Clínica",
+              "slug": "cuadro-de-oposicion-y-argumentacion-clinica",
+              "contentMDX": "# Bloque 3 — Cuadro de Oposición y Argumentación Clínica\n\n## Teoría\n\n### Misión del Bloque\n\nEl discurso de un paciente no solo comunica información.\n\nTambién revela contradicciones, supuestos, omisiones y estructuras argumentativas que sostienen sus síntomas.\n\nEn este bloque aprenderás a utilizar el **Cuadro de Oposición Lógica** como herramienta para analizar el discurso clínico y construir intervenciones más precisas.\n\n### ¿Por qué esto importa?\n\nMuchos terapeutas escuchan categorías o diagnósticos.\n\nPero pocos analizan la **lógica** que organiza esas categorías.\n\nCuando identificamos contradicciones y patrones argumentativos podemos acceder a información clínica del síntoma que normalmente permanece codificada u oculta.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Argumentación Clínica** | Estructura lógica mediante la cual el paciente organiza su experiencia |\n| **Contradicción** | Dos afirmaciones incompatibles entre sí |\n| **Cuadro de Oposición** | Herramienta lógica para analizar las relaciones entre diferentes afirmaciones |\n| **Omisión** | Información clínicamente relevante que permanece ausente dentro del discurso |\n\n## Video\n\n### Proposiciones Clínicas\n\n#### Afirmaciones\n\n**Manifiestas**\n\nAquellas expresadas explícitamente por el paciente durante la sesión.\n\n**Sintomáticas**\n\nAquellas que pueden inferirse a partir de la lógica del discurso, las contradicciones o las repeticiones observadas.\n\n#### Ejercicio\n\nEscribe dos ejemplos de proposiciones clínicas obtenidas a partir del caso presentado.\n\n**Video:** Sesión Completa (2 minutos).\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nRevisa los ejercicios del Cuadro de Oposición.\n\nPosteriormente:\n\n1. Construye tres ejemplos clínicos\n2. Analiza las relaciones argumentativas presentes en cada uno\n3. Publica tus ejemplos en el **Foro de Debate e Investigación**\n\n**Material de apoyo:** PDF — Cuadrantes del Cuadro de Oposición.\n\n## Lecturas\n\n**Cuadro de Oposición Argumentativo**\n\n### ¿Qué aprenderás?\n\n- Relaciones lógicas básicas\n- Oposición\n- Contradicción\n- Organización del discurso y estructura mental\n\n**Material complementario:** PDF — Cuadrantes.\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Analizar estructuras argumentativas\n- Detectar contradicciones clínicas\n- Utilizar el cuadro de oposición como herramienta clínica\n- Construir hipótesis basadas en el discurso\n- Diseñar intervenciones más precisas\n\n### Qué debes buscar\n\nObserva cómo, sin importar la posición argumentativa, el yo busca cerrarse sobre sí mismo mediante un significado o una proposición categórica.\n\nIdentifica:\n\n- Repeticiones argumentativas\n- Contradicciones\n- Universalizaciones\n- Negaciones\n- Omisiones relevantes\n\n### Material adicional\n\nEn este bloque no hay material adicional.\n\n## Idea clave\n\n> El objetivo es lograr identificar y posteriormente abrir la proposición argumentativa del síntoma en el aquí y ahora junto con el paciente.\n\nEsto requiere calma, atención y tacto clínico.\n\nLa proposición sintomática puede aparecer en cualquier momento del proceso terapéutico, incluso desde el primer segundo de la sesión.\n\nPor ejemplo, un retraso, una forma particular de saludar o una respuesta inicial pueden constituir información clínica relevante cuando son interrogadas dentro del proceso terapéutico.\n\n---\n\n### ¡Felicidades! — Bloque 3 Completado\n\n**Cuadro de Oposición y Argumentación Clínica**\n\nHas fortalecido tu capacidad para analizar la estructura lógica del discurso clínico, identificar contradicciones y construir intervenciones fundamentadas en la organización argumentativa del síntoma.\n\n### Certificado NFT\n\nAl completar este bloque has desbloqueado el progreso hacia la certificación del programa.\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 3–5 · Versión 1 · 2025  \n\n*NFT no transferible*\n",
+              "order": 0,
+              "duration": 15,
+              "isPublished": true,
+              "createdAt": "2026-08-07T16:06:52.394Z",
+              "updatedAt": "2026-08-07T16:06:55.357Z",
+              "moduleId": "cmsj4y6q7d32f624020416974",
+              "summary": "El discurso de un paciente no solo comunica información.\nTambién revela contradicciones, supuestos, omisiones y estructuras argumentativas que sostienen sus síntomas.",
+              "isFreePreview": false,
+              "pdfResources": [
+                {
+                  "id": "cmsj50xyrb2a9af4054346043",
+                  "name": "Bloque 3 Cuadrante Lógico.pdf",
+                  "uploadedAt": "2026-08-07T16:06:55.357Z",
+                  "storagePath": "cmsh1j2cgd50cbd39cb4aeeb3/cmsj50vzcb2a97c1835950d80/pdfs/cmsj50xyrb2a9af4054346043.pdf"
+                }
+              ],
+              "videoUrl": "https://www.youtube.com/watch?v=7xWHOiBVhiI"
+            }
+          ]
+        },
+        {
+          "id": "cmsj51wy3d32f50076bb98811",
+          "courseId": "cmsh1j2cgd50cbd39cb4aeeb3",
+          "title": "Ética y Análisis Conversacional",
+          "summary": "Toda intervención clínica produce efectos.\nPor esta razón, el trabajo psicoterapéutico requiere integrar técnica, lógica y ética.\nEn este bloque aprenderás a identificar dinámicas de poder, fenómenos de sugestión y dilemas éticos que aparecen durante el proceso terapéutico.",
+          "order": 5,
+          "createdAt": "2026-08-07T16:07:40.300Z",
+          "updatedAt": "2026-08-07T16:07:40.299Z",
+          "lessons": [
+            {
+              "id": "cmsj53lpgb2a9ed86b3fdda9d",
+              "title": "Ética y Análisis Conversacional",
+              "slug": "etica-y-analisis-conversacional",
+              "contentMDX": "# Bloque 4 — Ética y Análisis Conversacional\n\n## Teoría\n\n### Misión del Bloque\n\nToda intervención clínica produce efectos.\n\nPor esta razón, el trabajo psicoterapéutico requiere integrar técnica, lógica y ética.\n\nEn este bloque aprenderás a identificar dinámicas de poder, fenómenos de sugestión y dilemas éticos que aparecen durante el proceso terapéutico.\n\nAl finalizar, podrás evaluar críticamente tus intervenciones y fortalecer la responsabilidad profesional en tu práctica clínica.\n\n### ¿Por qué esto importa?\n\nUna intervención técnicamente correcta puede ser éticamente problemática.\n\nLa influencia del terapeuta puede afectar:\n\n- La autonomía del paciente\n- La toma de decisiones\n- La construcción de significado\n\nPor ello es necesario analizar cómo intervenimos y qué efectos generan nuestras intervenciones dentro del proceso terapéutico.\n\n## Conceptos clave\n\n| Concepto | Definición |\n| --- | --- |\n| **Análisis Conversacional** | Estudio de las dinámicas presentes dentro del intercambio terapéutico |\n| **Sugestión** | Influencia involuntaria que puede modificar la posición del paciente |\n| **Ética Clínica** | Conjunto de principios que orientan una práctica psicoterapéutica responsable |\n| **Neutralidad** | Capacidad del terapeuta para facilitar la exploración clínica sin imponer sus propios prejuicios, valores o interpretaciones |\n\n## Video\n\n### Caso Clínico Inicial\n\n**Paciente:**\n\n> Mi perra se escapó el otro día y la pasé muy mal.\n\n**Durante la sesión:**\n\n- Describe una intensa angustia mientras la buscaba\n- Dice que pensó que la perra estaba \"muy sola\"\n- Expresa culpa por no haberla cuidado lo suficiente\n- Llora al hablar de la situación\n- Repite varias veces la idea de la soledad\n- Ante una intervención del analista, menciona que es adoptada\n- Recuerda que durante su infancia su madre trabajaba mucho\n- Refiere que a veces sentía que era olvidada\n- Comienza a asociar la situación actual con experiencias tempranas de abandono\n\n#### Antes de continuar, reflexiona\n\n- ¿La angustia surge por la perra que se escapó o por algo propio que la situación despertó?\n- ¿Qué efecto produce la intervención: \"Mencionas mucho la soledad\"?\n- ¿Qué experiencia de la historia de la paciente parece proyectarse sobre la perra?\n\n**Video:** Sesión Completa (2 minutos).\n\n## Práctica Aplicada\n\nTransforma el conocimiento teórico en herramientas y soluciones concretas.\n\n### Actividad Clínica\n\nParticipa en el **Dispositivo de Verificación de Casos Clínicos**.\n\nPresenta una intervención propia y analiza:\n\n- Riesgos éticos\n- Efectos observados\n- Alternativas posibles\n\n## Lecturas\n\n**¡Calabaza LógiX!** (Capítulos 4–6)\n\n### ¿Qué aprenderás?\n\n- Comprender un proceso psicoterapéutico utilizando el recorrido lógico completo del Cuadrante\n- Identificar las posiciones lógicas que deben detectar los supervisores clínicos durante el análisis de un caso\n\n**Material de apoyo:** `CalabazaLogix_MotusDAO.pdf`\n\n## Resultado obtenido\n\nDespués de este bloque ahora eres capaz de:\n\n- Evaluar la dimensión ética de tus intervenciones\n- Identificar dinámicas de sugestión\n- Aplicar herramientas de análisis conversacional\n- Mantener una posición clínica responsable\n- Integrar lógica, técnica y ética en la práctica profesional\n\n### Qué debes buscar\n\nEl Cuadrante permite identificar la posición lógica que ocupa un sujeto frente a su síntoma.\n\nObserva especialmente:\n\n- La posición argumentativa del paciente\n- Los cambios en la conversación\n- Los efectos de cada intervención\n- Los movimientos clínicos que favorecen la elaboración del síntoma\n\n### Qué puedes ignorar por ahora\n\nPor el momento no es necesario dominar todos los modelos de supervisión clínica.\n\nEn esta etapa basta con comprender que, para el psicoterapeuta, el Cuadrante facilita intervenciones más precisas y, para el supervisor, permite reconocer dónde se encuentra un caso, qué mantiene fija su estructura y qué movimientos clínicos pueden favorecer el cambio.\n\n## Idea clave\n\n> El recorrido lógico de una psicoterapia se sostiene mediante un marco psicoterapéutico y una adecuada relación transferencial, permitiendo que el paciente elabore la lógica de su síntoma en el aquí y ahora.\n\nLa técnica clínica solo adquiere valor cuando está acompañada por una práctica ética y una escucha responsable.\n\n---\n\n### ¡Felicidades! — Bloque 4 Completado\n\n**Ética y Análisis Conversacional**\n\nHas fortalecido tu capacidad para evaluar críticamente tus intervenciones, comprender los efectos éticos de la práctica clínica e integrar el análisis conversacional como una herramienta para realizar intervenciones más responsables y precisas.\n\n### Certificado NFT\n\nAl completar este bloque has completado el recorrido del Curso Avanzado Fundamentales A.C.A.\n\n**FUNDAMENTALES A.C.A. – CURSO AVANZADO**  \nBloques 4–4 · Versión 1 · 2026  \n\n*NFT no transferible*\n",
+              "order": 0,
+              "duration": null,
+              "isPublished": true,
+              "createdAt": "2026-08-07T16:08:59.045Z",
+              "updatedAt": "2026-08-07T16:13:08.306Z",
+              "moduleId": "cmsj51wy3d32f50076bb98811",
+              "summary": "Toda intervención clínica produce efectos.\nPor esta razón, el trabajo psicoterapéutico requiere integrar técnica, lógica y ética.\nEn este bloque aprenderás a identificar dinámicas de poder, fenómenos de sugestión y dilemas éticos que aparecen durante el proceso terapéutico.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": "https://www.youtube.com/watch?v=r15r1gIozyU"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "course_02_fundamentos",
+      "title": "02 — Fundamentos",
+      "slug": "02-fundamentos",
+      "summary": "Membresía de Práctica Digital: clínica digital, encuadre, ética, perfil profesional y recursos base (USD 20/mes · 120/año).",
+      "description": "Bloque **02 — Fundamentos** — producto **Membresía de Práctica Digital**.\n\nOrdena tu transición hacia la práctica clínica digital: encuadre, ética, límites, perfil y acompañamiento comunitario.\n\n**Referencia:** USD 20/mes o USD 120/año.\n\n> No equivale a certificación externa ni garantiza acceso automático al Portal Clínico.",
+      "imageUrl": "https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_02_fundamentos/cover.png",
+      "isPublished": true,
+      "createdAt": "2026-06-29T07:01:19.585Z",
+      "updatedAt": "2026-08-06T08:37:10.902Z",
+      "category": "Ruta PSM",
+      "difficulty": "beginner",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": "Academia de Psicología Digital",
+      "lastUpdated": null,
+      "learningOutcomes": [
+        "Dominar el lenguaje común de la clínica digital MotusDAO.",
+        "Redactar encuadre mínimo para atención en línea.",
+        "Identificar límites éticos, crisis y derivación.",
+        "Construir perfil profesional coherente con la membresía.",
+        "Activar la Membresía de Práctica Digital y preparar Praxis."
+      ],
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": "20",
+      "priceCurrency": "USD",
+      "billingInterval": "monthly",
+      "isFree": false,
+      "modules": [
+        {
+          "id": "module_02_fundamentos_clinica",
+          "courseId": "course_02_fundamentos",
+          "title": "Fundamentos de la clínica digital",
+          "summary": "Lenguaje común, encuadre y límites éticos.",
+          "order": 1,
+          "createdAt": "2026-06-29T07:01:19.656Z",
+          "updatedAt": "2026-06-29T07:01:19.584Z",
+          "lessons": [
+            {
+              "id": "lesson_02_fundamentos_intro",
+              "title": "Lenguaje común de la clínica digital",
+              "slug": "lenguaje-comun-clinica-digital",
+              "contentMDX": "# Lenguaje común de la clínica digital\n\nCompletaste **01 — Génesis**. Ahora entras a **02 — Fundamentos**, donde la **Membresía de Práctica Digital** te da estructura y acompañamiento.\n\nAquí construyes lenguaje común sobre encuadre, ética, límites, tecnología, privacidad y acompañamiento.\n\n## Ruta de 5 bloques\n\n```\n01 Génesis → 02 Fundamentos → 03 Praxis → 04 Validación → 05 Portal Clínico\n```\n\n## Para quién es\n\nPsicólogos que quieren ordenar su práctica clínica digital antes de talleres, supervisiones o el Portal.",
+              "order": 1,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:19.731Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_clinica",
+              "summary": "Qué es Fundamentos y para quién es este bloque.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_02_fundamentos_encuadre",
+              "title": "Encuadre básico de atención en línea",
+              "slug": "encuadre-basico-atencion-linea",
+              "contentMDX": "# Encuadre básico de atención en línea\n\nEl encuadre define **cómo**, **cuándo**, **dónde** y **con qué límites** ocurre el acompañamiento.\n\n## Elementos mínimos\n\n- **Espacio** — privacidad razonable para profesional y persona.\n- **Tiempo** — duración, horario, cancelaciones, zona horaria.\n- **Confidencialidad** — quién puede escuchar o ver la sesión.\n- **Presencia digital** — cámara, conexión inestable, qué hacer si se cae la llamada.\n\n## Ejercicio\n\nRedacta un borrador de encuadre mínimo (½ página) para compartir antes de una primera sesión en video.",
+              "order": 2,
+              "duration": 22,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:19.806Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_clinica",
+              "summary": "Espacio, tiempo, confidencialidad y presencia digital.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_02_fundamentos_limites",
+              "title": "Límites éticos y profesionales",
+              "slug": "limites-eticos-profesionales",
+              "contentMDX": "# Límites éticos y profesionales\n\n- Define poblaciones y temas que sí atiendes y casos que derivas.\n- Protocolo básico ante crisis e ideación.\n- La formación MotusDAO **no** sustituye tu cédula ni tu juicio clínico.\n\nAl completar este módulo estarás listo para ordenar tu perfil y activar la membresía.",
+              "order": 3,
+              "duration": 18,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:19.890Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_clinica",
+              "summary": "Alcance, urgencia, derivación y responsabilidad.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        },
+        {
+          "id": "module_02_fundamentos_perfil",
+          "courseId": "course_02_fundamentos",
+          "title": "Perfil y herramientas",
+          "summary": "Presencia profesional y operación básica.",
+          "order": 2,
+          "createdAt": "2026-06-29T07:01:19.963Z",
+          "updatedAt": "2026-06-29T07:01:19.584Z",
+          "lessons": [
+            {
+              "id": "lesson_02_fundamentos_perfil",
+              "title": "Construir tu perfil profesional",
+              "slug": "construir-perfil-profesional",
+              "contentMDX": "# Construir tu perfil profesional\n\n1. **Narrativa** — quién eres y cómo acompañas (sin prometer resultados).\n2. **Enfoque** — temas y poblaciones con honestidad sobre tu experiencia.\n3. **Modalidad** — en MotusDAO la atención es por **video** (teleterapia).\n4. **Encuadre visible** — urgencia, cancelaciones, confidencialidad.\n\nEvita claims no sustentados: pacientes garantizados, certificación MotusDAO.",
+              "order": 1,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:20.037Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_perfil",
+              "summary": "Narrativa, especialización y encuadre público.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_02_fundamentos_herramientas",
+              "title": "Herramientas digitales base",
+              "slug": "herramientas-digitales-base",
+              "contentMDX": "# Herramientas digitales base\n\n- Videollamada (Jitsi MotusDAO o consultorio digital).\n- Agenda, recordatorios y política de cancelación.\n- Notas clínicas con mínimos de seguridad.\n- IA como apoyo — no sustituto del juicio clínico (profundizarás en **03 — Praxis**).",
+              "order": 2,
+              "duration": 16,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:20.113Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_perfil",
+              "summary": "Video, agenda, documentación y privacidad.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        },
+        {
+          "id": "module_02_fundamentos_membresia",
+          "courseId": "course_02_fundamentos",
+          "title": "Membresía de Práctica Digital",
+          "summary": "Qué incluye, límites y plan hacia Praxis.",
+          "order": 3,
+          "createdAt": "2026-06-29T07:01:20.189Z",
+          "updatedAt": "2026-06-29T07:01:19.584Z",
+          "lessons": [
+            {
+              "id": "lesson_02_fundamentos_membresia-que-es",
+              "title": "Qué incluye la membresía",
+              "slug": "que-es-membresia-practica-digital",
+              "contentMDX": "# Membresía de Práctica Digital\n\nLa membresía es el **producto de este bloque** — no un bloque separado.\n\n## Referencia de inversión\n\n**USD 20/mes** o **USD 120/año**.\n\n## Puede incluir\n\n- Orientación y recursos base sobre práctica digital.\n- Encuentros comunitarios y materiales de actualización.\n- Acompañamiento para ordenar perfil y encuadre.\n\n## Qué no entrega\n\nCertificación oficial, licencia, garantía de pacientes ni acceso automático al Portal Clínico.",
+              "order": 1,
+              "duration": 18,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:20.292Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_membresia",
+              "summary": "Producto del bloque Fundamentos.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_02_fundamentos_plan-30",
+              "title": "Plan de 30 días hacia Praxis",
+              "slug": "plan-30-dias-praxis",
+              "contentMDX": "# Plan de 30 días hacia Praxis\n\n## Semana 1 — Encuadre\n- [ ] Encuadre mínimo escrito.\n- [ ] Límites de urgencia y derivación definidos.\n\n## Semana 2 — Operación\n- [ ] Horarios y capacidad realista.\n- [ ] Prueba de videollamada y consultorio.\n\n## Semana 3 — Comunidad\n- [ ] Al menos un encuentro comunitario.\n- [ ] Áreas a reforzar en talleres identificadas.\n\n## Semana 4 — Puerta a Praxis\n- [ ] Elegir primer taller (USD 15 c/u en **03 — Praxis**).\n\n**Siguiente bloque:** **03 — Praxis** (talleres USD 15 + supervisión clínica USD 50).",
+              "order": 2,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:20.363Z",
+              "updatedAt": "2026-06-29T07:01:19.584Z",
+              "moduleId": "module_02_fundamentos_membresia",
+              "summary": "Objetivos semanales antes de talleres.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "course_praxis",
+      "title": "03 — Praxis",
+      "slug": "03-praxis",
+      "summary": "Talleres de actualización (USD 15 c/u) y supervisión clínica (USD 50) para aplicar criterios en práctica acotada.",
+      "description": "Bloque **03 — Praxis**.\n\nTalleres **USD 15** cada uno + **supervisión clínica USD 50** (producto distinto a la supervisión mensual del Portal).\n\n**Módulo 1 — Talleres:** formato, temas y catálogo.\n\n**Módulo 2 — Supervisión y evidencia:** participación con criterio y puerta a Validación.\n\n> Participar no avala automáticamente tu práctica ni autoriza el Portal Clínico.",
+      "imageUrl": "https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_praxis/cover.png",
+      "isPublished": true,
+      "createdAt": "2026-06-29T06:26:33.514Z",
+      "updatedAt": "2026-06-29T07:04:33.759Z",
+      "category": "Ruta PSM",
+      "difficulty": "intermediate",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": "Academia de Psicología Digital",
+      "lastUpdated": null,
+      "learningOutcomes": [
+        "Elegir talleres de actualización acordes a tu momento profesional.",
+        "Participar en ejercicios y encuentros con criterio ético.",
+        "Practicar herramientas digitales sin confundir formación con habilitación.",
+        "Preparar evidencia de participación para el bloque Validación."
+      ],
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": "15",
+      "priceCurrency": "USD",
+      "billingInterval": "one_time",
+      "isFree": false,
+      "modules": [
+        {
+          "id": "module_praxis_intro",
+          "courseId": "course_praxis",
+          "title": "Entrada a Praxis",
+          "summary": "Talleres de actualización y formato de participación.",
+          "order": 1,
+          "createdAt": "2026-06-29T06:26:33.585Z",
+          "updatedAt": "2026-06-29T07:01:20.660Z",
+          "lessons": [
+            {
+              "id": "lesson_praxis_que-es",
+              "title": "Qué es el bloque Praxis",
+              "slug": "que-es-praxis",
+              "contentMDX": "# Qué es el bloque Praxis\n\nPraxis es el bloque donde la formación empieza a moverse hacia la **práctica**.\n\nEl objetivo es **aplicar, conversar, ejercitar y actualizar** conocimientos con otros psicólogos. No se trata solo de consumir contenido, sino de participar activamente.\n\n## Para quién es\n\n- Psicólogos que quieren pasar de orientación general a aplicación práctica.\n- Quienes prefieren talleres específicos sin comprometerse aún con toda la ruta.\n\n## Qué haces en este bloque\n\n1. Eliges talleres de actualización.\n2. Participas en ejercicios o encuentros.\n3. Practicas herramientas y criterios.\n4. Conversas con otros psicólogos.\n5. Identificas áreas a reforzar.\n6. Preparas evidencia de participación cuando aplique.\n\n## Qué desbloquea\n\nPraxis te prepara para **04 — Validación**, donde documentas avance y revisas requisitos profesionales.",
+              "order": 1,
+              "duration": 16,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:33.657Z",
+              "updatedAt": "2026-06-29T07:01:20.660Z",
+              "moduleId": "module_praxis_intro",
+              "summary": "De la orientación general a la aplicación práctica.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_praxis_talleres",
+              "title": "Talleres de actualización",
+              "slug": "talleres-actualizacion",
+              "contentMDX": "# Talleres de actualización\n\n**Referencia de costo:** USD 15 por taller.\n\nLos talleres son espacios prácticos y acotados sobre:\n\n- práctica clínica digital;\n- herramientas y ética;\n- IA aplicada a psicología;\n- comunicación profesional;\n- encuadre y actualización clínica.\n\n## Pueden incluir\n\n- sesiones en vivo;\n- ejercicios guiados;\n- materiales de apoyo;\n- actividades en metaverso (cuando aplique);\n- discusión grupal;\n- casos o ejemplos anonimizados;\n- herramientas aplicables a tu práctica.\n\n## Catálogo destacado\n\nEl taller **IA para Psicólogos** vive en este bloque: integración ética de IA como copiloto clínico, prompts útiles y límites profesionales.\n\n## Nota importante\n\nParticipar en talleres **no** significa que MotusDAO avale automáticamente tu práctica clínica ni que estés autorizado para atender en el Portal Clínico. La validación requiere revisión adicional.",
+              "order": 2,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:33.736Z",
+              "updatedAt": "2026-06-29T07:01:20.660Z",
+              "moduleId": "module_praxis_intro",
+              "summary": "Formato, temas y referencia de inversión por taller.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        },
+        {
+          "id": "module_praxis_participar",
+          "courseId": "course_praxis",
+          "title": "Participación y evidencia",
+          "summary": "Ejercicios, reflexión y preparación para Validación.",
+          "order": 2,
+          "createdAt": "2026-06-29T06:26:33.817Z",
+          "updatedAt": "2026-06-29T07:01:20.660Z",
+          "lessons": [
+            {
+              "id": "lesson_praxis_supervision",
+              "title": "Supervisión clínica en Praxis",
+              "slug": "supervision-clinica-praxis",
+              "contentMDX": "# Supervisión clínica en Praxis\n\n**Referencia:** **USD 50** por sesión de supervisión clínica en este bloque.\n\n## Qué es\n\n- Espacio formal de revisión de casos (anonimizados) con supervisor habilitado.\n- Complemento a talleres — no sustituto de formación universitaria ni cédula.\n\n## Qué no es\n\n- **No** es la supervisión mensual del **05 — Portal Clínico** (USD 35/mes para permanecer activo).\n- **No** equivale a aval para operar en el Portal sin pasar por **04 — Validación**.\n\n## Ruta comunitaria (referencia)\n\n~seis talleres (USD 15 c/u) + ~tres supervisiones (USD 50 c/u) antes del pase clínico.",
+              "order": 1,
+              "duration": 20,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:21.047Z",
+              "updatedAt": "2026-06-29T07:01:20.660Z",
+              "moduleId": "module_praxis_participar",
+              "summary": "USD 50 por sesión — distinto a la supervisión mensual del Portal.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_praxis_participacion",
+              "title": "Participar con criterio clínico",
+              "slug": "participar-con-criterio",
+              "contentMDX": "# Participar con criterio clínico\n\n- Usa solo material **anonimizado** o ficticio en discusiones grupales.\n- Distingue opinión colegiada de supervisión clínica formal.\n- Documenta aprendizajes, no detalles de casos reales en foros abiertos.\n\nDespués de cada taller: ¿qué criterio aplicarás? ¿necesitas supervisión antes de usarlo con usuarios?",
+              "order": 2,
+              "duration": 18,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:33.892Z",
+              "updatedAt": "2026-06-29T07:01:20.660Z",
+              "moduleId": "module_praxis_participar",
+              "summary": "Confidencialidad, casos anonimizados y límites en ejercicios grupales.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_praxis_cierre",
+              "title": "Cierre de Praxis y puerta a Validación",
+              "slug": "cierre-praxis-validacion",
+              "contentMDX": "# Cierre de Praxis y puerta a Validación\n\n## Checklist de salida\n\n- [ ] Participé en al menos un taller con ejercicio activo.\n- [ ] Tengo constancia o registro de participación cuando aplique.\n- [ ] Identifiqué áreas a reforzar (técnica, ética, herramientas).\n- [ ] No confundo talleres con autorización para el Portal Clínico.\n\n## Siguiente bloque: 04 — Validación\n\nAllí documentas avance, reunís credenciales, revisas encuadre y preparas —si corresponde— tu aplicación al **Pase Motus Beta** o al **Portal Clínico**.\n\n> La validación es verificación documental y de conducta interna — no licencia ni certificación oficial externa.",
+              "order": 3,
+              "duration": 14,
+              "isPublished": true,
+              "createdAt": "2026-06-29T06:26:33.975Z",
+              "updatedAt": "2026-06-29T07:01:20.660Z",
+              "moduleId": "module_praxis_participar",
+              "summary": "Checklist antes de documentar avance profesional.",
+              "isFreePreview": false,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
