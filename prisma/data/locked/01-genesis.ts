@@ -1,15 +1,8 @@
 import type { PrismaClient } from '@prisma/client'
-import { upsertAcademyCourse, type SeedCourse } from './academy-seed-shared'
+import { upsertAcademyCourse, type SeedCourse } from '../academy-seed-shared'
 
-export const PLACEHOLDER_COURSE_SLUGS = [
-  'fundamentos-mindfulness',
-  'manejo-ansiedad-estres',
-  'comunicacion-asertiva',
-  'fundamentales-de-la-psicoterapia',
-] as const
-
-/** Locked from admin — 2026-08-12T08:37:59.266Z */
-export const GENESIS_COURSE: SeedCourse = {
+/** Locked from admin dashboard — do not hand-edit unless intentional. */
+export const 01_GENESIS_COURSE: SeedCourse = {
   "id": "course_genesis_clinica_digital",
   "slug": "01-genesis",
   "title": "01 — Génesis",
@@ -89,13 +82,6 @@ export const GENESIS_COURSE: SeedCourse = {
   ]
 }
 
-/** Upsert Génesis only. Does not touch other route blocks or admin-only courses. */
-export async function seedAcademyGenesis(prisma: PrismaClient) {
-  return upsertAcademyCourse(prisma, GENESIS_COURSE)
-}
-
-/** Full ruta kickoff helper — also removes legacy placeholder course slugs. */
-export async function seedAcademyGenesisWithCleanup(prisma: PrismaClient) {
-  await prisma.course.deleteMany({ where: { slug: { in: [...PLACEHOLDER_COURSE_SLUGS] } } })
-  return seedAcademyGenesis(prisma)
+export async function seedLocked_01_GENESIS_COURSE(prisma: PrismaClient) {
+  return upsertAcademyCourse(prisma, 01_GENESIS_COURSE)
 }

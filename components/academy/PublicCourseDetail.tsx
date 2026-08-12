@@ -419,7 +419,7 @@ function CourseDetailView({
                     </p>
                     {descriptionHtml && (
                       <div
-                        className="academy-prose academy-prose-summary"
+                        className="academy-prose academy-prose-summary min-w-0 overflow-x-hidden break-words"
                         dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                       />
                     )}

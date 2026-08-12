@@ -984,7 +984,11 @@ p[class*="HelpTextContainer"] * {
 
 /* Academy lesson content — typography + tables (shadcn-inspired, Motus tokens) */
 .academy-prose {
-  @apply max-w-none text-base leading-relaxed text-muted-foreground;
+  @apply max-w-none overflow-x-hidden break-words text-base leading-relaxed text-muted-foreground;
+}
+
+.academy-prose img {
+  @apply my-4 h-auto max-w-full rounded-lg;
 }
 
 .academy-prose-summary {
@@ -1034,7 +1038,7 @@ p[class*="HelpTextContainer"] * {
 }
 
 .academy-prose p {
-  @apply mb-4 leading-7 last:mb-0;
+  @apply mb-4 break-words leading-7 last:mb-0;
 }
 
 .academy-prose strong {
@@ -1067,7 +1071,7 @@ p[class*="HelpTextContainer"] * {
 }
 
 .academy-prose li {
-  @apply leading-7;
+  @apply break-words leading-7;
 }
 
 .academy-prose li::marker {

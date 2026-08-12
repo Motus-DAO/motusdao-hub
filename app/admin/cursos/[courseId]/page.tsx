@@ -19,6 +19,7 @@ import {
   FileText,
   ImageIcon,
   Loader2,
+  Lock,
   Plus,
   Power,
   Trash2,
@@ -850,6 +851,127 @@ function LessonDialog({
   )
 }
 
+function LockToSeedConfirmDialog({
+  open,
+  locking,
+  courseTitle,
+  courseSlug,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  locking: boolean
+  courseTitle: string
+  courseSlug: string
+  error: string | null
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !locking) onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, locking, onClose])
+
+  if (!open || !mounted) return null
+
+  const updatesCanonical =
+    courseSlug === '01-genesis' || courseSlug === '02-fundamentos'
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="presentation"
+      onClick={() => {
+        if (!locking) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lock-to-seed-dialog-title"
+        className="w-full max-w-md rounded-xl border border-white/10 bg-background p-5 shadow-2xl sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mauve-500/15">
+            <Lock className="h-5 w-5 text-mauve-300" />
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={locking}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <h2 id="lock-to-seed-dialog-title" className="mb-2 text-lg font-semibold text-white">
+          ¿Guardar este curso en seed?
+        </h2>
+        <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
+          Vas a congelar <span className="font-medium text-foreground">{courseTitle}</span>{' '}
+          (<span className="font-mono text-xs">{courseSlug}</span>) tal como está ahora en la base de datos.
+        </p>
+        <ul className="mb-4 list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+          <li>
+            Escribe snapshot en <span className="font-mono text-xs text-foreground">prisma/data/locked/</span>
+          </li>
+          {updatesCanonical ? (
+            <li>
+              También actualiza el seed canónico (
+              {courseSlug === '01-genesis' ? 'academy-genesis.ts' : 'academy-fundamentos.ts'})
+            </li>
+          ) : (
+            <li>
+              Cursos nuevos / custom quedan en <span className="font-mono text-xs">locked/</span> para
+              versionarlos en git
+            </li>
+          )}
+          <li>No cambia lo que ven los alumnos (la DB ya tiene este contenido)</li>
+          <li>
+            Después debes <span className="font-medium text-foreground">commitear</span> los archivos
+            generados
+          </li>
+        </ul>
+        <p className="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
+          Si más adelante corres un seed viejo sin estos archivos, puedes pisar este contenido. El lock
+          existe para que git sea la copia segura de lo que afinaste en admin.
+        </p>
+
+        {error && (
+          <p className="mb-4 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <CTAButton type="button" variant="ghost" size="sm" onClick={onClose} disabled={locking}>
+            Cancelar
+          </CTAButton>
+          <CTAButton type="button" size="sm" onClick={onConfirm} disabled={locking} className="gap-2">
+            {locking && <Loader2 className="h-4 w-4 animate-spin" />}
+            Confirmar y guardar en seed
+          </CTAButton>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 export default function AdminCourseStructurePage() {
   const params = useParams<{ courseId: string }>()
   const courseId = params.courseId
@@ -875,7 +997,11 @@ export default function AdminCourseStructurePage() {
     imageUrl: string
     name: string
   } | null>(null)
-  const hasDialogOpen = moduleEditor !== undefined || Boolean(lessonModuleId)
+  const [lockSeedOpen, setLockSeedOpen] = useState(false)
+  const [lockingSeed, setLockingSeed] = useState(false)
+  const [lockSeedError, setLockSeedError] = useState<string | null>(null)
+  const hasDialogOpen =
+    moduleEditor !== undefined || Boolean(lessonModuleId) || lockSeedOpen
 
   const fetchStructure = useCallback(async () => {
     setLoading(true)
@@ -940,6 +1066,38 @@ export default function AdminCourseStructurePage() {
   const showNotice = (message: string) => {
     setError(null)
     setNotice(message)
+  }
+
+  const confirmLockToSeed = async () => {
+    setLockingSeed(true)
+    setLockSeedError(null)
+    try {
+      const response = await authFetch(`/api/admin/courses/${courseId}/lock-to-seed`, {
+        method: 'POST',
+      })
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string
+        result?: {
+          writtenPaths?: string[]
+          canonicalSeedUpdated?: boolean
+          canonicalSeedPath?: string | null
+          moduleCount?: number
+          lessonCount?: number
+        }
+      }
+      if (!response.ok) {
+        throw new Error(body.error || 'No se pudo guardar el curso en seed')
+      }
+      const paths = body.result?.writtenPaths?.slice(0, 3).join(', ') || 'prisma/data/locked/'
+      setLockSeedOpen(false)
+      showNotice(
+        `Curso guardado en seed (${body.result?.moduleCount ?? 0} módulos, ${body.result?.lessonCount ?? 0} lecciones). Archivos: ${paths}. Recuerda hacer commit.`,
+      )
+    } catch (lockError) {
+      setLockSeedError(lockError instanceof Error ? lockError.message : 'No se pudo guardar en seed')
+    } finally {
+      setLockingSeed(false)
+    }
   }
 
   const toggleModule = (moduleId: string) => {
@@ -1373,9 +1531,23 @@ export default function AdminCourseStructurePage() {
             </div>
             <p className="font-mono text-sm text-muted-foreground">{course?.slug}</p>
           </div>
-          <CTAButton onClick={openNewModule} className="gap-2 self-start sm:self-auto">
-            <Plus className="h-4 w-4" /> Nuevo módulo
-          </CTAButton>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <CTAButton
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setLockSeedError(null)
+                setLockSeedOpen(true)
+              }}
+              disabled={!course || lockingSeed}
+              className="gap-2"
+            >
+              <Lock className="h-4 w-4" /> Guardar en seed
+            </CTAButton>
+            <CTAButton onClick={openNewModule} className="gap-2">
+              <Plus className="h-4 w-4" /> Nuevo módulo
+            </CTAButton>
+          </div>
         </div>
       </motion.div>
 
@@ -1476,6 +1648,19 @@ export default function AdminCourseStructurePage() {
       )}
 
       {moduleEditor !== undefined && <ModuleDialog editing={moduleEditor} form={moduleDraft} saving={saving} onChange={setModuleDraft} onClose={closeModuleEditor} onSubmit={submitModule} />}
+      {course && (
+        <LockToSeedConfirmDialog
+          open={lockSeedOpen}
+          locking={lockingSeed}
+          courseTitle={course.title}
+          courseSlug={course.slug}
+          error={lockSeedError}
+          onClose={() => {
+            if (!lockingSeed) setLockSeedOpen(false)
+          }}
+          onConfirm={() => void confirmLockToSeed()}
+        />
+      )}
       {lessonModuleId && (
         <LessonDialog
           editing={lessonEditor}

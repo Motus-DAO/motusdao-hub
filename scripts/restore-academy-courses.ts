@@ -53,7 +53,7 @@ type BackupCourse = {
   imageUrl: string | null
   isPublished: boolean
   category: string | null
-  difficulty: Prisma.EnumCourseDifficultyFilter['equals'] | string | null
+  difficulty: string | null
   instructor: string | null
   instructorBio: string | null
   instructorImage: string | null

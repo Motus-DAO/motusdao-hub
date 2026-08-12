@@ -111,7 +111,24 @@ Para cada curso en DB:
 
 **“Salvar lo del admin”** = asegurarse de que está **persistido en DB** *y* **exportado a git** (seed o `prisma/data/backups/`), no solo “visible en el dashboard”. El dashboard no guarda nada fuera de la DB.
 
-### Backup / restore (scripts listos)
+### Guardar desde admin → seed (lock)
+
+En `/admin/cursos/[id]`:
+
+1. Afina el curso en el dashboard (queda en DB al guardar).
+2. Pulsa **Guardar en seed** → lee el modal → confirma.
+3. Eso escribe `prisma/data/locked/<slug>.{ts,json}` (+ seed canónico si es `01-genesis` o `02-fundamentos`).
+4. **Commit** esos archivos.
+
+Re-poblar locked:
+
+```bash
+npm run db:seed:academy-locked
+```
+
+---
+
+## Backup / restore (scripts listos)
 
 Exporta **todo** lo que está en la DB del Hub (incluye `curso-online` y los 5 bloques):
 

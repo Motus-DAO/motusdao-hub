@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { seedAcademyFundamentos } from './academy-fundamentos'
-import { seedAcademyGenesis } from './academy-genesis'
+import { seedAcademyGenesisWithCleanup } from './academy-genesis'
 import { seedAcademyRouteBlocks } from './academy-route-blocks'
 
 /** Slugs replaced by the numbered 5-block route — removed on re-seed. */
@@ -32,7 +32,7 @@ export async function seedAcademyRuta(prisma: PrismaClient) {
     console.log(`🗑️  Removed ${removed} deprecated course(s)`)
   }
 
-  const genesis = await seedAcademyGenesis(prisma)
+  const genesis = await seedAcademyGenesisWithCleanup(prisma)
   const fundamentos = await seedAcademyFundamentos(prisma)
   const routeBlocks = await seedAcademyRouteBlocks(prisma)
 

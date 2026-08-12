@@ -65,3 +65,5 @@ backups/
 # Exception: Academy course JSON exports (admin/DB restore points)
 !prisma/data/backups/
 !prisma/data/backups/**/*.json
+!prisma/data/locked/
+!prisma/data/locked/**

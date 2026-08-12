@@ -724,8 +724,8 @@ export function LessonPlayer({
             )}
           </motion.div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(240px,1fr)_minmax(0,2.5fr)] lg:gap-8">
-            <aside className="order-last lg:order-none">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(240px,1fr)_minmax(0,2.5fr)] lg:gap-8">
+            <aside className="order-last min-w-0 lg:order-none">
               <GlassCard className="overflow-hidden lg:sticky lg:top-24">
                 <div className="border-b border-white/10 px-4 py-4 sm:px-5">
                   <p className="text-xs font-medium uppercase text-mauve-400">Contenido</p>
@@ -771,8 +771,8 @@ export function LessonPlayer({
               </GlassCard>
             </aside>
 
-            <main className="order-first space-y-6 lg:order-none">
-              <GlassCard className="p-4 sm:p-6 md:p-8">
+            <main className="order-first min-w-0 space-y-6 lg:order-none">
+              <GlassCard className="min-w-0 overflow-hidden p-4 sm:p-6 md:p-8">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   {lesson.isFreePreview && (
                     <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs text-green-300">
@@ -786,11 +786,11 @@ export function LessonPlayer({
                   )}
                 </div>
 
-                <GradientText as="h1" className="mb-3 text-2xl font-bold sm:text-3xl">
+                <GradientText as="h1" className="mb-3 break-words text-2xl font-bold sm:text-3xl">
                   {lesson.title}
                 </GradientText>
                 {lesson.summary && (
-                  <p className="mb-6 text-muted-foreground">{lesson.summary}</p>
+                  <p className="mb-6 break-words text-muted-foreground">{lesson.summary}</p>
                 )}
 
                 {!access.allowed ? (
@@ -826,7 +826,7 @@ export function LessonPlayer({
                     )}
                     {contentHtml ? (
                       <div
-                        className="academy-prose"
+                        className="academy-prose min-w-0"
                         dangerouslySetInnerHTML={{ __html: contentHtml }}
                       />
                     ) : (
