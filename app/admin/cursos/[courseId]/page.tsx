@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -387,9 +388,11 @@ type ModuleDialogProps = {
 }
 
 function ModuleDialog({ editing, form, saving, onChange, onClose, onSubmit }: ModuleDialogProps) {
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
       role="presentation"
       onClick={onClose}
     >
@@ -440,7 +443,8 @@ function ModuleDialog({ editing, form, saving, onChange, onClose, onSubmit }: Mo
         </form>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -521,9 +525,11 @@ function LessonDialog({
   const mediaDisabled = saving || uploading
   const videoEmbed = !hasStorageVideo ? videoEmbedUrl(form.videoUrl.trim()) : null
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
       role="presentation"
       onClick={onClose}
     >
@@ -839,7 +845,8 @@ function LessonDialog({
         </form>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

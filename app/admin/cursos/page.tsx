@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -506,9 +507,11 @@ export default function AdminCursosPage() {
         )}
       </GlassCard>
 
-      {dialogOpen && (
+      {dialogOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[200] overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm"
           role="presentation"
           onClick={closeDialog}
         >
@@ -818,7 +821,8 @@ export default function AdminCursosPage() {
             </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

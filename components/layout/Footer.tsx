@@ -17,7 +17,7 @@ import Link from 'next/link'
 
 export function Footer() {
   return (
-    <footer className="border-t border-border relative z-10">
+    <footer className="border-t border-border">
       <div className="container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Contact Form */}

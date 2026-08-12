@@ -215,12 +215,14 @@ function LessonCompleteConfirmDialog({
   open,
   confirming,
   isLastLesson,
+  error,
   onClose,
   onConfirm,
 }: {
   open: boolean
   confirming: boolean
   isLastLesson: boolean
+  error: string | null
   onClose: () => void
   onConfirm: () => void
 }) {
@@ -302,6 +304,12 @@ function LessonCompleteConfirmDialog({
           Al confirmar, la marcaremos como completada y actualizaremos tu progreso en el bloque.
           Puedes regresar a ella en cualquier momento, siempre que tengas acceso a la plataforma.
         </p>
+
+        {error && (
+          <p className="mb-4 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
 
         <div className="flex justify-end gap-2">
           <CTAButton type="button" variant="ghost" size="sm" onClick={onClose} disabled={confirming}>
@@ -571,7 +579,13 @@ export function LessonPlayer({
         return false
       }
 
-      if (!enrollment && !lessonData.lesson.isFreePreview) {
+      // Progress always requires enrollment — including free-preview lessons
+      // (preview only unlocks reading, not saving completion).
+      if (!enrollment) {
+        if (courseRequiresPayment(course) && stripeEnabled) {
+          throw new Error('Debes inscribirte al bloque (pago) para guardar progreso.')
+        }
+
         const enrollResponse = await authFetch('/api/enrollments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -663,6 +677,7 @@ export function LessonPlayer({
       navigateAfterLesson()
       return
     }
+    setActionError(null)
     setConfirmAdvanceOpen(true)
   }
 
@@ -789,6 +804,22 @@ export function LessonPlayer({
                   />
                 ) : (
                   <>
+                    {!isEnrolled && (
+                      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-mauve-400/25 bg-mauve-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-mauve-100/90">
+                          Estás viendo una vista previa. Inscríbete para guardar tu progreso en el bloque.
+                        </p>
+                        <CTAButton
+                          size="sm"
+                          onClick={() => void handleEnroll()}
+                          disabled={enrolling || signing}
+                          className="shrink-0 gap-2"
+                        >
+                          {(enrolling || signing) && <Loader2 className="h-4 w-4 animate-spin" />}
+                          Inscribirse
+                        </CTAButton>
+                      </div>
+                    )}
                     {lesson.videoUrl && <VideoEmbed url={lesson.videoUrl} />}
                     {lesson.pdfResources && lesson.pdfResources.length > 0 && (
                       <PdfResourcesPanel lessonId={lesson.id} resources={lesson.pdfResources} />
@@ -831,7 +862,11 @@ export function LessonPlayer({
                       open={confirmAdvanceOpen}
                       confirming={markingComplete}
                       isLastLesson={isLastLesson}
-                      onClose={() => setConfirmAdvanceOpen(false)}
+                      error={actionError}
+                      onClose={() => {
+                        setConfirmAdvanceOpen(false)
+                        setActionError(null)
+                      }}
                       onConfirm={() => void handleConfirmAdvance()}
                     />
                   </>
