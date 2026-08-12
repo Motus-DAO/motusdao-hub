@@ -1,0 +1,82 @@
+{
+  "exportedAt": "2026-08-12T07:04:38.720Z",
+  "source": "admin-lock-to-seed",
+  "courseCount": 1,
+  "courses": [
+    {
+      "id": "course_genesis_clinica_digital",
+      "title": "01 — Génesis",
+      "slug": "01-genesis",
+      "summary": "Entra gratis. Sin compromiso. Descubre si esta comunidad de psicólogos es para ti.",
+      "description": "Esto es para ti si:\n\n- Recién egresaste y necesitas guía, comunidad y un camino claro.\n- Tienes consulta presencial y quieres atender en digital sin perder calidad clínica.\n- Ya atiendes online pero todo se siente desordenado.\n\n**Sin costo. Sin compromiso.** Entras, ves, decides.\n\nMotusDAO es un espacio de formación, comunidad y herramientas para psicólogos que quieren ejercer con claridad en entornos digitales. Génesis es el punto de partida: te orientas y ves el mapa — el resto, cuando tú quieras.\n\nDocs a fondo: [Ruta PSM](https://motusdao.gitbook.io/ruta-psms/).",
+      "imageUrl": "https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/cover.png",
+      "isPublished": true,
+      "createdAt": "2026-06-29T07:01:18.250Z",
+      "updatedAt": "2026-08-12T06:30:23.212Z",
+      "category": "Ruta PSM",
+      "difficulty": "beginner",
+      "instructor": "MotusDAO",
+      "instructorBio": null,
+      "instructorImage": null,
+      "instructorTitle": "Academia de Psicología Digital",
+      "lastUpdated": null,
+      "learningOutcomes": [
+        "Saber si MotusDAO encaja contigo.",
+        "Entender que Génesis es gratis y sin compromiso.",
+        "Ubicar los 5 bloques sin ahogarte en precios.",
+        "Tener claro tu siguiente paso hacia Fundamentos."
+      ],
+      "rating": 0,
+      "reviewCount": 0,
+      "priceAmount": null,
+      "priceCurrency": "USD",
+      "billingInterval": "one_time",
+      "isFree": true,
+      "modules": [
+        {
+          "id": "module_genesis_bienvenida",
+          "courseId": "course_genesis_clinica_digital",
+          "title": "Empieza aquí",
+          "summary": "Sin costo, sin compromiso. Orientación y mapa de la ruta.",
+          "order": 1,
+          "createdAt": "2026-06-29T07:01:18.429Z",
+          "updatedAt": "2026-08-12T06:30:23.212Z",
+          "lessons": [
+            {
+              "id": "lesson_genesis_bienvenida-motusdao",
+              "title": "Esto es para ti",
+              "slug": "esto-es-para-ti",
+              "contentMDX": "# Esto es para ti\n\n![ChatGPT Image Aug 11, 2026, 02_07_24 AM](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_bienvenida-motusdao/images/cmspqga1p0b823358cb2f6955.png)\n\nSi eres psicólogo y llegaste hasta aquí, probablemente te reconoces en al menos una de estas:\n\n- **Recién egresaste** y no sabes por dónde empezar. Necesitas guía, comunidad y un camino claro que no te deje improvisando.\n- **Tienes consulta presencial** pero quieres atender en digital. Sin perder calidad clínica, sin volverte experto en tecnología.\n- **Ya atiendes online** pero todo es desordenado. Pacientes que no llegan, herramientas que no conectan, encuadre que se siente improvisado.\n\n**Sin costo. Sin compromiso.** Entras, ves y decides si esto es para ti.\n\n## Qué es MotusDAO (en corto)\n\nMotusDAO es un ecosistema de psicólogos que decidieron no esperar a que el sistema se actualice. Aquí encuentras formación clínica, comunidad real con supervisión, y herramientas digitales de próxima generación para tu consulta — no necesitas conocimiento avanzado en tecnología. \n\n## Qué vas a hacer en Génesis\n\nEn este bloque gratuito vas a:\n\n1. **Orientarte** — entender qué es esto y para quién es.\n2. **Ver el mapa** — los 5 bloques de la ruta (introducción sencilla)\n3. **Conocer los espacios** — comunidad, supervisión, herramientas.\n\nCuando termines, sabrás si quieres seguir con el proceso para ser un Profesional de la Salud Mental (PSM) de MotusDAO. \n\n**Siguiente paso:** abre la siguiente lección. Te toma unos minutos.\n\n![image](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_bienvenida-motusdao/images/cmspqglfr0b8265815b765c0d.png)",
+              "order": 1,
+              "duration": 6,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:18.588Z",
+              "updatedAt": "2026-08-12T06:54:32.428Z",
+              "moduleId": "module_genesis_bienvenida",
+              "summary": "Sin costo, sin compromiso. Entras, ves, decides.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            },
+            {
+              "id": "lesson_genesis_mapa-ruta",
+              "title": "Tu mapa — solo lo que necesitas saber hoy",
+              "slug": "tu-mapa-hoy",
+              "contentMDX": "# Tu mapa — solo lo que necesitas saber hoy\n\n![Bloque Genesis imagen ](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_mapa-ruta/images/cmspqls170b8235ce4b0a985c.png)\n\nEsto es todo lo que tienes que saber por ahora:\n\n**Génesis (gratis) → Fundamentos → Praxis → Validación → Portal**\n\nAvanzas cuando tú quieras. No hay prisa, no hay examen de entrada.\n\n- **Génesis** ← estás aquí. Gratis, sin compromiso. Te orientas.\n- **Fundamentos** — el siguiente paso. Aprendes a montar tu práctica digital con encuadre clínico. Sin improvisar, sin perder pacientes en el intento. $20/mes.\n- **Praxis** — espacio clínico con herramientas, supervisión y consultorio virtual.\n- **Validación** — evaluación y validación / constancia de competencias.\n- **Portal** — tu consultorio digital funcionando.\n\nLos bloques 3, 4 y 5 los ves cuando llegues. No necesitas saberlo todo hoy.\n\n![mapa de academia metaverso](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_mapa-ruta/images/cmspqodrt0b8205496d30c53c.png)\n\n## Tu primera semana en MotusDAO\n\nEn los próximos 7 días vas a:\n\n1. Entrar a la comunidad y conocer colegas como tú.\n2. Explorar el mapa completo de la ruta del PSM.\n3. Decidir si esto es para ti.\n\nSin pagar un peso.\n\n## ¿Quieres profundizar?\n\nSi eres de los que lee los manuales completos antes de empezar, aquí tienes la documentación a fondo de todo el ecosistema:\n\n[Ruta del Profesional de la Salud Mental (PSM) →](https://motusdao.gitbook.io/motusdao-para-psicologos)\n\n**Siguiente paso:** cuando estés listo, Fundamentos te espera.",
+              "order": 2,
+              "duration": 7,
+              "isPublished": true,
+              "createdAt": "2026-06-29T07:01:18.748Z",
+              "updatedAt": "2026-08-12T07:02:26.547Z",
+              "moduleId": "module_genesis_bienvenida",
+              "summary": "Cinco bloques. Un camino. Tú decides hasta dónde llegar.",
+              "isFreePreview": true,
+              "pdfResources": null,
+              "videoUrl": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
