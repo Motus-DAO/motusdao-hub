@@ -47,11 +47,17 @@ import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { useWallet } from '@/lib/wallet'
 
-const difficultyLabels = {
-  beginner: 'Principiante',
-  intermediate: 'Intermedio',
-  advanced: 'Avanzado',
+/** Friendly badges — avoid internal jargon like "Ruta PSM". */
+function courseCategoryBadge(course: PublicCourse): string {
+  const raw = (course.category || '').trim()
+  if (!raw || raw === 'Ruta PSM' || raw === 'General') {
+    return course.isFree ? 'Gratis' : 'Membresía'
+  }
+  return raw
 }
+
+const MIN_REVIEWS_TO_SHOW = 3
+
 
 const DISPLAY_CURRENCY_KEY = 'academy-display-currency'
 
@@ -261,13 +267,13 @@ function EnrollmentCTA({
                   {expiredMembership
                     ? 'Renovar membresía'
                     : monthlyMembership
-                      ? 'Suscribirse e inscribirse'
-                      : 'Comprar e inscribirse'}
+                      ? 'Activar membresía'
+                      : 'Empieza ahora'}
                 </>
               )}
             </>
           ) : (
-            'Inscribirse'
+            'Empieza ahora'
           )}
         </CTAButton>
       )}
@@ -321,6 +327,14 @@ function CourseDetailView({
   const duration = courseDuration(course)
   const outcomes = courseLearningOutcomes(course)
   const descriptionHtml = course.description ? renderMarkdown(course.description) : ''
+  const reviewCount = course.reviewCount ?? 0
+  const showReviews = reviewCount >= MIN_REVIEWS_TO_SHOW
+  const priceLabel = formatPrice(course, payCurrency, usdToMxn)
+  const priceCaption = course.isFree
+    ? 'Gratis'
+    : isMonthlyCourse(course)
+      ? 'por mes'
+      : 'pago único'
 
   return (
     <div className="min-h-screen bg-background">
@@ -403,13 +417,11 @@ function CourseDetailView({
                   <div className="p-4 sm:p-6 md:p-8">
                     <div className="mb-3 flex flex-wrap gap-2 sm:mb-4">
                       <span className="rounded-full bg-mauve-500/20 px-3 py-1 text-xs font-medium text-mauve-400 sm:text-sm">
-                        {course.category || 'General'}
+                        {courseCategoryBadge(course)}
                       </span>
-                      {course.difficulty && (
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground sm:text-sm">
-                          {difficultyLabels[course.difficulty]}
-                        </span>
-                      )}
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground sm:text-sm">
+                        Online
+                      </span>
                     </div>
                     <GradientText as="h1" className="mb-3 text-2xl font-bold sm:text-3xl md:text-4xl">
                       {course.title}
@@ -424,7 +436,11 @@ function CourseDetailView({
                       />
                     )}
 
-                    <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 sm:grid-cols-4 sm:gap-4 sm:pt-6">
+                    <div
+                      className={`mt-6 grid gap-3 border-t border-white/10 pt-5 sm:gap-4 sm:pt-6 ${
+                        showReviews ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+                      }`}
+                    >
                       <div>
                         <p className="flex items-center gap-2 font-semibold"><BookOpen className="h-4 w-4 text-mauve-400" />{lessonCount}</p>
                         <p className="mt-1 text-xs text-muted-foreground">Lecciones</p>
@@ -433,15 +449,15 @@ function CourseDetailView({
                         <p className="flex items-center gap-2 font-semibold"><Clock className="h-4 w-4 text-mauve-400" />{duration || '—'}{duration > 0 && ' min'}</p>
                         <p className="mt-1 text-xs text-muted-foreground">Duración</p>
                       </div>
+                      {showReviews && (
+                        <div>
+                          <p className="flex items-center gap-2 font-semibold"><Star className="h-4 w-4 text-yellow-500" />{course.rating || '—'}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{reviewCount} reseñas</p>
+                        </div>
+                      )}
                       <div>
-                        <p className="flex items-center gap-2 font-semibold"><Star className="h-4 w-4 text-yellow-500" />{course.rating || 'Nuevo'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{course.reviewCount || 0} reseñas</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-mauve-300">
-                          {formatPrice(course, payCurrency, usdToMxn)}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">Acceso</p>
+                        <p className="font-semibold text-mauve-300">{priceLabel}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{priceCaption}</p>
                       </div>
                     </div>
                   </div>
@@ -484,22 +500,27 @@ function CourseDetailView({
                             <Link
                               key={lesson.id}
                               href={`/academia/${course.slug}/leccion/${lesson.slug}`}
-                              className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
+                              className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-white/5 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5"
                             >
-                              <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex min-w-0 items-start gap-3">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-mauve-500/15 text-xs font-semibold text-mauve-300">
                                   {lessonIndex + 1}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-sm font-medium leading-snug sm:truncate">{lesson.title}</p>
+                                  <p className="text-sm font-medium leading-snug">{lesson.title}</p>
                                   {lesson.summary && (
-                                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:truncate">
+                                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                                       {lesson.summary}
+                                    </p>
+                                  )}
+                                  {lesson.isFreePreview && lesson.previewExcerpt && (
+                                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground/90">
+                                      {lesson.previewExcerpt}
                                     </p>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex shrink-0 items-center gap-2 pl-11 text-xs text-muted-foreground sm:gap-3 sm:pl-0">
+                              <div className="flex shrink-0 items-center gap-2 pl-11 text-xs text-muted-foreground sm:gap-3 sm:pl-0 sm:pt-0.5">
                                 {lesson.isFreePreview && (
                                   <span className="rounded-full bg-green-500/15 px-2 py-1 text-green-300">Vista previa</span>
                                 )}
@@ -513,6 +534,10 @@ function CourseDetailView({
                   </div>
                 )}
               </div>
+
+              <p className="px-1 text-center text-[11px] leading-relaxed text-muted-foreground/70 sm:text-left">
+                La formación MotusDAO no sustituye tu cédula profesional ni tu juicio clínico.
+              </p>
             </div>
           </div>
         </div>

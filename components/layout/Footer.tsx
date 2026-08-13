@@ -6,8 +6,6 @@ import { GradientText } from '@/components/ui/GradientText'
 import { 
   Heart, 
   Mail, 
-  MapPin, 
-  Phone,
   Twitter,
   Github,
   Linkedin,
@@ -47,14 +45,6 @@ export function Footer() {
                 <div className="flex items-center space-x-3">
                   <Mail className="w-5 h-5 text-mauve-500" />
                   <span className="text-sm">contact@motusdao.org</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Phone className="w-5 h-5 text-mauve-500" />
-                  <span className="text-sm">+1 (555) 123-4567</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <MapPin className="w-5 h-5 text-mauve-500" />
-                  <span className="text-sm">Ciudad de México, México</span>
                 </div>
               </div>
 

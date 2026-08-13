@@ -17,6 +17,8 @@ export type PublicLesson = {
   order: number
   isPublished: boolean
   isFreePreview: boolean
+  /** Plain-text teaser for free-preview lessons on the course page */
+  previewExcerpt?: string | null
 }
 
 export type PublicModule = {

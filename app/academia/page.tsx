@@ -37,12 +37,6 @@ import { formatCoursePriceInCurrency, type CourseCurrency } from '@/lib/academy/
 import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 
-const difficultyLabels = {
-  beginner: 'Principiante',
-  intermediate: 'Intermedio',
-  advanced: 'Avanzado',
-}
-
 const DISPLAY_CURRENCY_KEY = 'academy-display-currency'
 
 function currencyToggleClass(active: boolean) {
@@ -607,15 +601,23 @@ export default function AcademiaPage() {
                         <div className="p-4 sm:p-6">
                           <div className="mb-3 flex flex-wrap gap-2">
                             <span className="rounded-full bg-mauve-500/20 px-3 py-1 text-xs font-medium text-mauve-400">
-                              {course.category || 'General'}
+                              {(() => {
+                                const raw = (course.category || '').trim()
+                                if (!raw || raw === 'Ruta PSM' || raw === 'General') {
+                                  return course.isFree ? 'Gratis' : 'Membresía'
+                                }
+                                return raw
+                              })()}
                             </span>
-                            {course.difficulty && (
-                              <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground">
-                                {difficultyLabels[course.difficulty]}
-                              </span>
-                            )}
+                            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground">
+                              Online
+                            </span>
                             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
-                              {course.billingInterval === 'monthly' ? 'Membresía mensual' : 'Pago único'}
+                              {course.isFree
+                                ? 'Sin costo'
+                                : course.billingInterval === 'monthly'
+                                  ? 'Membresía mensual'
+                                  : 'Pago único'}
                             </span>
                             {enrollment?.paid && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-green-400/25 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">

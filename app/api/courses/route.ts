@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { lessonPreviewExcerpt } from '@/lib/academy/lesson-preview-excerpt'
 import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { prisma } from '@/lib/prisma'
 
@@ -11,6 +12,7 @@ const publicLessonSelect = {
   order: true,
   isPublished: true,
   isFreePreview: true,
+  contentMDX: true,
 } as const
 
 export async function GET() {
@@ -31,7 +33,18 @@ export async function GET() {
       },
     })
 
-    const courses = sortRouteBlockCourses(rows)
+    const mapped = rows.map((course) => ({
+      ...course,
+      modules: course.modules.map((module) => ({
+        ...module,
+        lessons: module.lessons.map(({ contentMDX, ...lesson }) => ({
+          ...lesson,
+          previewExcerpt: lesson.isFreePreview ? lessonPreviewExcerpt(contentMDX) : null,
+        })),
+      })),
+    }))
+
+    const courses = sortRouteBlockCourses(mapped)
 
     return NextResponse.json({ courses })
   } catch (error) {
