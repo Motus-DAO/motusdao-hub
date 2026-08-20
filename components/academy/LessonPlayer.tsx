@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { CourseProgressBar } from '@/components/academy/CourseProgressBar'
+import { PraxisCollectionProgress } from '@/components/academy/PraxisCatalog'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { Section } from '@/components/ui/Section'
@@ -31,6 +32,7 @@ import {
 } from '@/lib/academy/lesson-progress'
 import { findCachedCourseBySlug, isCoursesCacheFresh } from '@/lib/academy/courses-cache'
 import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
+import { PRAXIS_BLOCK_SLUG } from '@/lib/academy/praxis-catalog'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import {
   ensurePublishedCourse,
@@ -661,6 +663,14 @@ export function LessonPlayer({
   const contentHtml = lesson.contentMDX
     ? renderMarkdown(lesson.contentMDX, { lessonContent: true })
     : ''
+  const contentWithoutHeading = (lesson.contentMDX || '').replace(/^#\s+[^\n]+\n+/, '').trim()
+  const summaryRepeatsBody = Boolean(
+    lesson.summary &&
+      contentWithoutHeading &&
+      contentWithoutHeading.startsWith(lesson.summary.trim()),
+  )
+  const showCloseCollectionProgress =
+    courseSlug === PRAXIS_BLOCK_SLUG && lesson.slug === 'de-praxis-a-validacion'
   const nextLesson = getNextLesson(course, lessonSlug)
   const isLastLesson = !nextLesson
 
@@ -789,7 +799,7 @@ export function LessonPlayer({
                 <GradientText as="h1" className="mb-3 break-words text-2xl font-bold sm:text-3xl">
                   {lesson.title}
                 </GradientText>
-                {lesson.summary && (
+                {lesson.summary && !summaryRepeatsBody && (
                   <p className="mb-6 break-words text-muted-foreground">{lesson.summary}</p>
                 )}
 
@@ -833,6 +843,11 @@ export function LessonPlayer({
                       <p className="text-sm text-muted-foreground">
                         Esta lección aún no tiene contenido escrito.
                       </p>
+                    )}
+                    {showCloseCollectionProgress && (
+                      <div className="mt-8">
+                        <PraxisCollectionProgress />
+                      </div>
                     )}
 
                     <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">

@@ -14,7 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:academy-genesis": "tsx scripts/seed-academy-genesis-only.ts",
     "db:seed:academy-ruta": "tsx scripts/seed-academy-genesis.ts",
-    "db:seed:academy-locked": "tsx scripts/seed-academy-locked.ts",
+    "db:seed:academy-praxis": "tsx scripts/seed-academy-praxis.ts",
     "db:export:academy": "tsx scripts/export-academy-courses.ts",
     "db:restore:academy": "tsx scripts/restore-academy-courses.ts",
     "db:studio": "prisma studio",

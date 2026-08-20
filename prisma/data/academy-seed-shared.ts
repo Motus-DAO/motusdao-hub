@@ -1,4 +1,5 @@
 import type { CourseDifficulty, PrismaClient } from '@prisma/client'
+import type { PdfResource } from '@/lib/academy/media'
 
 export type SeedLesson = {
   id: string
@@ -9,6 +10,8 @@ export type SeedLesson = {
   isFreePreview: boolean
   summary: string
   contentMDX: string
+  videoUrl?: string | null
+  pdfResources?: PdfResource[]
 }
 
 export type SeedModule = {
@@ -114,6 +117,8 @@ export async function upsertAcademyCourse(prisma: PrismaClient, data: SeedCourse
           duration: lesson.duration,
           isPublished: true,
           isFreePreview: lesson.isFreePreview,
+          videoUrl: lesson.videoUrl ?? null,
+          pdfResources: lesson.pdfResources ?? undefined,
           updatedAt: now,
         },
         create: {
@@ -127,6 +132,8 @@ export async function upsertAcademyCourse(prisma: PrismaClient, data: SeedCourse
           duration: lesson.duration,
           isPublished: true,
           isFreePreview: lesson.isFreePreview,
+          videoUrl: lesson.videoUrl ?? null,
+          pdfResources: lesson.pdfResources ?? undefined,
           updatedAt: now,
         },
       })

@@ -18,6 +18,7 @@ import {
 import { CTAButton } from '@/components/ui/CTAButton'
 import { CheckoutSuccessPanel } from '@/components/academy/CheckoutSuccessPanel'
 import { CourseProgressBar } from '@/components/academy/CourseProgressBar'
+import { PraxisCatalog } from '@/components/academy/PraxisCatalog'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { Section } from '@/components/ui/Section'
@@ -42,6 +43,7 @@ import {
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { findCachedCourseBySlug, isCoursesCacheFresh } from '@/lib/academy/courses-cache'
 import { renderMarkdown } from '@/lib/academy/markdown'
+import { isPraxisCatalogSlug, PRAXIS_BLOCK_SLUG } from '@/lib/academy/praxis-catalog'
 import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -345,10 +347,12 @@ function CourseDetailView({
             animate={{ opacity: 1, x: 0 }}
             className="mb-4 sm:mb-6"
           >
-            <Link href="/academia">
+            <Link href={isPraxisCatalogSlug(course.slug) ? '/academia/03-praxis#catalogo' : '/academia'}>
               <CTAButton variant="secondary" size="sm" className="max-w-full">
                 <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
-                <span className="truncate">Volver a la Academia</span>
+                <span className="truncate">
+                  {isPraxisCatalogSlug(course.slug) ? 'Volver al catálogo de Praxis' : 'Volver a la Academia'}
+                </span>
               </CTAButton>
             </Link>
           </motion.div>
@@ -479,7 +483,9 @@ function CourseDetailView({
               )}
 
               <div>
-                <h2 className="mb-4 text-xl font-bold sm:text-2xl">Contenido del bloque</h2>
+                <h2 className="mb-4 text-xl font-bold sm:text-2xl">
+                  {isPraxisCatalogSlug(course.slug) ? 'Contenido del curso' : 'Contenido del bloque'}
+                </h2>
                 {course.modules.length === 0 ? (
                   <GlassCard className="p-6 text-sm text-muted-foreground">
                     El contenido de este bloque se publicará próximamente.
@@ -534,6 +540,14 @@ function CourseDetailView({
                   </div>
                 )}
               </div>
+
+              {(course.slug === PRAXIS_BLOCK_SLUG || isPraxisCatalogSlug(course.slug)) && (
+                <PraxisCatalog
+                  displayCurrency={payCurrency}
+                  usdToMxn={usdToMxn}
+                  currentSlug={isPraxisCatalogSlug(course.slug) ? course.slug : undefined}
+                />
+              )}
 
               <p className="px-1 text-center text-[11px] leading-relaxed text-muted-foreground/70 sm:text-left">
                 La formación MotusDAO no sustituye tu cédula profesional ni tu juicio clínico.

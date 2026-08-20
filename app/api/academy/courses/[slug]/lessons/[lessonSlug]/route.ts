@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionFromRequest } from '@/lib/auth/session'
 import { hasActiveEnrollmentAccess } from '@/lib/academy/enrollment-access'
+import { isHiddenLegacyAcademySlug } from '@/lib/academy/praxis-catalog'
 import {
   fromStorageRef,
   isStorageMediaRef,
@@ -42,6 +43,9 @@ function pdfResourcesForClient(
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug, lessonSlug } = await params
+    if (isHiddenLegacyAcademySlug(slug)) {
+      return NextResponse.json({ error: 'Curso no encontrado' }, { status: 404 })
+    }
 
     const course = await prisma.course.findFirst({
       where: { slug, isPublished: true },

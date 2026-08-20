@@ -1,7 +1,9 @@
 import type { PrismaClient } from '@prisma/client'
 import { seedAcademyFundamentos } from './academy-fundamentos'
 import { seedAcademyGenesisWithCleanup } from './academy-genesis'
+import { archiveLegacyCursoOnline, buildPraxisCatalogCourses } from './academy-praxis'
 import { seedAcademyRouteBlocks } from './academy-route-blocks'
+import { upsertAcademyCourse } from './academy-seed-shared'
 
 /** Slugs replaced by the numbered 5-block route — removed on re-seed. */
 const DEPRECATED_ROUTE_SLUGS = [
@@ -35,7 +37,12 @@ export async function seedAcademyRuta(prisma: PrismaClient) {
   const genesis = await seedAcademyGenesisWithCleanup(prisma)
   const fundamentos = await seedAcademyFundamentos(prisma)
   const routeBlocks = await seedAcademyRouteBlocks(prisma)
+  const praxisCatalog = []
+  for (const course of buildPraxisCatalogCourses()) {
+    praxisCatalog.push(await upsertAcademyCourse(prisma, course))
+  }
+  await archiveLegacyCursoOnline(prisma)
 
-  console.log('✅ Ruta completa: 5 bloques')
-  return { genesis, fundamentos, routeBlocks }
+  console.log('✅ Ruta completa: 5 bloques + catálogo Praxis')
+  return { genesis, fundamentos, routeBlocks, praxisCatalog }
 }

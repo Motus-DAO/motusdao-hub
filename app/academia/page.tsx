@@ -34,6 +34,7 @@ import {
   type PublicCourse,
 } from '@/lib/academy/public-course'
 import { formatCoursePriceInCurrency, type CourseCurrency } from '@/lib/academy/course-pricing'
+import { isRouteBlockSlug, PRAXIS_BLOCK_SLUG } from '@/lib/academy/praxis-catalog'
 import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 
@@ -139,7 +140,7 @@ export default function AcademiaPage() {
     fetchPublishedCourses(controller.signal, { force: true })
       .then((data) => {
         if (controller.signal.aborted) return
-        setCourses(sortRouteBlockCourses(data))
+        setCourses(sortRouteBlockCourses(data.filter((course) => course.slug !== 'curso-online')))
         setResolved(true)
       })
       .catch((fetchError) => {
@@ -188,13 +189,17 @@ export default function AcademiaPage() {
     return () => controller.abort()
   }, [reloadKey])
 
-  const categories = useMemo(
-    () => ['Todos', ...Array.from(new Set(courses.map((course) => course.category || 'General'))).sort()],
+  const routeBlockCourses = useMemo(
+    () => courses.filter((course) => isRouteBlockSlug(course.slug)),
     [courses]
   )
+  const categories = useMemo(
+    () => ['Todos', ...Array.from(new Set(routeBlockCourses.map((course) => course.category || 'General'))).sort()],
+    [routeBlockCourses]
+  )
   const visibleCourses = selectedCategory === 'Todos'
-    ? courses
-    : courses.filter((course) => (course.category || 'General') === selectedCategory)
+    ? routeBlockCourses
+    : routeBlockCourses.filter((course) => (course.category || 'General') === selectedCategory)
   const lessonCount = courses.reduce((total, course) => total + courseLessonCount(course), 0)
   const ratedCourses = courses.filter((course) => Number(course.rating || 0) > 0)
   const averageRating = ratedCourses.length > 0
@@ -293,7 +298,7 @@ export default function AcademiaPage() {
             className="mb-8 grid grid-cols-2 gap-3 sm:mb-10 sm:gap-4 lg:grid-cols-4"
           >
             {[
-              { label: 'Bloques disponibles', value: courses.length, icon: BookOpen, color: 'text-blue-400' },
+              { label: 'Bloques disponibles', value: routeBlockCourses.length, icon: BookOpen, color: 'text-blue-400' },
               { label: 'Lecciones publicadas', value: lessonCount, icon: Layers3, color: 'text-green-400' },
               {
                 label: 'Bloques completados',
@@ -546,7 +551,7 @@ export default function AcademiaPage() {
               <p className="mb-5 mt-2 text-sm text-muted-foreground">{error}</p>
               <CTAButton onClick={() => setReloadKey((value) => value + 1)}>Reintentar</CTAButton>
             </GlassCard>
-          ) : resolved && courses.length === 0 ? (
+          ) : resolved && routeBlockCourses.length === 0 ? (
             <GlassCard className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
               <GraduationCap className="mb-3 h-12 w-12 text-mauve-400" />
               <h3 className="text-lg font-semibold">Próximamente nuevos bloques</h3>
@@ -678,6 +683,20 @@ export default function AcademiaPage() {
                 )
               })}
             </div>
+          )}
+
+          {!loading && !error && routeBlockCourses.some((course) => course.slug === PRAXIS_BLOCK_SLUG) && (
+            <GlassCard className="mt-8 p-5 sm:p-6">
+              <p className="text-xs font-medium uppercase tracking-wide text-mauve-400">03 — Praxis</p>
+              <h3 className="mt-1 text-lg font-semibold sm:text-xl">Elige formación</h3>
+              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                La primera colección de formación clínica de Praxis parte del trabajo desarrollado por Maestro Benjamin Buzali.
+                Praxis está diseñado para crecer con nuevas áreas de formación.
+              </p>
+              <Link href={`/academia/${PRAXIS_BLOCK_SLUG}#catalogo`} className="mt-4 inline-block">
+                <CTAButton>Ver catálogo de Praxis</CTAButton>
+              </Link>
+            </GlassCard>
           )}
         </div>
       </Section>

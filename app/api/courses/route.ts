@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { lessonPreviewExcerpt } from '@/lib/academy/lesson-preview-excerpt'
+import { LEGACY_CURSO_ONLINE_SLUGS } from '@/lib/academy/praxis-catalog'
 import { sortRouteBlockCourses } from '@/lib/academy/route-blocks'
 import { prisma } from '@/lib/prisma'
 
@@ -18,7 +19,7 @@ const publicLessonSelect = {
 export async function GET() {
   try {
     const rows = await prisma.course.findMany({
-      where: { isPublished: true },
+      where: { isPublished: true, slug: { notIn: [...LEGACY_CURSO_ONLINE_SLUGS] } },
       include: {
         modules: {
           include: {

@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync, readdirSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { CourseDifficulty, PrismaClient } from '@prisma/client'
+import { parsePdfResources } from '@/lib/academy/media'
 import { upsertAcademyCourse, type SeedCourse } from '@/prisma/data/academy-seed-shared'
 
 export type LockCourseResult = {
@@ -35,7 +36,8 @@ function exportConstName(slug: string): string {
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toUpperCase()
-  return `${cleaned || 'COURSE'}_COURSE`
+  const body = `${cleaned || 'COURSE'}_COURSE`
+  return /^[A-Z]/.test(body) ? body : `COURSE_${body}`
 }
 
 function serializeSeedCourseTs(course: SeedCourse, exportName: string): string {
@@ -123,6 +125,8 @@ function toSeedCourse(row: {
       order: number
       duration: number | null
       isFreePreview: boolean
+      videoUrl: string | null
+      pdfResources: unknown
     }>
   }>
 }): SeedCourse {
@@ -160,6 +164,8 @@ function toSeedCourse(row: {
         isFreePreview: lesson.isFreePreview,
         summary: lesson.summary || '',
         contentMDX: lesson.contentMDX || '',
+        videoUrl: lesson.videoUrl,
+        pdfResources: parsePdfResources(lesson.pdfResources),
       })),
     })),
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { lessonPreviewExcerpt } from '@/lib/academy/lesson-preview-excerpt'
+import { isHiddenLegacyAcademySlug } from '@/lib/academy/praxis-catalog'
 import { prisma } from '@/lib/prisma'
 
 const publicLessonSelect = {
@@ -19,6 +20,9 @@ type RouteParams = { params: Promise<{ slug: string }> }
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const { slug } = await params
+    if (isHiddenLegacyAcademySlug(slug)) {
+      return NextResponse.json({ error: 'Curso no encontrado' }, { status: 404 })
+    }
 
     const course = await prisma.course.findFirst({
       where: { slug, isPublished: true },

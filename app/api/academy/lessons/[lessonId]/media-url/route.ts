@@ -4,6 +4,8 @@ import {
   assertStoragePathForLesson,
   resolveLessonMediaAccess,
 } from '@/lib/academy/media-access'
+import { parsePdfResources } from '@/lib/academy/media'
+import { prisma } from '@/lib/prisma'
 import { createSignedAcademyMediaUrl } from '@/lib/storage'
 
 type RouteContext = {
@@ -31,7 +33,12 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    assertStoragePathForLesson(storagePath, access.courseId, access.lessonId)
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { pdfResources: true },
+    })
+    const attachedPaths = parsePdfResources(lesson?.pdfResources).map((resource) => resource.storagePath)
+    assertStoragePathForLesson(storagePath, access.courseId, access.lessonId, attachedPaths)
 
     const signedUrl = await createSignedAcademyMediaUrl(storagePath)
 

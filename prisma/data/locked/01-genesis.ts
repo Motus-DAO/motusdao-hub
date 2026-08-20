@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client'
 import { upsertAcademyCourse, type SeedCourse } from '../academy-seed-shared'
 
 /** Locked from admin dashboard — do not hand-edit unless intentional. */
-export const 01_GENESIS_COURSE: SeedCourse = {
+export const COURSE_01_GENESIS_COURSE: SeedCourse = {
   "id": "course_genesis_clinica_digital",
   "slug": "01-genesis",
   "title": "01 — Génesis",
@@ -82,6 +82,6 @@ export const 01_GENESIS_COURSE: SeedCourse = {
   ]
 }
 
-export async function seedLocked_01_GENESIS_COURSE(prisma: PrismaClient) {
-  return upsertAcademyCourse(prisma, 01_GENESIS_COURSE)
+export async function seedLocked_COURSE_01_GENESIS_COURSE(prisma: PrismaClient) {
+  return upsertAcademyCourse(prisma, COURSE_01_GENESIS_COURSE)
 }

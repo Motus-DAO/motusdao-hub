@@ -87,9 +87,10 @@ export async function resolveLessonMediaAccess(
 export function assertStoragePathForLesson(
   storagePath: string,
   courseId: string,
-  lessonId: string
+  lessonId: string,
+  attachedStoragePaths: string[] = [],
 ): void {
-  if (!storagePathBelongsToLesson(storagePath, courseId, lessonId)) {
-    throw new Error('Storage path does not belong to this lesson')
-  }
+  if (storagePathBelongsToLesson(storagePath, courseId, lessonId)) return
+  if (attachedStoragePaths.includes(storagePath)) return
+  throw new Error('Storage path does not belong to this lesson')
 }
