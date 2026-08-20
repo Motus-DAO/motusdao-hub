@@ -1,4 +1,5 @@
 import { defineChain } from 'viem'
+import { RIPIO_WFIAT_TOKENS } from './ripio/wfiat'
 
 // Celo Mainnet Configuration
 export const celoMainnet = defineChain({
@@ -98,7 +99,11 @@ export const CELO_STABLE_TOKENS = {
   USDC: '0xceba9300f2b948710d2653dd7b07f33a8b32118c', // USD Coin on Celo - VERIFY ADDRESS
   PSY: '0x249c893c4ef4f929ff2a08bc81f70f59ca902a20', // Psychology Token - UPDATE WITH ACTUAL ADDRESS
   MOT: '0xc39000920debd2aae90a08006cf9d013e2b1083b', // Motus Token - UPDATE WITH ACTUAL ADDRESS
+  ...RIPIO_WFIAT_TOKENS, // Ripio wFIAT on Celo — same address every chain, 18 decimals
 } as const
+
+export type CeloErc20Symbol = keyof typeof CELO_STABLE_TOKENS
+export type PaymentCurrency = 'CELO' | CeloErc20Symbol
 
 // Smart Contract Addresses on Celo Mainnet
 export const CELO_CONTRACTS = {

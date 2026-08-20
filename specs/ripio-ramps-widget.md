@@ -19,7 +19,7 @@
 - Buy / Hold / Sell `<ripio-widget />` (CaaS web component).
 - Sell & Pay merchant QR.
 - Custodial CaaS swaps / balances.
-- Adding wFIAT token addresses to `lib/celo.ts`.
+- Adding wFIAT token addresses to `lib/celo.ts` (follow-up: [`ripio-wfiat-pagos.md`](./ripio-wfiat-pagos.md)).
 - Changing Academy Stripe checkout.
 
 ## 3. Context / anchors

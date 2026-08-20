@@ -1,8 +1,10 @@
-import { createWalletClient, custom, parseUnits, encodeFunctionData, type Address } from 'viem'
-import { celoMainnet, CELO_STABLE_TOKENS } from './celo'
+import { createWalletClient, createPublicClient, custom, http, parseUnits, encodeFunctionData, type Address, type Hex } from 'viem'
+import { celoMainnet, CELO_STABLE_TOKENS, type PaymentCurrency } from './celo'
 import { getCeloExplorerUrl } from './celo'
 import type { WaaPWallet } from './wallet-utils'
 import { getPrimaryWallet } from './wallet-utils'
+
+export type { PaymentCurrency }
 
 /**
  * Payment utilities for sending transactions using the WaaP EOA wallet.
@@ -16,7 +18,7 @@ export interface PaymentParams {
   from: Address // User's wallet address
   to: Address // Recipient address (psychologist)
   amount: string // Amount in human-readable format (e.g., "10.5")
-  currency: 'CELO' | 'USDT' | 'USDC' | 'USDm' | 'EURm' | 'BRLm' | 'COPm' | 'PSY' | 'MOT' | 'CADm' // Currency type
+  currency: PaymentCurrency
 }
 
 export interface PaymentResult {
@@ -160,4 +162,38 @@ export async function sendStablecoinPayment(
   }
 }
 
-// Reserved for future specialized WaaP/ethers encoding error handling if needed
+const celoPublicClient = createPublicClient({
+  chain: celoMainnet,
+  transport: http(),
+})
+
+/** Sign and broadcast an unsigned EVM tx with the user's WaaP wallet (in-app swap). */
+export async function sendUnsignedEvmTx(
+  wallet: WaaPWallet,
+  tx: { to: string; data: string; value?: string },
+  options?: { wait?: boolean }
+): Promise<PaymentResult> {
+  try {
+    const walletClient = await createPrivyWalletClient(wallet)
+    const hash = await walletClient.sendTransaction({
+      to: tx.to as Address,
+      data: tx.data as Hex,
+      value: BigInt(tx.value || '0'),
+    })
+
+    if (options?.wait !== false) {
+      await celoPublicClient.waitForTransactionReceipt({ hash })
+    }
+
+    return {
+      success: true,
+      transactionHash: hash,
+      explorerUrl: getCeloExplorerUrl(hash, 'tx'),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Transaction failed',
+    }
+  }
+}

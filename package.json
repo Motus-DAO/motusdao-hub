@@ -7,7 +7,7 @@
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/auth/hub-session.test.ts lib/onboarding-identity.test.ts lib/accent-color.test.ts",
+    "test": "tsx --test lib/auth/hub-session.test.ts lib/onboarding-identity.test.ts lib/accent-color.test.ts lib/ripio/wfiat.test.ts lib/textile/fx.test.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

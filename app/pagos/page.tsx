@@ -26,8 +26,11 @@ import dynamic from 'next/dynamic'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback } from 'react'
 import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
-import { sendCELOPayment, sendStablecoinPayment, type PaymentParams } from '@/lib/payments'
+import { sendCELOPayment, sendStablecoinPayment, type PaymentCurrency, type PaymentParams } from '@/lib/payments'
 import { getCeloExplorerUrl } from '@/lib/celo'
+import { RIPIO_WFIAT_CATALOG } from '@/lib/ripio/wfiat'
+import { TextileFxSwapCta } from '@/components/payments/TextileFxSwapCta'
+import { WfiatSwapPanel } from '@/components/payments/WfiatSwapPanel'
 import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
 import { motusNameService } from '@/lib/motus-name-service'
 import type { Address } from 'viem'
@@ -134,15 +137,17 @@ export default function PagosPage() {
   const [mtPelerinUrl, setMtPelerinUrl] = useState<string | null>(null)
   const [ripioMockFlow, setRipioMockFlow] = useState<RipioRampFlow | null>(null)
   const [ripioMockAddress, setRipioMockAddress] = useState<string | null>(null)
+  const [wfiatSwapSymbol, setWfiatSwapSymbol] = useState<string | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [transferMode, setTransferMode] = useState<'send' | 'receive'>('send')
   const [sendAddress, setSendAddress] = useState('')
   const [sendAmount, setSendAmount] = useState('')
-  const [selectedToken, setSelectedToken] = useState<'CELO' | 'USDT' | 'USDC' | 'USDm' | 'BRLm' | 'COPm' | 'PSY' | 'MOT' | 'CADm' | 'EURm'>('CELO')
+  const [selectedToken, setSelectedToken] = useState<PaymentCurrency>('CELO')
   const [showQRScanner, setShowQRScanner] = useState(false)
   const [showTokenList, setShowTokenList] = useState(false)
   const [enabledTokens, setEnabledTokens] = useState<Set<string>>(new Set([
-    'CELO', 'USDT', 'USDC', 'USDm', 'EURm', 'BRLm', 'COPm', 'PSY', 'MOT', 'CADm'
+    'CELO', 'USDT', 'USDC', 'USDm', 'EURm', 'BRLm', 'COPm', 'PSY', 'MOT', 'CADm',
+    'wARS', 'wBRL', 'wMXN', 'wCOP', 'wPEN', 'wCLP',
   ]))
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -283,7 +288,8 @@ export default function PagosPage() {
     { symbol: 'PSY', name: 'Psychology Token', category: 'Utility', region: 'Global' },
     { symbol: 'MOT', name: 'Motus Token', category: 'Utility', region: 'Global' },
     { symbol: 'CADm', name: 'Mento Canadian Dollar', category: 'Mento Stablecoin', region: 'Norteamérica' },
-    { symbol: 'EURm', name: 'Mento Euro', category: 'Mento Stablecoin', region: 'Europa' }
+    { symbol: 'EURm', name: 'Mento Euro', category: 'Mento Stablecoin', region: 'Europa' },
+    ...RIPIO_WFIAT_CATALOG,
   ]
 
   const toggleToken = (tokenSymbol: string) => {
@@ -983,6 +989,8 @@ export default function PagosPage() {
                                   <p className="text-xs font-mono break-all">{selectedToken.address}</p>
                                 </div>
                               )}
+
+                              <TextileFxSwapCta symbol={selectedToken.symbol} onOpen={setWfiatSwapSymbol} />
                               
                               {!hasBalance && (
                                 <div className="pt-3 border-t border-white/10">
@@ -1191,7 +1199,7 @@ export default function PagosPage() {
                                 <button
                                   key={token.symbol}
                                   type="button"
-                                  onClick={() => setSelectedToken(token.symbol as typeof selectedToken)}
+                                  onClick={() => setSelectedToken(token.symbol as PaymentCurrency)}
                                   className={`px-3 py-1 rounded-full text-xs border transition-colors ${
                                     selectedToken === token.symbol
                                       ? 'bg-mauve-500 text-white border-mauve-400'
@@ -1255,7 +1263,7 @@ export default function PagosPage() {
                                               type="button"
                                               onClick={() => {
                                                 if (isEnabled) {
-                                                  setSelectedToken(token.symbol as typeof selectedToken)
+                                                  setSelectedToken(token.symbol as PaymentCurrency)
                                                 }
                                               }}
                                               disabled={!isEnabled}
@@ -1305,6 +1313,7 @@ export default function PagosPage() {
                           Escanear QR
                         </CTAButton>
                       </div>
+                      <TextileFxSwapCta symbol={selectedToken} compact onOpen={setWfiatSwapSymbol} />
                     </div>
 
                     <div className="space-y-4">
@@ -1778,6 +1787,15 @@ export default function PagosPage() {
                 setRipioMockAddress(null)
                 setSelectedProvider(null)
               }}
+            />
+          )}
+
+          {wfiatSwapSymbol && (
+            <WfiatSwapPanel
+              initialSellSymbol={wfiatSwapSymbol}
+              wallet={primaryWallet ?? null}
+              walletAddress={walletAddress}
+              onClose={() => setWfiatSwapSymbol(null)}
             />
           )}
         </div>
