@@ -21,6 +21,7 @@ import {
   praxisSupervisionProduct,
   type PraxisProduct,
 } from '@/lib/academy/praxis-catalog'
+import { isAcademyComplimentaryPreview } from '@/lib/academy/complimentary-preview'
 import { formatCoursePriceInCurrency, type CourseCurrency } from '@/lib/academy/course-pricing'
 import {
   fetchPublishedCourses,
@@ -36,6 +37,7 @@ function formatProductPrice(
   displayCurrency: CourseCurrency,
   usdToMxn: number | null,
 ): string {
+  if (isAcademyComplimentaryPreview() && product.type !== 'supervision') return 'Gratis'
   if (course) return formatCoursePriceInCurrency(course, displayCurrency, usdToMxn)
   return `US$${product.priceUsd.toFixed(0)} USD${product.priceSuffix ?? ''}`
 }
@@ -227,7 +229,9 @@ export function PraxisCollectionProgress({
         })}
       </div>
       <p className="text-sm font-medium text-mauve-200">
-        Colección completa: USD {benjaminCollectionTotalUsd()} en compras individuales.
+        {isAcademyComplimentaryPreview()
+          ? `Acceso de revisión sin pago. Precio real de la colección: USD ${benjaminCollectionTotalUsd()}.`
+          : `Colección completa: USD ${benjaminCollectionTotalUsd()} en compras individuales.`}
       </p>
       {allComplete ? (
         <GlassCard className="border-green-500/20 p-4 sm:p-5">

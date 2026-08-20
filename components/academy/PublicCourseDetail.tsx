@@ -332,7 +332,7 @@ function CourseDetailView({
   const reviewCount = course.reviewCount ?? 0
   const showReviews = reviewCount >= MIN_REVIEWS_TO_SHOW
   const priceLabel = formatPrice(course, payCurrency, usdToMxn)
-  const priceCaption = course.isFree
+  const priceCaption = !courseRequiresPayment(course)
     ? 'Gratis'
     : isMonthlyCourse(course)
       ? 'por mes'

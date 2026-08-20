@@ -1,3 +1,4 @@
+import { isAcademyComplimentaryPreview } from '@/lib/academy/complimentary-preview'
 import { convertAmount, type UsdMxnRate } from '@/lib/academy/fx'
 
 export type CourseCurrency = 'MXN' | 'USD'
@@ -18,6 +19,7 @@ export function coursePriceAmount(course: PricedCourse): number {
 }
 
 export function courseRequiresPayment(course: PricedCourse): boolean {
+  if (isAcademyComplimentaryPreview()) return false
   // priceAmount is the source of truth; isFree can lag behind admin edits
   return coursePriceAmount(course) > 0
 }
@@ -48,6 +50,7 @@ export function courseAmountsInBothCurrencies(
   course: PricedCourse,
   usdToMxn: number
 ): { MXN: number; USD: number } | null {
+  if (!courseRequiresPayment(course)) return null
   const amount = coursePriceAmount(course)
   if (!(amount > 0)) return null
   const base = normalizeCourseCurrency(course.priceCurrency)
@@ -62,6 +65,7 @@ export function formatCoursePriceInCurrency(
   currency: CourseCurrency,
   usdToMxn?: number | null
 ): string {
+  if (!courseRequiresPayment(course)) return 'Gratis'
   const amount = coursePriceAmount(course)
   if (!(amount > 0)) return 'Gratis'
 
