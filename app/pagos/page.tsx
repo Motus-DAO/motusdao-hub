@@ -86,6 +86,15 @@ const features = [
   }
 ]
 
+function formatPagosBalance(raw?: string): string {
+  const n = parseFloat(raw ?? '0')
+  if (!Number.isFinite(n)) return '0'
+  return n.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: n > 0 && n < 1 ? 6 : 4,
+  })
+}
+
 interface UserData {
   id: string
   email: string
@@ -309,6 +318,9 @@ export default function PagosPage() {
   }
 
   const enabledTokensList = availableTokens.filter(token => enabledTokens.has(token.symbol))
+  const balanceOf = (symbol: string) =>
+    tokenBalances.find((row) => row.symbol === symbol)?.balance
+  const selectedTokenBalance = balanceOf(selectedToken)
 
   // Función para enviar pagos
   const handleSendPayment = async () => {
@@ -703,9 +715,9 @@ export default function PagosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Section>
-        <div className="container mx-auto px-6">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-background">
+      <Section className="px-0">
+        <div className="container mx-auto max-w-full overflow-x-hidden px-4 sm:px-6">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -718,7 +730,7 @@ export default function PagosPage() {
                 <CreditCard className="w-8 h-8 text-white" />
               </div>
               <div>
-                <GradientText as="h1" className="text-4xl md:text-5xl font-bold">
+                <GradientText as="h1" className="text-3xl sm:text-4xl md:text-5xl font-bold">
                   Sistema de Pagos
                 </GradientText>
                 <p className="text-muted-foreground">Pagos descentralizados para servicios de salud mental</p>
@@ -733,7 +745,7 @@ export default function PagosPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mb-12"
           >
-            <GlassCard className="p-8">
+            <GlassCard className="overflow-hidden p-4 sm:p-8">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold mb-4">Pagos Globales con Wallet</h2>
                 <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
@@ -766,7 +778,7 @@ export default function PagosPage() {
               transition={{ duration: 0.8, delay: 0.25 }}
               className="mb-12"
             >
-              <GlassCard className="p-8">
+              <GlassCard className="overflow-hidden p-4 sm:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold mb-1 flex items-center">
@@ -1042,7 +1054,7 @@ export default function PagosPage() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="mb-12"
             >
-              <GlassCard className="p-8">
+              <GlassCard className="overflow-hidden p-4 sm:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold mb-1">Enviar y Recibir Cripto</h2>
@@ -1187,6 +1199,25 @@ export default function PagosPage() {
                             placeholder="0.0"
                             className="w-full rounded-xl border border-white/15 bg-background/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mauve-500/60"
                           />
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <p className="text-[11px] text-muted-foreground">
+                              Disponible:{' '}
+                              <span className="font-medium text-foreground">
+                                {formatPagosBalance(selectedTokenBalance)} {selectedToken}
+                              </span>
+                            </p>
+                            <button
+                              type="button"
+                              disabled={!selectedTokenBalance || parseFloat(selectedTokenBalance) <= 0}
+                              onClick={() => {
+                                if (!selectedTokenBalance) return
+                                setSendAmount(selectedTokenBalance)
+                              }}
+                              className="text-[11px] text-mauve-400 hover:text-mauve-300 disabled:opacity-40"
+                            >
+                              Usar todo
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium mb-1">
@@ -1195,20 +1226,23 @@ export default function PagosPage() {
                           <div className="w-full rounded-xl border border-white/15 bg-background/60 px-3 py-2 text-sm">
                             {/* Tokens habilitados - selección rápida */}
                             <div className="flex flex-wrap gap-2 mb-2">
-                              {enabledTokensList.map((token) => (
+                              {enabledTokensList.map((token) => {
+                                const amount = formatPagosBalance(balanceOf(token.symbol))
+                                return (
                                 <button
                                   key={token.symbol}
                                   type="button"
                                   onClick={() => setSelectedToken(token.symbol as PaymentCurrency)}
-                                  className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                                  className={`max-w-full px-3 py-1 rounded-full text-xs border transition-colors ${
                                     selectedToken === token.symbol
                                       ? 'bg-mauve-500 text-white border-mauve-400'
                                       : 'bg-transparent text-muted-foreground border-white/20 hover:border-white/40'
                                   }`}
                                 >
-                                  {token.symbol}
+                                  <span>{token.symbol}</span>
+                                  <span className="ml-1 opacity-80">{amount}</span>
                                 </button>
-                              ))}
+                              )})}
                             </div>
                             
                             {/* Toggle para mostrar/ocultar lista completa */}
@@ -1234,20 +1268,22 @@ export default function PagosPage() {
                                 {availableTokens.map((token) => {
                                   const isEnabled = enabledTokens.has(token.symbol)
                                   const isSelected = selectedToken === token.symbol
+                                  const amount = formatPagosBalance(balanceOf(token.symbol))
+                                  const hasBalance = parseFloat(balanceOf(token.symbol) || '0') > 0
                                   return (
                                     <div
                                       key={token.symbol}
-                                      className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
+                                      className={`flex items-center justify-between gap-2 p-2 rounded-lg border transition-colors min-w-0 ${
                                         isSelected
                                           ? 'bg-mauve-500/20 border-mauve-500/40'
                                           : 'bg-white/5 border-white/10 hover:border-white/20'
                                       }`}
                                     >
-                                      <div className="flex items-center space-x-3 flex-1">
+                                      <div className="flex items-center space-x-3 flex-1 min-w-0">
                                         <button
                                           type="button"
                                           onClick={() => toggleToken(token.symbol)}
-                                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-mauve-500/60 focus:ring-offset-2 ${
+                                          className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-mauve-500/60 focus:ring-offset-2 ${
                                             isEnabled ? 'bg-mauve-500' : 'bg-white/20'
                                           }`}
                                         >
@@ -1281,19 +1317,20 @@ export default function PagosPage() {
                                               <CheckCircle className="w-3 h-3 text-mauve-400" />
                                             )}
                                           </div>
-                                          <div className="flex items-center space-x-2 mt-0.5">
-                                            <span className="text-[10px] text-muted-foreground">
+                                          <div className="flex items-center space-x-2 mt-0.5 min-w-0">
+                                            <span className="text-[10px] text-muted-foreground truncate">
                                               {token.name}
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground/70">
-                                              •
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground/70">
-                                              {token.region}
                                             </span>
                                           </div>
                                         </div>
                                       </div>
+                                      <p
+                                        className={`text-xs font-semibold tabular-nums flex-shrink-0 ${
+                                          hasBalance ? 'text-foreground' : 'text-muted-foreground'
+                                        }`}
+                                      >
+                                        {amount}
+                                      </p>
                                     </div>
                                   )
                                 })}
@@ -1583,7 +1620,7 @@ export default function PagosPage() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="mb-12"
           >
-            <GlassCard className="p-8">
+            <GlassCard className="overflow-hidden p-4 sm:p-8">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold mb-2">Flujo Completo de Pagos</h2>
                 <p className="text-sm text-muted-foreground">
@@ -1657,7 +1694,7 @@ export default function PagosPage() {
               transition={{ duration: 0.8, delay: 0.45 }}
               className="mb-12"
             >
-              <GlassCard className="p-8">
+              <GlassCard className="overflow-hidden p-4 sm:p-8">
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold mb-2">Ripio — On-ramp / Off-ramp</h2>
                   <p className="text-sm text-muted-foreground">

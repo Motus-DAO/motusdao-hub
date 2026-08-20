@@ -159,7 +159,7 @@ export function Topbar() {
   return (
     <header
       className={cn(
-        'fixed top-4 left-0 right-0 z-40 mx-2 sm:mx-4 lg:mr-4 max-w-full',
+        'fixed top-[max(1rem,env(safe-area-inset-top))] left-2 right-2 z-40 sm:left-4 sm:right-4 lg:mr-4 max-w-full',
         // Avril glass-nav-modal + Hub-Psi rounded float (Chat-MotusAI exact)
         'rounded-3xl border backdrop-blur-xl backdrop-saturate-150',
         theme === 'light' &&

@@ -19,16 +19,9 @@ export const metadata: Metadata = {
   title: "MotusDAO Hub - Mental Health & Wellness",
   description: "Plataforma integral de salud mental con IA, psicoterapia y academia",
   manifest: '/manifest.json',
-  themeColor: '#8B5CF6',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'MotusDAO Hub',
   },
   icons: {
@@ -42,13 +35,22 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover' as const,
+  themeColor: '#000000',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning data-accent-color="pink">
+    <html lang="es" className="dark" suppressHydrationWarning data-accent-color="pink">
       <body
         className={`${inter.variable} ${jura.variable} font-sans antialiased`}
       >

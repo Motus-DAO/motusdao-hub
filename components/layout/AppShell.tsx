@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <Topbar />
-          <main className="flex-1 pt-16 sm:pt-20 max-w-full">
+          <main className="flex-1 max-w-full overflow-x-hidden pt-16 sm:pt-20 pb-[env(safe-area-inset-bottom)]">
             {children}
           </main>
           <Footer />
