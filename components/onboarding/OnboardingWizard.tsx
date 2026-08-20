@@ -187,7 +187,7 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
                 width: `${((currentStep + 1) / steps.length) * 100}%`
               }}
               transition={{ duration: 0.3 }}
-              className="h-1 bg-gradient-to-r from-mauve-500 to-purple-600 rounded-full"
+              className="h-1 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-full"
             />
           </div>
         </div>

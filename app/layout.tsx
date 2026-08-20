@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning data-accent-color="pink">
       <body
         className={`${inter.variable} ${jura.variable} font-sans antialiased`}
       >

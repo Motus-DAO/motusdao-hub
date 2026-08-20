@@ -71,7 +71,7 @@ export function IntakeChatStepper({
           </div>
           <div className="h-1.5 w-full rounded-full bg-foreground/10 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-mauve-500 to-purple-500 transition-all duration-300"
+              className="h-full rounded-full bg-gradient-to-r from-mauve-500 to-iris-500 transition-all duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>

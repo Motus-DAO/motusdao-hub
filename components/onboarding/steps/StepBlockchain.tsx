@@ -297,7 +297,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       case 'waiting-wallet':
         return (
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Loader className="w-8 h-8 text-white animate-spin" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Creando Smart Wallet...</h2>
@@ -317,7 +317,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       case 'idle':
         return (
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Tu dominio .motus</h2>
@@ -648,7 +648,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       case 'submitting':
         return (
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Loader className="w-8 h-8 text-white animate-spin" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Registrando en blockchain...</h2>

@@ -380,7 +380,7 @@ export default function AdminUsuariosPage() {
                         "w-10 h-10 rounded-full flex items-center justify-center",
                         user.deletedAt 
                           ? "bg-gray-500/50" 
-                          : "bg-gradient-to-br from-mauve-500 to-purple-600"
+                          : "bg-gradient-to-br from-mauve-500 to-iris-500"
                       )}>
                         {user.profile ? (
                           <span className="text-white font-semibold">

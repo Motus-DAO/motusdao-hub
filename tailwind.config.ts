@@ -53,19 +53,19 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom MotusDAO colors
+        // Custom MotusDAO colors — RGB channels from CSS so accent picker can retheme them
         mauve: {
-          50: "#faf5ff",
-          100: "#f3e8ff",
-          200: "#e9d5ff",
-          300: "#d8b4fe",
-          400: "#c084fc",
-          500: "#a855f7",
-          600: "#9333ea",
-          700: "#7c3aed",
-          800: "#6b21a8",
-          900: "#581c87",
-          950: "#3b0764",
+          50: "rgb(var(--mauve-50) / <alpha-value>)",
+          100: "rgb(var(--mauve-100) / <alpha-value>)",
+          200: "rgb(var(--mauve-200) / <alpha-value>)",
+          300: "rgb(var(--mauve-300) / <alpha-value>)",
+          400: "rgb(var(--mauve-400) / <alpha-value>)",
+          500: "rgb(var(--mauve-500) / <alpha-value>)",
+          600: "rgb(var(--mauve-600) / <alpha-value>)",
+          700: "rgb(var(--mauve-700) / <alpha-value>)",
+          800: "rgb(var(--mauve-800) / <alpha-value>)",
+          900: "rgb(var(--mauve-900) / <alpha-value>)",
+          950: "rgb(var(--mauve-950) / <alpha-value>)",
         },
         // Matrix theme colors - neon green
         matrix: {
@@ -76,17 +76,17 @@ const config: Config = {
           placeholder: "#32ff32",
         },
         iris: {
-          50: "#f0f4ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
-          950: "#1e1b4b",
+          50: "rgb(var(--iris-50) / <alpha-value>)",
+          100: "rgb(var(--iris-100) / <alpha-value>)",
+          200: "rgb(var(--iris-200) / <alpha-value>)",
+          300: "rgb(var(--iris-300) / <alpha-value>)",
+          400: "rgb(var(--iris-400) / <alpha-value>)",
+          500: "rgb(var(--iris-500) / <alpha-value>)",
+          600: "rgb(var(--iris-600) / <alpha-value>)",
+          700: "rgb(var(--iris-700) / <alpha-value>)",
+          800: "rgb(var(--iris-800) / <alpha-value>)",
+          900: "rgb(var(--iris-900) / <alpha-value>)",
+          950: "rgb(var(--iris-950) / <alpha-value>)",
         },
         // Glass and neumorphism colors (aligned with --glass-* / Chat topbar)
         glass: {
@@ -113,7 +113,7 @@ const config: Config = {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
         // New gradient system
-        "grad-primary": "linear-gradient(to right, #9333ea, #ec4899)",
+        "grad-primary": "var(--grad-primary)",
         "grad-secondary": "linear-gradient(to right, #3b82f6, #06b6d4)",
         "grad-background": "var(--grad-background)",
         // Soft gradient details
@@ -144,7 +144,7 @@ const config: Config = {
         "neo-outset": "2px 2px 4px rgba(0, 0, 0, 0.1), -2px -2px 4px rgba(255, 255, 255, 0.1)",
         // Legacy shadows
         "soft": "0 4px 20px 0 rgba(0, 0, 0, 0.1)",
-        "glow": "0 0 20px rgba(124, 58, 237, 0.3)",
+        "glow": "0 0 20px rgb(var(--accent-rgb) / 0.3)",
         "glow-matrix": "0 0 20px rgba(16, 185, 129, 0.3)",
         // Matrix theme shadows
         "matrix": "0 8px 24px rgba(0,0,0,0.5)",

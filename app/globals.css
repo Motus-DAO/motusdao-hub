@@ -13,9 +13,36 @@
   --pastel-cyan: #ecfeff;
   --soft-white: #fafafa;
   
-  /* Gradient definitions */
-  --grad-primary: linear-gradient(to right, #9333ea, #ec4899);
+  /* Accent tokens — pink default matches the Motus mauve→pink gradient */
+  --accent-from: #9333ea;
+  --accent-to: #ec4899;
+  --accent-rgb: 147 51 234;
+  --grad-primary: linear-gradient(to right, var(--accent-from), var(--accent-to));
   --grad-secondary: linear-gradient(to right, #3b82f6, #06b6d4);
+
+  --mauve-50: 250 245 255;
+  --mauve-100: 243 232 255;
+  --mauve-200: 233 213 255;
+  --mauve-300: 216 180 254;
+  --mauve-400: 192 132 252;
+  --mauve-500: 168 85 247;
+  --mauve-600: 147 51 234;
+  --mauve-700: 124 58 237;
+  --mauve-800: 107 33 168;
+  --mauve-900: 88 28 135;
+  --mauve-950: 59 7 100;
+
+  --iris-50: 253 242 248;
+  --iris-100: 252 231 243;
+  --iris-200: 251 207 232;
+  --iris-300: 249 168 212;
+  --iris-400: 244 114 182;
+  --iris-500: 236 72 153;
+  --iris-600: 219 39 119;
+  --iris-700: 190 24 93;
+  --iris-800: 157 23 77;
+  --iris-900: 131 24 67;
+  --iris-950: 80 7 36;
   --grad-background: radial-gradient(60% 60% at 20% 20%, rgba(59,130,246,.18), transparent 60%),
                      radial-gradient(60% 60% at 80% 30%, rgba(236,72,153,.16), transparent 60%),
                      radial-gradient(70% 70% at 50% 80%, rgba(168,85,247,.18), transparent 60%),
@@ -103,6 +130,127 @@
   );
 }
 
+/* Light/dark accent palettes — pink is :root default (Motus mauve→pink) */
+[data-accent-color="green"]:not([data-theme="matrix"]) {
+  --accent-from: #059669;
+  --accent-to: #34d399;
+  --accent-rgb: 16 185 129;
+  --primary: 160 84% 39%;
+  --ring: 160 84% 39%;
+  --mauve-50: 236 253 245;
+  --mauve-100: 209 250 229;
+  --mauve-200: 167 243 208;
+  --mauve-300: 110 231 183;
+  --mauve-400: 52 211 153;
+  --mauve-500: 16 185 129;
+  --mauve-600: 5 150 105;
+  --mauve-700: 4 120 87;
+  --mauve-800: 6 95 70;
+  --mauve-900: 6 78 59;
+  --mauve-950: 2 44 34;
+  --iris-50: 236 253 245;
+  --iris-100: 209 250 229;
+  --iris-200: 167 243 208;
+  --iris-300: 110 231 183;
+  --iris-400: 52 211 153;
+  --iris-500: 52 211 153;
+  --iris-600: 16 185 129;
+  --iris-700: 5 150 105;
+  --iris-800: 4 120 87;
+  --iris-900: 6 95 70;
+  --iris-950: 2 44 34;
+}
+
+[data-accent-color="red"]:not([data-theme="matrix"]) {
+  --accent-from: #dc2626;
+  --accent-to: #ff1744;
+  --accent-rgb: 239 68 68;
+  --primary: 0 84% 60%;
+  --ring: 0 84% 60%;
+  --mauve-50: 255 241 242;
+  --mauve-100: 255 228 230;
+  --mauve-200: 254 202 202;
+  --mauve-300: 252 165 165;
+  --mauve-400: 248 113 113;
+  --mauve-500: 239 68 68;
+  --mauve-600: 220 38 38;
+  --mauve-700: 185 28 28;
+  --mauve-800: 153 27 27;
+  --mauve-900: 127 29 29;
+  --mauve-950: 69 10 10;
+  --iris-50: 255 241 242;
+  --iris-100: 255 228 230;
+  --iris-200: 254 205 211;
+  --iris-300: 253 164 175;
+  --iris-400: 251 113 133;
+  --iris-500: 255 23 68;
+  --iris-600: 225 29 72;
+  --iris-700: 190 18 60;
+  --iris-800: 159 18 57;
+  --iris-900: 136 19 55;
+  --iris-950: 76 5 25;
+}
+
+[data-accent-color="orange"]:not([data-theme="matrix"]) {
+  --accent-from: #ea580c;
+  --accent-to: #ff9100;
+  --accent-rgb: 249 115 22;
+  --primary: 25 95% 53%;
+  --ring: 25 95% 53%;
+  --mauve-50: 255 247 237;
+  --mauve-100: 255 237 213;
+  --mauve-200: 254 215 170;
+  --mauve-300: 253 186 116;
+  --mauve-400: 251 146 60;
+  --mauve-500: 249 115 22;
+  --mauve-600: 234 88 12;
+  --mauve-700: 194 65 12;
+  --mauve-800: 154 52 18;
+  --mauve-900: 124 45 18;
+  --mauve-950: 67 20 7;
+  --iris-50: 255 251 235;
+  --iris-100: 254 243 199;
+  --iris-200: 253 230 138;
+  --iris-300: 252 211 77;
+  --iris-400: 251 191 36;
+  --iris-500: 255 145 0;
+  --iris-600: 217 119 6;
+  --iris-700: 180 83 9;
+  --iris-800: 146 64 14;
+  --iris-900: 120 53 15;
+  --iris-950: 69 26 3;
+}
+
+[data-accent-color="blue"]:not([data-theme="matrix"]) {
+  --accent-from: #2563eb;
+  --accent-to: #00e5ff;
+  --accent-rgb: 37 99 235;
+  --primary: 217 91% 60%;
+  --ring: 217 91% 60%;
+  --mauve-50: 239 246 255;
+  --mauve-100: 219 234 254;
+  --mauve-200: 191 219 254;
+  --mauve-300: 147 197 253;
+  --mauve-400: 96 165 250;
+  --mauve-500: 59 130 246;
+  --mauve-600: 37 99 235;
+  --mauve-700: 29 78 216;
+  --mauve-800: 30 64 175;
+  --mauve-900: 30 58 138;
+  --mauve-950: 23 37 84;
+  --iris-50: 236 254 255;
+  --iris-100: 207 250 254;
+  --iris-200: 165 243 252;
+  --iris-300: 103 232 249;
+  --iris-400: 34 211 238;
+  --iris-500: 0 229 255;
+  --iris-600: 8 145 178;
+  --iris-700: 14 116 144;
+  --iris-800: 21 94 117;
+  --iris-900: 22 78 99;
+  --iris-950: 8 51 68;
+}
+
 [data-theme="matrix"] {
   /* Matrix theme - Enhanced with neon green colors */
   --matrix-bg: #000000;
@@ -110,6 +258,18 @@
   --matrix-accent: #00ff41; /* bright neon green for titles/links */
   --matrix-border: rgba(0,255,65,0.6);
   --matrix-placeholder: #32ff32;
+  --accent-from: #39ff14;
+  --accent-to: #00ff41;
+  --accent-rgb: 0 255 65;
+  --grad-primary: linear-gradient(to right, var(--accent-from), var(--accent-to));
+  --mauve-300: 110 231 183;
+  --mauve-400: 57 255 20;
+  --mauve-500: 57 255 20;
+  --mauve-600: 0 255 65;
+  --mauve-700: 0 200 50;
+  --iris-400: 50 255 50;
+  --iris-500: 0 255 65;
+  --iris-600: 0 200 50;
   
   --background: 0 0% 0%; /* #000000 */
   --foreground: 120 100% 50%; /* #39ff14 - neon green */
@@ -144,6 +304,18 @@
   --matrix-accent: #ff4444; /* bright neon red for titles/links */
   --matrix-border: rgba(255,23,68,0.6);
   --matrix-placeholder: #ff5555;
+  --accent-from: #ff1744;
+  --accent-to: #ff4444;
+  --accent-rgb: 255 23 68;
+  --grad-primary: linear-gradient(to right, var(--accent-from), var(--accent-to));
+  --mauve-300: 255 138 128;
+  --mauve-400: 255 68 68;
+  --mauve-500: 255 23 68;
+  --mauve-600: 255 23 68;
+  --mauve-700: 198 40 40;
+  --iris-400: 255 68 68;
+  --iris-500: 255 68 68;
+  --iris-600: 198 40 40;
   
   --foreground: 0 100% 55%; /* neon red */
   --card-foreground: 0 100% 55%;
@@ -164,6 +336,18 @@
   --matrix-accent: #ffaa00; /* bright neon orange for titles/links */
   --matrix-border: rgba(255,145,0,0.6);
   --matrix-placeholder: #ffbb33;
+  --accent-from: #ff9100;
+  --accent-to: #ffaa00;
+  --accent-rgb: 255 145 0;
+  --grad-primary: linear-gradient(to right, var(--accent-from), var(--accent-to));
+  --mauve-300: 255 187 51;
+  --mauve-400: 255 170 0;
+  --mauve-500: 255 145 0;
+  --mauve-600: 255 145 0;
+  --mauve-700: 230 81 0;
+  --iris-400: 255 170 0;
+  --iris-500: 255 170 0;
+  --iris-600: 230 81 0;
   
   --foreground: 30 100% 50%; /* neon orange */
   --card-foreground: 30 100% 50%;
@@ -184,6 +368,18 @@
   --matrix-accent: #00b8ff; /* bright neon blue for titles/links */
   --matrix-border: rgba(0,229,255,0.6);
   --matrix-placeholder: #33ddff;
+  --accent-from: #00e5ff;
+  --accent-to: #00b8ff;
+  --accent-rgb: 0 229 255;
+  --grad-primary: linear-gradient(to right, var(--accent-from), var(--accent-to));
+  --mauve-300: 51 221 255;
+  --mauve-400: 0 229 255;
+  --mauve-500: 0 229 255;
+  --mauve-600: 0 184 255;
+  --mauve-700: 0 145 234;
+  --iris-400: 0 184 255;
+  --iris-500: 0 184 255;
+  --iris-600: 0 145 234;
   
   --foreground: 190 100% 50%; /* neon blue */
   --card-foreground: 190 100% 50%;
@@ -204,6 +400,18 @@
   --matrix-accent: #ff44ff; /* bright neon pink for titles/links */
   --matrix-border: rgba(255,16,240,0.6);
   --matrix-placeholder: #ff66ff;
+  --accent-from: #ff10f0;
+  --accent-to: #ff44ff;
+  --accent-rgb: 255 16 240;
+  --grad-primary: linear-gradient(to right, var(--accent-from), var(--accent-to));
+  --mauve-300: 255 102 255;
+  --mauve-400: 255 68 255;
+  --mauve-500: 255 16 240;
+  --mauve-600: 255 16 240;
+  --mauve-700: 197 17 98;
+  --iris-400: 255 68 255;
+  --iris-500: 255 68 255;
+  --iris-600: 197 17 98;
   
   --foreground: 300 100% 53%; /* neon pink */
   --card-foreground: 300 100% 53%;
@@ -449,7 +657,7 @@ body::after {
   padding: 0.75rem 1.5rem;
   font-weight: 600;
   box-shadow: 
-    0 4px 16px rgba(147, 51, 234, 0.3),
+    0 4px 16px rgb(var(--accent-rgb) / 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -465,6 +673,14 @@ body::after {
 .btn-primary:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+[data-theme="matrix"] .btn-primary {
+  color: #000;
+  border-radius: 0;
+  box-shadow:
+    0 0 20px rgb(var(--accent-rgb) / 0.3),
+    0 0 40px rgb(var(--accent-rgb) / 0.2);
 }
 
 .btn-secondary {
@@ -551,6 +767,10 @@ body::after {
 }
 
 /* Custom scrollbar */
+html {
+  scrollbar-color: rgb(var(--accent-rgb) / 0.45) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -560,21 +780,22 @@ body::after {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(147, 51, 234, 0.3);
+  background: rgb(var(--accent-rgb) / 0.3);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(147, 51, 234, 0.5);
+  background: rgb(var(--accent-rgb) / 0.5);
 }
 
 /* Matrix theme specific styles */
 [data-theme="matrix"] ::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.3);
+  background: rgb(var(--accent-rgb) / 0.4);
+  border-radius: 0;
 }
 
 [data-theme="matrix"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.5);
+  background: rgb(var(--accent-rgb) / 0.6);
 }
 
 /* MATRIX THEME OVERRIDES */
@@ -655,9 +876,12 @@ body::after {
 /* Botones - variantes Matrix */
 @layer components {
   .btn-matrix-primary {
-    @apply bg-gradient-to-r from-[#39ff14] to-[#00ff41] text-black transition-all duration-300 border-0;
+    background-image: var(--grad-primary);
+    color: #000;
+    transition: all 0.3s;
+    border: 0;
     border-radius: 0 !important;
-    box-shadow: 0 0 20px rgba(57,255,20,0.3), 0 0 40px rgba(0,255,65,0.2);
+    box-shadow: 0 0 20px rgb(var(--accent-rgb) / 0.3), 0 0 40px rgb(var(--accent-rgb) / 0.2);
   }
   .btn-matrix-primary:hover { 
     filter: brightness(1.1); 
@@ -672,15 +896,17 @@ body::after {
   }
 
   .btn-matrix-secondary {
-    @apply bg-black border text-[#00ff41] transition-all duration-300;
-    border-color: var(--matrix-border) !important;
+    background: #000;
+    border: 1px solid var(--matrix-border);
+    color: var(--matrix-text);
+    transition: all 0.3s;
     border-radius: 0 !important;
-    box-shadow: 0 0 10px rgba(0,255,65,0.2);
+    box-shadow: 0 0 10px rgb(var(--accent-rgb) / 0.2);
   }
   .btn-matrix-secondary:hover { 
-    background-color: rgba(0,255,65,0.08); 
+    background-color: rgb(var(--accent-rgb) / 0.08); 
     transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 0 20px rgba(0,255,65,0.4), 0 0 40px rgba(0,255,65,0.2);
+    box-shadow: 0 0 20px rgb(var(--accent-rgb) / 0.4), 0 0 40px rgb(var(--accent-rgb) / 0.2);
   }
   .btn-matrix-secondary:active {
     transform: translateY(1px) scale(0.98);
@@ -688,7 +914,7 @@ body::after {
   .btn-matrix-secondary:focus-visible {
     outline: 2px solid var(--matrix-accent);
     outline-offset: 2px;
-    box-shadow: 0 0 20px rgba(0,255,65,0.6);
+    box-shadow: 0 0 20px rgb(var(--accent-rgb) / 0.6);
   }
 }
 
@@ -878,27 +1104,17 @@ body::after {
 
 /* Matrix theme gradient text */
 [data-theme="matrix"] .gradient-text {
-  background: linear-gradient(135deg, #39ff14 0%, #00ff41 100%);
+  background: var(--grad-primary);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 [data-theme="matrix"] .gradient-text-secondary {
-  background: linear-gradient(135deg, #39ff14 0%, #32ff32 50%, #00ff41 100%);
+  background: var(--grad-primary);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-/* Matrix theme scrollbar */
-[data-theme="matrix"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 65, 0.4);
-  border-radius: 0;
-}
-
-[data-theme="matrix"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(57, 255, 20, 0.6);
 }
 
 /* Matrix theme typography utilities */

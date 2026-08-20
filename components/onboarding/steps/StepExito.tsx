@@ -115,7 +115,7 @@ export function StepExito({ onComplete }: StepExitoProps) {
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-mauve-500/35 bg-gradient-to-br from-mauve-500/15 to-purple-500/10 p-4 md:p-5"
+              className="rounded-xl border border-mauve-500/35 bg-gradient-to-br from-mauve-500/15 to-iris-500/10 p-4 md:p-5"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">

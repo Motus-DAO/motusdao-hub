@@ -90,7 +90,7 @@ interface UserEnrollmentItem {
 }
 
 export default function PerfilPage() {
-  const { role, setMatrixColor } = useUIStore()
+  const { role } = useUIStore()
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
@@ -527,11 +527,6 @@ export default function PerfilPage() {
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleMatrixColorChange = (color: 'green' | 'red' | 'orange' | 'blue' | 'pink') => {
-    // Solo actualiza el store (localStorage), no el estado del perfil
-    setMatrixColor(color)
   }
 
   const handleAvatarClick = () => {
@@ -994,9 +989,7 @@ export default function PerfilPage() {
 
                     {/* Matrix Color Customization */}
                     <div className="pt-4 border-t border-white/10">
-                      <MatrixColorSelector 
-                        onColorChange={handleMatrixColorChange}
-                      />
+                      <MatrixColorSelector />
                     </div>
                   </form>
                 </GlassCard>

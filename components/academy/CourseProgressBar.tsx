@@ -39,7 +39,7 @@ export function CourseProgressBar({
           className={`h-full rounded-full ${
             completed
               ? 'bg-gradient-to-r from-green-500 via-emerald-400 to-mauve-400'
-              : 'bg-gradient-to-r from-mauve-500 to-pink-500'
+              : 'bg-gradient-to-r from-mauve-500 to-iris-500'
           }`}
           initial={false}
           animate={{ width: `${clamped}%` }}

@@ -1,8 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import {
+  type AccentColor,
+  type MatrixColor,
+  migratePersistedAccentColor,
+} from '@/lib/accent-color'
 
 export type UserRole = 'usuario' | 'psm' | 'admin'
-export type MatrixColor = 'green' | 'red' | 'orange' | 'blue' | 'pink'
+export type { AccentColor, MatrixColor }
 
 interface UIState {
   // Role management
@@ -19,8 +24,13 @@ interface UIState {
   setTheme: (theme: 'light' | 'dark' | 'matrix') => void
   toggleTheme: () => void
   
-  // Matrix color customization
-  matrixColor: MatrixColor
+  /**
+   * Shared accent for light/dark/matrix. `null` means theme default:
+   * pink in light/dark, green in matrix (until the user picks a color).
+   */
+  accentColor: AccentColor | null
+  setAccentColor: (color: AccentColor) => void
+  /** @deprecated Use setAccentColor */
   setMatrixColor: (color: MatrixColor) => void
   
   // Note: Authentication state is now handled by Privy directly
@@ -46,19 +56,30 @@ export const useUIStore = create<UIState>()(
         theme: state.theme === 'light' ? 'dark' : state.theme === 'dark' ? 'matrix' : 'light'
       })),
       
-      // Matrix color customization
-      matrixColor: 'green',
-      setMatrixColor: (color) => set({ matrixColor: color }),
+      accentColor: null,
+      setAccentColor: (color) => set({ accentColor: color }),
+      setMatrixColor: (color) => set({ accentColor: color }),
       
       // Authentication is now handled by Privy - no mock state needed
     }),
     {
       name: 'motusdao-ui-storage',
+      version: 1,
+      migrate: (persistedState, version) => {
+        const state = (persistedState ?? {}) as Record<string, unknown>
+        if (version < 1) {
+          return {
+            ...state,
+            accentColor: migratePersistedAccentColor(state.matrixColor),
+          }
+        }
+        return state
+      },
       partialize: (state) => ({
         role: state.role,
         theme: state.theme,
         sidebarOpen: state.sidebarOpen,
-        matrixColor: state.matrixColor,
+        accentColor: state.accentColor,
       }),
     }
   )

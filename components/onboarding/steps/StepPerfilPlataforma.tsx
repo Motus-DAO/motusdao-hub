@@ -100,7 +100,7 @@ export function StepPerfilPlataforma({ onNext, onBack }: StepPerfilPlataformaPro
     >
       <GlassCard className="p-8">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-mauve-500 to-purple-600">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-mauve-500 to-iris-500">
             <User className="h-8 w-8 text-white" />
           </div>
           <h2 className="mb-2 text-2xl font-bold">Tu perfil en MotusDAO</h2>

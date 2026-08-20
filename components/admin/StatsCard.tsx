@@ -18,7 +18,7 @@ export function StatsCard({
   value,
   icon: Icon,
   trend,
-  color = 'from-mauve-500 to-purple-600',
+  color = 'from-mauve-500 to-iris-500',
   isCurrency = false,
 }: StatsCardProps) {
   const formatValue = (val: string | number) => {

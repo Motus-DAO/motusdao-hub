@@ -119,7 +119,7 @@ export function AdminSidebar() {
           <div className="p-6 border-b border-white/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-mauve-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-lg flex items-center justify-center">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -160,7 +160,7 @@ export function AdminSidebar() {
                   className={cn(
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
                     isActive
-                      ? 'bg-gradient-to-r from-mauve-500/20 to-purple-600/20 border border-mauve-500/30 text-mauve-400'
+                      ? 'bg-gradient-to-r from-mauve-500/20 to-iris-500/20 border border-mauve-500/30 text-mauve-400'
                       : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
                   )}
                 >

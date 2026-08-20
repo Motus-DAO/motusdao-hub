@@ -4,13 +4,13 @@ import { ContactForm } from '@/components/forms/ContactForm'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { 
-  Heart, 
   Mail, 
   Twitter,
   Github,
   Linkedin,
   ArrowRight
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 
 export function Footer() {
@@ -28,8 +28,14 @@ export function Footer() {
             <GlassCard className="p-6 h-full">
               <div className="mb-6">
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-mauve rounded-lg flex items-center justify-center">
-                    <Heart className="w-6 h-6 text-white" />
+                  <div className="relative h-10 w-10">
+                    <Image
+                      src="/logo.svg"
+                      alt="MotusDAO Logo"
+                      width={40}
+                      height={40}
+                      className="h-full w-full object-contain"
+                    />
                   </div>
                   <GradientText as="h3" className="text-2xl font-bold">
                     MotusDAO

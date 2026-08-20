@@ -95,7 +95,7 @@ export function RecentActivity() {
       case 'message':
         return 'from-purple-500 to-pink-600'
       default:
-        return 'from-mauve-500 to-purple-600'
+        return 'from-mauve-500 to-iris-500'
     }
   }
 
