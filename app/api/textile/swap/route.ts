@@ -1,31 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isValidCeloAddress } from '@/lib/ripio/ramps-widget'
 import {
-  applySlippageRay,
+  fromAtomicAmount,
+  isBelowTextileRfqMinimum,
   resolveTextilePair,
+  rfqNoQuoteMessage,
   toAtomicAmount,
   TEXTILE_TOKEN_ADDRESSES,
 } from '@/lib/textile/fx'
-import { buildTextileSwap, hasTextileApiKey } from '@/lib/textile/server'
+import { requestTextileRfq } from '@/lib/textile/server'
+
+export const maxDuration = 15
 
 export async function POST(request: NextRequest) {
   try {
-    if (!hasTextileApiKey()) {
-      return NextResponse.json(
-        {
-          error: 'Swap en-app no disponible todavía',
-          hint: 'Pide una API key a Textile FX (contact@textilecredit.com) y configura TEXTILE_API_KEY en el servidor. No uses app.textilecredit.com: esa UI no conecta WaaP.',
-        },
-        { status: 503 }
-      )
-    }
-
     const body = await request.json()
     const sellSymbol = typeof body.sellSymbol === 'string' ? body.sellSymbol.trim() : ''
     const buySymbol = typeof body.buySymbol === 'string' ? body.buySymbol.trim() : ''
     const sellAmount = typeof body.sellAmount === 'string' ? body.sellAmount.trim() : ''
     const taker = typeof body.taker === 'string' ? body.taker.trim() : ''
-    const minRateRay = typeof body.minRateRay === 'string' ? body.minRateRay.trim() : ''
 
     const pair = resolveTextilePair(sellSymbol, buySymbol)
     if (!pair) {
@@ -39,16 +32,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Monto inválido' }, { status: 400 })
     }
 
+    if (isBelowTextileRfqMinimum(sellAmount)) {
+      return NextResponse.json(
+        { error: `El mínimo RFQ es 1 ${pair.sellSymbol} entero.` },
+        { status: 400 }
+      )
+    }
+
     if (!isValidCeloAddress(taker)) {
       return NextResponse.json({ error: 'taker inválido' }, { status: 400 })
     }
 
-    const built = await buildTextileSwap({
+    const built = await requestTextileRfq({
       sellToken: TEXTILE_TOKEN_ADDRESSES[pair.sellSymbol],
       buyToken: TEXTILE_TOKEN_ADDRESSES[pair.buySymbol],
       sellAmount: toAtomicAmount(sellAmount, pair.sellSymbol),
       taker,
-      minRate: minRateRay ? applySlippageRay(minRateRay, 50) : undefined,
     })
 
     if (!built.ok) {
@@ -58,21 +57,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!built.data.fillable || !built.data.transactions?.swap) {
+    if (built.data.status !== 'quoted' || !built.data.transactions?.swap) {
+      const availableSell = built.data.availableSellAmount
+        ? fromAtomicAmount(built.data.availableSellAmount, pair.sellSymbol)
+        : null
       return NextResponse.json({
         fillable: false,
-        reason: built.data.reason || 'no_liquidity',
-        liveOrders: built.data.liveOrders ?? 0,
-        fillableAmount: built.data.fillableAmount,
+        status: built.data.status,
+        reason: built.data.reason || 'no_quote',
+        hint: availableSell
+          ? `${rfqNoQuoteMessage(built.data.reason)} Profundidad publicada: ~${availableSell} ${pair.sellSymbol}.`
+          : rfqNoQuoteMessage(built.data.reason),
+        availableSellAmount: availableSell,
       })
     }
 
+    const quote = built.data.quote
     return NextResponse.json({
       fillable: true,
-      id: built.data.id,
-      fillableAmount: built.data.fillableAmount,
-      proceeds: built.data.proceeds,
-      requiredAllowance: built.data.requiredAllowance,
+      venue: 'v2',
+      id: built.data.rfqId,
+      claimToken: built.data.claimToken,
+      status: built.data.status,
+      expiresAt: quote?.expiresAt,
+      orderDeadline: quote?.orderDeadline,
+      buyAmount: quote?.buyAmount
+        ? fromAtomicAmount(quote.buyAmount, pair.buySymbol)
+        : null,
+      takerPays: quote?.takerPays,
+      feeAmount: quote?.feeAmount,
       transactions: built.data.transactions,
     })
   } catch (error) {

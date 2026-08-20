@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isValidCeloAddress } from '@/lib/ripio/ramps-widget'
 import {
   fromAtomicAmount,
-  indicativeBuyAmount,
-  pickTickerPrice,
+  isBelowTextileRfqMinimum,
   resolveTextilePair,
-  tickerIdForWfiat,
+  rfqNoQuoteMessage,
   toAtomicAmount,
   TEXTILE_TOKEN_ADDRESSES,
 } from '@/lib/textile/fx'
-import { fetchPublicTickers, fetchTextileQuote, hasTextileApiKey } from '@/lib/textile/server'
+import { previewTextileRfq } from '@/lib/textile/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,79 +30,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Monto inválido' }, { status: 400 })
     }
 
+    if (isBelowTextileRfqMinimum(sellAmount)) {
+      return NextResponse.json(
+        {
+          error: `El mínimo RFQ es 1 ${pair.sellSymbol} entero.`,
+          liveExecution: false,
+        },
+        { status: 400 }
+      )
+    }
+
     if (address && !isValidCeloAddress(address)) {
       return NextResponse.json({ error: 'address inválida' }, { status: 400 })
     }
 
     const sellAtomic = toAtomicAmount(sellAmount, pair.sellSymbol)
-    const tickerId = tickerIdForWfiat(pair.wfiat)
-    let localPerUsdt: number | null = null
-    try {
-      const tickers = await fetchPublicTickers()
-      localPerUsdt = pickTickerPrice(tickers.find((row) => row.ticker_id === tickerId))
-    } catch (error) {
-      console.warn('[textile/quote] tickers', error)
-    }
-
-    const indicative = localPerUsdt
-      ? indicativeBuyAmount({
-          sellSymbol: pair.sellSymbol,
-          buySymbol: pair.buySymbol,
-          sellAmountHuman: sellAmount,
-          localPerUsdt,
-        })
-      : null
-
-    if (!hasTextileApiKey()) {
-      return NextResponse.json({
-        mode: 'indicative',
-        liveExecution: false,
-        sellSymbol: pair.sellSymbol,
-        buySymbol: pair.buySymbol,
-        sellAmount,
-        buyAmount: indicative,
-        localPerUsdt,
-        hint: 'Cotización pública. Para ejecutar el swap en tu wallet WaaP configura TEXTILE_API_KEY (Textile FX, contact@textilecredit.com).',
-      })
-    }
-
-    const live = await fetchTextileQuote({
+    const preview = await previewTextileRfq({
       sellToken: TEXTILE_TOKEN_ADDRESSES[pair.sellSymbol],
       buyToken: TEXTILE_TOKEN_ADDRESSES[pair.buySymbol],
       sellAmount: sellAtomic,
     })
 
-    if (!live.ok) {
+    if (!preview.ok) {
       return NextResponse.json(
-        {
-          mode: 'indicative',
-          liveExecution: false,
-          sellSymbol: pair.sellSymbol,
-          buySymbol: pair.buySymbol,
-          sellAmount,
-          buyAmount: indicative,
-          localPerUsdt,
-          error: live.error,
-        },
-        { status: live.status >= 400 && live.status < 600 ? live.status : 502 }
+        { error: preview.error, liveExecution: false },
+        { status: preview.status >= 400 && preview.status < 600 ? preview.status : 502 }
       )
     }
 
-    const proceeds = live.data.proceeds
+    if (preview.data.status === 'no_quote' || !preview.data.buyAmount) {
+      const availableSell = preview.data.availableSellAmount
+        ? fromAtomicAmount(preview.data.availableSellAmount, pair.sellSymbol)
+        : null
+      return NextResponse.json({
+        mode: 'rfq',
+        venue: 'v2',
+        liveExecution: false,
+        status: 'no_quote',
+        reason: preview.data.reason,
+        sellSymbol: pair.sellSymbol,
+        buySymbol: pair.buySymbol,
+        sellAmount,
+        buyAmount: null,
+        availableSellAmount: availableSell,
+        hint: availableSell
+          ? `${rfqNoQuoteMessage(preview.data.reason)} Profundidad publicada: ~${availableSell} ${pair.sellSymbol}.`
+          : rfqNoQuoteMessage(preview.data.reason),
+      })
+    }
+
     return NextResponse.json({
-      mode: 'live',
-      liveExecution: Boolean(live.data.hasLiquidity !== false && proceeds),
+      mode: 'rfq',
+      venue: 'v2',
+      liveExecution: true,
+      status: 'preview',
       sellSymbol: pair.sellSymbol,
       buySymbol: pair.buySymbol,
       sellAmount,
       sellAtomic,
-      buyAmount: proceeds ? fromAtomicAmount(proceeds, pair.buySymbol) : indicative,
-      fillableAmount: live.data.fillableAmount,
-      proceeds,
-      effectiveRateRay: live.data.effectiveRateRay,
-      fullyFilled: live.data.fullyFilled,
-      hasLiquidity: live.data.hasLiquidity,
-      localPerUsdt,
+      buyAmount: fromAtomicAmount(preview.data.buyAmount, pair.buySymbol),
+      takerPays: preview.data.takerPays,
+      feeAmount: preview.data.feeAmount,
+      effectiveRateRay: preview.data.rateRay,
+      availableSellAmount: preview.data.availableSellAmount
+        ? fromAtomicAmount(preview.data.availableSellAmount, pair.sellSymbol)
+        : null,
+      hint: 'Precio indicativo RFQ. Al confirmar pedimos una cotización firme (~30 s).',
     })
   } catch (error) {
     console.error('[textile/quote]', error)

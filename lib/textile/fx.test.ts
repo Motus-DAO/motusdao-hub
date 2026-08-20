@@ -4,9 +4,13 @@ import {
   applySlippageRay,
   fromAtomicAmount,
   indicativeBuyAmount,
+  isTextileQuoteTooCloseToExpiry,
+  isBelowTextileRfqMinimum,
   resolveTextilePair,
+  rfqNoQuoteMessage,
   tickerIdForWfiat,
   toAtomicAmount,
+  TEXTILE_API_BASE,
 } from './fx'
 
 describe('Textile FX in-app pair helpers', () => {
@@ -43,5 +47,15 @@ describe('Textile FX in-app pair helpers', () => {
       '1'
     )
     assert.equal(applySlippageRay('1000000000000000000000000000', 50), '995000000000000000000000000')
+  })
+
+  it('uses Textile FX v2 RFQ conventions', () => {
+    assert.equal(TEXTILE_API_BASE, 'https://api.textilecredit.com/v2')
+    assert.equal(isBelowTextileRfqMinimum('0.5'), true)
+    assert.equal(isBelowTextileRfqMinimum('1'), false)
+    assert.match(rfqNoQuoteMessage('no_makers_online'), /onboarding liquidez/)
+    assert.match(rfqNoQuoteMessage('no_valid_quote'), /fills parciales/)
+    assert.equal(isTextileQuoteTooCloseToExpiry(new Date(Date.now() + 60_000).toISOString()), false)
+    assert.equal(isTextileQuoteTooCloseToExpiry(new Date(Date.now() + 2_000).toISOString()), true)
   })
 })

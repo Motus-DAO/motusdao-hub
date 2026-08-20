@@ -1,5 +1,5 @@
 import { createPublicClient, http, formatUnits, type Address } from 'viem'
-import { celoMainnet, CELO_STABLE_TOKENS } from './celo'
+import { celoMainnet, CELO_STABLE_TOKENS, getCeloTokenDecimals } from './celo'
 
 // ERC20 ABI for balanceOf
 const ERC20_ABI = [
@@ -61,6 +61,7 @@ export async function getTokenBalance(
   tokenAddress: string
 ): Promise<TokenBalance> {
   try {
+    const decimals = getCeloTokenDecimals(tokenSymbol)
     const balance = await publicClient.readContract({
       address: tokenAddress as `0x${string}`,
       abi: ERC20_ABI,
@@ -71,7 +72,7 @@ export async function getTokenBalance(
     return {
       symbol: tokenSymbol,
       name: tokenSymbol,
-      balance: formatUnits(balance, 18), // Most tokens have 18 decimals
+      balance: formatUnits(balance, decimals),
       rawBalance: balance,
       address: tokenAddress,
     }

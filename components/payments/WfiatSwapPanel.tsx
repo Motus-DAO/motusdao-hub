@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeftRight, Copy, ExternalLink, Loader, Wallet, X } from 'lucide-react'
 import { CTAButton } from '@/components/ui/CTAButton'
-import { sendUnsignedEvmTx } from '@/lib/payments'
+import { sendUnsignedEvmTx, ensureErc20Allowance } from '@/lib/payments'
 import { formatCeloAddress, getCeloExplorerUrl } from '@/lib/celo'
 import { getTextileFxSwapUrl } from '@/lib/ripio/wfiat'
 import {
+  isTextileQuoteTooCloseToExpiry,
   isTextileWfiatLeg,
+  toAtomicAmount,
+  TEXTILE_LIMIT_ORDER_REACTOR,
+  TEXTILE_TOKEN_ADDRESSES,
   type TextileSwapSymbol,
   type TextileUnsignedTx,
   type TextileWfiatLeg,
@@ -15,16 +19,17 @@ import {
 import type { WaaPWallet } from '@/lib/wallet-utils'
 
 type QuoteResponse = {
-  mode?: 'live' | 'indicative'
+  mode?: 'rfq' | 'live' | 'indicative'
+  venue?: string
   liveExecution?: boolean
+  status?: string
+  reason?: string
   sellSymbol?: TextileSwapSymbol
   buySymbol?: TextileSwapSymbol
   sellAmount?: string
   buyAmount?: string | null
+  availableSellAmount?: string | null
   effectiveRateRay?: string
-  hasLiquidity?: boolean
-  fullyFilled?: boolean
-  localPerUsdt?: number | null
   hint?: string
   error?: string
 }
@@ -32,15 +37,17 @@ type QuoteResponse = {
 type SwapBuildResponse = {
   fillable?: boolean
   id?: string
+  claimToken?: string
+  status?: string
   reason?: string
-  liveOrders?: number
-  proceeds?: string
+  hint?: string
+  expiresAt?: string
+  buyAmount?: string | null
   transactions?: {
     approval?: TextileUnsignedTx
     swap?: TextileUnsignedTx
   }
   error?: string
-  hint?: string
 }
 
 type SwapPath = 'inapp' | 'external'
@@ -65,12 +72,13 @@ export function WfiatSwapPanel({
   const wfiat: TextileWfiatLeg = isTextileWfiatLeg(initialSellSymbol)
     ? initialSellSymbol
     : 'wARS'
-  const [path, setPath] = useState<SwapPath>('external')
+  const [path, setPath] = useState<SwapPath>('inapp')
   const [sellSymbol, setSellSymbol] = useState<TextileSwapSymbol>(wfiat)
   const [sellAmount, setSellAmount] = useState('')
   const [quote, setQuote] = useState<QuoteResponse | null>(null)
   const [quoting, setQuoting] = useState(false)
   const [executing, setExecuting] = useState(false)
+  const [executingLabel, setExecutingLabel] = useState('Firmando…')
   const [error, setError] = useState<string | null>(null)
   const [successHash, setSuccessHash] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -81,6 +89,13 @@ export function WfiatSwapPanel({
   const loadQuote = useCallback(async () => {
     if (path !== 'inapp' || !sellAmount || Number(sellAmount) <= 0) {
       setQuote(null)
+      return
+    }
+    if (Number(sellAmount) < 1) {
+      setQuote({
+        error: `El mínimo RFQ es 1 ${sellSymbol} entero.`,
+        liveExecution: false,
+      })
       return
     }
     setQuoting(true)
@@ -143,57 +158,77 @@ export function WfiatSwapPanel({
       setError('Conecta tu wallet WaaP para firmar el swap en Motus.')
       return
     }
-    if (!quote?.liveExecution) {
-      setError(quote?.hint || 'El swap en Motus estará listo cuando configuremos TEXTILE_API_KEY.')
+    if (!sellAmount || Number(sellAmount) < 1) {
+      setError(`El mínimo RFQ es 1 ${sellSymbol} entero.`)
       return
     }
 
     setExecuting(true)
+    setExecutingLabel('Revisando aprobación…')
     setError(null)
     setSuccessHash(null)
     try {
-      const response = await fetch('/api/textile/swap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sellSymbol,
-          buySymbol,
-          sellAmount,
-          taker: walletAddress,
-          minRateRay: quote.effectiveRateRay,
-        }),
+      const required = BigInt(toAtomicAmount(sellAmount, sellSymbol))
+      const allowance = await ensureErc20Allowance({
+        wallet,
+        owner: walletAddress as `0x${string}`,
+        token: TEXTILE_TOKEN_ADDRESSES[sellSymbol],
+        spender: TEXTILE_LIMIT_ORDER_REACTOR,
+        required,
       })
-      const built = (await response.json()) as SwapBuildResponse
-      if (!response.ok) {
-        throw new Error(built.error || built.hint || 'No se pudo armar el swap')
-      }
-      if (!built.fillable || !built.transactions?.swap) {
-        throw new Error(
-          built.reason === 'no_liquidity'
-            ? 'No hay liquidez en Textile FX ahora. Intenta un monto menor o más tarde.'
-            : built.reason || 'El libro no cubre este monto.'
-        )
+      if (!allowance.success) {
+        throw new Error(allowance.error || 'Falló la aprobación del token')
       }
 
-      if (built.transactions.approval) {
-        const approval = await sendUnsignedEvmTx(wallet, built.transactions.approval, {
-          wait: true,
+      const requestSwap = async () => {
+        const response = await fetch('/api/textile/swap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sellSymbol,
+            buySymbol,
+            sellAmount,
+            taker: walletAddress,
+          }),
         })
-        if (!approval.success) {
-          throw new Error(approval.error || 'Falló la aprobación')
+        const built = (await response.json()) as SwapBuildResponse
+        if (!response.ok) {
+          throw new Error(built.error || built.hint || 'No se pudo armar el swap')
         }
+        if (!built.fillable || !built.transactions?.swap) {
+          throw new Error(built.hint || built.reason || 'Nadie cotizó este monto ahora.')
+        }
+        return built
       }
 
-      const swap = await sendUnsignedEvmTx(wallet, built.transactions.swap, { wait: true })
+      setExecutingLabel('Pidiendo cotización firme…')
+      let built = await requestSwap()
+      if (isTextileQuoteTooCloseToExpiry(built.expiresAt)) {
+        built = await requestSwap()
+      }
+      if (isTextileQuoteTooCloseToExpiry(built.expiresAt) || (built.expiresAt && Date.parse(built.expiresAt) <= Date.now())) {
+        throw new Error('La cotización firme quedó demasiado justa (~30 s). Confirma de nuevo.')
+      }
+
+      setExecutingLabel('Firmando el swap…')
+      const swapTx = built.transactions?.swap
+      if (!swapTx) {
+        throw new Error('Textile no devolvió la transacción de swap.')
+      }
+      const swap = await sendUnsignedEvmTx(wallet, swapTx, { wait: true })
       if (!swap.success || !swap.transactionHash) {
         throw new Error(swap.error || 'Falló el swap')
       }
 
-      if (built.id) {
+      if (built.id && built.claimToken) {
         await fetch('/api/textile/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: built.id, txHash: swap.transactionHash }),
+          body: JSON.stringify({
+            id: built.id,
+            claimToken: built.claimToken,
+            txHash: swap.transactionHash,
+          }),
         })
       }
 
@@ -241,7 +276,7 @@ export function WfiatSwapPanel({
           >
             <p className="text-sm font-semibold">En Motus</p>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Misma wallet WaaP. Listo cuando Textile nos dé API key.
+              Misma wallet WaaP. Cotización firme RFQ (Textile FX v2).
             </p>
           </button>
           <button
@@ -333,28 +368,27 @@ export function WfiatSwapPanel({
               {quoting ? (
                 <p className="text-muted-foreground flex items-center">
                   <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Cotizando…
+                  Cotizando RFQ…
                 </p>
               ) : quote?.buyAmount ? (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Recibes (est.)</p>
+                  <p className="text-xs text-muted-foreground mb-1">Recibes (est. RFQ)</p>
                   <p className="text-lg font-bold">
                     {quote.buyAmount} <span className="text-mauve-400">{buySymbol}</span>
                   </p>
-                  {quote.mode === 'indicative' && (
-                    <p className="text-[11px] text-yellow-400 mt-2">
-                      {quote.hint ||
-                        'Cotización indicativa. El swap en WaaP se habilita con TEXTILE_API_KEY.'}
-                    </p>
+                  {quote.hint && (
+                    <p className="text-[11px] text-muted-foreground mt-2">{quote.hint}</p>
                   )}
-                  {quote.liveExecution && quote.fullyFilled === false && (
-                    <p className="text-[11px] text-yellow-400 mt-2">
-                      El libro puede cubrir solo una parte de este monto.
-                    </p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    La cotización firme dura ~30 s. La aprobación del token se hace antes, para no gastar ese plazo.
+                  </p>
                 </div>
+              ) : quote?.hint || quote?.error ? (
+                <p className="text-xs text-yellow-400">{quote.hint || quote.error}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">Ingresa un monto para ver la cotización.</p>
+                <p className="text-xs text-muted-foreground">
+                  Ingresa al menos 1 {sellSymbol} entero para cotizar.
+                </p>
               )}
             </div>
 
@@ -376,17 +410,15 @@ export function WfiatSwapPanel({
             <CTAButton
               className="w-full"
               onClick={() => void execute()}
-              disabled={executing || quoting || !quote?.liveExecution || !sellAmount}
+              disabled={executing || quoting || !sellAmount || Number(sellAmount) < 1}
             >
               {executing ? (
                 <>
                   <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Firmando con WaaP…
+                  {executingLabel}
                 </>
-              ) : quote?.liveExecution ? (
-                `Cambiar ${sellSymbol} → ${buySymbol} en Motus`
               ) : (
-                'En Motus: próximamente'
+                `Cambiar ${sellSymbol} → ${buySymbol} en Motus`
               )}
             </CTAButton>
           </div>

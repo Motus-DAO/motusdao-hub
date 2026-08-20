@@ -1,5 +1,5 @@
 import { defineChain } from 'viem'
-import { RIPIO_WFIAT_TOKENS } from './ripio/wfiat'
+import { RIPIO_WFIAT_DECIMALS, RIPIO_WFIAT_TOKENS } from './ripio/wfiat'
 
 // Celo Mainnet Configuration
 export const celoMainnet = defineChain({
@@ -95,8 +95,8 @@ export const CELO_STABLE_TOKENS = {
   BRLm: '0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787',
   COPm: '0x8a567e2ae79ca692bd748ab832081c45de4041ea',
   CADm: '0xff4Ab19391af240c311c54200a492233052B6325',
-  USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', // Tether USD on Celo - VERIFY ADDRESS
-  USDC: '0xceba9300f2b948710d2653dd7b07f33a8b32118c', // USD Coin on Celo - VERIFY ADDRESS
+  USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', // native Tether USDT (6 decimals)
+  USDC: '0xceba9300f2b948710d2653dd7b07f33a8b32118c', // Circle USDC (6 decimals)
   PSY: '0x249c893c4ef4f929ff2a08bc81f70f59ca902a20', // Psychology Token - UPDATE WITH ACTUAL ADDRESS
   MOT: '0xc39000920debd2aae90a08006cf9d013e2b1083b', // Motus Token - UPDATE WITH ACTUAL ADDRESS
   ...RIPIO_WFIAT_TOKENS, // Ripio wFIAT on Celo — same address every chain, 18 decimals
@@ -104,6 +104,33 @@ export const CELO_STABLE_TOKENS = {
 
 export type CeloErc20Symbol = keyof typeof CELO_STABLE_TOKENS
 export type PaymentCurrency = 'CELO' | CeloErc20Symbol
+
+/** ERC-20 decimals on Celo. USDT/USDC are 6; Mento + Ripio wFIAT are 18. */
+export const CELO_TOKEN_DECIMALS: Record<CeloErc20Symbol, number> = {
+  USDm: 18,
+  EURm: 18,
+  BRLm: 18,
+  COPm: 18,
+  CADm: 18,
+  USDT: 6,
+  USDC: 6,
+  PSY: 18,
+  MOT: 18,
+  wARS: RIPIO_WFIAT_DECIMALS,
+  wBRL: RIPIO_WFIAT_DECIMALS,
+  wMXN: RIPIO_WFIAT_DECIMALS,
+  wCOP: RIPIO_WFIAT_DECIMALS,
+  wPEN: RIPIO_WFIAT_DECIMALS,
+  wCLP: RIPIO_WFIAT_DECIMALS,
+}
+
+export function getCeloTokenDecimals(symbol: string): number {
+  if (symbol === 'CELO') return 18
+  if (symbol in CELO_TOKEN_DECIMALS) {
+    return CELO_TOKEN_DECIMALS[symbol as CeloErc20Symbol]
+  }
+  return 18
+}
 
 // Smart Contract Addresses on Celo Mainnet
 export const CELO_CONTRACTS = {

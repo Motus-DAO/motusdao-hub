@@ -1,5 +1,5 @@
-import { createWalletClient, createPublicClient, custom, http, parseUnits, encodeFunctionData, type Address, type Hex } from 'viem'
-import { celoMainnet, CELO_STABLE_TOKENS, type PaymentCurrency } from './celo'
+import { createWalletClient, createPublicClient, custom, http, parseUnits, encodeFunctionData, maxUint256, type Address, type Hex } from 'viem'
+import { celoMainnet, CELO_STABLE_TOKENS, getCeloTokenDecimals, type PaymentCurrency } from './celo'
 import { getCeloExplorerUrl } from './celo'
 import type { WaaPWallet } from './wallet-utils'
 import { getPrimaryWallet } from './wallet-utils'
@@ -124,7 +124,7 @@ export async function sendStablecoinPayment(
     }
 
     // ERC20 transfer function signature: transfer(address to, uint256 amount)
-    const amountInWei = parseUnits(params.amount, 18) // Stablecoins have 18 decimals
+    const amountInWei = parseUnits(params.amount, getCeloTokenDecimals(params.currency))
 
     // Encode the transfer function call
     const data = encodeFunctionData({
@@ -182,7 +182,16 @@ export async function sendUnsignedEvmTx(
     })
 
     if (options?.wait !== false) {
-      await celoPublicClient.waitForTransactionReceipt({ hash })
+      const receipt = await celoPublicClient.waitForTransactionReceipt({ hash })
+      if (receipt.status === 'reverted') {
+        return {
+          success: false,
+          transactionHash: hash,
+          explorerUrl: getCeloExplorerUrl(hash, 'tx'),
+          error:
+            'La transacción se revirtió on-chain. Si era un swap Textile, la cotización RFQ (~30 s) probablemente expiró. Vuelve a confirmar: la aprobación ya debería estar hecha.',
+        }
+      }
     }
 
     return {
@@ -194,6 +203,64 @@ export async function sendUnsignedEvmTx(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Transaction failed',
+    }
+  }
+}
+
+const ERC20_ALLOWANCE_ABI = [
+  {
+    name: 'allowance',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const
+
+/** Approve spender if allowance is below `required`. Unlimited approve so RFQ TTL is not spent on this. */
+export async function ensureErc20Allowance(params: {
+  wallet: WaaPWallet
+  owner: Address
+  token: Address
+  spender: Address
+  required: bigint
+}): Promise<PaymentResult & { skipped?: boolean }> {
+  try {
+    const allowance = (await celoPublicClient.readContract({
+      address: params.token,
+      abi: ERC20_ALLOWANCE_ABI,
+      functionName: 'allowance',
+      args: [params.owner, params.spender],
+    })) as bigint
+
+    if (allowance >= params.required) {
+      return { success: true, skipped: true }
+    }
+
+    const data = encodeFunctionData({
+      abi: ERC20_ALLOWANCE_ABI,
+      functionName: 'approve',
+      args: [params.spender, maxUint256],
+    })
+
+    return sendUnsignedEvmTx(params.wallet, { to: params.token, data, value: '0' }, { wait: true })
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'No se pudo revisar el allowance',
     }
   }
 }

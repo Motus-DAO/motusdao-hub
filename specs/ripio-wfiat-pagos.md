@@ -14,7 +14,7 @@
 - Pagos token picker, balances, send, and receive include Ripio wFIAT on Celo: `wARS`, `wBRL`, `wMXN`, `wCOP`, `wPEN`, `wCLP`.
 - Users can send those ERC-20s from their wallet like any other listed stable.
 - For **wARS** and **wBRL**, Pagos opens a swap panel with **two paths**:
-  - **En Motus (WaaP)** — same wallet; live execution when `TEXTILE_API_KEY` is set.
+  - **En Motus (WaaP)** — same wallet; Textile FX **v2 RFQ** (preview while typing, firm quote on confirm). No API key required.
   - **Otra wallet** — opens Textile FX; user swaps there, then sends tokens to their Motus EOA (copy address in the panel / Pagos Recibir).
 
 ## 2. Non-goals (explicitly out of scope)
@@ -37,7 +37,7 @@
 - [`app/api/textile/swap/route.ts`](../app/api/textile/swap/route.ts)
 - [`components/payments/WfiatSwapPanel.tsx`](../components/payments/WfiatSwapPanel.tsx)
 - [`lib/payments.ts`](../lib/payments.ts) — WaaP `sendUnsignedEvmTx`
-- Docs: [Textile FX v1](https://docs.textilecredit.com/api/v1/), [quotes](https://docs.textilecredit.com/api/v1/quotes), [swaps](https://docs.textilecredit.com/api/v1/swaps), [public tickers](https://docs.textilecredit.com/api/rates)
+- Docs: [Textile FX v2 RFQ](https://docs.textilecredit.com/api/v2/), [RFQ endpoints](https://docs.textilecredit.com/api/v2/rfq), [auth](https://docs.textilecredit.com/api/v2/authentication), [public tickers](https://docs.textilecredit.com/api/rates)
 
 ## 4. Acceptance criteria (Given / When / Then)
 
@@ -46,8 +46,8 @@
 3. **Given** the user selects `wARS` or `wBRL` and opens swap, **when** the panel shows, **then** they can choose **En Motus** or **Otra wallet**.
 4. **Given** **Otra wallet**, **when** they continue, **then** Textile FX opens in a new tab and the panel shows the Motus EOA with a copy control so they can send funds back.
 5. **Negative path:** **given** `wMXN` / `wCOP` / `wPEN` / `wCLP` selected, **when** the token detail / send panel renders, **then** no swap CTA is shown.
-6. **Given** `TEXTILE_API_KEY` is unset and **En Motus** is selected, **when** they enter an amount, **then** they see an indicative quote and Confirm stays disabled (never leak the key).
-7. **Given** `TEXTILE_API_KEY` is set, **En Motus** selected, and the book has liquidity, **when** they confirm, **then** they sign approve + swap with WaaP.
+6. **Given** **En Motus** is selected and the amount is ≥ 1 whole sell token, **when** they type, **then** they see a v2 RFQ preview (`POST /v2/rfq/preview`) or a clear `no_quote` reason — never a v1 partial-book “0 USDT”.
+7. **Given** **En Motus** and a preview (or retry), **when** they confirm, **then** Motus solicits a firm quote (`POST /v2/rfq/request` bound to the WaaP taker) and they sign approve + `transactions.swap`. All-or-nothing: nobody quoted → error, no partial fill.
 8. **Given** Transak / Mt Pelerin / Ripio ramps flags unchanged, **when** Pagos loads, **then** on-ramp provider behavior is unchanged.
 
 ## 5. Data / schema changes
@@ -58,15 +58,16 @@
 
 | Method | Path | Auth | Request | Response | Notes |
 |--------|------|------|---------|----------|-------|
-| POST | `/api/textile/quote` | none (wallet address optional) | `{ sellSymbol, buySymbol, sellAmount, address? }` | `{ mode: 'live'\|'indicative', buyAmount, liveExecution, … }` | Tickers are public; live book needs `TEXTILE_API_KEY` |
-| POST | `/api/textile/swap` | none (taker required) | `{ sellSymbol, buySymbol, sellAmount, taker, minRateRay? }` | `{ fillable, transactions.approval?, transactions.swap }` or 503 | Server-only Textile key |
-| POST | `/api/textile/submit` | none | `{ id, txHash }` | `{ ok: true }` | Reports hash to Textile |
+| POST | `/api/textile/quote` | none | `{ sellSymbol, buySymbol, sellAmount, address? }` | `{ venue: 'v2', mode: 'rfq', status: 'preview'\|'no_quote', buyAmount, liveExecution, … }` | Proxies `POST /v2/rfq/preview`. Anonymous. |
+| POST | `/api/textile/swap` | none (taker required) | `{ sellSymbol, buySymbol, sellAmount, taker }` | `{ fillable, id, claimToken, expiresAt, transactions.approval?, transactions.swap }` | Proxies `POST /v2/rfq/request`. Blocks ~750ms. |
+| POST | `/api/textile/submit` | none | `{ id, claimToken, txHash }` | `{ ok: true }` | `POST /v2/rfq/{id}/submit` with `X-Rfq-Claim` |
 
 ### Env vars
 
 | Var | Where | Purpose |
 |-----|--------|---------|
-| `TEXTILE_API_KEY` | server | Textile FX v1 bearer key (`tx_live_…`). Never `NEXT_PUBLIC_`. Request from contact@textilecredit.com with scopes `quotes:read` + `trades:write`. |
+| `TEXTILE_API_KEY` | server | Optional. Only sent if `TEXTILE_RFQ_USE_API_KEY=true` **and** the key is `tx_live_…` **and** Textile has `rfqV2Allowed`. A `tx_test_…` key 403s v2. Default is anonymous RFQ (same as the public Swap). Never `NEXT_PUBLIC_`. |
+| `TEXTILE_RFQ_USE_API_KEY` | server | Opt-in. Leave unset unless the partner is allowlisted for RFQ v2. |
 
 ## 7. QA gate (Definition of Done for this slice)
 
@@ -84,5 +85,5 @@ Loop ends when AC pass, QA gate green, and no critical findings.
 
 1. All six wFIAT tokens are listed for send/receive; only `wARS` and `wBRL` get a swap CTA.
 2. Swap panel offers **En Motus (WaaP)** and **Otra wallet (Textile FX)**. External path is for wallets Textile can connect; user then sends to the Motus EOA shown in the panel.
-3. Without `TEXTILE_API_KEY`, En Motus stays quote-only. Otra wallet still works.
+3. En Motus uses Textile FX **v2 RFQ** anonymously (wallet-bound `taker`). v1 order-book quote/swap is not used. A partner API key is optional and must be `rfqV2Allowed`; test keys must not be sent.
 4. Addresses come from Ripio’s Celo launch + Bridge docs (same address every chain, 18 decimals). USDT on Celo is 6 decimals.
