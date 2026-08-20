@@ -4,6 +4,11 @@ import {
   signSiweMessage,
   SignMessageError,
 } from './signing'
+import {
+  runHubSessionBootstrap,
+  shouldBootstrapHubSession,
+  type HubSessionSnapshot,
+} from './hub-session'
 
 export { isUserRejectedSignError, SignMessageError }
 
@@ -92,6 +97,61 @@ export async function establishSiweSession(params: {
   }
 
   return true
+}
+
+let hubBootstrapInFlight: Promise<boolean> | null = null
+
+/**
+ * Recreate motus_session after WaaP login when the Hub cookie is missing
+ * or bound to a different signer. Shares one in-flight attempt so
+ * AppSessionProvider and useSiweSession cannot double-prompt.
+ */
+export async function bootstrapHubSessionIfNeeded(params: {
+  waapProvider: unknown
+  authProvider?: 'waap' | 'privy' | 'external'
+  authProviderId?: string
+  eoaAddress?: string
+}): Promise<boolean> {
+  if (hubBootstrapInFlight) {
+    return hubBootstrapInFlight
+  }
+
+  hubBootstrapInFlight = (async () => {
+    const session = await fetchAppSession()
+    const snapshot: HubSessionSnapshot = {
+      authenticated: session.authenticated,
+      userId: session.userId,
+      eoaAddress: session.eoaAddress,
+    }
+    const currentEoa = params.eoaAddress ?? null
+
+    if (
+      !shouldBootstrapHubSession({
+        walletReady: true,
+        walletAuthenticated: true,
+        currentEoa,
+        session: snapshot,
+      })
+    ) {
+      return Boolean(session.authenticated && session.userId)
+    }
+
+    const result = await runHubSessionBootstrap({
+      walletReady: true,
+      walletAuthenticated: true,
+      currentEoa,
+      session: snapshot,
+      establish: () => establishSiweSession(params),
+    })
+
+    return result === 'bootstrapped' || result === 'ready'
+  })()
+
+  try {
+    return await hubBootstrapInFlight
+  } finally {
+    hubBootstrapInFlight = null
+  }
 }
 
 export async function logoutAppSession(): Promise<void> {

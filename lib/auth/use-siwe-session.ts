@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useWallet, useWalletProvider, useWallets } from '@/lib/wallet'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import {
+  bootstrapHubSessionIfNeeded,
   establishSiweSession,
   fetchAppSession,
   isUserRejectedSignError,
@@ -30,6 +31,22 @@ export function useSiweSession() {
       return
     }
 
+    if (provider) {
+      const authProvider =
+        providerId === 'external'
+          ? 'external'
+          : providerId === 'privy'
+            ? 'privy'
+            : 'waap'
+
+      await bootstrapHubSessionIfNeeded({
+        waapProvider: provider,
+        authProvider,
+        authProviderId: user?.id,
+        eoaAddress,
+      })
+    }
+
     const session = await fetchAppSession()
     if (session.authenticated && session.eoaAddress) {
       setSessionState('ready')
@@ -38,7 +55,7 @@ export function useSiweSession() {
     }
 
     setSessionState('needs_signature')
-  }, [ready, authenticated, eoaAddress])
+  }, [ready, authenticated, eoaAddress, provider, providerId, user?.id])
 
   useEffect(() => {
     void refresh()

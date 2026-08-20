@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
       eoaAddress: data.eoaAddress,
     })
 
-    if (identity.status === 'conflict') {
+    if (identity.status === 'conflict' || identity.status === 'already_registered') {
       return NextResponse.json(
         { error: identity.message, code: identity.code },
         { status: 409 }

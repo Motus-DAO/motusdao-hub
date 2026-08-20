@@ -30,10 +30,18 @@ import {
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
-import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams, getWaapAuthEmail } from '@/lib/wallet'
+import { useWallet, useWallets, getWaapAuthEmail } from '@/lib/wallet'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { authFetch } from '@/lib/auth/client'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import {
+  classifyProfileLoadError,
+  profileLoadErrorMessage,
+  shouldShowCompleteRegistration,
+  type ProfileLoadErrorKind,
+} from '@/lib/auth/hub-session'
 import { motusNameService } from '@/lib/motus-name-service'
 import { buildVideochatUrl } from '@/lib/jitsi'
 import { useRouter } from 'next/navigation'
@@ -86,8 +94,13 @@ export default function PerfilPage() {
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
-  const { authenticated, user, ready, providerId } = useWallet()
+  const { authenticated, user, ready } = useWallet()
   const { wallets } = useWallets()
+  const {
+    sessionState,
+    isSessionReady,
+    signing: isSigningSession,
+  } = useSiweSession()
   
   // ZeroDev smart wallet hook
   const { smartAccountAddress } = useSmartAccount()
@@ -97,13 +110,13 @@ export default function PerfilPage() {
   
   // WaaP email (MetaMask / external wallet users enter email during onboarding instead)
   const waapEmail = getWaapAuthEmail(user)
-  const walletIdentity = getWalletIdentity(user, providerId)
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<ProfileLoadErrorKind | null>(null)
   const [profileData, setProfileData] = useState<ProfileData>({
     nombre: '',
     apellido: '',
@@ -237,30 +250,35 @@ export default function PerfilPage() {
   const [motusName, setMotusName] = useState<string | null>(null)
   const [isLoadingMotusName, setIsLoadingMotusName] = useState(false)
 
-  // Fetch profile data from API
+  // Fetch profile data from API — Hub session is canonical; do not look up by email/wallet.
   useEffect(() => {
     const fetchProfile = async () => {
       if (!ready || !authenticated) return
-      if (!walletIdentity && !waapEmail && !eoaAddress) return
+      if (sessionState === 'loading' || isSigningSession) return
+
+      if (sessionState === 'needs_signature' || sessionState === 'no_wallet') {
+        setErrorKind('unauthorized')
+        setError(profileLoadErrorMessage('unauthorized'))
+        setIsLoading(false)
+        return
+      }
+
+      if (!isSessionReady) return
 
       setIsLoading(true)
       setError(null)
+      setErrorKind(null)
 
       try {
-        const params = new URLSearchParams()
-        appendWalletIdentityParams(params, walletIdentity)
-        if (waapEmail) params.append('email', waapEmail)
-        if (eoaAddress) params.append('eoaAddress', eoaAddress)
-
-        const response = await authFetch(`/api/profile?${params.toString()}`)
+        const response = await authFetch('/api/profile')
         
         if (!response.ok) {
-          if (response.status === 404) {
-            setError('Perfil no encontrado. Por favor completa el registro primero.')
-            setIsLoading(false)
-            return
-          }
-          throw new Error('Error al cargar el perfil')
+          const body = (await response.json().catch(() => ({}))) as { code?: string }
+          const kind = classifyProfileLoadError(response.status, body.code)
+          setErrorKind(kind)
+          setError(profileLoadErrorMessage(kind))
+          setIsLoading(false)
+          return
         }
 
         const data = await response.json()
@@ -278,6 +296,7 @@ export default function PerfilPage() {
             avatarUrl: data.profile.avatarUrl || ''
           })
         } else if (data.profileIncomplete) {
+          setErrorKind('generic')
           setError('Tu perfil básico está incompleto. Por favor completa tus datos personales.')
         }
 
@@ -289,14 +308,15 @@ export default function PerfilPage() {
         }
       } catch (err) {
         console.error('Error fetching profile:', err)
-        setError(err instanceof Error ? err.message : 'Error al cargar el perfil')
+        setErrorKind('generic')
+        setError(err instanceof Error ? err.message : profileLoadErrorMessage('generic'))
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchProfile()
-  }, [ready, authenticated, waapEmail, walletIdentity?.authProviderId, eoaAddress])
+  }, [ready, authenticated, isSessionReady, sessionState, isSigningSession])
 
   // Fetch match data
   useEffect(() => {
@@ -586,7 +606,7 @@ export default function PerfilPage() {
     ? `${profileData.nombre} ${profileData.apellido}` 
     : 'Usuario MotusDAO'
 
-  if (isLoading) {
+  if (isLoading || sessionState === 'loading' || isSigningSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -597,17 +617,29 @@ export default function PerfilPage() {
     )
   }
 
-  if (error && !profileData.nombre) {
+  if ((error && !profileData.nombre) || sessionState === 'needs_signature') {
+    const kind = errorKind ?? (sessionState === 'needs_signature' ? 'unauthorized' : 'generic')
+    const allowRegister = shouldShowCompleteRegistration(kind)
+    const message = error || profileLoadErrorMessage(kind)
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <GlassCard className="p-8 max-w-md">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{error}</p>
-            <CTAButton onClick={() => window.location.href = '/registro'}>
-              Completar Registro
-            </CTAButton>
+            <p className="text-muted-foreground mb-6">{message}</p>
+            {allowRegister ? (
+              <CTAButton onClick={() => window.location.href = '/registro'}>
+                Completar Registro
+              </CTAButton>
+            ) : (
+              <div className="text-left">
+                {(kind === 'unauthorized' || sessionState === 'needs_signature') && (
+                  <SiweSessionBanner compact />
+                )}
+              </div>
+            )}
           </div>
         </GlassCard>
       </div>

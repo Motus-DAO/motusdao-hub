@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import {
-  assertSelfOrAdmin,
-  assertSessionCanAccessUser,
-  requireSelfOrAdmin,
-} from '@/lib/auth/guards'
+import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
-import {
-  parseAuthIdentityFromSearchParams,
-  authIdentityLookupConditions,
-} from '@/lib/auth/identity'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import {
+  resolveProfileSessionAccess,
+  UNLINKED_WALLET_CODE,
+} from '@/lib/auth/hub-session'
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,16 +77,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
+function toHubSessionSnapshot(session: {
+  userId: string | null
+  eoaAddress: string
+}) {
+  return {
+    authenticated: true,
+    userId: session.userId,
+    eoaAddress: session.eoaAddress,
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession(request)
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const emailParam = searchParams.get('email')
-    const email =
-      emailParam && emailParam.includes('@') ? emailParam : null
-    const eoaParam = searchParams.get('eoaAddress')
-    const identity = parseAuthIdentityFromSearchParams(searchParams)
+    const access = resolveProfileSessionAccess(toHubSessionSnapshot(session))
+
+    if (access.status === 'unlinked') {
+      return NextResponse.json(
+        {
+          error: 'Authenticated user is not linked to an app profile',
+          code: UNLINKED_WALLET_CODE,
+        },
+        { status: 401 }
+      )
+    }
+
+    if (access.status !== 'ok') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
 
     const userInclude = {
       profile: true,
@@ -98,55 +116,13 @@ export async function GET(request: NextRequest) {
       psm: true,
     } as const
 
-    // Prefer session-linked lookup, then explicit query params
-    let user =
-      session.userId != null
-        ? await prisma.user.findUnique({
-            where: { id: session.userId },
-            include: userInclude,
-          })
-        : null
-
-    if (!user && session.eoaAddress) {
-      user = await prisma.user.findFirst({
-        where: {
-          deletedAt: null,
-          eoaAddress: { equals: session.eoaAddress, mode: 'insensitive' },
-        },
-        include: userInclude,
-      })
-    }
-
-    if (!user && userId) {
-      user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: userInclude,
-      })
-    }
-
-    if (!user && (email || identity.authProviderId || identity.legacyPrivyId || eoaParam)) {
-      const identityConditions = authIdentityLookupConditions(identity)
-      user = await prisma.user.findFirst({
-        where: {
-          deletedAt: null,
-          OR: [
-            ...(email ? [{ email }] : []),
-            ...(eoaParam
-              ? [
-                  {
-                    eoaAddress: {
-                      equals: eoaParam,
-                      mode: 'insensitive' as const,
-                    },
-                  },
-                ]
-              : []),
-            ...identityConditions,
-          ],
-        },
-        include: userInclude,
-      })
-    }
+    const user = await prisma.user.findFirst({
+      where: {
+        id: access.userId,
+        deletedAt: null,
+      },
+      include: userInclude,
+    })
 
     if (!user) {
       return NextResponse.json(
@@ -154,8 +130,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       )
     }
-
-    assertSessionCanAccessUser(session, user)
 
     await recordClinicalAccess({
       request,
