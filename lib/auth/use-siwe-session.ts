@@ -1,6 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useWallet, useWalletProvider, useWallets } from '@/lib/wallet'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import {
@@ -8,11 +16,25 @@ import {
   establishSiweSession,
   fetchAppSession,
   isUserRejectedSignError,
+  waitForExistingHubBootstrap,
 } from '@/lib/auth/client'
+import { SIWE_SESSION_LOADING_TIMEOUT_MS } from '@/lib/auth/hub-session'
 
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
-export function useSiweSession() {
+export type SiweSessionValue = {
+  sessionState: SiweSessionState
+  signing: boolean
+  signError: string | null
+  eoaAddress: string | null
+  signIn: () => Promise<boolean>
+  refresh: () => Promise<void>
+  isSessionReady: boolean
+}
+
+const SiweSessionContext = createContext<SiweSessionValue | null>(null)
+
+function useSiweSessionController(): SiweSessionValue {
   const { ready, authenticated, user, providerId } = useWallet()
   const { provider } = useWalletProvider()
   const { wallets } = useWallets()
@@ -25,13 +47,30 @@ export function useSiweSession() {
   const refresh = useCallback(async () => {
     if (!ready) return
 
-    if (!authenticated || !eoaAddress) {
+    if (!authenticated) {
       setSessionState('no_wallet')
       setSignError(null)
       return
     }
 
-    if (provider) {
+    if (!eoaAddress) {
+      return
+    }
+
+    try {
+      const session = await fetchAppSession()
+      if (session.authenticated && session.eoaAddress) {
+        setSessionState('ready')
+        setSignError(null)
+        return
+      }
+
+      // Surface the sign prompt immediately. Waiting on SIWE here left
+      // /perfil stuck on "Cargando perfil..." / "Verificando sesión…".
+      setSessionState('needs_signature')
+
+      if (!provider) return
+
       const authProvider =
         providerId === 'external'
           ? 'external'
@@ -39,27 +78,44 @@ export function useSiweSession() {
             ? 'privy'
             : 'waap'
 
-      await bootstrapHubSessionIfNeeded({
+      const bootstrapped = await bootstrapHubSessionIfNeeded({
         waapProvider: provider,
         authProvider,
         authProviderId: user?.id,
         eoaAddress,
       })
-    }
 
-    const session = await fetchAppSession()
-    if (session.authenticated && session.eoaAddress) {
-      setSessionState('ready')
-      setSignError(null)
-      return
-    }
+      if (!bootstrapped) return
 
-    setSessionState('needs_signature')
+      const next = await fetchAppSession()
+      if (next.authenticated && next.eoaAddress) {
+        setSessionState('ready')
+        setSignError(null)
+      }
+    } catch (error) {
+      setSessionState('needs_signature')
+      setSignError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo verificar la sesión. Intenta de nuevo.'
+      )
+    }
   }, [ready, authenticated, eoaAddress, provider, providerId, user?.id])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (sessionState !== 'loading') return
+
+    const timeout = window.setTimeout(() => {
+      setSessionState(authenticated ? 'needs_signature' : 'no_wallet')
+      setSignError('La verificación de sesión tardó demasiado. Intenta de nuevo.')
+    }, SIWE_SESSION_LOADING_TIMEOUT_MS)
+
+    return () => window.clearTimeout(timeout)
+  }, [sessionState, authenticated])
 
   const signIn = useCallback(async () => {
     if (!provider) {
@@ -71,6 +127,13 @@ export function useSiweSession() {
     setSignError(null)
 
     try {
+      const inFlight = waitForExistingHubBootstrap()
+      if (inFlight) {
+        const ok = await inFlight
+        await refresh()
+        return ok
+      }
+
       const authProvider =
         providerId === 'external'
           ? 'external'
@@ -115,4 +178,17 @@ export function useSiweSession() {
     refresh,
     isSessionReady: sessionState === 'ready',
   }
+}
+
+export function SiweSessionProvider({ children }: { children: ReactNode }) {
+  const value = useSiweSessionController()
+  return createElement(SiweSessionContext.Provider, { value }, children)
+}
+
+export function useSiweSession(): SiweSessionValue {
+  const ctx = useContext(SiweSessionContext)
+  if (!ctx) {
+    throw new Error('useSiweSession must be used within SiweSessionProvider')
+  }
+  return ctx
 }

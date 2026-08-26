@@ -4,6 +4,7 @@ import { ReactNode, Component, ErrorInfo, useEffect } from 'react'
 import { WaaPProvider } from '@/lib/contexts/WaaPProvider'
 import { WalletAuthShell } from '@/components/wallet/WalletAuthShell'
 import { WaaPWalletContextBridge } from '@/components/wallet/WaaPWalletContextBridge'
+import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
 
 interface WaaPProviderWrapperProps {
   children: ReactNode
@@ -12,26 +13,6 @@ interface WaaPProviderWrapperProps {
 interface ErrorBoundaryState {
   hasError: boolean
   error: Error | null
-}
-
-/**
- * Check if an error is the known WaaP/ethers encoding error
- * This error occurs when ethers v5 tries to decode a hash as UTF-8
- */
-function isWaaPEncodingError(error: unknown): boolean {
-  if (!error) return false
-  
-  const errorStr = error instanceof Error 
-    ? error.message 
-    : typeof error === 'string' 
-      ? error 
-      : String(error)
-  
-  return errorStr.includes('invalid codepoint') || 
-         errorStr.includes('missing continuation byte') ||
-         errorStr.includes('unexpected continuation byte') ||
-         errorStr.includes('strings/5.7.0') ||
-         errorStr.includes('INVALID_ARGUMENT')
 }
 
 /**
@@ -46,9 +27,7 @@ class WaaPErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundary
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    // Check if it's the known UTF-8 encoding error from WaaP SDK
-    if (isWaaPEncodingError(error)) {
-      // Silently suppress - this is a known non-fatal SDK bug
+    if (isRecoverableWaapSdkError(error)) {
       return { hasError: false, error: null }
     }
     
@@ -56,9 +35,7 @@ class WaaPErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundary
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (isWaaPEncodingError(error)) {
-      // Silently suppress - this is a known non-fatal SDK bug
-      // Reset error state to allow recovery
+    if (isRecoverableWaapSdkError(error)) {
       this.setState({ hasError: false, error: null })
     } else {
       console.error('[WaaP] Unknown error in provider:', error, errorInfo)
@@ -97,8 +74,7 @@ function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Handle errors that escape React's error boundary
     const handleError = (event: ErrorEvent) => {
-      if (isWaaPEncodingError(event.error) || isWaaPEncodingError(event.message)) {
-        // Completely suppress - don't even log
+      if (isRecoverableWaapSdkError(event.error) || isRecoverableWaapSdkError(event.message)) {
         event.preventDefault()
         event.stopPropagation()
         return false
@@ -106,8 +82,7 @@ function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
     }
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (isWaaPEncodingError(event.reason)) {
-        // Completely suppress - don't even log
+      if (isRecoverableWaapSdkError(event.reason)) {
         event.preventDefault()
         return false
       }
@@ -116,7 +91,7 @@ function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
     // Also override window.onerror for extra protection
     const originalOnError = window.onerror
     window.onerror = function(message, source, lineno, colno, error) {
-      if (isWaaPEncodingError(error) || isWaaPEncodingError(message)) {
+      if (isRecoverableWaapSdkError(error) || isRecoverableWaapSdkError(message)) {
         return true // Suppress the error
       }
       if (originalOnError) {
@@ -173,5 +148,4 @@ export function WaaPProviderWrapper({ children }: WaaPProviderWrapperProps) {
   )
 }
 
-// Export the error check utility for use elsewhere
-export { isWaaPEncodingError }
+export { isWaaPEncodingError } from '@/lib/wallet/waap-errors'

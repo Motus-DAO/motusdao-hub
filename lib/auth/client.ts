@@ -101,10 +101,14 @@ export async function establishSiweSession(params: {
 
 let hubBootstrapInFlight: Promise<boolean> | null = null
 
+export function waitForExistingHubBootstrap(): Promise<boolean> | null {
+  return hubBootstrapInFlight
+}
+
 /**
  * Recreate motus_session after WaaP login when the Hub cookie is missing
  * or bound to a different signer. Shares one in-flight attempt so
- * AppSessionProvider and useSiweSession cannot double-prompt.
+ * overlapping SIWE consumers cannot double-prompt.
  */
 export async function bootstrapHubSessionIfNeeded(params: {
   waapProvider: unknown

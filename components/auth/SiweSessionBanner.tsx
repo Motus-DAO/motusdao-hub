@@ -1,10 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { AlertCircle, CheckCircle, Loader } from 'lucide-react'
-import { useEffect } from 'react'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { StatusBanner } from '@/components/ui/StatusBanner'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { SIWE_SESSION_LOADING_TIMEOUT_MS } from '@/lib/auth/hub-session'
 
 type Props = {
   onReadyChange?: (ready: boolean) => void
@@ -13,18 +14,43 @@ type Props = {
 }
 
 export function SiweSessionBanner({ onReadyChange, compact }: Props) {
-  const { sessionState, signing, signError, eoaAddress, signIn, isSessionReady } =
+  const { sessionState, signing, signError, eoaAddress, signIn, refresh, isSessionReady } =
     useSiweSession()
+  const [loadingStalled, setLoadingStalled] = useState(false)
 
   useEffect(() => {
     onReadyChange?.(isSessionReady)
   }, [isSessionReady, onReadyChange])
 
+  useEffect(() => {
+    if (sessionState !== 'loading') {
+      setLoadingStalled(false)
+      return
+    }
+    const timeout = window.setTimeout(
+      () => setLoadingStalled(true),
+      SIWE_SESSION_LOADING_TIMEOUT_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [sessionState])
+
   if (sessionState === 'loading') {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-        <Loader className="h-4 w-4 animate-spin" />
-        Verificando sesión…
+      <div className="space-y-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Loader className="h-4 w-4 animate-spin" />
+          Verificando sesión…
+        </div>
+        {loadingStalled && (
+          <div className="space-y-2">
+            <p className="text-xs">
+              Esto está tardando más de lo normal. Puedes reintentar o recargar la página.
+            </p>
+            <CTAButton type="button" size="sm" variant="secondary" onClick={() => void refresh()}>
+              Reintentar
+            </CTAButton>
+          </div>
+        )}
       </div>
     )
   }

@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import type { Address } from 'viem'
+import { getWalletConnectProjectId } from '@/lib/wallet/config'
+import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
 
 // ============================================================================
 // TYPES - Compatible with Privy patterns for easier migration
@@ -103,31 +105,6 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   // This is a known issue in the @reown/appkit-adapter-ethers dependency that uses ethers v5
   // The error occurs when the SDK tries to decode a hash as UTF-8 text
   useEffect(() => {
-    // Check if this error should be suppressed
-    const isKnownWaaPError = (input: unknown): boolean => {
-      if (!input) return false
-      
-      // Handle various input types
-      let str = ''
-      if (input instanceof Error) {
-        str = `${input.message || ''} ${input.name || ''} ${input.stack || ''}`
-      } else if (typeof input === 'object') {
-        try {
-          str = JSON.stringify(input)
-        } catch {
-          str = String(input)
-        }
-      } else {
-        str = String(input)
-      }
-      
-      return str.includes('invalid codepoint') || 
-             str.includes('missing continuation byte') ||
-             str.includes('unexpected continuation byte') ||
-             str.includes('strings/5.7.0') ||
-             str.includes('INVALID_ARGUMENT')
-    }
-
     // Store original console methods
     const originalError = console.error.bind(console)
 
@@ -135,7 +112,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     const patchedError = function(...args: unknown[]) {
       // Check each argument for the known error pattern
       for (const arg of args) {
-        if (isKnownWaaPError(arg)) {
+        if (isRecoverableWaapSdkError(arg)) {
           // Completely suppress this non-fatal SDK issue - don't even log it
           return
         }
@@ -150,7 +127,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         return String(a || '')
       }).join(' ')
       
-      if (isKnownWaaPError(combinedStr)) {
+      if (isRecoverableWaapSdkError(combinedStr)) {
         // Completely suppress this non-fatal SDK issue
         return
       }
@@ -166,8 +143,8 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
 
     // Handle unhandled errors from WaaP SDK
     const handleError = (event: ErrorEvent) => {
-      if (isKnownWaaPError(event.error) || isKnownWaaPError(event.message)) {
-        console.debug('[WAAP] Suppressed unhandled SDK encoding error (non-fatal)')
+      if (isRecoverableWaapSdkError(event.error) || isRecoverableWaapSdkError(event.message)) {
+        console.debug('[WAAP] Suppressed unhandled SDK error (non-fatal)')
         event.preventDefault()
         event.stopPropagation()
         return false
@@ -177,7 +154,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
 
     // Handle unhandled promise rejections from WaaP SDK
     const handleRejection = (event: PromiseRejectionEvent) => {
-      if (isKnownWaaPError(event.reason)) {
+      if (isRecoverableWaapSdkError(event.reason)) {
         console.debug('[WAAP] Suppressed unhandled SDK promise rejection (non-fatal)')
         event.preventDefault()
         return false
@@ -224,14 +201,24 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         // SDK types: SocialProvider = 'discord' | 'github' | 'google' | 'twitter' | 'bluesky'
         // SDK types: AuthenticationMethod = 'email' | 'phone' | 'social' | 'biometrics' | 'wallet'
         
-        // Get WalletConnect Project ID from environment (required for 'wallet' auth method)
-        const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+        // Get WalletConnect Project ID (required for 'wallet' auth method)
+        const walletConnectProjectId = getWalletConnectProjectId()
+        const authenticationMethods: Array<'email' | 'phone' | 'social' | 'wallet'> =
+          walletConnectProjectId
+            ? ['email', 'phone', 'social', 'wallet']
+            : ['email', 'phone', 'social']
+
+        if (!walletConnectProjectId) {
+          console.warn(
+            '[WAAP] WalletConnect project ID is not set. External wallet login is disabled. Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID or NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID.'
+          )
+        }
         
         // Initialize WaaP - this sets up window.waap
         waapSdk.initWaaP({
           config: {
             // Authentication methods: email, phone, social login, and external wallets
-            authenticationMethods: ['email', 'phone', 'social', 'wallet'],
+            authenticationMethods,
             // Social login options
             allowedSocials: ['google', 'twitter'],
             // Dark mode to match MotusDAO theme
@@ -246,7 +233,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
             entryTitle: 'Welcome to MotusDAO',
           },
           // Required for external wallet support (MetaMask, etc.)
-          walletConnectProjectId: walletConnectProjectId || undefined,
+          walletConnectProjectId,
         })
         console.log('[WAAP] ✅ WaaP SDK initialized')
 
@@ -260,13 +247,14 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
           setIsWaaPReady(true)
           console.log('[WAAP] ✅ WaaP EIP-1193 provider available (window.waap)')
 
-          // Check for existing session (auto-connect)
-          await checkExistingSession(provider)
+          // Mark ready before auto-connect — eth_requestAccounts can hang
+          // (wallet popup waiting) and used to block the whole /perfil page.
+          setReady(true)
+          void checkExistingSession(provider)
         } else {
           console.warn('[WAAP] window.waap not available after initialization')
+          setReady(true)
         }
-
-        setReady(true)
       } catch (error) {
         console.error('[WAAP] ❌ Error initializing WaaP:', error)
         setReady(true) // Still mark as ready so UI doesn't hang
@@ -290,8 +278,16 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       console.log('[WAAP] Checking existing session, login method:', loginMethod)
 
       if (loginMethod) {
-        // Auto-connect: eth_requestAccounts will reconnect using previous method
-        const accounts = await waap.request({ method: 'eth_requestAccounts' }) as string[]
+        const AUTO_CONNECT_MS = 12_000
+        const accounts = await Promise.race([
+          waap.request({ method: 'eth_requestAccounts' }) as Promise<string[]>,
+          new Promise<never>((_, reject) => {
+            window.setTimeout(
+              () => reject(new Error('WaaP auto-connect timed out')),
+              AUTO_CONNECT_MS
+            )
+          }),
+        ])
         
         if (accounts && accounts.length > 0) {
           console.log('[WAAP] ✅ Auto-connected with address:', accounts[0])
@@ -334,6 +330,15 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       }
     } catch (error) {
       console.log('[WAAP] Auto-connect not available or failed:', error)
+      if (isRecoverableWaapSdkError(error)) {
+        try {
+          const waap = provider as { logout?: () => Promise<void> }
+          await waap.logout?.()
+        } catch {
+          // Stale Silk session — ignore logout failures
+        }
+        localStorage.removeItem('waap_user')
+      }
     }
   }
 
@@ -437,6 +442,9 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       }
     } catch (error) {
       console.error('[WAAP] ❌ Login error:', error)
+      if (isRecoverableWaapSdkError(error)) {
+        return
+      }
       throw error
     }
   }, [waapProvider, isWaaPReady])

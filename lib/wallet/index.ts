@@ -10,7 +10,7 @@ import type {
 
 export type { WalletAuthProvider } from './provider'
 export type { WalletInfo, WalletProviderId, WalletUser } from './types'
-export { getConfiguredWalletProvider, getPrivyAppId } from './config'
+export { getConfiguredWalletProvider, getPrivyAppId, getWalletConnectProjectId } from './config'
 export {
   getWalletIdentity,
   appendWalletIdentityParams,

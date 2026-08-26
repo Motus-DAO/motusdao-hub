@@ -25,7 +25,6 @@ import {
   Copy,
   CreditCard,
   AlertTriangle,
-  X
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
@@ -35,11 +34,13 @@ import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
+import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
 import {
   classifyProfileLoadError,
+  PROFILE_WALLET_READY_TIMEOUT_MS,
   profileLoadErrorMessage,
-  shouldShowCompleteRegistration,
+  resolveProfileAccessGate,
   type ProfileLoadErrorKind,
 } from '@/lib/auth/hub-session'
 import { motusNameService } from '@/lib/motus-name-service'
@@ -94,12 +95,13 @@ export default function PerfilPage() {
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
-  const { authenticated, user, ready } = useWallet()
+  const { authenticated, user, ready, login } = useWallet()
   const { wallets } = useWallets()
   const {
     sessionState,
     isSessionReady,
     signing: isSigningSession,
+    refresh: refreshSession,
   } = useSiweSession()
   
   // ZeroDev smart wallet hook
@@ -113,6 +115,7 @@ export default function PerfilPage() {
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [walletTimedOut, setWalletTimedOut] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -239,6 +242,18 @@ export default function PerfilPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (ready) {
+      setWalletTimedOut(false)
+      return
+    }
+    const timeout = window.setTimeout(
+      () => setWalletTimedOut(true),
+      PROFILE_WALLET_READY_TIMEOUT_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [ready])
+
   const handlePsmMeetingModeChange = (mode: PsmMeetingMode) => {
     setPsmMeetingMode(mode)
     if (typeof window !== 'undefined') {
@@ -253,17 +268,28 @@ export default function PerfilPage() {
   // Fetch profile data from API — Hub session is canonical; do not look up by email/wallet.
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!ready || !authenticated) return
+      if (!ready) return
+
+      if (!authenticated || sessionState === 'no_wallet') {
+        setIsLoading(false)
+        setError(null)
+        setErrorKind(null)
+        return
+      }
+
       if (sessionState === 'loading' || isSigningSession) return
 
-      if (sessionState === 'needs_signature' || sessionState === 'no_wallet') {
+      if (sessionState === 'needs_signature') {
         setErrorKind('unauthorized')
         setError(profileLoadErrorMessage('unauthorized'))
         setIsLoading(false)
         return
       }
 
-      if (!isSessionReady) return
+      if (!isSessionReady) {
+        setIsLoading(false)
+        return
+      }
 
       setIsLoading(true)
       setError(null)
@@ -601,43 +627,31 @@ export default function PerfilPage() {
     ? `${profileData.nombre} ${profileData.apellido}` 
     : 'Usuario MotusDAO'
 
-  if (isLoading || sessionState === 'loading' || isSigningSession) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-mauve-500" />
-          <p className="text-muted-foreground">Cargando perfil...</p>
-        </div>
-      </div>
-    )
-  }
+  const accessGate = resolveProfileAccessGate({
+    walletReady: ready,
+    walletAuthenticated: authenticated,
+    walletTimedOut,
+    sessionState,
+    signing: isSigningSession,
+    profileLoading: isLoading,
+    error,
+    hasProfileName: Boolean(profileData.nombre),
+  })
 
-  if ((error && !profileData.nombre) || sessionState === 'needs_signature') {
-    const kind = errorKind ?? (sessionState === 'needs_signature' ? 'unauthorized' : 'generic')
-    const allowRegister = shouldShowCompleteRegistration(kind)
-    const message = error || profileLoadErrorMessage(kind)
-
+  if (accessGate !== 'ready') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <GlassCard className="p-8 max-w-md">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{message}</p>
-            {allowRegister ? (
-              <CTAButton onClick={() => window.location.href = '/registro'}>
-                Completar Registro
-              </CTAButton>
-            ) : (
-              <div className="text-left">
-                {(kind === 'unauthorized' || sessionState === 'needs_signature') && (
-                  <SiweSessionBanner compact />
-                )}
-              </div>
-            )}
-          </div>
-        </GlassCard>
-      </div>
+      <ProfileAccessGate
+        kind={accessGate}
+        errorMessage={error}
+        errorKind={errorKind}
+        onLogin={() => void login()}
+        onRetry={() => {
+          setError(null)
+          setErrorKind(null)
+          setIsLoading(true)
+          void refreshSession()
+        }}
+      />
     )
   }
 
@@ -1575,68 +1589,38 @@ export default function PerfilPage() {
       </Section>
 
       {cancelModalEnrollment && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          onClick={() => setCancelModalEnrollment(null)}
+        <FeedbackDialog
+          overlay
+          variant="warning"
+          icon={AlertTriangle}
+          title="Cancelar membresía"
+          description="La cancelación aplica al final del periodo actual. Mantendrás acceso hasta la fecha de expiración indicada."
+          onClose={() => setCancelModalEnrollment(null)}
+          secondaryAction={{
+            label: 'Conservar membresía',
+            onClick: () => setCancelModalEnrollment(null),
+          }}
+          primaryAction={{
+            label:
+              cancelModalEnrollment.cancelAtPeriodEnd === true
+                ? 'Cancelación ya programada'
+                : 'Confirmar cancelación',
+            onClick: () => handleCancelMembership(cancelModalEnrollment),
+            loading: cancelingEnrollmentId === cancelModalEnrollment.id,
+            disabled:
+              cancelingEnrollmentId === cancelModalEnrollment.id ||
+              cancelModalEnrollment.cancelAtPeriodEnd === true,
+          }}
         >
-          <GlassCard
-            className="relative w-full max-w-lg border-white/20 p-6 sm:p-7"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setCancelModalEnrollment(null)}
-              className="absolute right-3 top-3 rounded-md p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
-              aria-label="Cerrar modal"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Cancelar membresía</h3>
-                <p className="text-sm text-muted-foreground">
-                  La cancelación aplica al final del periodo actual.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
-              <p className="font-medium">{cancelModalEnrollment.course?.title || 'Curso'}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Mantendrás acceso hasta la fecha de expiración indicada en tu membresía.
-              </p>
-            </div>
-
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+            <p className="font-medium">{cancelModalEnrollment.course?.title || 'Curso'}</p>
             {cancelModalEnrollment.cancelAtPeriodEnd && (
-              <p className="mt-3 rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 Esta membresía ya tiene cancelación programada.
               </p>
             )}
-
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <CTAButton variant="secondary" onClick={() => setCancelModalEnrollment(null)}>
-                Conservar membresía
-              </CTAButton>
-              <CTAButton
-                onClick={() => handleCancelMembership(cancelModalEnrollment)}
-                disabled={
-                  cancelingEnrollmentId === cancelModalEnrollment.id ||
-                  cancelModalEnrollment.cancelAtPeriodEnd === true
-                }
-              >
-                {cancelModalEnrollment.cancelAtPeriodEnd === true
-                  ? 'Cancelación ya programada'
-                  : cancelingEnrollmentId === cancelModalEnrollment.id
-                  ? 'Cancelando...'
-                  : 'Confirmar cancelación'}
-              </CTAButton>
-            </div>
-          </GlassCard>
-        </div>
+          </div>
+        </FeedbackDialog>
       )}
     </div>
   )

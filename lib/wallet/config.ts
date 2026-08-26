@@ -18,3 +18,16 @@ export function getPrivyAppId(): string | undefined {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim()
   return appId || undefined
 }
+
+/**
+ * WalletConnect Cloud project id. Silk/WaaP docs use
+ * NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID; this repo historically used
+ * NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID. Accept both.
+ */
+export function getWalletConnectProjectId(): string | undefined {
+  const projectId = (
+    process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID
+  )?.trim()
+  return projectId || undefined
+}
