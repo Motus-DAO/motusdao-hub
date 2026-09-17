@@ -246,7 +246,7 @@ Work top-down. Only one `in_progress` slice at a time unless explicitly parallel
 | **MF-01d** | Génesis: testimonios | Content | `done` (pending commit) | L3 “Qué ganas”, antes del CTA |
 | **MF-01e** | Génesis: CTA reforzado + resultado comparable Fundamentos | Content | `done` (pending commit) | mapa + cierre L3 |
 | **MF-01f** | Génesis: Validación + Portal en lenguaje claro | Content | `done` (pending commit) | mapa lesson |
-| **MF-06** | Fundamentos positioning as membership/OS | Content / Pricing page | `queued` | TBD |
+| **MF-06** | Fundamentos: outcomes + ejercicios Hub + perfil inicio/fin + puente Praxis | Content | `done` (pending commit) | `academy-fundamentos.ts` |
 | **MF-07** | Praxis sales pages — Escucha (first SKU copy) | Content | `queued` | TBD |
 | **MF-08** | Praxis sales pages — Formulación | Content | `queued` | TBD |
 | **MF-09** | Praxis sales pages — Razonamiento | Content | `queued` | TBD |
@@ -286,6 +286,7 @@ For each slice:
 | 2026-09-17 | MF-01b | Creators in Genesis L1 | Gerry Alvarez + Benjamin Buzali photos + copy; Praxis authorship note (personality structures research). |
 | 2026-09-17 | MF-01d | Testimonials in Genesis L3 | Five colleague quotes before Fundamentos CTA (no chapter timestamps in UI). |
 | 2026-09-17 | MF-01c/e/f | Product shots + CTA + Validación/Portal | Hub screenshots; outcome box; CTAs to Fundamentos/perfil; human Validación/Portal copy. |
+| 2026-09-17 | MF-06 | Fundamentos rewrite | Learning outcomes updated; M1L2 platform exercises (videochat/agenda/PsyChat); profile start→end; shortened Praxis bridge. |
 
 ---
 

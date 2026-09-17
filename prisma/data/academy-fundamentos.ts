@@ -1,21 +1,22 @@
 import type { PrismaClient } from '@prisma/client'
 import { upsertAcademyCourse, type SeedCourse } from './academy-seed-shared'
 
-/** Bloque 02 — Fundamentos + Membresía de Práctica Digital. */
+/**
+ * Bloque 02 — Fundamentos + Membresía de Práctica Digital.
+ * Canonical seed (aligned with Hub product surfaces). Upsert via scripts/upsert-fundamentos-db.ts.
+ */
 export const FUNDAMENTOS_COURSE: SeedCourse = {
   id: 'course_02_fundamentos',
   slug: '02-fundamentos',
   title: '02 — Fundamentos',
   summary:
-    'Membresía de Práctica Digital: clínica digital, encuadre, ética, perfil profesional y recursos base (USD 20/mes · 120/año).',
-  description: `Bloque **02 — Fundamentos** — producto **Membresía de Práctica Digital**.
+    'Deja de improvisar tu consulta online: encuadre, herramientas justas, ética clara y colegas que entienden el trabajo clínico. USD 20/mes.',
+  description: `**Fundamentos** es la Membresía de Práctica Digital (USD 20/mes · 120/año).
 
-Ordena tu transición hacia la práctica clínica digital: encuadre, ética, límites, perfil y acompañamiento comunitario.
+Si estás listo para dejar de improvisar tu consulta online, aquí organizas tu práctica con una ruta corta y accionable: encuadre listo, herramientas que sí usas, ética digital, un perfil que atrae a los pacientes correctos, y una **comunidad de colegas** (Telegram y encuentros) que entiende el trabajo clínico.
 
-**Referencia:** USD 20/mes o USD 120/año.
-
-> No equivale a certificación externa ni garantiza acceso automático al Portal Clínico.`,
-  category: 'Ruta PSM',
+Lo esencial ya está. El resto lo activas a tu ritmo.`,
+  category: 'Membresía',
   difficulty: 'beginner',
   isPublished: true,
   isFree: false,
@@ -24,182 +25,347 @@ Ordena tu transición hacia la práctica clínica digital: encuadre, ética, lí
   instructor: 'MotusDAO',
   instructorTitle: 'Academia de Psicología Digital',
   learningOutcomes: [
-    'Dominar el lenguaje común de la clínica digital MotusDAO.',
-    'Redactar encuadre mínimo para atención en línea.',
-    'Identificar límites éticos, crisis y derivación.',
-    'Construir perfil profesional coherente con la membresía.',
-    'Activar la Membresía de Práctica Digital y preparar Praxis.',
+    'Encuadre online para atención en línea.',
+    'Usar o acceder al consultorio virtual.',
+    'Aperturar agenda y disponibilidad.',
+    'Usar notas clínicas con mínimos de seguridad.',
+    'Saber cómo cobrar internacionalmente.',
+    'Usar IA como copiloto (sin sustituir tu juicio clínico).',
+    'Perfil profesional con visibilidad.',
   ],
   modules: [
     {
       id: 'module_02_fundamentos_clinica',
-      title: 'Fundamentos de la clínica digital',
-      summary: 'Lenguaje común, encuadre y límites éticos.',
+      title: 'Tu consulta online en marcha',
+      summary: 'Encuadre, herramientas y ética digital — lo mínimo para operar con claridad.',
       order: 1,
       lessons: [
         {
-          id: 'lesson_02_fundamentos_intro',
-          title: 'Lenguaje común de la clínica digital',
-          slug: 'lenguaje-comun-clinica-digital',
+          id: 'lesson_02_fundamentos_encuadre',
+          title: 'Tu encuadre listo en 20 minutos',
+          slug: 'tu-encuadre-listo',
           order: 1,
           duration: 20,
           isFreePreview: true,
-          summary: 'Qué es Fundamentos y para quién es este bloque.',
-          contentMDX: `# Lenguaje común de la clínica digital
+          summary: 'Espacio, tiempo, confidencialidad y presencia digital — con ejercicio de ½ página.',
+          contentMDX: `# Tu encuadre listo en 20 minutos
 
-Completaste **01 — Génesis**. Ahora entras a **02 — Fundamentos**, donde la **Membresía de Práctica Digital** te da estructura y acompañamiento.
+Si tu consulta online se siente improvisada, casi siempre falta **encuadre**: las reglas claras de cómo, cuándo y con qué límites ocurre la atención.
 
-Aquí construyes lenguaje común sobre encuadre, ética, límites, tecnología, privacidad y acompañamiento.
+Hoy sales con un borrador usable. No con teoría.
 
-## Ruta de 5 bloques
+## Los 4 pilares (mínimo viable)
+
+### **1. Espacio**
+- Privacidad razonable para ti y para la persona.
+- Auriculares cuando haga falta; fondo y ruido bajo control.
+- Si no puedes garantizar privacidad ese día, **reprograma** — no “improvises la sesión”.
+
+### **2. Tiempo**
+- Duración (ej. 50 minutos).
+- Zona horaria visible.
+- Política de cancelación / retraso (ej. 24 h).
+- Qué pasa si falla internet a mitad de sesión.
+
+### **3. Confidencialidad**
+- Quién puede ver u oír (nadie más en la habitación, en lo posible).
+- Cómo guardas notas y grabaciones (si las hay).
+- Límites de WhatsApp / mensajes fuera de sesión.
+
+### **4. Presencia digital**
+- Cámara a la altura de los ojos, luz frontal suave.
+- Mismo enlace o flujo de entrada cada vez.
+- Plan B si la plataforma falla (otro link o reprogramar).
+
+## Ejercicio (10 minutos)
+
+Redacta tu **encuadre mínimo en media página**. Copia y completa:
 
 \`\`\`
-01 Génesis → 02 Fundamentos → 03 Praxis → 04 Validación → 05 Portal Clínico
+Encuadre — atención en línea
+
+Modalidad: videollamada
+Duración:
+Zona horaria:
+Cancelación / retraso:
+Privacidad (espacio):
+Confidencialidad y notas:
+Contacto entre sesiones:
+Qué hago si hay falla técnica:
+Situaciones que no atiendo / derivo:
 \`\`\`
 
-## Para quién es
+Guárdala en tus notas o en tu Perfil MotusDAO.
 
-Psicólogos que quieren ordenar su práctica clínica digital antes de talleres, supervisiones o el Portal.`,
+**Siguiente lección:** ejercicios reales en la plataforma — consultorio, agenda y PsyChat.`,
         },
         {
-          id: 'lesson_02_fundamentos_encuadre',
-          title: 'Encuadre básico de atención en línea',
-          slug: 'encuadre-basico-atencion-linea',
+          id: 'lesson_02_fundamentos_herramientas',
+          title: 'Herramientas que sí necesitas (y solo esas)',
+          slug: 'herramientas-que-si-necesitas',
           order: 2,
-          duration: 22,
-          isFreePreview: true,
-          summary: 'Espacio, tiempo, confidencialidad y presencia digital.',
-          contentMDX: `# Encuadre básico de atención en línea
+          duration: 25,
+          isFreePreview: false,
+          summary: 'Ejercicios en el Hub: consultorio, agenda, PsyChat, notas, cobros e IA.',
+          contentMDX: `# Herramientas que sí necesitas (y solo esas)
 
-El encuadre define **cómo**, **cuándo**, **dónde** y **con qué límites** ocurre el acompañamiento.
+No necesitas diez apps. Necesitas un **set corto** que sostenga tu práctica sin volverte “experto tech”.
 
-## Elementos mínimos
+Haz estos tres ejercicios en la plataforma. Son el mínimo para operar:
 
-- **Espacio** — privacidad razonable para profesional y persona.
-- **Tiempo** — duración, horario, cancelaciones, zona horaria.
-- **Confidencialidad** — quién puede escuchar o ver la sesión.
-- **Presencia digital** — cámara, conexión inestable, qué hacer si se cae la llamada.
+---
 
-## Ejercicio
+## Ejercicio 1 — Abrir tu consultorio (Videochat)
 
-Redacta un borrador de encuadre mínimo (½ página) para compartir antes de una primera sesión en video.`,
+Atiende por videollamada sin que el paciente instale nada: entra con un link, desde el celular o la computadora.
+
+1. Abre **[Videochat / consultorio](/videochat)**.
+2. Genera o copia el enlace de tu sala.
+3. Prueba cámara, audio y privacidad del espacio.
+
+<img src="/academy/product/hub-videochat.jpg" alt="Consultorio virtual — Videochat en el Hub" class="academy-product-shot" />
+
+**Listo cuando:** sabes abrir el consultorio y enviar el link en menos de un minuto.
+
+---
+
+## Ejercicio 2 — Publicar un horario en la agenda
+
+Si no hay agenda visible, la consulta online se vuelve caos.
+
+1. Abre **[Disponibilidad](/disponibilidad)**.
+2. Publica al menos un horario realista.
+3. Deja clara tu política de cancelación (la del encuadre).
+
+<img src="/academy/product/hub-casos.png" alt="Agenda y seguimiento en el Hub" class="academy-product-shot" />
+
+**Listo cuando:** tienes horarios publicados y sabes cómo se vería una reserva.
+
+---
+
+## Ejercicio 3 — Una consulta de prueba con PsyChat
+
+**PsyChat** (en el Hub aparece como **MotusAI**) es tu copiloto: ordenar ideas, preparar intervenciones, pensar casos. **No sustituye tu juicio clínico.**
+
+1. Abre **[PsyChat / MotusAI](/motusai)**.
+2. Haz una consulta con un caso **ficticio** (sin datos reales de pacientes).
+3. Guarda una regla personal: qué sí / no le pides a la IA.
+
+**Listo cuando:** usaste PsyChat una vez con un caso inventado y sabes sus límites.
+
+---
+
+## También necesitas (mínimos)
+
+### Notas clínicas
+- Guarda lo mínimo necesario para dar seguimiento.
+- Evita apps personales sin control de acceso.
+- No dejes notas en chats sueltos.
+
+### Cobros internacionales
+- Define moneda y forma de cobro **antes** de la primera sesión.
+- En el Hub, **Pagos** te permite manejar tu propia cuenta: MotusDAO no se queda con tu dinero.
+
+### IA como copiloto
+- Sí: ordenar ideas, borradores, estudiar.
+- No: diagnosticar por ti, reemplazar tu juicio, pegar datos identificables en herramientas inseguras.
+
+---
+
+**Checklist rápido**
+
+- [ ] Abrí mi consultorio y copié el link → [/videochat](/videochat)
+- [ ] Publiqué horarios → [/disponibilidad](/disponibilidad)
+- [ ] Hice una prueba en PsyChat → [/motusai](/motusai)
+- [ ] Sé dónde guardo notas con privacidad
+- [ ] Sé cómo voy a cobrar (incluido internacional si aplica)
+
+**Siguiente lección:** ética digital — crisis, límites y consentimiento.`,
         },
         {
           id: 'lesson_02_fundamentos_limites',
-          title: 'Límites éticos y profesionales',
-          slug: 'limites-eticos-profesionales',
+          title: 'Ética digital: crisis, límites y consentimiento',
+          slug: 'etica-digital-crisis-limites',
           order: 3,
-          duration: 18,
+          duration: 20,
           isFreePreview: false,
-          summary: 'Alcance, urgencia, derivación y responsabilidad.',
-          contentMDX: `# Límites éticos y profesionales
+          summary: 'Protocolo de crisis, derivación, consentimiento informado digital y límites claros.',
+          contentMDX: `# Ética digital: crisis, límites y consentimiento
 
-- Define poblaciones y temas que sí atiendes y casos que derivas.
-- Protocolo básico ante crisis e ideación.
-- La formación MotusDAO **no** sustituye tu cédula ni tu juicio clínico.
+En digital, la ética no es un anexo: es parte del encuadre. Aquí lo dejas escrito y operable.
 
-Al completar este módulo estarás listo para ordenar tu perfil y activar la membresía.`,
+> La formación MotusDAO no sustituye tu cédula ni tu juicio clínico.
+
+## **1. Qué sí atiendes (y qué no)**
+
+Define con honestidad:
+
+- Poblaciones y temas donde tienes competencia.
+- Casos que **derivas**.
+- Modalidad: solo video / no atención por chat terapéutico infinito.
+
+Escríbelo en 5 líneas. Si no cabe en 5, todavía no está claro.
+
+## **2. Protocolo ante crisis e ideación**
+
+Antes de que pase:
+
+1. Cómo detectas señales de riesgo en sesión.
+2. Qué dices (lenguaje directo, sin alarmismo vacío).
+3. A quién derivas / líneas locales de emergencia (según jurisdicción).
+4. Qué registras y a quién contactas si hay riesgo inminente (según norma aplicable).
+5. Cuándo **no** continúas solo en video y pasas a red presencial/urgente.
+
+## **3. Consentimiento informado digital**
+
+La persona debe entender, como mínimo:
+
+- Modalidad (videollamada), duración y honorarios.
+- Límites de confidencialidad.
+- Riesgos técnicos (cortes, privacidad del entorno).
+- Política de cancelación.
+- Que no es un servicio de emergencia 24/7 (si así lo defines).
+
+### Plantilla corta (adapta a tu jurisdicción)
+
+\`\`\`
+Consentimiento — atención psicológica en línea
+
+He sido informado/a de: modalidad, duración, honorarios,
+límites de confidencialidad, riesgos técnicos y política de cancelación.
+Entiendo que este espacio no sustituye servicios de emergencia.
+Nombre / fecha / aceptación:
+\`\`\`
+
+## **4. Límites en mensajería**
+
+- Horario de respuesta.
+- Qué temas no se trabajan por WhatsApp.
+- Qué pasa con audios, capturas y reenvíos.
+
+---
+
+**Ejercicio:** escribe tu protocolo de crisis en media página + pega tu consentimiento mínimo.
+
+**Siguiente módulo:** perfil del Hub — de inicio a fin.`,
         },
       ],
     },
     {
       id: 'module_02_fundamentos_perfil',
-      title: 'Perfil y herramientas',
-      summary: 'Presencia profesional y operación básica.',
+      title: 'Presencia y siguiente paso',
+      summary: 'Perfil completo en el Hub y puente corto a Praxis.',
       order: 2,
       lessons: [
         {
           id: 'lesson_02_fundamentos_perfil',
-          title: 'Construir tu perfil profesional',
-          slug: 'construir-perfil-profesional',
+          title: 'Dónde termina el perfil del Hub',
+          slug: 'perfil-que-atrae-pacientes-correctos',
           order: 1,
           duration: 20,
           isFreePreview: false,
-          summary: 'Narrativa, especialización y encuadre público.',
-          contentMDX: `# Construir tu perfil profesional
+          summary: 'Inicio y fin del registro: pasos claros para un perfil visible y usable.',
+          contentMDX: `# Dónde termina el perfil del Hub
 
-1. **Narrativa** — quién eres y cómo acompañas (sin prometer resultados).
-2. **Enfoque** — temas y poblaciones con honestidad sobre tu experiencia.
-3. **Modalidad** — en MotusDAO la atención es por **video** (teleterapia).
-4. **Encuadre visible** — urgencia, cancelaciones, confidencialidad.
+Un buen perfil no “vende magia”. **Filtra**: acerca a quien sí puedes acompañar y deja claro cómo trabajas.
 
-Evita claims no sustentados: pacientes garantizados, certificación MotusDAO.`,
-        },
-        {
-          id: 'lesson_02_fundamentos_herramientas',
-          title: 'Herramientas digitales base',
-          slug: 'herramientas-digitales-base',
-          order: 2,
-          duration: 16,
-          isFreePreview: false,
-          summary: 'Video, agenda, documentación y privacidad.',
-          contentMDX: `# Herramientas digitales base
+Abre **[Perfil](/perfil)** y sigue este recorrido de **inicio → fin**.
 
-- Videollamada (Jitsi MotusDAO o consultorio digital).
-- Agenda, recordatorios y política de cancelación.
-- Notas clínicas con mínimos de seguridad.
-- IA como apoyo — no sustituto del juicio clínico (profundizarás en **03 — Praxis**).`,
-        },
-      ],
-    },
-    {
-      id: 'module_02_fundamentos_membresia',
-      title: 'Membresía de Práctica Digital',
-      summary: 'Qué incluye, límites y plan hacia Praxis.',
-      order: 3,
-      lessons: [
-        {
-          id: 'lesson_02_fundamentos_membresia-que-es',
-          title: 'Qué incluye la membresía',
-          slug: 'que-es-membresia-practica-digital',
-          order: 1,
-          duration: 18,
-          isFreePreview: false,
-          summary: 'Producto del bloque Fundamentos.',
-          contentMDX: `# Membresía de Práctica Digital
+<img src="/academy/product/hub-perfil.png" alt="Vista de Perfil en el Hub MotusDAO" class="academy-product-shot" />
 
-La membresía es el **producto de este bloque** — no un bloque separado.
+## Inicio — qué abres
 
-## Referencia de inversión
+Entras a **Perfil** en el Hub. Ahí armas tu identidad clínica: datos, bio, especialidades y documentos cuando aplique.
 
-**USD 20/mes** o **USD 120/año**.
+## Pasos del registro (en orden)
 
-## Puede incluir
+1. **Datos básicos** — nombre profesional, contacto, ubicación.
+2. **Biografía** — 2–4 frases: quién eres, cómo acompañas, para quién es tu espacio (sin prometer resultados).
+3. **Enfoque** — temas, poblaciones y lo que **no** atiendes.
+4. **Modalidad** — videollamada en MotusDAO; idioma(s) y zona horaria.
+5. **Encuadre visible** — duración, cancelaciones, límites de urgencia / emergencia.
+6. **Documentación** — cédula u equivalentes aplicables cuando el flujo lo pida.
+7. **Revisión** — lee tu perfil como si fueras un paciente nuevo: ¿queda claro?
 
-- Orientación y recursos base sobre práctica digital.
-- Encuentros comunitarios y materiales de actualización.
-- Acompañamiento para ordenar perfil y encuadre.
+## Fin — cuándo está “terminado”
 
-## Qué no entrega
+Tu perfil del Hub está **completo** cuando puedes marcar esto:
 
-Certificación oficial, licencia, garantía de pacientes ni acceso automático al Portal Clínico.`,
+- [ ] Bio y enfoque publicados (sin promesas vacías)
+- [ ] Modalidad y zona horaria visibles
+- [ ] Encuadre breve visible (cancelación + límites de emergencia)
+- [ ] Documentos cargados cuando apliquen
+- [ ] Sabes editar y actualizar el perfil sin ayuda
+
+**Eso es el fin del registro de perfil.** No es Validación ni Portal: es tu presencia profesional lista en el Hub.
+
+## Plantilla rápida (cópiala a Perfil)
+
+\`\`\`
+Nombre profesional
+Enfoque / cómo acompañas (3–4 líneas)
+Temas y poblaciones
+Modalidad: videollamada (MotusDAO)
+Idiomas / zona horaria
+Encuadre breve: duración, cancelación, límites de emergencia
+Lo que no ofrezco:
+\`\`\`
+
+**Siguiente lección:** qué aprender después — Praxis, supervisión y programas.`,
         },
         {
           id: 'lesson_02_fundamentos_plan-30',
-          title: 'Plan de 30 días hacia Praxis',
-          slug: 'plan-30-dias-praxis',
+          title: 'Qué sigue: Praxis, supervisión y programas',
+          slug: 'membresia-activa-plan-7-dias',
           order: 2,
-          duration: 20,
+          duration: 12,
           isFreePreview: false,
-          summary: 'Objetivos semanales antes de talleres.',
-          contentMDX: `# Plan de 30 días hacia Praxis
+          summary: 'Puente corto: qué aprender, supervisión clínica y rutas de programas.',
+          contentMDX: `# Qué sigue: Praxis, supervisión y programas
 
-## Semana 1 — Encuadre
-- [ ] Encuadre mínimo escrito.
-- [ ] Límites de urgencia y derivación definidos.
+Con Fundamentos ya tienes el piso operativo. Lo que sigue no es más teoría suelta: es **elegir qué aprender** según tu práctica.
 
-## Semana 2 — Operación
-- [ ] Horarios y capacidad realista.
-- [ ] Prueba de videollamada y consultorio.
+## 1. Qué necesitas aprender (Praxis)
 
-## Semana 3 — Comunidad
-- [ ] Al menos un encuentro comunitario.
-- [ ] Áreas a reforzar en talleres identificadas.
+En **03 — Praxis** eliges habilidades concretas con cursos y talleres aplicados (casos, ejercicios, criterio clínico).
 
-## Semana 4 — Puerta a Praxis
-- [ ] Elegir primer taller (USD 15 c/u en **03 — Praxis**).
+Rutas típicas:
 
-**Siguiente bloque:** **03 — Praxis** (talleres USD 15 + supervisión clínica USD 50).`,
+- Si quieres ordenar mejor lo que escuchas → **Escucha clínica** → **Formulación de casos**
+- Si te interesan lenguaje y razonamiento → **Razonamiento clínico** → programa avanzado
+- Si te preocupa cómo intervienes → **Ética de la intervención** → supervisión cuando haya caso real
+
+Empieza por **una** necesidad de los próximos 30 días. No por el catálogo completo.
+
+## 2. Supervisión clínica
+
+Cuando un caso real te genera dudas (límites, riesgo, estancamiento, dilema ético), lo que necesitas no es otro video: es **supervisión**.
+
+- Oferta separada de los cursos.
+- Referencia: **USD 50 / sesión**.
+- Lleva una pregunta concreta, no “dime qué hago con este paciente”.
+
+## 3. Programas y rutas
+
+Si quieres profundizar con un autor o método, Praxis incluye programas de autor.
+
+Primera colección disponible — **Maestro Benjamín Buzali**:
+
+1. Escucha clínica y patrones relacionales — USD 15  
+2. Formulación de casos e hipótesis clínicas — USD 15  
+3. Razonamiento clínico y análisis del discurso — USD 15  
+4. Ética de la intervención y conversación clínica — USD 15  
+5. Programa avanzado de lógica, discurso y clínica lacaniana — USD 40  
+
+Puedes entrar por un curso suelto. Completar la colección documenta un recorrido formativo más sólido dentro de MotusDAO — **sin equivaler a Validación ni Portal**.
+
+---
+
+## Tu siguiente paso
+
+Ve a **[03 — Praxis](/academia/03-praxis)** y elige el primer curso o taller que responda a tu necesidad actual.
+
+Si aún te falta cerrar operación en el Hub: perfil → [/perfil](/perfil) · agenda → [/disponibilidad](/disponibilidad) · consultorio → [/videochat](/videochat).`,
         },
       ],
     },
@@ -207,5 +373,13 @@ Certificación oficial, licencia, garantía de pacientes ni acceso automático a
 }
 
 export async function seedAcademyFundamentos(prisma: PrismaClient) {
-  return upsertAcademyCourse(prisma, FUNDAMENTOS_COURSE)
+  const course = await upsertAcademyCourse(prisma, FUNDAMENTOS_COURSE)
+  await prisma.course.update({
+    where: { id: course.id },
+    data: {
+      billingInterval: 'monthly',
+      updatedAt: new Date(),
+    },
+  })
+  return course
 }
