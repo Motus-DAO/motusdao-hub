@@ -122,6 +122,7 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 | `specs/academy-learner-player.md` | Slice 4: enrollment + lesson player (depends on slice 3). |
 | `specs/academy-lesson-progress.md` | Slice 5: per-lesson progress in DB (replaces localStorage). |
 | `specs/academy-media-upload.md` | Slice 6: lesson video/PDF upload via Supabase storage. |
+| `specs/academy-marketing-funnel-sdd.md` | **ACTIVE** living SDD: market audit + Génesis/Praxis funnel backlog (MF-01…). |
 | `specs/motusai-chat-ui.md` | MotusAI cinematic chat + RootRouter investigate→QA loop. |
 | `specs/psm-intake-v1.md` | PSM intake wizard polish spec (frozen journey). |
 | `specs/auth-provider-agnostic.md` | Wallet/provider abstraction slice (facade + key migrations). |
