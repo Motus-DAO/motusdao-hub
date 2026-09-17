@@ -7,6 +7,7 @@ import {
   type Chain,
 } from 'viem'
 import { celoMainnet } from '@/lib/celo'
+import { SIWE_SIGN_TIMEOUT_MS } from '@/lib/auth/hub-session'
 import { normalizeSignature } from '@/lib/auth/verify-siwe'
 
 type Eip1193Provider = {
@@ -21,6 +22,24 @@ function getWindowEthereum(): Eip1193Provider | null {
   if (typeof window === 'undefined') return null
   const ethereum = (window as unknown as { ethereum?: Eip1193Provider }).ethereum
   return ethereum ?? null
+}
+
+export async function withSignTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = SIWE_SIGN_TIMEOUT_MS,
+  message = 'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.'
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 /**
@@ -47,10 +66,19 @@ export async function getActiveSignerAddress(
 ): Promise<Address> {
   const waap = provider as Eip1193Provider
 
-  let accounts = (await waap.request({ method: 'eth_accounts' })) as string[]
-  if (!accounts?.length) {
-    accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
+  const resolveAccounts = async () => {
+    let accounts = (await waap.request({ method: 'eth_accounts' })) as string[]
+    if (!accounts?.length) {
+      accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
+    }
+    return accounts
   }
+
+  const accounts = await withSignTimeout(
+    resolveAccounts(),
+    Math.min(SIWE_SIGN_TIMEOUT_MS, 20_000),
+    'No se pudo conectar con la wallet. Recarga e intenta de nuevo.'
+  )
 
   if (!accounts?.length) {
     throw new Error('No wallet account available')
@@ -102,6 +130,11 @@ export async function signSiweMessage(
   const loginMethod = (waapProvider as WaapProvider).getLoginMethod?.()
   const errors: string[] = []
   const hexMessage = stringToHex(message)
+  const deadline = Date.now() + SIWE_SIGN_TIMEOUT_MS
+
+  const remainingMs = () => Math.max(1_000, deadline - Date.now())
+  const isHangTimeout = (error: unknown) =>
+    error instanceof Error && error.message.includes('tardó demasiado')
 
   // WaaP MPC + WalletConnect: personal_sign(hex, address) is the reliable path.
   // viem signMessage through the WaaP proxy often returns sigs that fail recovery.
@@ -127,22 +160,25 @@ export async function signSiweMessage(
   if (preferPersonalSign) {
     for (const params of personalSignAttempts) {
       try {
-        const sig = await signWithPersonalSign(
-          signingProvider,
-          message,
-          signerAddress,
-          params
+        const sig = await withSignTimeout(
+          signWithPersonalSign(signingProvider, message, signerAddress, params),
+          remainingMs()
         )
         return normalizeSignature(sig)
       } catch (error) {
         errors.push(`personal_sign: ${formatSignError(error)}`)
+        // One hung RPC means the provider is stuck — don't queue more prompts.
+        if (isHangTimeout(error)) break
       }
     }
   }
 
   // viem signMessage (works well for injected MetaMask)
   try {
-    const sig = await signWithViem(signingProvider, message, signerAddress)
+    const sig = await withSignTimeout(
+      signWithViem(signingProvider, message, signerAddress),
+      remainingMs()
+    )
     return normalizeSignature(sig)
   } catch (error) {
     errors.push(`viem: ${formatSignError(error)}`)
@@ -151,15 +187,14 @@ export async function signSiweMessage(
   if (!preferPersonalSign) {
     for (const params of personalSignAttempts) {
       try {
-        const sig = await signWithPersonalSign(
-          signingProvider,
-          message,
-          signerAddress,
-          params
+        const sig = await withSignTimeout(
+          signWithPersonalSign(signingProvider, message, signerAddress, params),
+          remainingMs()
         )
         return normalizeSignature(sig)
       } catch (error) {
         errors.push(`personal_sign: ${formatSignError(error)}`)
+        if (isHangTimeout(error)) break
       }
     }
   }
@@ -167,7 +202,10 @@ export async function signSiweMessage(
   // Fallback: original WaaP provider if we tried injected
   if (signingProvider !== waapProvider) {
     try {
-      const sig = await signWithViem(waapProvider, message, signerAddress)
+      const sig = await withSignTimeout(
+        signWithViem(waapProvider, message, signerAddress),
+        remainingMs()
+      )
       return normalizeSignature(sig)
     } catch (error) {
       errors.push(`waap fallback: ${formatSignError(error)}`)
@@ -188,9 +226,12 @@ function formatSignError(error: unknown): string {
 
 export class SignMessageError extends Error {
   constructor(public readonly attempts: string[]) {
+    const hung = attempts.some((attempt) => attempt.includes('tardó demasiado'))
     super(
-      'No se pudo firmar el mensaje. Si usas MetaMask, ábrela y acepta la solicitud. ' +
-        'Si el problema continúa, desconecta y vuelve a conectar la wallet.'
+      hung
+        ? 'La firma no respondió. Revisa si hay un popup de wallet bloqueado, o recarga e intenta de nuevo.'
+        : 'No se pudo firmar el mensaje. Si usas MetaMask, ábrela y acepta la solicitud. ' +
+            'Si el problema continúa, desconecta y vuelve a conectar la wallet.'
     )
     this.name = 'SignMessageError'
   }

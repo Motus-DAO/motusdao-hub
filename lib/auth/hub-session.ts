@@ -114,6 +114,8 @@ export function profileLoadErrorMessage(kind: ProfileLoadErrorKind): string {
 
 export const PROFILE_WALLET_READY_TIMEOUT_MS = 12_000
 export const SIWE_SESSION_LOADING_TIMEOUT_MS = 15_000
+/** Max wait for eth_accounts / personal_sign during explicit SIWE (WaaP can hang forever). */
+export const SIWE_SIGN_TIMEOUT_MS = 45_000
 
 export type SiweSessionStateKind = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 

@@ -12,13 +12,13 @@ import {
 import { useWallet, useWalletProvider, useWallets } from '@/lib/wallet'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import {
-  bootstrapHubSessionIfNeeded,
   establishSiweSession,
   fetchAppSession,
   isUserRejectedSignError,
   waitForExistingHubBootstrap,
 } from '@/lib/auth/client'
-import { SIWE_SESSION_LOADING_TIMEOUT_MS } from '@/lib/auth/hub-session'
+import { SIWE_SESSION_LOADING_TIMEOUT_MS, SIWE_SIGN_TIMEOUT_MS } from '@/lib/auth/hub-session'
+import { withSignTimeout } from '@/lib/auth/signing'
 
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
@@ -65,33 +65,10 @@ function useSiweSessionController(): SiweSessionValue {
         return
       }
 
-      // Surface the sign prompt immediately. Waiting on SIWE here left
-      // /perfil stuck on "Cargando perfil..." / "Verificando sesión…".
+      // Surface the sign CTA immediately. Do NOT auto-call personal_sign here:
+      // background WaaP signing often hangs with no modal, and then "Firmar"
+      // waits forever on the shared in-flight bootstrap.
       setSessionState('needs_signature')
-
-      if (!provider) return
-
-      const authProvider =
-        providerId === 'external'
-          ? 'external'
-          : providerId === 'privy'
-            ? 'privy'
-            : 'waap'
-
-      const bootstrapped = await bootstrapHubSessionIfNeeded({
-        waapProvider: provider,
-        authProvider,
-        authProviderId: user?.id,
-        eoaAddress,
-      })
-
-      if (!bootstrapped) return
-
-      const next = await fetchAppSession()
-      if (next.authenticated && next.eoaAddress) {
-        setSessionState('ready')
-        setSignError(null)
-      }
     } catch (error) {
       setSessionState('needs_signature')
       setSignError(
@@ -100,7 +77,7 @@ function useSiweSessionController(): SiweSessionValue {
           : 'No se pudo verificar la sesión. Intenta de nuevo.'
       )
     }
-  }, [ready, authenticated, eoaAddress, provider, providerId, user?.id])
+  }, [ready, authenticated, eoaAddress])
 
   useEffect(() => {
     void refresh()
@@ -129,9 +106,19 @@ function useSiweSessionController(): SiweSessionValue {
     try {
       const inFlight = waitForExistingHubBootstrap()
       if (inFlight) {
-        const ok = await inFlight
-        await refresh()
-        return ok
+        try {
+          const ok = await withSignTimeout(
+            inFlight,
+            SIWE_SIGN_TIMEOUT_MS,
+            'La firma en curso no respondió. Intenta de nuevo.'
+          )
+          if (ok) {
+            await refresh()
+            return true
+          }
+        } catch {
+          // Stale/hung bootstrap — fall through to a fresh explicit SIWE.
+        }
       }
 
       const authProvider =
@@ -141,12 +128,16 @@ function useSiweSessionController(): SiweSessionValue {
             ? 'privy'
             : 'waap'
 
-      await establishSiweSession({
-        waapProvider: provider,
-        authProvider,
-        authProviderId: user?.id,
-        eoaAddress: eoaAddress ?? undefined,
-      })
+      await withSignTimeout(
+        establishSiweSession({
+          waapProvider: provider,
+          authProvider,
+          authProviderId: user?.id,
+          eoaAddress: eoaAddress ?? undefined,
+        }),
+        SIWE_SIGN_TIMEOUT_MS,
+        'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.'
+      )
 
       await refresh()
       return true
