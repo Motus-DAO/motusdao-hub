@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Slot } from "@radix-ui/react-slot"
 import { ButtonHTMLAttributes, ReactNode } from "react"
 
 interface CTAButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -6,6 +7,8 @@ interface CTAButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   glow?: boolean
+  /** Render one child (for example Next Link) as the clickable element. */
+  asChild?: boolean
 }
 
 export function CTAButton({ 
@@ -14,6 +17,7 @@ export function CTAButton({
   variant = 'primary',
   size = 'md',
   glow = false,
+  asChild = false,
   ...props
 }: CTAButtonProps) {
   const variantClasses = {
@@ -28,8 +32,10 @@ export function CTAButton({
     lg: "px-8 py-4 text-lg"
   }
 
+  const Component = asChild ? Slot : "button"
+
   return (
-    <button
+    <Component
       className={cn(
         "inline-flex items-center justify-center font-medium focus-ring",
         variantClasses[variant],
@@ -41,6 +47,6 @@ export function CTAButton({
       {...props}
     >
       {children}
-    </button>
+    </Component>
   )
 }

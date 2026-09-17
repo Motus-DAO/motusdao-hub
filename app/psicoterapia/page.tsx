@@ -290,21 +290,28 @@ export default function PsicoterapiaPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Link href={`/psicoterapia/${therapist.slug}#agendar`}>
+                      {therapist.isAvailable ? (
+                        <CTAButton asChild size="sm" className="w-full">
+                          <Link href={`/psicoterapia/${therapist.slug}#agendar`}>
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            Agendar Sesión
+                          </Link>
+                        </CTAButton>
+                      ) : (
                         <CTAButton
                           size="sm"
                           className="w-full"
-                          disabled={!therapist.isAvailable}
+                          disabled
                         >
                           <MessageCircle className="mr-2 h-4 w-4" />
-                          {therapist.isAvailable ? 'Agendar Sesión' : 'Lista de Espera'}
+                          Lista de Espera
                         </CTAButton>
-                      </Link>
-                      <Link href={`/psicoterapia/${therapist.slug}`}>
-                        <CTAButton variant="secondary" size="sm" className="w-full">
+                      )}
+                      <CTAButton asChild variant="secondary" size="sm" className="w-full">
+                        <Link href={`/psicoterapia/${therapist.slug}`}>
                           Ver Perfil Completo
-                        </CTAButton>
-                      </Link>
+                        </Link>
+                      </CTAButton>
                     </div>
                   </GlassCard>
                 ))}
