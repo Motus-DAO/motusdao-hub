@@ -4,7 +4,10 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import type { Address } from 'viem'
 import { getWalletConnectProjectId } from '@/lib/wallet/config'
 import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
-import { isEmbeddedWaapLoginMethod } from '@/lib/wallet/waap-modal-recovery'
+import {
+  dismissWaapWalletOverlay,
+  isEmbeddedWaapLoginMethod,
+} from '@/lib/wallet/waap-modal-recovery'
 
 // ============================================================================
 // TYPES - Compatible with Privy patterns for easier migration
@@ -279,8 +282,9 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     }
   }, [])
 
-  // Check for existing authenticated session (auto-connect)
-  // Prefer eth_accounts (silent). eth_requestAccounts can open UI / hang on stale Silk.
+  // Check for existing authenticated session (auto-connect).
+  // Stay silent: eth_requestAccounts + immediate chain switch open Human Tech's
+  // iframe shell and often leave a blank/black overlay when restoring a session.
   const checkExistingSession = async (provider: unknown) => {
     try {
       const waap = provider as {
@@ -308,56 +312,63 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
           }),
         ])
 
-      let accounts = (await withTimeout(
+      const accounts = (await withTimeout(
         waap.request({ method: 'eth_accounts' }) as Promise<string[]>,
         'eth_accounts'
       )) as string[]
 
-      // Only escalate to eth_requestAccounts when silent accounts are empty.
-      if (!accounts?.length) {
-        accounts = (await withTimeout(
-          waap.request({ method: 'eth_requestAccounts' }) as Promise<string[]>,
-          'eth_requestAccounts'
-        )) as string[]
-      }
-
-      if (accounts && accounts.length > 0) {
-        console.log('[WAAP] ✅ Auto-connected with address:', accounts[0])
-
-        const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
-
-        setAuthenticated(true)
-        setWallets([
-          {
-            address: accounts[0] as Address,
-            walletClientType: walletType,
-            chainId: CELO_CHAIN_ID.toString(),
-            connected: true,
-          },
-        ])
-
-        const storedUser = localStorage.getItem('waap_user')
-        if (storedUser) {
-          setUser(JSON.parse(storedUser))
-        } else {
-          setUser({
-            id: `waap_${accounts[0].slice(2, 10)}`,
-            wallet: { address: accounts[0] },
-          })
-        }
-
+      // Never escalate to eth_requestAccounts on restore — that mounts the
+      // #waap-wallet-iframe-container shell (often black / about:blank).
+      // Fall back to the last known address so the Hub can still render.
+      let address = accounts?.[0] as Address | undefined
+      if (!address) {
         try {
-          await waap.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: CELO_CHAIN_ID_HEX }],
-          })
-          console.log('[WAAP] ✅ Switched to Celo Mainnet')
-        } catch (switchError) {
-          console.log('[WAAP] Could not switch to Celo (may need to add network):', switchError)
+          const storedUser = localStorage.getItem('waap_user')
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser) as WaaPUser
+            address = parsed.wallet?.address as Address | undefined
+          }
+        } catch {
+          // ignore
         }
       }
+
+      if (!address) {
+        console.log('[WAAP] Session cookie present but no silent accounts; waiting for explicit login')
+        return
+      }
+
+      console.log('[WAAP] ✅ Auto-connected with address:', address)
+
+      const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
+
+      setAuthenticated(true)
+      setWallets([
+        {
+          address,
+          walletClientType: walletType,
+          chainId: CELO_CHAIN_ID.toString(),
+          connected: true,
+        },
+      ])
+
+      const storedUser = localStorage.getItem('waap_user')
+      if (storedUser) {
+        setUser(JSON.parse(storedUser))
+      } else {
+        setUser({
+          id: `waap_${address.slice(2, 10)}`,
+          wallet: { address },
+        })
+      }
+
+      // Do not call wallet_switchEthereumChain on silent restore — it opens the
+      // Human Tech iframe and frequently leaves a blank/black shell with no close
+      // control. Chain alignment happens on explicit sign / tx when needed.
+      console.log('[WAAP] Skipping chain switch on silent session restore')
     } catch (error) {
       console.log('[WAAP] Auto-connect not available or failed:', error)
+      dismissWaapWalletOverlay()
       // Do NOT logout on timeout/recoverable errors — that thrash-disconnects
       // users mid-session. Only clear local cache for clearly stale Silk sessions.
       if (isRecoverableWaapSdkError(error)) {
