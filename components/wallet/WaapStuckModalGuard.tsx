@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import {
   dismissWaapWalletOverlay,
@@ -16,7 +16,7 @@ const POLL_MS = 1_500
  */
 export function WaapStuckModalGuard() {
   const [showEscape, setShowEscape] = useState(false)
-  const [seenAt, setSeenAt] = useState<number | null>(null)
+  const seenAtRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -31,22 +31,21 @@ export function WaapStuckModalGuard() {
 
         unsub = subscribeWaaPIframeLifecycle((event) => {
           if (event.phase === 'modal_requested') {
-            setSeenAt((prev) => prev ?? Date.now())
+            seenAtRef.current = seenAtRef.current ?? Date.now()
           }
           if (
             event.phase === 'modal_hidden' ||
             event.phase === 'modal_cancelled'
           ) {
-            setSeenAt(null)
+            seenAtRef.current = null
             setShowEscape(false)
           }
           if (event.phase === 'modal_visible') {
             const diagnostics = getWaaPIframeDiagnostics()
-            // Visible but never painted → treat as potentially stuck.
             if (!diagnostics.visualReadyAt) {
-              setSeenAt((prev) => prev ?? Date.now())
+              seenAtRef.current = seenAtRef.current ?? Date.now()
             } else {
-              setSeenAt(null)
+              seenAtRef.current = null
               setShowEscape(false)
             }
           }
@@ -61,18 +60,16 @@ export function WaapStuckModalGuard() {
     const poll = window.setInterval(() => {
       const present = isWaapOverlayPresent()
       if (!present) {
-        setSeenAt(null)
+        seenAtRef.current = null
         setShowEscape(false)
         return
       }
 
-      setSeenAt((prev) => {
-        const started = prev ?? Date.now()
-        if (Date.now() - started >= STUCK_AFTER_MS) {
-          setShowEscape(true)
-        }
-        return started
-      })
+      const started = seenAtRef.current ?? Date.now()
+      seenAtRef.current = started
+      if (Date.now() - started >= STUCK_AFTER_MS) {
+        setShowEscape(true)
+      }
     }, POLL_MS)
 
     return () => {
@@ -85,7 +82,7 @@ export function WaapStuckModalGuard() {
   const handleDismiss = useCallback(() => {
     dismissWaapWalletOverlay()
     setShowEscape(false)
-    setSeenAt(null)
+    seenAtRef.current = null
   }, [])
 
   if (!showEscape) return null
