@@ -167,7 +167,10 @@ export function FileUploadField({
       </div>
 
       {showSuccess && (
-        <div className="ui-status-banner flex items-start justify-between gap-3 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 dark:border-emerald-500/40 dark:bg-emerald-950/75">
+        <div
+          data-variant="success"
+          className="ui-status-banner flex items-start justify-between gap-3 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 dark:border-emerald-500/40 dark:bg-emerald-950/75"
+        >
           <div className="flex min-w-0 items-start gap-2 text-sm text-emerald-900 dark:text-emerald-100">
             <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <div className="min-w-0">
@@ -192,7 +195,10 @@ export function FileUploadField({
       )}
 
       {error && (
-        <div className="ui-status-banner flex items-start justify-between gap-3 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-950/75">
+        <div
+          data-variant="error"
+          className="ui-status-banner flex items-start justify-between gap-3 rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-950/75"
+        >
           <div className="flex min-w-0 items-start gap-2 text-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             <div>
@@ -244,7 +250,10 @@ export function FileUploadField({
       )}
 
       {showSuccess && fileName?.match(/\.pdf$/i) && (
-        <div className="ui-status-banner flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/75 dark:text-emerald-100">
+        <div
+          data-variant="success"
+          className="ui-status-banner flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/75 dark:text-emerald-100"
+        >
           <FileText className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>PDF listo para verificación administrativa</span>
         </div>

@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
-    "@human.tech/waap-sdk": "^2.3.0",
+    "@human.tech/waap-sdk": "2.3.0",
     "@lighthouse-web3/sdk": "^0.4.4",
     "@motus-dao/root-agent": "^0.1.0",
     "@prisma/client": "^6.15.0",

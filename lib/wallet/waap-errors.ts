@@ -1,7 +1,7 @@
 /**
- * WaaP/Silk SDK throws several non-fatal errors (stale iframe sessions,
- * missing WalletConnect id, ethers UTF-8 decode). None of these should
- * blank the app via the provider error boundary.
+ * Legacy WaaP/Reown builds can throw non-fatal UTF-8 decode errors. Keep this
+ * list deliberately narrow: transport, handshake, and configuration failures
+ * must remain visible to callers and diagnostics.
  */
 function errorToString(input: unknown): string {
   if (!input) return ''
@@ -26,11 +26,7 @@ export function isRecoverableWaapSdkError(input: unknown): boolean {
     str.includes('invalid codepoint') ||
     str.includes('missing continuation byte') ||
     str.includes('unexpected continuation byte') ||
-    str.includes('strings/5.7.0') ||
-    str.includes('INVALID_ARGUMENT') ||
-    str.includes('Wallet ping timed out') ||
-    str.includes('WalletConnect project ID not found') ||
-    str.includes('Error setting custom config in Silk iframe')
+    str.includes('strings/5.7.0')
   )
 }
 

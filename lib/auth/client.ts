@@ -63,13 +63,15 @@ export async function establishSiweSession(params: {
   authProvider?: 'waap' | 'privy' | 'external'
   authProviderId?: string
   eoaAddress?: string
+  signal?: AbortSignal
 }): Promise<boolean> {
-  const { waapProvider, authProvider, authProviderId } = params
+  const { waapProvider, authProvider, authProviderId, signal } = params
 
-  const activeAddress = await getActiveSignerAddress(waapProvider)
+  const activeAddress = await getActiveSignerAddress(waapProvider, signal)
 
   const nonceResponse = await authFetch(
-    `/api/auth/nonce?address=${encodeURIComponent(activeAddress)}`
+    `/api/auth/nonce?address=${encodeURIComponent(activeAddress)}`,
+    { signal }
   )
   if (!nonceResponse.ok) {
     const body = await nonceResponse.json().catch(() => ({}))
@@ -79,10 +81,11 @@ export async function establishSiweSession(params: {
   }
 
   const { message } = await nonceResponse.json()
-  const signature = await signSiweMessage(waapProvider, message, activeAddress)
+  const signature = await signSiweMessage(waapProvider, message, activeAddress, signal)
 
   const verifyResponse = await authFetch('/api/auth/verify', {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message,

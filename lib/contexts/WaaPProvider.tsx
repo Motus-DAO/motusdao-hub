@@ -1,12 +1,20 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react'
 import type { Address } from 'viem'
 import { getWalletConnectProjectId } from '@/lib/wallet/config'
-import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
 import {
-  dismissWaapWalletOverlay,
   isEmbeddedWaapLoginMethod,
+  releaseHiddenWaapOverlayInput,
+  releaseWaapOverlayInput,
 } from '@/lib/wallet/waap-modal-recovery'
 
 // ============================================================================
@@ -88,7 +96,6 @@ const WaaPContext = createContext<WaaPContextType>({
 
 // Celo Mainnet chain ID for switching
 const CELO_CHAIN_ID = 42220
-const CELO_CHAIN_ID_HEX = '0xa4ec' // 42220 in hex
 
 // ============================================================================
 // WAAP PROVIDER COMPONENT
@@ -105,82 +112,8 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   const [wallets, setWallets] = useState<WaaPWallet[]>([])
   const [waapProvider, setWaaPProvider] = useState<unknown | null>(null)
   const [isWaaPReady, setIsWaaPReady] = useState(false)
-
-  // Set up global error handlers for known WaaP SDK errors
-  // The SDK sometimes throws UTF-8 encoding errors when processing hashes internally
-  // This is a known issue in the @reown/appkit-adapter-ethers dependency that uses ethers v5
-  // The error occurs when the SDK tries to decode a hash as UTF-8 text
-  useEffect(() => {
-    // Store original console methods
-    const originalError = console.error.bind(console)
-
-    // Override console.error to catch WaaP SDK errors
-    const patchedError = function(...args: unknown[]) {
-      // Check each argument for the known error pattern
-      for (const arg of args) {
-        if (isRecoverableWaapSdkError(arg)) {
-          // Completely suppress this non-fatal SDK issue - don't even log it
-          return
-        }
-      }
-      
-      // Also check the combined string
-      const combinedStr = args.map(a => {
-        if (a instanceof Error) return a.message || ''
-        if (typeof a === 'object') {
-          try { return JSON.stringify(a) } catch { return '' }
-        }
-        return String(a || '')
-      }).join(' ')
-      
-      if (isRecoverableWaapSdkError(combinedStr)) {
-        // Completely suppress this non-fatal SDK issue
-        return
-      }
-      
-      originalError.apply(console, args)
-    }
-
-    Object.defineProperty(console, 'error', {
-      value: patchedError,
-      writable: true,
-      configurable: true
-    })
-
-    // Handle unhandled errors from WaaP SDK
-    const handleError = (event: ErrorEvent) => {
-      if (isRecoverableWaapSdkError(event.error) || isRecoverableWaapSdkError(event.message)) {
-        console.debug('[WAAP] Suppressed unhandled SDK error (non-fatal)')
-        event.preventDefault()
-        event.stopPropagation()
-        return false
-      }
-      return true
-    }
-
-    // Handle unhandled promise rejections from WaaP SDK
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      if (isRecoverableWaapSdkError(event.reason)) {
-        console.debug('[WAAP] Suppressed unhandled SDK promise rejection (non-fatal)')
-        event.preventDefault()
-        return false
-      }
-      return true
-    }
-
-    window.addEventListener('error', handleError, true) // Use capture phase
-    window.addEventListener('unhandledrejection', handleRejection, true)
-    
-    return () => {
-      Object.defineProperty(console, 'error', {
-        value: originalError,
-        writable: true,
-        configurable: true
-      })
-      window.removeEventListener('error', handleError, true)
-      window.removeEventListener('unhandledrejection', handleRejection, true)
-    }
-  }, [])
+  const loginInFlightRef = useRef(false)
+  const emailRequestInFlightRef = useRef(false)
 
   // Initialize WaaP SDK (v2 returns the EIP-1193 facade directly)
   // Reference: https://docs.waap.human.tech/for-apps/start
@@ -195,7 +128,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       console.log('[WAAP] Docs: https://docs.waap.human.tech/for-apps/start')
 
       try {
-        const waapSdk = await import('@human.tech/waap-sdk').catch(() => null)
+        const waapSdk = await import('@human.tech/waap-sdk/evm').catch(() => null)
 
         if (!waapSdk) {
           console.warn('[WAAP] WaaP SDK not found (@human.tech/waap-sdk)')
@@ -251,6 +184,34 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         setReady(true)
         console.log('[WAAP] ✅ WaaP EIP-1193 provider ready')
 
+        const unsubscribeLifecycle = waapSdk.subscribeWaaPIframeLifecycle((event) => {
+          if (
+            event.phase === 'modal_hidden' ||
+            event.phase === 'modal_cancelled'
+          ) {
+            // Let the SDK finish its opacity transition, then ensure its
+            // invisible shell cannot block the next Hub interaction.
+            window.setTimeout(() => {
+              releaseHiddenWaapOverlayInput()
+              releaseWaapOverlayInput()
+            }, 200)
+            return
+          }
+
+          if (event.phase !== 'modal_visible' || !event.fallback) return
+          const diagnostics = waapSdk.getWaaPIframeDiagnostics()
+          console.warn('[WAAP] Wallet modal used visual fallback', {
+            phase: diagnostics.modalPhase,
+            walletOrigin: diagnostics.walletOrigin,
+            iframeNavigationStartedAt: diagnostics.iframeNavigationStartedAt,
+            iframeLoadedAt: diagnostics.iframeLoadedAt,
+            modalRequestedAt: diagnostics.modalRequestedAt,
+            modalVisibleAt: diagnostics.modalVisibleAt,
+            usedVisualFallback: diagnostics.usedVisualFallback,
+            handshake: diagnostics.handshake,
+          })
+        })
+
         // Warm iframe after LCP so the first sign/login is less likely to hit about:blank.
         if (typeof waapSdk.preloadWaaPOnIdle === 'function') {
           cancelPreload = waapSdk.preloadWaaPOnIdle(provider, {
@@ -263,16 +224,26 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         }
 
         void checkExistingSession(provider)
+
+        return unsubscribeLifecycle
       } catch (error) {
         console.error('[WAAP] ❌ Error initializing WaaP:', error)
         if (!cancelled) setReady(true)
       }
     }
 
-    void initializeWaaP()
+    let unsubscribeLifecycle: (() => void) | undefined
+    void initializeWaaP().then((unsubscribe) => {
+      if (cancelled) {
+        unsubscribe?.()
+        return
+      }
+      unsubscribeLifecycle = unsubscribe
+    })
 
     return () => {
       cancelled = true
+      unsubscribeLifecycle?.()
       cancelPreload?.()
       try {
         providerInstance?.destroy?.()
@@ -288,7 +259,11 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   const checkExistingSession = async (provider: unknown) => {
     try {
       const waap = provider as {
-        request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+        request: (args: {
+          method: string
+          params?: unknown[]
+          timeoutMs?: number
+        }) => Promise<unknown>
         getLoginMethod: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
       }
 
@@ -300,41 +275,20 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         return
       }
 
-      const AUTO_CONNECT_MS = 8_000
-      const withTimeout = async <T,>(promise: Promise<T>, label: string) =>
-        Promise.race([
-          promise,
-          new Promise<never>((_, reject) => {
-            window.setTimeout(
-              () => reject(new Error(`WaaP auto-connect timed out (${label})`)),
-              AUTO_CONNECT_MS
-            )
-          }),
-        ])
+      const accounts = (await waap.request({
+        method: 'eth_accounts',
+        timeoutMs: 8_000,
+      })) as string[]
 
-      const accounts = (await withTimeout(
-        waap.request({ method: 'eth_accounts' }) as Promise<string[]>,
-        'eth_accounts'
-      )) as string[]
-
-      // Never escalate to eth_requestAccounts on restore — that mounts the
-      // #waap-wallet-iframe-container shell (often black / about:blank).
-      // Fall back to the last known address so the Hub can still render.
-      let address = accounts?.[0] as Address | undefined
+      // Never trust the Hub's local cache as proof of an active wallet session.
+      // If the SDK cannot restore an account silently, require explicit login.
+      const address = accounts?.[0] as Address | undefined
       if (!address) {
-        try {
-          const storedUser = localStorage.getItem('waap_user')
-          if (storedUser) {
-            const parsed = JSON.parse(storedUser) as WaaPUser
-            address = parsed.wallet?.address as Address | undefined
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      if (!address) {
-        console.log('[WAAP] Session cookie present but no silent accounts; waiting for explicit login')
+        console.warn('[WAAP] Persisted login marker has no active SDK account')
+        setAuthenticated(false)
+        setUser(null)
+        setWallets([])
+        localStorage.removeItem('waap_user')
         return
       }
 
@@ -367,21 +321,17 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       // control. Chain alignment happens on explicit sign / tx when needed.
       console.log('[WAAP] Skipping chain switch on silent session restore')
     } catch (error) {
-      console.log('[WAAP] Auto-connect not available or failed:', error)
-      dismissWaapWalletOverlay()
-      // Do NOT logout on timeout/recoverable errors — that thrash-disconnects
-      // users mid-session. Only clear local cache for clearly stale Silk sessions.
-      if (isRecoverableWaapSdkError(error)) {
-        localStorage.removeItem('waap_user')
-      }
+      console.warn('[WAAP] Auto-connect not available or failed:', error)
+      setAuthenticated(false)
+      setUser(null)
+      setWallets([])
+      localStorage.removeItem('waap_user')
     }
   }
 
   // Login handler - opens WaaP authentication modal
   // Reference: https://docs.wallet.human.tech/docs/guides/methods#login
   const login = useCallback(async () => {
-    console.log('[WAAP] Opening login modal...')
-    
     if (!isWaaPReady || !waapProvider) {
       console.warn('[WAAP] WaaP not ready, cannot login')
       
@@ -407,10 +357,21 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       throw new Error('WaaP not initialized. Install @human.tech/waap-sdk')
     }
 
+    if (loginInFlightRef.current) {
+      console.debug('[WAAP] Ignoring duplicate login request')
+      return
+    }
+    loginInFlightRef.current = true
+    console.log('[WAAP] Opening login modal...')
+
     try {
       const waap = waapProvider as {
         login: () => Promise<'waap' | 'human' | 'injected' | 'walletconnect' | null>
         request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+        requestEmail?: () => Promise<string>
+        getCanonicalAccountStatus?: () => Promise<{
+          accounts?: { evm?: string }
+        }>
       }
 
       // Open WaaP login modal - returns the login type chosen
@@ -423,13 +384,18 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         return
       }
 
-      // Prefer silent accounts — eth_requestAccounts right after login can re-open UI / CAPTCHA.
+      // Stay non-interactive after login. A second eth_requestAccounts call can
+      // open another modal/CAPTCHA while the auth modal is still closing.
       let accounts = (await waap.request({ method: 'eth_accounts' })) as string[]
       if (!accounts?.length) {
-        accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
+        const status = await waap.getCanonicalAccountStatus?.()
+        accounts = status?.accounts?.evm ? [status.accounts.evm] : []
+      }
+      if (!accounts?.length) {
+        throw new Error('Human Tech authenticated but returned no active EVM account')
       }
 
-      if (accounts && accounts.length > 0) {
+      if (accounts.length > 0) {
         const address = accounts[0] as Address
         console.log('[WAAP] ✅ Connected with address:', address)
 
@@ -466,33 +432,49 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         setUser(waapUser)
         localStorage.setItem('waap_user', JSON.stringify(waapUser))
 
-        // Defer chain switch — sequential wallet RPCs after login trigger Human Tech
-        // "Slide to confirm" even when the user opted out for this site.
-        window.setTimeout(() => {
-          void waap
-            .request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: CELO_CHAIN_ID_HEX }],
-            })
-            .then(() => console.log('[WAAP] ✅ Switched to Celo Mainnet'))
-            .catch((switchError) =>
-              console.log('[WAAP] Could not switch to Celo:', switchError)
-            )
-        }, 2_500)
+        // WaaP intentionally keeps email out of login/account status. The SDK
+        // requires this separate consent request to share a verified email.
+        // Ask only for a new embedded session; cached emails never re-prompt.
+        if (
+          !restoredEmail &&
+          isEmbeddedWaapLoginMethod(loginType) &&
+          waap.requestEmail &&
+          !emailRequestInFlightRef.current
+        ) {
+          emailRequestInFlightRef.current = true
+          try {
+            const sharedEmail = await waap.requestEmail()
+            if (sharedEmail?.includes('@')) {
+              const userWithEmail: WaaPUser = {
+                ...waapUser,
+                email: { address: sharedEmail },
+              }
+              setUser(userWithEmail)
+              localStorage.setItem('waap_user', JSON.stringify(userWithEmail))
+              console.log('[WAAP] ✅ Verified email shared')
+            }
+          } catch (error) {
+            // Email sharing is optional at the wallet layer. Onboarding keeps
+            // the manual email field available if the user declines.
+            console.log('[WAAP] Email sharing declined or failed:', error)
+          } finally {
+            emailRequestInFlightRef.current = false
+          }
+        }
 
         console.log('[WAAP] ✅ Login complete:', waapUser)
       }
     } catch (error) {
       console.error('[WAAP] ❌ Login error:', error)
-      if (isRecoverableWaapSdkError(error)) {
-        return
-      }
       throw error
+    } finally {
+      loginInFlightRef.current = false
     }
   }, [waapProvider, isWaaPReady])
 
   const requestSharedEmail = useCallback(async (): Promise<string | null> => {
     if (!waapProvider) return null
+    if (emailRequestInFlightRef.current) return null
     const waap = waapProvider as {
       requestEmail?: () => Promise<string>
       getLoginMethod?: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
@@ -501,6 +483,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     if (!isEmbeddedWaapLoginMethod(method)) {
       return user?.email?.address ?? null
     }
+    emailRequestInFlightRef.current = true
     try {
       const email = await waap.requestEmail?.()
       if (!email) return null
@@ -515,6 +498,8 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     } catch (error) {
       console.log('[WAAP] requestEmail declined or failed:', error)
       return null
+    } finally {
+      emailRequestInFlightRef.current = false
     }
   }, [waapProvider, user?.email?.address])
 

@@ -20,7 +20,6 @@ import {
 } from '@/lib/auth/client'
 import { SIWE_SESSION_LOADING_TIMEOUT_MS, SIWE_SIGN_TIMEOUT_MS } from '@/lib/auth/hub-session'
 import { withSignTimeout } from '@/lib/auth/signing'
-import { dismissWaapWalletOverlay } from '@/lib/wallet/waap-modal-recovery'
 
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
@@ -46,6 +45,11 @@ function useSiweSessionController(): SiweSessionValue {
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState<string | null>(null)
   const signingLockRef = useRef(false)
+  const signAbortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => signAbortRef.current?.abort()
+  }, [])
 
   const refresh = useCallback(async () => {
     if (!ready) return
@@ -110,6 +114,8 @@ function useSiweSessionController(): SiweSessionValue {
 
     setSigning(true)
     setSignError(null)
+    const abortController = new AbortController()
+    signAbortRef.current = abortController
 
     try {
       const inFlight = waitForExistingHubBootstrap()
@@ -124,8 +130,10 @@ function useSiweSessionController(): SiweSessionValue {
             await refresh()
             return true
           }
-        } catch {
-          // Stale/hung bootstrap — fall through to a fresh explicit SIWE.
+        } catch (error) {
+          // This operation has no cancellation handle. Do not create a second
+          // wallet prompt while the first one may still be pending.
+          throw error
         }
       }
 
@@ -142,16 +150,19 @@ function useSiweSessionController(): SiweSessionValue {
           authProvider,
           authProviderId: user?.id,
           eoaAddress: eoaAddress ?? undefined,
+          signal: abortController.signal,
         }),
         SIWE_SIGN_TIMEOUT_MS,
-        'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.'
+        'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.',
+        () => abortController.abort()
       )
 
       await refresh()
       return true
     } catch (error) {
-      // Unblock the UI if Human Tech left the signing shell open.
-      dismissWaapWalletOverlay()
+      // Cancels the SDK request and lets WaaP hide its own modal. Never remove
+      // SDK-owned iframe nodes directly; that leaves its request queue stale.
+      abortController.abort()
 
       if (error instanceof Error && error.name === 'SignMessageError') {
         setSignError(error.message)
@@ -167,6 +178,9 @@ function useSiweSessionController(): SiweSessionValue {
       setSessionState('needs_signature')
       return false
     } finally {
+      if (signAbortRef.current === abortController) {
+        signAbortRef.current = null
+      }
       signingLockRef.current = false
       setSigning(false)
     }

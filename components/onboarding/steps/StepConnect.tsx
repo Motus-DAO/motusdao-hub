@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -48,8 +48,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [siweSessionReady, setSiweSessionReady] = useState(false)
   const [connectBlockers, setConnectBlockers] = useState<string[]>([])
-  const [emailBusy, setEmailBusy] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const emailRequestAttemptedRef = useRef(false)
 
   const {
     register,
@@ -75,6 +74,42 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
 
   // Get user email - prioritize WaaP email, then form input
   const privyEmail = user?.email?.address || user?.google?.email
+
+  // A restored WaaP session may have an address but no locally cached email.
+  // Ask once for WaaP's verified email; the SDK owns the required consent UI.
+  useEffect(() => {
+    if (!authenticated) {
+      emailRequestAttemptedRef.current = false
+      return
+    }
+
+    const hasEmbeddedWaapWallet = wallets.some(
+      (wallet) => wallet.walletClientType === 'waap'
+    )
+    if (
+      !hasEmbeddedWaapWallet ||
+      privyEmail ||
+      watchedEmail?.includes('@') ||
+      emailRequestAttemptedRef.current ||
+      !requestSharedEmail
+    ) {
+      return
+    }
+
+    emailRequestAttemptedRef.current = true
+    void requestSharedEmail().then((email) => {
+      if (email?.includes('@')) {
+        setValue('email', email, { shouldValidate: true })
+      }
+    })
+  }, [
+    authenticated,
+    privyEmail,
+    requestSharedEmail,
+    setValue,
+    wallets,
+    watchedEmail,
+  ])
 
   // Get the EOA address - prioritizes external wallet (MetaMask) over embedded wallet
   const eoaAddress = getEOAAddress(wallets)
@@ -166,25 +201,6 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
       setIsConnecting(false)
     }
   }
-
-  const handleShareEmail = async () => {
-    setEmailBusy(true)
-    setEmailError(null)
-    try {
-      const email = await requestSharedEmail?.()
-      if (!email) {
-        setEmailError('No se compartió el correo. Intenta de nuevo o escríbelo manualmente.')
-        return
-      }
-      setValue('email', email, { shouldValidate: true })
-    } catch (error) {
-      console.error('Error sharing email:', error)
-      setEmailError('No se pudo obtener el correo de Human Tech.')
-    } finally {
-      setEmailBusy(false)
-    }
-  }
-
 
   const onSubmit = (formData: ConnectFormData) => {
     const emailToSave = privyEmail || formData.email
@@ -378,7 +394,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div>
                       <input
                         {...register('email')}
                         type="email"
@@ -390,24 +406,6 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                             : 'border-white/10 focus:ring-mauve-500 focus:border-mauve-500'
                         }`}
                       />
-                      <CTAButton
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={emailBusy}
-                        onClick={() => void handleShareEmail()}
-                        className="w-full gap-2"
-                      >
-                        {emailBusy ? (
-                          <Loader className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Mail className="h-4 w-4" />
-                        )}
-                        {emailBusy ? 'Abriendo Human Tech…' : 'Compartir email con Human Tech'}
-                      </CTAButton>
-                      {emailError && (
-                        <p className="text-xs text-red-400">{emailError}</p>
-                      )}
                       {errors.email && (
                         <p className="text-red-400 text-xs mt-1 flex items-center space-x-1">
                           <AlertCircle className="w-3 h-3" />

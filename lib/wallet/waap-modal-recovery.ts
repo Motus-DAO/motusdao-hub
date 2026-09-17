@@ -26,6 +26,60 @@ export function isWaapOverlayPresent(): boolean {
 }
 
 /**
+ * Ensure a visually hidden SDK shell cannot keep intercepting Hub clicks.
+ * Unlike dismissWaapWalletOverlay, this preserves the SDK-owned DOM and only
+ * acts when computed styles already say the element is hidden.
+ */
+export function releaseHiddenWaapOverlayInput(): boolean {
+  if (typeof window === 'undefined') return false
+
+  let released = false
+  for (const element of findWaapOverlayElements()) {
+    const style = window.getComputedStyle(element)
+    const opacity = Number.parseFloat(style.opacity)
+    const isHidden =
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      (!Number.isNaN(opacity) && opacity === 0)
+
+    if (isHidden && style.pointerEvents !== 'none') {
+      element.style.pointerEvents = 'none'
+      released = true
+    }
+  }
+
+  if (released) {
+    console.warn('[WAAP] Released pointer capture from hidden wallet overlay')
+  }
+  return released
+}
+
+/**
+ * Release the root SDK backdrop after a wallet operation has definitively
+ * completed or been cancelled. Call only from those terminal states.
+ */
+export function releaseWaapOverlayInput(): boolean {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false
+
+  let released = false
+  for (const selector of [
+    '#waap-wallet-iframe-container',
+    '#silk-wallet-iframe-container',
+  ]) {
+    const element = document.querySelector<HTMLElement>(selector)
+    if (element && window.getComputedStyle(element).pointerEvents !== 'none') {
+      element.style.pointerEvents = 'none'
+      released = true
+    }
+  }
+
+  if (released) {
+    console.warn('[WAAP] Released wallet overlay after completed operation')
+  }
+  return released
+}
+
+/**
  * Remove stuck WaaP/Silk overlay nodes so the Hub UI is usable again.
  * Does not clear the wallet session by itself — call logout separately if needed.
  */

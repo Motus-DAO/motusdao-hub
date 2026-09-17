@@ -1,10 +1,9 @@
 'use client'
 
-import { ReactNode, Component, ErrorInfo, useEffect } from 'react'
+import { ReactNode, Component, ErrorInfo } from 'react'
 import { WaaPProvider } from '@/lib/contexts/WaaPProvider'
 import { WalletAuthShell } from '@/components/wallet/WalletAuthShell'
 import { WaaPWalletContextBridge } from '@/components/wallet/WaaPWalletContextBridge'
-import { WaapStuckModalGuard } from '@/components/wallet/WaapStuckModalGuard'
 import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
 
 interface WaaPProviderWrapperProps {
@@ -68,53 +67,6 @@ class WaaPErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundary
 }
 
 /**
- * Component that sets up global error handlers for WaaP SDK errors
- * This runs inside the React tree to properly handle errors that escape the boundary
- */
-function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    // Handle errors that escape React's error boundary
-    const handleError = (event: ErrorEvent) => {
-      if (isRecoverableWaapSdkError(event.error) || isRecoverableWaapSdkError(event.message)) {
-        event.preventDefault()
-        event.stopPropagation()
-        return false
-      }
-    }
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (isRecoverableWaapSdkError(event.reason)) {
-        event.preventDefault()
-        return false
-      }
-    }
-
-    // Also override window.onerror for extra protection
-    const originalOnError = window.onerror
-    window.onerror = function(message, source, lineno, colno, error) {
-      if (isRecoverableWaapSdkError(error) || isRecoverableWaapSdkError(message)) {
-        return true // Suppress the error
-      }
-      if (originalOnError) {
-        return originalOnError.call(window, message, source, lineno, colno, error)
-      }
-      return false
-    }
-
-    window.addEventListener('error', handleError, true)
-    window.addEventListener('unhandledrejection', handleUnhandledRejection, true)
-
-    return () => {
-      window.removeEventListener('error', handleError, true)
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection, true)
-      window.onerror = originalOnError
-    }
-  }, [])
-
-  return <>{children}</>
-}
-
-/**
  * WaaP Provider Wrapper
  * 
  * Replaces PrivyProviderWrapper to use WaaP (Human.tech Wallet as Protocol)
@@ -136,18 +88,13 @@ function WaaPGlobalErrorHandler({ children }: { children: ReactNode }) {
 export function WaaPProviderWrapper({ children }: WaaPProviderWrapperProps) {
   return (
     <WaaPErrorBoundary>
-      <WaaPGlobalErrorHandler>
-        <div suppressHydrationWarning>
-          <WaaPProvider>
-            <WaaPWalletContextBridge>
-              <WalletAuthShell>
-                <WaapStuckModalGuard />
-                {children}
-              </WalletAuthShell>
-            </WaaPWalletContextBridge>
-          </WaaPProvider>
-        </div>
-      </WaaPGlobalErrorHandler>
+      <div suppressHydrationWarning>
+        <WaaPProvider>
+          <WaaPWalletContextBridge>
+            <WalletAuthShell>{children}</WalletAuthShell>
+          </WaaPWalletContextBridge>
+        </WaaPProvider>
+      </div>
     </WaaPErrorBoundary>
   )
 }

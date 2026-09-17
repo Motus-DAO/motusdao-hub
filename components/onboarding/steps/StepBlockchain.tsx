@@ -18,6 +18,7 @@ import { getCeloExplorerUrl } from '@/lib/celo'
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
 import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
 import { ensureFaucetCeloForMns, registerMotusName, resolveWaaPSigningAddress } from '@/lib/mns-register'
+import { releaseWaapOverlayInput } from '@/lib/wallet/waap-modal-recovery'
 
 interface StepBlockchainProps {
   onNext: () => void
@@ -52,6 +53,17 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
   useEffect(() => {
     motusNameService.getRegistrationPrice().then(setRegistrationPrice).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (status !== 'success') return
+
+    // No wallet request remains active in this terminal state. Ensure the
+    // completed transaction modal cannot leave an invisible click-blocking
+    // backdrop over the continuation CTA.
+    releaseWaapOverlayInput()
+    const timer = window.setTimeout(releaseWaapOverlayInput, 250)
+    return () => window.clearTimeout(timer)
+  }, [status])
 
   // Restore domain from store or on-chain when user returns to this step
   useEffect(() => {
@@ -735,6 +747,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
             )}
 
             <CTAButton
+              type="button"
               onClick={onNext}
               className="flex items-center space-x-2 mx-auto"
             >

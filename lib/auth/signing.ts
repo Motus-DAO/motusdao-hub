@@ -11,7 +11,13 @@ import { SIWE_SIGN_TIMEOUT_MS } from '@/lib/auth/hub-session'
 import { normalizeSignature } from '@/lib/auth/verify-siwe'
 
 type Eip1193Provider = {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+  isWaaP?: boolean
+  request: (args: {
+    method: string
+    params?: unknown[]
+    signal?: AbortSignal
+    timeoutMs?: number
+  }) => Promise<unknown>
 }
 
 type WaapProvider = Eip1193Provider & {
@@ -27,18 +33,59 @@ function getWindowEthereum(): Eip1193Provider | null {
 export async function withSignTimeout<T>(
   promise: Promise<T>,
   timeoutMs = SIWE_SIGN_TIMEOUT_MS,
-  message = 'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.'
+  message = 'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.',
+  onTimeout?: () => void
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), timeoutMs)
+        timer = setTimeout(() => {
+          onTimeout?.()
+          reject(new Error(message))
+        }, timeoutMs)
       }),
     ])
   } finally {
     if (timer) clearTimeout(timer)
+  }
+}
+
+async function requestWalletWithTimeout<T>(
+  provider: unknown,
+  args: { method: string; params?: unknown[] },
+  timeoutMs: number,
+  timeoutMessage: string,
+  parentSignal?: AbortSignal
+): Promise<T> {
+  const waap = provider as Eip1193Provider
+  const controller = new AbortController()
+  let timedOut = false
+
+  const abortFromParent = () => controller.abort(parentSignal?.reason)
+  if (parentSignal?.aborted) {
+    abortFromParent()
+  } else {
+    parentSignal?.addEventListener('abort', abortFromParent, { once: true })
+  }
+
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort(new Error(timeoutMessage))
+  }, timeoutMs)
+
+  try {
+    const request = waap.isWaaP
+      ? { ...args, signal: controller.signal, timeoutMs }
+      : args
+    return (await waap.request(request)) as T
+  } catch (error) {
+    if (timedOut || parentSignal?.aborted) throw new Error(timeoutMessage)
+    throw error
+  } finally {
+    clearTimeout(timer)
+    parentSignal?.removeEventListener('abort', abortFromParent)
   }
 }
 
@@ -62,23 +109,34 @@ export function resolveSigningProvider(waapProvider: unknown): unknown {
 }
 
 export async function getActiveSignerAddress(
-  provider: unknown
+  provider: unknown,
+  signal?: AbortSignal
 ): Promise<Address> {
-  const waap = provider as Eip1193Provider
+  const timeoutMs = Math.min(SIWE_SIGN_TIMEOUT_MS, 20_000)
+  const timeoutMessage = 'No se pudo conectar con la wallet. Recarga e intenta de nuevo.'
+  const deadline = Date.now() + timeoutMs
 
-  const resolveAccounts = async () => {
-    let accounts = (await waap.request({ method: 'eth_accounts' })) as string[]
-    if (!accounts?.length) {
-      accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
-    }
-    return accounts
-  }
-
-  const accounts = await withSignTimeout(
-    resolveAccounts(),
-    Math.min(SIWE_SIGN_TIMEOUT_MS, 20_000),
-    'No se pudo conectar con la wallet. Recarga e intenta de nuevo.'
+  let accounts = await requestWalletWithTimeout<string[]>(
+    provider,
+    { method: 'eth_accounts' },
+    timeoutMs,
+    timeoutMessage,
+    signal
   )
+
+  if (!accounts?.length) {
+    const loginMethod = (provider as WaapProvider).getLoginMethod?.()
+    if (loginMethod === 'waap' || loginMethod === 'human') {
+      throw new Error('La sesión de Human Tech expiró. Vuelve a iniciar sesión.')
+    }
+    accounts = await requestWalletWithTimeout<string[]>(
+      provider,
+      { method: 'eth_requestAccounts' },
+      Math.max(1_000, deadline - Date.now()),
+      timeoutMessage,
+      signal
+    )
+  }
 
   if (!accounts?.length) {
     throw new Error('No wallet account available')
@@ -106,15 +164,17 @@ async function signWithViem(
 
 async function signWithPersonalSign(
   provider: unknown,
-  message: string,
-  address: Address,
-  params: [unknown, string]
+  params: [unknown, string],
+  timeoutMs: number,
+  signal?: AbortSignal
 ): Promise<string> {
-  const waap = provider as Eip1193Provider
-  return (await waap.request({
-    method: 'personal_sign',
-    params,
-  })) as string
+  return requestWalletWithTimeout<string>(
+    provider,
+    { method: 'personal_sign', params },
+    timeoutMs,
+    'La firma tardó demasiado. Revisa si hay un popup de wallet bloqueado e intenta de nuevo.',
+    signal
+  )
 }
 
 /**
@@ -123,7 +183,8 @@ async function signWithPersonalSign(
 export async function signSiweMessage(
   waapProvider: unknown,
   message: string,
-  address: string
+  address: string,
+  signal?: AbortSignal
 ): Promise<string> {
   const signerAddress = getAddress(address)
   const signingProvider = resolveSigningProvider(waapProvider)
@@ -144,7 +205,10 @@ export async function signSiweMessage(
     loginMethod === 'walletconnect' ||
     signingProvider === waapProvider
 
-  const personalSignAttempts: [unknown, string][] = preferPersonalSign
+  const embeddedWaap = loginMethod === 'waap' || loginMethod === 'human'
+  const personalSignAttempts: [unknown, string][] = embeddedWaap
+    ? [[hexMessage, signerAddress]]
+    : preferPersonalSign
     ? [
         [hexMessage, signerAddress],
         [signerAddress, hexMessage],
@@ -161,17 +225,27 @@ export async function signSiweMessage(
   if (preferPersonalSign) {
     for (const params of personalSignAttempts) {
       try {
-        const sig = await withSignTimeout(
-          signWithPersonalSign(signingProvider, message, signerAddress, params),
-          remainingMs()
+        const sig = await signWithPersonalSign(
+          signingProvider,
+          params,
+          remainingMs(),
+          signal
         )
         return normalizeSignature(sig)
       } catch (error) {
         errors.push(`personal_sign: ${formatSignError(error)}`)
-        // One hung RPC means the provider is stuck — don't queue more prompts.
-        if (isHangTimeout(error)) break
+        // Never queue another wallet prompt after rejection or a stuck provider.
+        if (isUserRejectedSignError(error)) throw error
+        if (isHangTimeout(error) || signal?.aborted) break
       }
     }
+  }
+
+  // The documented WaaP 2.3 signature shape is unambiguous. Retrying it through
+  // viem would enqueue a second Human Tech modal for the same SIWE request.
+  if (embeddedWaap) {
+    console.error('[auth] WaaP SIWE signing failed:', errors)
+    throw new SignMessageError(errors)
   }
 
   // viem signMessage (works well for injected MetaMask)
@@ -188,14 +262,17 @@ export async function signSiweMessage(
   if (!preferPersonalSign) {
     for (const params of personalSignAttempts) {
       try {
-        const sig = await withSignTimeout(
-          signWithPersonalSign(signingProvider, message, signerAddress, params),
-          remainingMs()
+        const sig = await signWithPersonalSign(
+          signingProvider,
+          params,
+          remainingMs(),
+          signal
         )
         return normalizeSignature(sig)
       } catch (error) {
         errors.push(`personal_sign: ${formatSignError(error)}`)
-        if (isHangTimeout(error)) break
+        if (isUserRejectedSignError(error)) throw error
+        if (isHangTimeout(error) || signal?.aborted) break
       }
     }
   }

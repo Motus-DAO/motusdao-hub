@@ -519,39 +519,6 @@ body::after {
   color: rgba(0, 0, 0, 0.9) !important;
 }
 
-/* Status banners own their colors — do NOT inherit glass white text (breaks warning/cream). */
-.glass .ui-status-banner,
-.glass-strong .ui-status-banner {
-  color: inherit !important;
-}
-
-.glass .ui-status-banner :where(p, div, span, li, label, ul),
-.glass-strong .ui-status-banner :where(p, div, span, li, label, ul) {
-  color: inherit !important;
-}
-
-.glass .ui-status-banner[data-variant='warning'],
-.glass-strong .ui-status-banner[data-variant='warning'] {
-  background-color: rgb(255 251 235) !important; /* amber-50 */
-  border-color: rgb(252 211 77 / 0.85) !important;
-  color: rgb(69 26 3) !important; /* amber-950 — readable on cream */
-}
-
-.glass .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul),
-.glass-strong .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul) {
-  color: rgb(69 26 3) !important;
-}
-
-.glass .ui-status-banner[data-variant='success'],
-.glass-strong .ui-status-banner[data-variant='success'] {
-  color: rgb(6 78 59) !important;
-}
-
-.glass .ui-status-banner .status-banner-error,
-.glass-strong .ui-status-banner .status-banner-error {
-  color: rgb(185 28 28) !important;
-}
-
 .glass .gradient-text,
 .glass-strong .gradient-text {
   background: var(--grad-primary);
@@ -581,38 +548,6 @@ body::after {
 .dark .glass-strong label,
 .dark .glass-strong p:not(.text-muted-foreground) {
   color: rgba(255, 255, 255, 0.9) !important;
-}
-
-.dark .glass .ui-status-banner,
-.dark .glass-strong .ui-status-banner {
-  color: inherit !important;
-}
-
-.dark .glass .ui-status-banner :where(p, div, span, li, label, ul),
-.dark .glass-strong .ui-status-banner :where(p, div, span, li, label, ul) {
-  color: inherit !important;
-}
-
-.dark .glass .ui-status-banner[data-variant='warning'],
-.dark .glass-strong .ui-status-banner[data-variant='warning'] {
-  background-color: rgb(69 26 3 / 0.92) !important; /* amber-950 */
-  border-color: rgb(245 158 11 / 0.45) !important;
-  color: rgb(255 251 235) !important; /* amber-50 */
-}
-
-.dark .glass .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul),
-.dark .glass-strong .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul) {
-  color: rgb(254 243 199) !important; /* amber-100 */
-}
-
-.dark .glass .ui-status-banner[data-variant='success'],
-.dark .glass-strong .ui-status-banner[data-variant='success'] {
-  color: rgb(167 243 208) !important;
-}
-
-.dark .glass .ui-status-banner .status-banner-error,
-.dark .glass-strong .ui-status-banner .status-banner-error {
-  color: rgb(252 165 165) !important;
 }
 
 .dark .glass .gradient-text,
@@ -1195,33 +1130,6 @@ html.light:not([data-theme="matrix"]) .text-amber-400 {
   color: var(--matrix-text) !important;
 }
 
-[data-theme="matrix"] .glass .ui-status-banner,
-[data-theme="matrix"] .glass .ui-status-banner :where(p, div, span, li, label, ul) {
-  color: unset !important;
-}
-
-[data-theme="matrix"] .ui-status-banner[data-variant="warning"] {
-  background-color: rgba(69, 26, 3, 0.92) !important;
-  border-color: rgba(251, 191, 36, 0.45) !important;
-  color: #fde68a !important;
-}
-
-[data-theme="matrix"] .ui-status-banner[data-variant="success"] {
-  background-color: rgba(6, 46, 34, 0.92) !important;
-  border-color: rgba(52, 211, 153, 0.45) !important;
-  color: #a7f3d0 !important;
-}
-
-[data-theme="matrix"] .ui-status-banner[data-variant="error"] {
-  background-color: rgba(69, 10, 10, 0.92) !important;
-  border-color: rgba(248, 113, 113, 0.45) !important;
-  color: #fecaca !important;
-}
-
-[data-theme="matrix"] .glass .ui-status-banner .status-banner-error {
-  color: #fca5a5 !important;
-}
-
 /* Matrix theme sidebar text colors */
 [data-theme="matrix"] .glass-sidebar .text-muted-foreground {
   color: var(--matrix-text) !important;
@@ -1608,29 +1516,117 @@ p[class*="HelpTextContainer"] * {
   @apply mb-2;
 }
 
-/* Human Tech WaaP overlay — keep above Hub chrome; avoid filters that force CAPTCHA */
-#waap-wallet-iframe-container,
-#silk-wallet-iframe-container {
-  z-index: 99999 !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  transform: none !important;
-  opacity: 1 !important;
+/*
+ * StatusBanner semantic colors are owned by the design-system component.
+ * Keep these rules independent from glass/accent text inheritance so every
+ * variant preserves contrast in light, dark, and Matrix themes.
+ */
+.ui-status-banner {
+  --status-bg: rgb(248 250 252);
+  --status-border: rgb(203 213 225);
+  --status-title: rgb(15 23 42);
+  --status-description: rgb(51 65 85);
+  --status-icon: rgb(71 85 105);
+  --status-content: rgb(30 41 59);
+  --status-error: rgb(185 28 28);
+
+  background-color: var(--status-bg) !important;
+  border-color: var(--status-border) !important;
+  color: var(--status-content) !important;
 }
 
-#waap-wallet-iframe-wrapper,
-#silk-wallet-iframe-wrapper {
-  filter: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  transform: none !important;
-  opacity: 1 !important;
+.ui-status-banner[data-variant='success'] {
+  --status-bg: rgb(236 253 245);
+  --status-border: rgb(110 231 183 / 0.8);
+  --status-title: rgb(6 78 59);
+  --status-description: rgb(4 120 87);
+  --status-icon: rgb(5 150 105);
+  --status-content: rgb(6 78 59);
 }
 
-#waap-wallet-iframe-container iframe,
-#silk-wallet-iframe-container iframe {
-  background-color: transparent;
-  opacity: 1 !important;
-  filter: none !important;
+.ui-status-banner[data-variant='warning'] {
+  --status-bg: rgb(255 251 235);
+  --status-border: rgb(252 211 77 / 0.85);
+  --status-title: rgb(69 26 3);
+  --status-description: rgb(146 64 14);
+  --status-icon: rgb(217 119 6);
+  --status-content: rgb(120 53 15);
+}
+
+.ui-status-banner[data-variant='error'] {
+  --status-bg: rgb(254 242 242);
+  --status-border: rgb(252 165 165 / 0.8);
+  --status-title: rgb(127 29 29);
+  --status-description: rgb(185 28 28);
+  --status-icon: rgb(220 38 38);
+  --status-content: rgb(153 27 27);
+}
+
+.dark .ui-status-banner,
+[data-theme='matrix'] .ui-status-banner {
+  --status-bg: rgb(15 23 42 / 0.94);
+  --status-border: rgb(148 163 184 / 0.3);
+  --status-title: rgb(248 250 252);
+  --status-description: rgb(203 213 225);
+  --status-icon: rgb(148 163 184);
+  --status-content: rgb(226 232 240);
+  --status-error: rgb(252 165 165);
+}
+
+.dark .ui-status-banner[data-variant='success'],
+[data-theme='matrix'] .ui-status-banner[data-variant='success'] {
+  --status-bg: rgb(2 44 34 / 0.94);
+  --status-border: rgb(52 211 153 / 0.45);
+  --status-title: rgb(236 253 245);
+  --status-description: rgb(167 243 208);
+  --status-icon: rgb(52 211 153);
+  --status-content: rgb(209 250 229);
+}
+
+.dark .ui-status-banner[data-variant='warning'],
+[data-theme='matrix'] .ui-status-banner[data-variant='warning'] {
+  --status-bg: rgb(69 26 3 / 0.94);
+  --status-border: rgb(245 158 11 / 0.5);
+  --status-title: rgb(255 251 235);
+  --status-description: rgb(254 243 199);
+  --status-icon: rgb(252 211 77);
+  --status-content: rgb(254 243 199);
+}
+
+.dark .ui-status-banner[data-variant='error'],
+[data-theme='matrix'] .ui-status-banner[data-variant='error'] {
+  --status-bg: rgb(69 10 10 / 0.94);
+  --status-border: rgb(248 113 113 / 0.45);
+  --status-title: rgb(254 242 242);
+  --status-description: rgb(254 202 202);
+  --status-icon: rgb(248 113 113);
+  --status-content: rgb(254 226 226);
+}
+
+.ui-status-banner [data-slot='status-banner-icon'] {
+  color: var(--status-icon) !important;
+}
+
+.ui-status-banner [data-slot='status-banner-title'] {
+  color: var(--status-title) !important;
+}
+
+.ui-status-banner [data-slot='status-banner-description'] {
+  color: var(--status-description) !important;
+}
+
+.ui-status-banner [data-slot='status-banner-content'] {
+  color: var(--status-content) !important;
+}
+
+.ui-status-banner .status-banner-error {
+  color: var(--status-error) !important;
+}
+
+/* A closed WaaP shell must never intercept Hub controls behind it. */
+#waap-wallet-iframe-container[style*="visibility: hidden"],
+#waap-wallet-iframe-container[style*="opacity: 0"],
+#silk-wallet-iframe-container[style*="visibility: hidden"],
+#silk-wallet-iframe-container[style*="opacity: 0"] {
+  pointer-events: none !important;
 }
