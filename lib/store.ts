@@ -13,6 +13,9 @@ interface UIState {
   // Role management
   role: UserRole
   setRole: (role: UserRole) => void
+  /** True when the DB user can open admin surfaces while role stays psm/usuario */
+  isPlatformAdmin: boolean
+  setIsPlatformAdmin: (value: boolean) => void
   
   // Sidebar state
   sidebarOpen: boolean
@@ -43,6 +46,8 @@ export const useUIStore = create<UIState>()(
       // Role management
       role: 'usuario',
       setRole: (role) => set({ role }),
+      isPlatformAdmin: false,
+      setIsPlatformAdmin: (isPlatformAdmin) => set({ isPlatformAdmin }),
       
       // Sidebar state
       sidebarOpen: true,
@@ -77,6 +82,7 @@ export const useUIStore = create<UIState>()(
       },
       partialize: (state) => ({
         role: state.role,
+        isPlatformAdmin: state.isPlatformAdmin,
         theme: state.theme,
         sidebarOpen: state.sidebarOpen,
         accentColor: state.accentColor,

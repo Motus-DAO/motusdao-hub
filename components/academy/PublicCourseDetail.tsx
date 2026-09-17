@@ -43,7 +43,12 @@ import {
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { findCachedCourseBySlug, isCoursesCacheFresh } from '@/lib/academy/courses-cache'
 import { renderMarkdown } from '@/lib/academy/markdown'
-import { isPraxisCatalogSlug, PRAXIS_BLOCK_SLUG } from '@/lib/academy/praxis-catalog'
+import {
+  isPraxisCatalogSlug,
+  PRAXIS_BLOCK_SLUG,
+  PRAXIS_HERO_BENEFITS,
+  PRAXIS_PROMISE,
+} from '@/lib/academy/praxis-catalog'
 import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -283,6 +288,188 @@ function EnrollmentCTA({
         <p className="mt-3 text-center text-xs text-red-300">{actionError || signError}</p>
       )}
     </>
+  )
+}
+
+function PraxisBlockView({
+  course,
+  enrollment,
+  onEnroll,
+  enrolling,
+  paymentConfirming,
+  redirectingToCourse,
+  actionError,
+  signError,
+  sessionState,
+  signing,
+  stripeEnabled,
+  checkoutSuccess,
+  checkoutPhase,
+  payCurrency,
+  usdToMxn,
+  onPayCurrencyChange,
+  onLogin,
+  onSignIn,
+}: {
+  course: PublicCourse
+  enrollment: EnrollmentSummary | null
+  onEnroll: () => void
+  enrolling: boolean
+  paymentConfirming: boolean
+  redirectingToCourse: boolean
+  actionError: string | null
+  signError: string | null
+  sessionState: string
+  signing: boolean
+  stripeEnabled: boolean
+  checkoutSuccess: boolean
+  checkoutPhase: 'activating' | 'ready' | 'error'
+  payCurrency: CourseCurrency
+  usdToMxn: number | null
+  onPayCurrencyChange: (currency: CourseCurrency) => void
+  onLogin: () => void
+  onSignIn: () => void
+}) {
+  const outcomes = courseLearningOutcomes(course)
+  const benefits = (outcomes.length >= 3 ? outcomes : [...PRAXIS_HERO_BENEFITS]).slice(0, 3)
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Section padding="md">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-4 sm:mb-6"
+          >
+            <Link href="/academia">
+              <CTAButton variant="secondary" size="sm" className="max-w-full">
+                <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
+                Volver a la Academia
+              </CTAButton>
+            </Link>
+          </motion.div>
+
+          <div className="space-y-8 lg:space-y-10">
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+              <GlassCard className="overflow-hidden">
+                <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+                  <div
+                    role="img"
+                    aria-label={course.title}
+                    className="aspect-[16/9] w-full bg-gradient-to-br from-mauve-500/20 to-iris-500/20 bg-cover bg-center lg:aspect-auto lg:min-h-[320px]"
+                    style={course.imageUrl ? { backgroundImage: `url(${course.imageUrl})` } : undefined}
+                  >
+                    {!course.imageUrl && (
+                      <div className="flex h-full min-h-[12rem] items-center justify-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-mauve-500/80 sm:h-20 sm:w-20">
+                          <GraduationCap className="h-8 w-8 text-white sm:h-10 sm:w-10" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col justify-center p-5 sm:p-7 lg:p-8">
+                    <span className="mb-3 w-fit rounded-full bg-mauve-500/20 px-3 py-1 text-xs font-medium text-mauve-300">
+                      {courseCategoryBadge(course)}
+                    </span>
+                    <GradientText as="h1" className="mb-3 text-3xl font-bold sm:text-4xl">
+                      {course.title}
+                    </GradientText>
+                    <p className="mb-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{PRAXIS_PROMISE}</p>
+                    <ul className="mb-6 space-y-2.5">
+                      {benefits.map((benefit) => (
+                        <li key={benefit} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
+                          <span>{benefit}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href="#catalogo" className="w-fit">
+                      <CTAButton size="lg">Ver formación</CTAButton>
+                    </Link>
+                  </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <h2 className="text-xl font-bold sm:text-2xl">Contenido del bloque</h2>
+                <p className="text-sm text-muted-foreground">{courseLessonCount(course)} lecciones introductorias</p>
+              </div>
+              {course.modules.length === 0 ? (
+                <GlassCard className="p-6 text-sm text-muted-foreground">
+                  El contenido de este bloque se publicará próximamente.
+                </GlassCard>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {course.modules.map((module, moduleIndex) => (
+                    <GlassCard key={module.id} className="overflow-hidden">
+                      <div className="border-b border-white/10 px-4 py-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-mauve-400">
+                          Módulo {moduleIndex + 1}
+                        </p>
+                        <h3 className="mt-0.5 line-clamp-1 text-sm font-semibold sm:text-base">{module.title}</h3>
+                      </div>
+                      <div className="divide-y divide-white/10">
+                        {module.lessons.length === 0 ? (
+                          <p className="px-4 py-3 text-sm text-muted-foreground">Sin lecciones publicadas.</p>
+                        ) : (
+                          module.lessons.map((lesson, lessonIndex) => (
+                            <Link
+                              key={lesson.id}
+                              href={`/academia/${course.slug}/leccion/${lesson.slug}`}
+                              className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/5"
+                            >
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-mauve-500/15 text-[11px] font-semibold text-mauve-300">
+                                {lessonIndex + 1}
+                              </div>
+                              <p className="min-w-0 flex-1 line-clamp-2 text-sm leading-snug">{lesson.title}</p>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {lesson.duration == null ? '—' : `${lesson.duration} min`}
+                              </span>
+                            </Link>
+                          ))
+                        )}
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              )}
+              <GlassCard className="p-4 sm:p-5">
+                <EnrollmentCTA
+                  course={course}
+                  enrollment={enrollment}
+                  enrolling={enrolling}
+                  paymentConfirming={paymentConfirming}
+                  redirectingToCourse={redirectingToCourse}
+                  actionError={actionError}
+                  signError={signError}
+                  sessionState={sessionState}
+                  signing={signing}
+                  stripeEnabled={stripeEnabled}
+                  checkoutSuccess={checkoutSuccess}
+                  checkoutPhase={checkoutPhase}
+                  payCurrency={payCurrency}
+                  usdToMxn={usdToMxn}
+                  onPayCurrencyChange={onPayCurrencyChange}
+                  onEnroll={onEnroll}
+                  onLogin={onLogin}
+                  onSignIn={onSignIn}
+                />
+              </GlassCard>
+            </section>
+
+            <PraxisCatalog displayCurrency={payCurrency} usdToMxn={usdToMxn} />
+
+            <p className="px-1 text-center text-[11px] leading-relaxed text-muted-foreground/70 sm:text-left">
+              La formación MotusDAO no sustituye tu cédula profesional ni tu juicio clínico.
+            </p>
+          </div>
+        </div>
+      </Section>
+    </div>
   )
 }
 
@@ -899,28 +1086,30 @@ export function PublicCourseDetail({ slug: rawSlug, fallback }: { slug: string; 
     : 'activating'
 
   if (course) {
-    return (
-      <CourseDetailView
-        course={course}
-        enrollment={enrollment}
-        onEnroll={() => void handleEnroll()}
-        enrolling={enrolling}
-        paymentConfirming={paymentConfirming}
-        redirectingToCourse={redirectingToCourse}
-        actionError={actionError}
-        signError={signError}
-        sessionState={ready ? sessionState : 'loading'}
-        signing={signing}
-        stripeEnabled={stripeEnabled}
-        checkoutSuccess={checkoutSuccess}
-        checkoutPhase={checkoutPhase}
-        payCurrency={payCurrency}
-        usdToMxn={usdToMxn}
-        onPayCurrencyChange={setCurrencyPreference}
-        onLogin={() => void login()}
-        onSignIn={() => void handleSignInAndEnroll()}
-      />
-    )
+    const viewProps = {
+      course,
+      enrollment,
+      onEnroll: () => void handleEnroll(),
+      enrolling,
+      paymentConfirming,
+      redirectingToCourse,
+      actionError,
+      signError,
+      sessionState: ready ? sessionState : 'loading',
+      signing,
+      stripeEnabled,
+      checkoutSuccess,
+      checkoutPhase,
+      payCurrency,
+      usdToMxn,
+      onPayCurrencyChange: setCurrencyPreference,
+      onLogin: () => void login(),
+      onSignIn: () => void handleSignInAndEnroll(),
+    }
+    if (course.slug === PRAXIS_BLOCK_SLUG) {
+      return <PraxisBlockView {...viewProps} />
+    }
+    return <CourseDetailView {...viewProps} />
   }
   if (missing && !loading) {
     if (fallback) return fallback

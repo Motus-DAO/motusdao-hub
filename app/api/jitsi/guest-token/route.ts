@@ -1,7 +1,11 @@
 import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { parsePsmIdFromOpenRoom } from '@/lib/jitsi'
+import {
+  isJitsiQuickRoomsEnabled,
+  parsePsmIdFromOpenRoom,
+  parseQuickRoomSlug,
+} from '@/lib/jitsi'
 import { signJitsiGuestToken } from '@/lib/jitsi-token'
 
 const DISPLAY_NAME_MAX = 48
@@ -12,7 +16,9 @@ function sanitizeDisplayName(name: string): string {
 
 /**
  * POST /api/jitsi/guest-token
- * Public guest access for open PSM rooms only (motusdao-open-{psmId}).
+ * Public guest access for:
+ * - open PSM rooms (motusdao-open-{psmId})
+ * - quick sandbox rooms when NEXT_PUBLIC_JITSI_QUICK_ROOMS=true
  */
 export async function POST(request: NextRequest) {
   try {
@@ -26,10 +32,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'roomName es requerido' }, { status: 400 })
     }
 
+    const cleanName = sanitizeDisplayName(displayName || '')
+    if (cleanName.length < 2) {
+      return NextResponse.json(
+        { error: 'Ingresa un nombre para mostrar (mínimo 2 caracteres)' },
+        { status: 400 }
+      )
+    }
+
+    const quickSlug = parseQuickRoomSlug(roomName)
+    if (quickSlug) {
+      if (!isJitsiQuickRoomsEnabled()) {
+        return NextResponse.json(
+          { error: 'Salas rápidas desactivadas' },
+          { status: 403 }
+        )
+      }
+
+      const guestId = `guest-${randomUUID()}`
+      const token = signJitsiGuestToken({
+        roomName,
+        guestId,
+        displayName: cleanName,
+        moderator: true,
+      })
+
+      return NextResponse.json({
+        success: true,
+        token,
+        guestId,
+        displayName: cleanName,
+        moderator: true,
+        kind: 'quick',
+      })
+    }
+
     const ownerPsmId = parsePsmIdFromOpenRoom(roomName)
     if (!ownerPsmId) {
       return NextResponse.json(
-        { error: 'El acceso como invitado solo está disponible en enlaces abiertos' },
+        { error: 'El acceso como invitado solo está disponible en enlaces abiertos o salas rápidas' },
         { status: 403 }
       )
     }
@@ -43,14 +84,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Sala de invitados no disponible' },
         { status: 404 }
-      )
-    }
-
-    const cleanName = sanitizeDisplayName(displayName || '')
-    if (cleanName.length < 2) {
-      return NextResponse.json(
-        { error: 'Ingresa un nombre para mostrar (mínimo 2 caracteres)' },
-        { status: 400 }
       )
     }
 

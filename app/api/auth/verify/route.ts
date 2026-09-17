@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         role: true,
+        isPlatformAdmin: true,
         authProvider: true,
         authProviderId: true,
       },
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       sub: user?.id ?? null,
       eoa: address.toLowerCase(),
       role: user?.role ?? null,
+      isPlatformAdmin: user?.isPlatformAdmin === true,
       authProvider: body.authProvider ?? user?.authProvider ?? null,
     }
 
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
       userId: user?.id ?? null,
       eoaAddress: address,
       role: user?.role ?? null,
+      isPlatformAdmin: user?.isPlatformAdmin === true,
       registered: Boolean(user),
     })
 

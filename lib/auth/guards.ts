@@ -5,7 +5,10 @@ import { AuthError } from './errors'
 import { prisma } from '@/lib/prisma'
 
 export function isAdmin(session: AuthContext): boolean {
-  return session.role === 'admin' && Boolean(session.userId)
+  return (
+    Boolean(session.userId) &&
+    (session.role === 'admin' || session.isPlatformAdmin === true)
+  )
 }
 
 export function assertAuthenticatedUser(session: AuthContext): string {

@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma'
-import { getJitsiRoomPrefix, parseMatchIdFromOfficeRoom, parsePsmIdFromOpenRoom } from '@/lib/jitsi'
+import {
+  getJitsiRoomPrefix,
+  isJitsiQuickRoomsEnabled,
+  parseMatchIdFromOfficeRoom,
+  parsePsmIdFromOpenRoom,
+  parseQuickRoomSlug,
+} from '@/lib/jitsi'
 
-export type JitsiRoomKind = 'office' | 'clinical' | 'metaverse' | 'open' | 'unknown'
+export type JitsiRoomKind = 'office' | 'clinical' | 'metaverse' | 'open' | 'quick' | 'unknown'
 
 export interface JitsiAccessResult {
   allowed: boolean
@@ -17,6 +23,7 @@ export function getMetaverseRoomPrefix(): string {
 export function getJitsiRoomKind(roomName: string): JitsiRoomKind {
   if (parseMatchIdFromOfficeRoom(roomName)) return 'office'
   if (parsePsmIdFromOpenRoom(roomName)) return 'open'
+  if (parseQuickRoomSlug(roomName)) return 'quick'
   if (roomName.startsWith(getJitsiRoomPrefix())) return 'clinical'
   if (roomName.startsWith(getMetaverseRoomPrefix())) return 'metaverse'
   return 'unknown'
@@ -147,6 +154,19 @@ export async function authorizeJitsiRoomAccess(params: {
 
     case 'open':
       return authorizeOpenRoom(roomName, actorId)
+
+    case 'quick': {
+      if (!isJitsiQuickRoomsEnabled()) {
+        return {
+          allowed: false,
+          kind,
+          moderator: false,
+          reason: 'Salas rápidas desactivadas (NEXT_PUBLIC_JITSI_QUICK_ROOMS).',
+        }
+      }
+      // Sandbox: any Hub session can join as moderator (no lobby deadlock).
+      return { allowed: true, kind, moderator: true }
+    }
 
     default:
       return {

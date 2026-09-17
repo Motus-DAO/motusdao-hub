@@ -1252,6 +1252,14 @@ p[class*="HelpTextContainer"] * {
   @apply my-4 h-auto max-w-full rounded-lg;
 }
 
+.academy-prose img.academy-creator-photo {
+  @apply my-2 max-w-[140px] w-[140px] rounded-xl shadow-sm;
+}
+
+.academy-prose img.academy-product-shot {
+  @apply my-3 w-full max-w-md rounded-xl border border-border/60 shadow-sm;
+}
+
 .academy-prose-summary {
   @apply text-sm leading-relaxed;
 }

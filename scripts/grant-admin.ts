@@ -33,21 +33,23 @@ async function main() {
     process.exit(1)
   }
 
-  if (user.role === 'admin') {
+  if (user.role === 'admin' && user.isPlatformAdmin) {
     console.log(`Already admin: ${user.email} (${user.eoaAddress})`)
     process.exit(0)
   }
 
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { role: 'admin' },
+    data: { role: 'admin', isPlatformAdmin: true },
   })
 
   console.log('Admin role granted:')
   console.log(`  Email: ${updated.email}`)
   console.log(`  EOA:   ${updated.eoaAddress}`)
   console.log(`  Name:  ${user.profile?.nombre ?? '—'} ${user.profile?.apellido ?? ''}`)
+  console.log(`  isPlatformAdmin: ${updated.isPlatformAdmin}`)
   console.log('\nReload /admin — sign in with the same wallet used above.')
+  console.log('For dual admin+PSM (disponibilidad): npx tsx scripts/grant-dual-role.ts <email>')
 }
 
 main()

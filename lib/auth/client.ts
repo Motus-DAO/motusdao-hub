@@ -30,6 +30,7 @@ export type AppSession = {
   userId: string | null
   eoaAddress: string | null
   role: string | null
+  isPlatformAdmin: boolean
   authProvider: string | null
 }
 
@@ -41,6 +42,7 @@ export async function fetchAppSession(): Promise<AppSession> {
       userId: null,
       eoaAddress: null,
       role: null,
+      isPlatformAdmin: false,
       authProvider: null,
     }
   }
@@ -51,6 +53,7 @@ export async function fetchAppSession(): Promise<AppSession> {
     userId: data.userId ?? null,
     eoaAddress: data.eoaAddress ?? null,
     role: data.role ?? null,
+    isPlatformAdmin: data.isPlatformAdmin === true,
     authProvider: data.authProvider ?? null,
   }
 }

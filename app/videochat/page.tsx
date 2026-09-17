@@ -9,12 +9,15 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { Video, RefreshCcw, Shield, Link2, CheckCircle } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
+  buildQuickJitsiUrl,
   buildVideochatUrl,
   getJitsiDomain,
   getJitsiProtocol,
+  isJitsiQuickRoomsEnabled,
   normalizeJitsiHost,
   parseMatchIdFromOfficeRoom,
   parsePsmIdFromOpenRoom,
+  parseQuickRoomSlug,
 } from '@/lib/jitsi'
 import { fetchAppSession, authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -59,6 +62,9 @@ const JITSI_DEFAULT_DOMAIN = getJitsiDomain()
 const getJitsiProtocolForDomain = (domain: string) => getJitsiProtocol(domain)
 
 function getMeetingModeLabel(roomName: string): string | null {
+  if (parseQuickRoomSlug(roomName)) {
+    return 'Sala rápida de prueba — sin matching; cualquiera con el link puede unirse'
+  }
   if (parseMatchIdFromOfficeRoom(roomName)) {
     return 'Consultorio seguro — solo paciente emparejado y profesional'
   }
@@ -111,6 +117,13 @@ function VideochatInner() {
   const [guestName, setGuestName] = useState('')
   const [guestError, setGuestError] = useState<string | null>(null)
   const [isGuestSession, setIsGuestSession] = useState(false)
+  const [quickSlugInput, setQuickSlugInput] = useState('')
+  const quickRoomsEnabled = isJitsiQuickRoomsEnabled()
+
+  const enterQuickRoom = (slug?: string) => {
+    const raw = (slug ?? quickSlugInput).trim() || `demo-${Date.now().toString(36)}`
+    router.push(buildVideochatUrl(buildQuickJitsiUrl(raw)))
+  }
 
   // Resolver dominio y roomName sólo en el cliente para evitar mismatches de SSR
   useEffect(() => {
@@ -331,7 +344,7 @@ function VideochatInner() {
       }
 
       setJwtToken(data.token)
-      setIsModerator(false)
+      setIsModerator(data.moderator === true)
       setIsGuestSession(true)
       setNeedsHubLogin(false)
       setShowGuestForm(false)
@@ -345,6 +358,9 @@ function VideochatInner() {
 
   const isOpenRoom =
     roomInfo !== null && parsePsmIdFromOpenRoom(roomInfo.roomName) !== null
+  const isQuickRoom =
+    roomInfo !== null && parseQuickRoomSlug(roomInfo.roomName) !== null
+  const allowsGuestJoin = isOpenRoom || isQuickRoom
 
   const endCall = useCallback(() => {
     if (endingRef.current) return
@@ -558,12 +574,14 @@ function VideochatInner() {
               )}
             </div>
           )}
-          {roomInfo && getMeetingModeLabel(roomInfo.roomName) && !isPsm && (
+              {roomInfo && getMeetingModeLabel(roomInfo.roomName) && !isPsm && (
             <div
               className={`rounded-lg px-4 py-2 text-xs border ${
-                parsePsmIdFromOpenRoom(roomInfo.roomName)
-                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
-                  : 'border-green-500/30 bg-green-500/10 text-green-100'
+                parseQuickRoomSlug(roomInfo.roomName)
+                  ? 'border-sky-500/30 bg-sky-500/10 text-sky-100'
+                  : parsePsmIdFromOpenRoom(roomInfo.roomName)
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                    : 'border-green-500/30 bg-green-500/10 text-green-100'
               }`}
             >
               {getMeetingModeLabel(roomInfo.roomName)}
@@ -658,9 +676,35 @@ function VideochatInner() {
               <p className="text-muted-foreground text-sm max-w-md">
                 Abre un enlace desde tu Perfil o la invitación de tu profesional para unirte a un consultorio.
               </p>
-              <CTAButton variant="secondary" onClick={() => router.push('/perfil')}>
-                Ir a Perfil
-              </CTAButton>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <CTAButton variant="secondary" onClick={() => router.push('/perfil')}>
+                  Ir a Perfil
+                </CTAButton>
+              </div>
+              {quickRoomsEnabled && (
+                <div className="mt-4 w-full max-w-sm space-y-3 border-t border-border/40 pt-6">
+                  <p className="text-foreground text-sm font-medium">Sala rápida (prueba)</p>
+                  <p className="text-muted-foreground text-xs">
+                    Sin matching. Comparte el link; puedes entrar con Hub o como invitado con tu nombre.
+                  </p>
+                  <input
+                    type="text"
+                    value={quickSlugInput}
+                    onChange={(e) => setQuickSlugInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') enterQuickRoom()
+                    }}
+                    placeholder="nombre-opcional"
+                    maxLength={48}
+                    className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-mauve-500/50"
+                  />
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <CTAButton onClick={() => enterQuickRoom()}>
+                      {quickSlugInput.trim() ? 'Entrar a esta sala' : 'Crear sala aleatoria'}
+                    </CTAButton>
+                  </div>
+                </div>
+              )}
             </div>
           ) : roomInfo?.domain.includes('ngrok') ? (
             <div className="relative flex-1 rounded-xl overflow-hidden bg-gradient-to-br from-background via-background/95 to-background/90 border border-border/50 flex flex-col items-center justify-center gap-6 p-8">
@@ -732,15 +776,17 @@ function VideochatInner() {
                     <>
                       <p className="text-foreground font-semibold text-lg">Unirse a la sala</p>
                       <p className="text-muted-foreground max-w-md">
-                        {isOpenRoom
-                          ? 'Puedes iniciar sesión en MotusDAO Hub o entrar como invitado con solo tu nombre. El profesional te admitirá desde la recepción.'
-                          : getHubLoginHint(roomInfo.roomName)}
+                        {isQuickRoom
+                          ? 'Sala de prueba: inicia sesión en Hub o entra como invitado con tu nombre.'
+                          : isOpenRoom
+                            ? 'Puedes iniciar sesión en MotusDAO Hub o entrar como invitado con solo tu nombre. El profesional te admitirá desde la recepción.'
+                            : getHubLoginHint(roomInfo.roomName)}
                       </p>
                       {sessionState === 'no_wallet' && (
                         <CTAButton
                           size="lg"
                           disabled={!waapReady}
-                          onClick={() => login()}
+                          onClick={() => void login()}
                         >
                           Conectar wallet
                         </CTAButton>
@@ -757,7 +803,7 @@ function VideochatInner() {
                       {signError && (
                         <p className="text-xs text-red-400">{signError}</p>
                       )}
-                      {isOpenRoom && (
+                      {allowsGuestJoin && (
                         <>
                           <div className="flex items-center gap-3 w-full max-w-xs text-muted-foreground text-xs">
                             <div className="flex-1 h-px bg-white/10" />
@@ -776,7 +822,7 @@ function VideochatInner() {
                           </CTAButton>
                         </>
                       )}
-                      {!isOpenRoom && (
+                      {!allowsGuestJoin && (
                         <p className="text-xs text-muted-foreground">
                           También puedes usar «Inicia Sesión» en la barra superior.
                         </p>
@@ -830,7 +876,11 @@ function VideochatInner() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground px-6 text-center z-10 bg-black/80">
                   <p className="text-foreground font-medium">No se pudo acceder a la sala</p>
                   <p>{tokenError}</p>
-                  {roomInfo && parsePsmIdFromOpenRoom(roomInfo.roomName) ? (
+                  {isQuickRoom ? (
+                    <p className="text-xs">
+                      Sala rápida: verifica que NEXT_PUBLIC_JITSI_QUICK_ROOMS=true y reinicia el servidor.
+                    </p>
+                  ) : roomInfo && parsePsmIdFromOpenRoom(roomInfo.roomName) ? (
                     <p className="text-xs">
                       Verifica que el profesional esté en la sala para admitirte desde la recepción.
                     </p>

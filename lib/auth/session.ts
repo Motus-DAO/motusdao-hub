@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import type { NextRequest } from 'next/server'
 import type { AuthProvider, Role } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import {
   SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
@@ -16,6 +17,7 @@ export type SessionPayload = {
   sub: string | null
   eoa: string
   role: Role | null
+  isPlatformAdmin?: boolean
   authProvider?: AuthProvider | null
 }
 
@@ -23,6 +25,7 @@ export type AuthContext = {
   userId: string | null
   eoaAddress: string
   role: Role | null
+  isPlatformAdmin: boolean
   authProvider: AuthProvider | null
 }
 
@@ -63,6 +66,7 @@ function decodeSessionToken(token: string): SessionPayload | null {
       sub: payload.sub ?? null,
       eoa: payload.eoa.toLowerCase(),
       role: payload.role ?? null,
+      isPlatformAdmin: payload.isPlatformAdmin === true,
       authProvider: payload.authProvider ?? null,
     }
   } catch {
@@ -99,6 +103,7 @@ export async function getSessionFromRequest(
     userId: payload.sub,
     eoaAddress: payload.eoa,
     role: payload.role,
+    isPlatformAdmin: payload.isPlatformAdmin === true,
     authProvider: payload.authProvider ?? null,
   }
 }
@@ -115,6 +120,7 @@ export async function getSession(): Promise<AuthContext | null> {
     userId: payload.sub,
     eoaAddress: payload.eoa,
     role: payload.role,
+    isPlatformAdmin: payload.isPlatformAdmin === true,
     authProvider: payload.authProvider ?? null,
   }
 }
@@ -137,10 +143,29 @@ export async function requireAdmin(
   }
 
   const session = await requireSession(request)
-  if (!session.userId || session.role !== 'admin') {
+  if (!session.userId) {
     throw new AuthError(403, 'Admin access required')
   }
-  return session
+
+  if (session.role === 'admin' || session.isPlatformAdmin) {
+    return session
+  }
+
+  // Stale SIWE JWT after dual-role grant: confirm platform admin from DB
+  const user = await prisma.user.findFirst({
+    where: { id: session.userId, deletedAt: null },
+    select: { role: true, isPlatformAdmin: true },
+  })
+
+  if (user && (user.role === 'admin' || user.isPlatformAdmin)) {
+    return {
+      ...session,
+      role: user.role,
+      isPlatformAdmin: true,
+    }
+  }
+
+  throw new AuthError(403, 'Admin access required')
 }
 
 export { handleAuthError } from './errors'

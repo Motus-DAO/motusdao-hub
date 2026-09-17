@@ -20,6 +20,7 @@ export function getDevBypassAdminContext(): AuthContext {
     userId: 'dev-bypass-admin',
     eoaAddress: '0x0000000000000000000000000000000000000000',
     role: 'admin',
+    isPlatformAdmin: true,
     authProvider: null,
   }
 }

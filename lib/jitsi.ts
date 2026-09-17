@@ -80,6 +80,35 @@ export function buildOpenJitsiUrl(psmId: string): string {
   return buildJitsiUrlForRoom(buildOpenRoomName(psmId))
 }
 
+/** Dev/sandbox rooms — no match required (gated by NEXT_PUBLIC_JITSI_QUICK_ROOMS) */
+export function getQuickRoomPrefix(): string {
+  return process.env.NEXT_PUBLIC_JITSI_QUICK_PREFIX || 'motusdao-quick-'
+}
+
+export function isJitsiQuickRoomsEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_JITSI_QUICK_ROOMS === 'true'
+}
+
+export function buildQuickRoomName(slug: string): string {
+  const clean = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return `${getQuickRoomPrefix()}${clean || 'demo'}`
+}
+
+export function parseQuickRoomSlug(roomName: string): string | null {
+  const prefix = getQuickRoomPrefix()
+  if (!roomName.startsWith(prefix)) return null
+  const slug = roomName.slice(prefix.length)
+  return slug.length > 0 ? slug : null
+}
+
+export function buildQuickJitsiUrl(slug: string): string {
+  return buildJitsiUrlForRoom(buildQuickRoomName(slug))
+}
+
 /** @deprecated Legacy per-session URL — prefer buildOfficeJitsiUrl */
 export function buildJitsiUrl(sessionId: string): string {
   return buildJitsiUrlForRoom(buildJitsiRoomName(sessionId))

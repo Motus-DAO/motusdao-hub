@@ -236,11 +236,16 @@ Work top-down. Only one `in_progress` slice at a time unless explicitly parallel
 
 | ID | Slice | Type | Status | Child spec (when cut) |
 |---|---|---|---|---|
-| **MF-01** | Génesis funnel rewrite — brief + content structure | Content / UX copy | `done` (pending commit) | implemented in `academy-genesis.ts` |
+| **MF-01** | Génesis funnel rewrite — brief + content structure | Content / UX copy | `done` | `5b61046` · `academy-genesis.ts` |
 | **MF-02** | Génesis: docs relocated to end / secondary section | Content | `done` | folded into MF-01 (módulo Documentación) |
 | **MF-03** | Génesis: tools intro as value demo, not inventory | Content / Product | `done` | folded into MF-01 (3 outcomes) |
 | **MF-04** | Génesis: single dominant CTA + secondary links | Content / UX | `done` | folded into MF-01 (Fundamentos primary) |
 | **MF-05** | Fix route-map copy (Praxis ≠ Portal) | Content | `done` | folded into MF-01 mapa |
+| **MF-01b** | Génesis: creadores Ruta PSM (Gerry + Benjamin + fotos) | Content | `done` (pending commit) | L1 + `public/academy/creators/` |
+| **MF-01c** | Génesis: fotos producto (perfil, videochat, casos) | Content | `done` (pending commit) | L3 + `public/academy/product/` |
+| **MF-01d** | Génesis: testimonios | Content | `done` (pending commit) | L3 “Qué ganas”, antes del CTA |
+| **MF-01e** | Génesis: CTA reforzado + resultado comparable Fundamentos | Content | `queued` | after testimonials |
+| **MF-01f** | Génesis: Validación + Portal en lenguaje claro | Content | `queued` | map lesson |
 | **MF-06** | Fundamentos positioning as membership/OS | Content / Pricing page | `queued` | TBD |
 | **MF-07** | Praxis sales pages — Escucha (first SKU copy) | Content | `queued` | TBD |
 | **MF-08** | Praxis sales pages — Formulación | Content | `queued` | TBD |
@@ -277,7 +282,9 @@ For each slice:
 | Date | Slice | Event | Notes |
 |---|---|---|---|
 | 2026-09-16 | — | SDD created | Market research + full catalog audit captured. No code changes. |
-| 2026-09-16 | MF-01 | Seed rewrite + local seed | `academy-genesis.ts` conversion funnel; docs annex; Praxis map fixed; CTA Fundamentos. Pending user QA → commit. |
+| 2026-09-16 | MF-01 | Seed rewrite + local seed | `academy-genesis.ts` conversion funnel; docs annex; Praxis map fixed; CTA Fundamentos. Commit `5b61046`. |
+| 2026-09-17 | MF-01b | Creators in Genesis L1 | Gerry Alvarez + Benjamin Buzali photos + copy; Praxis authorship note (personality structures research). |
+| 2026-09-17 | MF-01d | Testimonials in Genesis L3 | Five colleague quotes before Fundamentos CTA (no chapter timestamps in UI). |
 
 ---
 

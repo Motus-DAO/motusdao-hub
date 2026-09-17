@@ -28,6 +28,7 @@ export const GENESIS_COURSE: SeedCourse = {
   instructorTitle: 'Academia de Psicología Digital',
   learningOutcomes: [
     'Saber si MotusDAO encaja contigo.',
+    'Conocer a quienes crearon la Ruta PSM.',
     'Entender que Génesis es gratis y sin compromiso.',
     'Ubicar los 5 bloques de la ruta sin saturarte.',
     'Conocer tres ganancias concretas de las herramientas del Hub.',
@@ -45,9 +46,9 @@ export const GENESIS_COURSE: SeedCourse = {
           title: 'Esto es para ti',
           slug: 'esto-es-para-ti',
           order: 1,
-          duration: 4,
+          duration: 5,
           isFreePreview: true,
-          summary: 'Sin costo, sin compromiso. Entras, ves, decides.',
+          summary: 'Sin costo, sin compromiso. Conoce la ruta y a quienes la crearon.',
           contentMDX: `# Esto es para ti
 
 ![ChatGPT Image Aug 11, 2026, 02_07_24 AM](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_bienvenida-motusdao/images/cmspqga1p0b823358cb2f6955.png)
@@ -73,7 +74,31 @@ Un ecosistema de psicólogos: formación clínica, comunidad y herramientas digi
 
 **Siguiente paso:** abre la siguiente lección.
 
-![image](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_bienvenida-motusdao/images/cmspqglfr0b8265815b765c0d.png)`,
+![image](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_bienvenida-motusdao/images/cmspqglfr0b8265815b765c0d.png)
+
+## Quién creó la Ruta PSM
+
+La Ruta PSM fue creada por psicólogos que trabajan en la intersección entre práctica clínica, formación y tecnología.
+
+### Lic. Gerry Alvarez
+
+<img src="/academy/creators/gerry-alvarez.jpg" alt="Lic. Gerry Alvarez" class="academy-creator-photo" width="140" height="140" />
+
+**Founder, CEO · Producto y Ecosistema**
+
+Psicólogo y creador de MotusDAO. Diseñó la Ruta PSM como un recorrido para ayudar a profesionales de salud mental a desarrollar una práctica digital más estructurada, desde su formación y presencia profesional hasta las herramientas que utilizan para operar y crecer.
+
+En MotusDAO dirige el desarrollo del producto, la tecnología y el ecosistema profesional, conectando las necesidades reales de los psicólogos con nuevas herramientas para ejercer en digital.
+
+### Mtro. Benjamín Buzali
+
+<img src="/academy/creators/benjamin-buzali.jpg" alt="Mtro. Benjamín Buzali" class="academy-creator-photo" width="140" height="140" />
+
+**Co-Founder, COO · Dirección Clínica y Formación**
+
+Psicólogo y docente enfocado en razonamiento clínico, formulación de casos y estructuras de personalidad. En MotusDAO desarrolla contenidos y programas de formación orientados a fortalecer el criterio clínico y llevar conceptos complejos a herramientas útiles para la práctica profesional.
+
+Su trabajo da origen a parte de los contenidos de **Praxis**, construidos a partir de años de estudio, práctica y desarrollo académico.`,
         },
         {
           id: 'lesson_genesis_mapa-ruta',
@@ -108,12 +133,10 @@ Hoy solo necesitas esto: si resuena, el siguiente bloque es **Fundamentos**.
           title: 'Qué ganas — tres cosas concretas',
           slug: 'lo-que-hay-dentro',
           order: 3,
-          duration: 5,
+          duration: 7,
           isFreePreview: true,
-          summary: 'Perfil, consultorio y MotusAI: valor, no inventario.',
+          summary: 'Perfil, videochat, casos del Hub, voces de colegas y tu siguiente paso.',
           contentMDX: `# Qué ganas — tres cosas concretas
-
-![Screenshot herramientas Hub](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_lo-que-hay-dentro/images/cmspsgqi40b82bd1fefcacd82.png)
 
 No necesitas conocer toda la app hoy. Con esto alcanza:
 
@@ -121,17 +144,45 @@ No necesitas conocer toda la app hoy. Con esto alcanza:
 
 En **Perfil** armas tu identidad clínica. Esa misma información puede alimentar tu presencia en **Psicoterapia**, donde las personas te conocen y agendan.
 
+<img src="/academy/product/hub-perfil.png" alt="Vista de Perfil en el Hub MotusDAO" class="academy-product-shot" />
+
 ## 2. Consultorio con un link
 
 Desde **Videochat** (o Perfil → abrir consultorio) atiendes en salas de videollamada: el paciente entra desde el celular, sin instalar nada.
 
-## 3. MotusAI con límites claros
+<img src="/academy/product/hub-videochat.jpg" alt="Sala de Videochat en el Hub MotusDAO" class="academy-product-shot" />
 
-En **MotusAI** tienes apoyo para orientarte en el ecosistema y pensar casos. **No sustituye tu juicio clínico** ni es una historia clínica.
+## 3. Casos y seguimiento organizados
+
+En el Hub puedes ordenar casos, avances y notas de supervisión en un solo lugar — para que tu práctica digital no viva en capturas y chats dispersos.
+
+<img src="/academy/product/hub-casos.png" alt="Vista de casos y seguimiento en el Hub MotusDAO" class="academy-product-shot" />
 
 ---
 
-Agenda, pagos y comunidad (Telegram / metaverso) están en el Hub; los activas cuando avances en la ruta. Lo esencial para decidir ya está arriba.
+También tienes **MotusAI** (con límites claros: no sustituye tu juicio clínico), pagos y comunidad (Telegram / metaverso). Los activas cuando avances en la ruta. Lo esencial para decidir ya está arriba.
+
+## Lo que dicen colegas
+
+> “El curso ha superado mis expectativas. Los contenidos me han ayudado a reflexionar sobre mi práctica y la comunidad de aprendizaje ha sido muy enriquecedora. Es un espacio para cuestionar lo que hacemos y seguir aprendiendo con otros.”
+>
+> — **Alma Laura Contreras**
+
+> “Lo más valioso para mí es el abordaje clínico: revisamos teoría y conceptos aplicados a lo que sucede día a día en el consultorio. El intercambio con los colegas genera mucha confianza y enriquece cada encuentro.”
+>
+> — **Fernando Lorenzana**
+
+> “He encontrado una orientación más clara para trabajar con el discurso del paciente. El enfoque en la lógica y la argumentación me ha resultado muy práctico para entender cómo llevar lo que estudiamos a la intervención clínica.”
+>
+> — **Samantha Perez**
+
+> “El curso me ha dado herramientas que ya utilizo en mis sesiones. Me ha servido especialmente para escuchar mejor al paciente y reformular lo que dice en una pregunta. Eso me ha ayudado a revisar mi manera de intervenir.”
+>
+> — **Maribel Garcia**
+
+> “Valoro mucho la claridad con la que se abordan temas de lógica, matemática y topología en relación con el psicoanálisis. Los ejemplos clínicos ayudan a aterrizar la teoría y afianzar lo aprendido. Lo recomendaría para adentrarse y profundizar en el psicoanálisis.”
+>
+> — **Juan Carlos Castelán López**
 
 ## Tu siguiente paso
 

@@ -49,6 +49,8 @@ export function signJitsiGuestToken(params: {
   roomName: string
   guestId: string
   displayName: string
+  /** Quick/sandbox rooms may grant mod so lobby does not block testing */
+  moderator?: boolean
 }): string {
   const jitsiAppSecret = process.env.JITSI_APP_SECRET
   const jitsiAppId = process.env.JITSI_APP_ID
@@ -57,6 +59,8 @@ export function signJitsiGuestToken(params: {
     throw new Error('Jitsi JWT no está configurado')
   }
 
+  const isMod = params.moderator === true
+
   const payload = {
     iss: jitsiAppId,
     aud: 'jitsi',
@@ -64,14 +68,14 @@ export function signJitsiGuestToken(params: {
     nbf: Math.floor(Date.now() / 1000) - 10,
     room: params.roomName,
     sub: jitsiAppId,
-    moderator: false,
+    moderator: isMod,
     context: {
       user: {
         id: params.guestId,
         name: params.displayName,
         email: '',
-        moderator: false,
-        affiliation: 'member',
+        moderator: isMod,
+        affiliation: isMod ? 'owner' : 'member',
       },
       features: {
         livestreaming: false,

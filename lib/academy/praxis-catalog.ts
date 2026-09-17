@@ -32,6 +32,17 @@ export const PRAXIS_CATEGORY = 'Praxis'
 export const PRAXIS_PROFESSIONAL_NOTE =
   'La formación de MotusDAO es educación continua. No sustituye formación universitaria, licencia o cédula profesional, supervisión clínica ni las obligaciones éticas y legales aplicables a cada profesional.'
 
+/** Featured promise from 00-bloque-03-praxis.md — do not rewrite. */
+export const PRAXIS_PROMISE =
+  'Aprende haciendo. Elige habilidades concretas, trabaja con casos y ejercicios, y profundiza a tu ritmo.'
+
+/** First three bullets from “Lo que vas a hacer en Praxis” — do not rewrite. */
+export const PRAXIS_HERO_BENEFITS = [
+  'Elegir formación según una necesidad real de tu práctica',
+  'Trabajar con casos ficticios o compuestos y ejercicios guiados',
+  'Separar lo que observas de lo que infieres',
+] as const
+
 /** Featured catalog copy from 00-bloque-03-praxis.md — do not rewrite. */
 export const PRAXIS_PRODUCTS: PraxisProduct[] = [
   {

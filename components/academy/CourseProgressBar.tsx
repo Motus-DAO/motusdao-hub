@@ -7,6 +7,8 @@ type CourseProgressBarProps = {
   progress: number
   completed?: boolean
   label?: string
+  valueLabel?: string
+  completeMessage?: string | false
   className?: string
   compact?: boolean
 }
@@ -15,23 +17,26 @@ export function CourseProgressBar({
   progress,
   completed = false,
   label = 'Progreso del bloque',
+  valueLabel,
+  completeMessage,
   className = '',
   compact = false,
 }: CourseProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, progress))
+  const displayValue = valueLabel ?? `${clamped}%`
 
   return (
     <div className={className}>
       <div className={`flex items-center justify-between ${compact ? 'mb-1.5 text-xs' : 'mb-2 text-sm'}`}>
         <span className="text-muted-foreground">{label}</span>
         <motion.span
-          key={clamped}
+          key={displayValue}
           initial={{ opacity: 0.5, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.35 }}
           className="font-semibold text-mauve-300"
         >
-          {clamped}%
+          {displayValue}
         </motion.span>
       </div>
       <div className={`overflow-hidden rounded-full bg-white/10 ${compact ? 'h-1.5' : 'h-2'}`}>
@@ -46,7 +51,7 @@ export function CourseProgressBar({
           transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
         />
       </div>
-      {completed && (
+      {completed && completeMessage !== false && (
         <motion.p
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -54,7 +59,7 @@ export function CourseProgressBar({
           className={`flex items-center gap-2 text-green-300 ${compact ? 'mt-1.5 text-xs' : 'mt-2 text-xs'}`}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
-          ¡Bloque completado!
+          {completeMessage || '¡Bloque completado!'}
         </motion.p>
       )}
     </div>

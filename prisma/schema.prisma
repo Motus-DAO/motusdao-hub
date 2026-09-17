@@ -543,6 +543,8 @@ model AuthNonce {
 model User {
   id                    String             @id @default(cuid())
   role                  Role               @default(usuario)
+  /// Platform operator flag — can be combined with role=psm (dual admin+PSM)
+  isPlatformAdmin       Boolean            @default(false)
   email                 String             @unique
   privyId               String?            @unique
   authProvider          AuthProvider?

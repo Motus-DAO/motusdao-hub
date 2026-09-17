@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
       userId: session.userId,
       eoaAddress: session.eoaAddress,
       role: session.role,
+      isPlatformAdmin: session.isPlatformAdmin,
       authProvider: session.authProvider,
     })
   } catch (error) {

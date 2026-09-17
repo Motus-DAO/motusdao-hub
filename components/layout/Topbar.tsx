@@ -16,6 +16,7 @@ import {
   Shield
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
@@ -24,12 +25,15 @@ import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 export function Topbar() {
   const { 
     role, 
-    setRole, 
+    setRole,
+    setIsPlatformAdmin,
     sidebarOpen, 
     toggleSidebar, 
     theme, 
     setTheme
   } = useUIStore()
+  const pathname = usePathname()
+  const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
   const { ready, authenticated, user, login, logout, providerId } = useWallet()
@@ -55,9 +59,13 @@ export function Topbar() {
   const handleRoleChange = (newRole: 'usuario' | 'psm' | 'admin') => {
     setRole(newRole)
     setShowRoleDropdown(false)
-    // Si cambia a admin, redirigir al dashboard admin
     if (newRole === 'admin') {
-      window.location.href = '/admin'
+      router.push('/admin')
+      return
+    }
+    // Leaving admin shell — land on a non-admin page so the menu can switch
+    if (pathname?.startsWith('/admin')) {
+      router.push(newRole === 'psm' ? '/disponibilidad' : '/')
     }
   }
 
@@ -78,8 +86,15 @@ export function Topbar() {
     }
   }, [showRoleDropdown])
 
-  // Sync role from database when user is authenticated
-  // This ensures the toggle matches the actual account type created during registration
+  // Keep UI role aligned with /admin without fighting the toggle
+  useEffect(() => {
+    if (pathname?.startsWith('/admin') && role !== 'admin') {
+      setRole('admin')
+    }
+  }, [pathname, role, setRole])
+
+  // Sync platform-admin flag from database when user is authenticated.
+  // Do NOT overwrite an intentional admin/psm UI choice for dual-role users.
   useEffect(() => {
     const syncUserRole = async () => {
       if (!ready || !authenticated || !user) return
@@ -100,8 +115,15 @@ export function Topbar() {
           const data = await response.json()
           if (data.user?.role) {
             const dbRole = data.user.role as 'usuario' | 'psm' | 'admin'
-            // Only update if the role is different from current store role
-            // This syncs the toggle with the actual account type from registration
+            const platformAdmin =
+              data.user.isPlatformAdmin === true || dbRole === 'admin'
+            setIsPlatformAdmin(platformAdmin)
+
+            if (platformAdmin) {
+              // Dual role: UI toggle is the source of truth (plus /admin URL).
+              return
+            }
+
             if (dbRole !== role) {
               console.log('🔄 Syncing user role from database:', {
                 currentRole: role,
@@ -112,19 +134,16 @@ export function Topbar() {
             }
           }
         } else if (response.status === 404) {
-          // User not registered yet, keep current role
           console.log('ℹ️ User not registered yet, keeping current role')
         }
       } catch (err) {
         console.error('Error syncing user role:', err)
-        // Don't show error to user, just log it
       }
     }
 
-    // Only sync when authentication state changes, not on every render
     syncUserRole()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated, user?.id]) // Only depend on auth state, not on role to avoid loops
+  }, [ready, authenticated, user?.id])
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'matrix') => {
     setTheme(newTheme)
@@ -132,7 +151,7 @@ export function Topbar() {
   }
 
   const handleLogin = () => {
-    login()
+    void login()
   }
 
   const handleLogout = () => {
