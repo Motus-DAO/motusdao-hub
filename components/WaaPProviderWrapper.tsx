@@ -4,6 +4,7 @@ import { ReactNode, Component, ErrorInfo, useEffect } from 'react'
 import { WaaPProvider } from '@/lib/contexts/WaaPProvider'
 import { WalletAuthShell } from '@/components/wallet/WalletAuthShell'
 import { WaaPWalletContextBridge } from '@/components/wallet/WaaPWalletContextBridge'
+import { WaapStuckModalGuard } from '@/components/wallet/WaapStuckModalGuard'
 import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
 
 interface WaaPProviderWrapperProps {
@@ -139,7 +140,10 @@ export function WaaPProviderWrapper({ children }: WaaPProviderWrapperProps) {
         <div suppressHydrationWarning>
           <WaaPProvider>
             <WaaPWalletContextBridge>
-              <WalletAuthShell>{children}</WalletAuthShell>
+              <WalletAuthShell>
+                <WaapStuckModalGuard />
+                {children}
+              </WalletAuthShell>
             </WaaPWalletContextBridge>
           </WaaPProvider>
         </div>

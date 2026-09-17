@@ -8,7 +8,6 @@ import { Section } from '@/components/ui/Section'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { RolePickerModal } from '@/components/onboarding/RolePickerModal'
-import { EmailLoginModal } from '@/components/onboarding/EmailLoginModal'
 import { useUIStore } from '@/lib/store'
 import { useWallet } from '@/lib/wallet'
 import { useOnboardingStore } from '@/lib/onboarding-store'
@@ -60,15 +59,16 @@ export default function Home() {
   const { } = useUIStore()
   const { authenticated, login } = useWallet()
   const { isCompleted } = useOnboardingStore()
-  const [showEmailLogin, setShowEmailLogin] = useState(false)
   const [showRolePicker, setShowRolePicker] = useState(false)
 
-  // Debug logs
-  console.log('Home Debug:', {
-    authenticated,
-    showEmailLogin,
-    showRolePicker
-  })
+  const handleStart = async () => {
+    try {
+      await login()
+      setShowRolePicker(true)
+    } catch (error) {
+      console.error('[Home] login failed:', error)
+    }
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ background: 'transparent' }}>
@@ -122,7 +122,7 @@ export default function Home() {
                     glow 
                     className="group"
                     onClick={() => {
-                      login()
+                      void handleStart()
                     }}
                   >
                     Comenzar Ahora
@@ -320,16 +320,6 @@ export default function Home() {
           )}
         </>
       )}
-
-      {/* Email Login Modal */}
-      <EmailLoginModal 
-        isOpen={showEmailLogin} 
-        onClose={() => setShowEmailLogin(false)}
-        onLoggedIn={() => {
-          setShowEmailLogin(false)
-          setShowRolePicker(true)
-        }}
-      />
 
       {/* Role Picker Modal */}
       <RolePickerModal 

@@ -15,7 +15,7 @@ type Eip1193Provider = {
 }
 
 type WaapProvider = Eip1193Provider & {
-  getLoginMethod?: () => 'waap' | 'injected' | 'walletconnect' | null
+  getLoginMethod?: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
 }
 
 function getWindowEthereum(): Eip1193Provider | null {
@@ -140,6 +140,7 @@ export async function signSiweMessage(
   // viem signMessage through the WaaP proxy often returns sigs that fail recovery.
   const preferPersonalSign =
     loginMethod === 'waap' ||
+    loginMethod === 'human' ||
     loginMethod === 'walletconnect' ||
     signingProvider === waapProvider
 

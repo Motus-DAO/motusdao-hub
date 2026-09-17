@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import type { Address } from 'viem'
 import { getWalletConnectProjectId } from '@/lib/wallet/config'
 import { isRecoverableWaapSdkError } from '@/lib/wallet/waap-errors'
+import { isEmbeddedWaapLoginMethod } from '@/lib/wallet/waap-modal-recovery'
 
 // ============================================================================
 // TYPES - Compatible with Privy patterns for easier migration
@@ -98,7 +99,6 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   const [wallets, setWallets] = useState<WaaPWallet[]>([])
   const [waapProvider, setWaaPProvider] = useState<unknown | null>(null)
   const [isWaaPReady, setIsWaaPReady] = useState(false)
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
   // Set up global error handlers for known WaaP SDK errors
   // The SDK sometimes throws UTF-8 encoding errors when processing hashes internally
@@ -176,32 +176,30 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     }
   }, [])
 
-  // Initialize WaaP SDK
-  // Reference: https://docs.wallet.human.tech/quick-start
+  // Initialize WaaP SDK (v2 returns the EIP-1193 facade directly)
+  // Reference: https://docs.waap.human.tech/for-apps/start
   useEffect(() => {
+    let cancelled = false
+    let providerInstance: { destroy?: () => void; preload?: () => Promise<void> } | null =
+      null
+    let cancelPreload: (() => void) | undefined
+
     const initializeWaaP = async () => {
       console.log('[WAAP] Initializing WaaP SDK...')
-      console.log('[WAAP] Docs: https://docs.wallet.human.tech/quick-start')
-      
+      console.log('[WAAP] Docs: https://docs.waap.human.tech/for-apps/start')
+
       try {
-        // Dynamic import of WaaP SDK - NO APP ID NEEDED
         const waapSdk = await import('@human.tech/waap-sdk').catch(() => null)
-        
+
         if (!waapSdk) {
           console.warn('[WAAP] WaaP SDK not found (@human.tech/waap-sdk)')
-          console.log('[WAAP] Install with: npm install @human.tech/waap-sdk')
-          console.log('[WAAP] Using mock provider for development')
-          setReady(true)
-          setIsWaaPReady(false)
+          if (!cancelled) {
+            setReady(true)
+            setIsWaaPReady(false)
+          }
           return
         }
 
-        // WaaP configuration - NO APP ID REQUIRED
-        // See: https://docs.wallet.human.tech/docs/guides/methods#initwaap
-        // SDK types: SocialProvider = 'discord' | 'github' | 'google' | 'twitter' | 'bluesky'
-        // SDK types: AuthenticationMethod = 'email' | 'phone' | 'social' | 'biometrics' | 'wallet'
-        
-        // Get WalletConnect Project ID (required for 'wallet' auth method)
         const walletConnectProjectId = getWalletConnectProjectId()
         const authenticationMethods: Array<'email' | 'phone' | 'social' | 'wallet'> =
           walletConnectProjectId
@@ -213,55 +211,69 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
             '[WAAP] WalletConnect project ID is not set. External wallet login is disabled. Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID or NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID.'
           )
         }
-        
-        // Initialize WaaP - this sets up window.waap
-        waapSdk.initWaaP({
+
+        const origin =
+          typeof window !== 'undefined' ? window.location.origin : undefined
+
+        // v2+: initWaaP returns the provider; also assigns window.waap.
+        // Absolute logo avoids blank branding inside the cross-origin iframe.
+        const provider = waapSdk.initWaaP({
+          environment: 'production',
           config: {
-            // Authentication methods: email, phone, social login, and external wallets
             authenticationMethods,
-            // Social login options
             allowedSocials: ['google', 'twitter'],
-            // Dark mode to match MotusDAO theme
             styles: {
               darkMode: true,
             },
           },
-          // Project branding
           project: {
             name: 'MotusDAO',
-            logo: '/logo.svg',
+            ...(origin ? { logo: `${origin}/logo.svg` } : {}),
             entryTitle: 'Welcome to MotusDAO',
           },
-          // Required for external wallet support (MetaMask, etc.)
           walletConnectProjectId,
         })
-        console.log('[WAAP] ✅ WaaP SDK initialized')
 
-        // Wait a bit for window.waap to be set up
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Check if window.waap is available (EIP-1193 provider)
-        if (typeof window !== 'undefined' && (window as unknown as { waap?: unknown }).waap) {
-          const provider = (window as unknown as { waap: unknown }).waap
-          setWaaPProvider(provider)
-          setIsWaaPReady(true)
-          console.log('[WAAP] ✅ WaaP EIP-1193 provider available (window.waap)')
-
-          // Mark ready before auto-connect — eth_requestAccounts can hang
-          // (wallet popup waiting) and used to block the whole /perfil page.
-          setReady(true)
-          void checkExistingSession(provider)
-        } else {
-          console.warn('[WAAP] window.waap not available after initialization')
-          setReady(true)
+        if (cancelled) {
+          provider.destroy?.()
+          return
         }
+
+        providerInstance = provider
+        setWaaPProvider(provider)
+        setIsWaaPReady(true)
+        setReady(true)
+        console.log('[WAAP] ✅ WaaP EIP-1193 provider ready')
+
+        // Warm iframe after LCP so the first sign/login is less likely to hit about:blank.
+        if (typeof waapSdk.preloadWaaPOnIdle === 'function') {
+          cancelPreload = waapSdk.preloadWaaPOnIdle(provider, {
+            onError: (error: unknown) => {
+              console.debug('[WAAP] Idle preload skipped:', error)
+            },
+          })
+        } else {
+          void provider.preload?.().catch(() => {})
+        }
+
+        void checkExistingSession(provider)
       } catch (error) {
         console.error('[WAAP] ❌ Error initializing WaaP:', error)
-        setReady(true) // Still mark as ready so UI doesn't hang
+        if (!cancelled) setReady(true)
       }
     }
 
-    initializeWaaP()
+    void initializeWaaP()
+
+    return () => {
+      cancelled = true
+      cancelPreload?.()
+      try {
+        providerInstance?.destroy?.()
+      } catch (error) {
+        console.debug('[WAAP] destroy on unmount:', error)
+      }
+    }
   }, [])
 
   // Check for existing authenticated session (auto-connect)
@@ -270,7 +282,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     try {
       const waap = provider as {
         request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
-        getLoginMethod: () => 'waap' | 'injected' | 'walletconnect' | null
+        getLoginMethod: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
       }
 
       // Check if user was previously logged in
@@ -292,8 +304,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         if (accounts && accounts.length > 0) {
           console.log('[WAAP] ✅ Auto-connected with address:', accounts[0])
           
-          // Determine wallet type based on login method
-          const walletType = loginMethod === 'waap' ? 'waap' : 'external'
+          const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
           
           setAuthenticated(true)
           setWallets([{
@@ -374,43 +385,45 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
 
     try {
       const waap = waapProvider as {
-        login: () => Promise<'waap' | 'injected' | 'walletconnect' | null>
+        login: () => Promise<'waap' | 'human' | 'injected' | 'walletconnect' | null>
         request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
         requestEmail: () => Promise<string>
       }
 
       // Open WaaP login modal - returns the login type chosen
+      // v2 may return 'human' (legacy alias) or 'waap' for embedded wallet.
       const loginType = await waap.login()
       console.log('[WAAP] Login type selected:', loginType)
-      
+
       if (loginType === null) {
         console.log('[WAAP] User cancelled login')
         return
       }
 
       // Get the user's wallet address
-      const accounts = await waap.request({ method: 'eth_requestAccounts' }) as string[]
-      
+      const accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
+
       if (accounts && accounts.length > 0) {
         const address = accounts[0] as Address
         console.log('[WAAP] ✅ Connected with address:', address)
-        
-        // Determine wallet type
-        const walletType = loginType === 'waap' ? 'waap' : 'external'
-        
+
+        const walletType = isEmbeddedWaapLoginMethod(loginType) ? 'waap' : 'external'
+
         setAuthenticated(true)
-        setWallets([{
-          address,
-          walletClientType: walletType,
-          chainId: CELO_CHAIN_ID.toString(),
-          connected: true,
-        }])
-        
-        // Try to get user email (WaaP only)
+        setWallets([
+          {
+            address,
+            walletClientType: walletType,
+            chainId: CELO_CHAIN_ID.toString(),
+            connected: true,
+          },
+        ])
+
+        // Try to get user email (embedded Human/WaaP only)
         let userEmail: string | undefined
-        if (loginType === 'waap') {
+        if (isEmbeddedWaapLoginMethod(loginType)) {
           try {
-            userEmail = await waap.requestEmail()
+            userEmail = (await waap.requestEmail()) as string
             console.log('[WAAP] User email:', userEmail)
           } catch {
             console.log('[WAAP] User declined to share email or not available')
@@ -458,7 +471,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       if (waapProvider) {
         const waap = waapProvider as {
           logout: () => Promise<void>
-          getLoginMethod: () => 'waap' | 'injected' | 'walletconnect' | null
+          getLoginMethod: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
         }
 
         // Check current login method for proper logout handling
@@ -488,63 +501,22 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     console.log('[WAAP] ✅ Logged out and state cleared')
   }, [waapProvider])
 
-  // Send OTP code via email (backwards compatibility with Privy's useLoginWithEmail)
-  // Note: WaaP handles email auth through the login() modal directly
-  // This method stores the email for use in loginWithCode
-  const sendCode = useCallback(async ({ email }: { email: string }) => {
-    console.log('[WAAP] Storing email for login:', email)
-    
-    // WaaP doesn't have a separate "send code" step - it's all in the login modal
-    // We store the email for reference and proceed to login
-    setPendingEmail(email)
-    
-    // For development without SDK
-    if (!isWaaPReady && process.env.NODE_ENV === 'development') {
-      console.log('[WAAP] DEV MODE: Email stored for mock login')
-      return
-    }
-    
-    console.log('[WAAP] ℹ️ WaaP uses a unified login modal for authentication')
-    console.log('[WAAP] ℹ️ Call login() to open the WaaP authentication modal')
-  }, [isWaaPReady])
+  // Legacy Privy-shaped email helpers — WaaP owns email OTP inside its modal.
+  const sendCode = useCallback(
+    async (_params: { email: string }) => {
+      console.log('[WAAP] Opening Human Tech modal instead of legacy email OTP')
+      await login()
+    },
+    [login]
+  )
 
-  // Login with OTP code (backwards compatibility with Privy's useLoginWithEmail)
-  // Note: WaaP handles this through the login() modal
-  // This method triggers the login flow for backwards compatibility
-  const loginWithCode = useCallback(async ({ code }: { code: string }) => {
-    console.log('[WAAP] loginWithCode called')
-    
-    // For development without SDK
-    if (!isWaaPReady) {
-      if (process.env.NODE_ENV === 'development' && code === '123456') {
-        console.log('[WAAP] DEV MODE: Mock login with code')
-        const mockAddress = '0x' + Math.random().toString(16).slice(2, 42).padEnd(40, '0') as Address
-        
-        setAuthenticated(true)
-        setUser({
-          id: `waap_${Date.now()}`,
-          email: pendingEmail ? { address: pendingEmail } : undefined,
-          wallet: { address: mockAddress },
-        })
-        setWallets([{
-          address: mockAddress,
-          walletClientType: 'waap',
-          chainId: CELO_CHAIN_ID.toString(),
-          connected: true,
-        }])
-        setPendingEmail(null)
-        return
-      }
-      throw new Error('WaaP not initialized. Install @human.tech/waap-sdk')
-    }
-
-    // WaaP handles OTP internally through its modal
-    // Trigger the standard login flow
-    console.log('[WAAP] ℹ️ WaaP handles OTP verification internally')
-    console.log('[WAAP] ℹ️ Opening WaaP login modal...')
-    await login()
-    setPendingEmail(null)
-  }, [isWaaPReady, pendingEmail, login])
+  const loginWithCode = useCallback(
+    async (_params: { code: string }) => {
+      console.log('[WAAP] loginWithCode redirected to Human Tech modal')
+      await login()
+    },
+    [login]
+  )
 
   // Listen for WaaP events
   // Reference: https://docs.wallet.human.tech/docs/guides/methods#event-listeners
@@ -554,7 +526,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
     const waap = waapProvider as {
       on: (event: string, handler: (...args: unknown[]) => void) => void
       removeListener: (event: string, handler: (...args: unknown[]) => void) => void
-      getLoginMethod: () => 'waap' | 'injected' | 'walletconnect' | null
+      getLoginMethod: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
     }
 
     // Account changes - handle wallet switching or disconnection
@@ -569,9 +541,8 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         setUser(null)
         setWallets([])
       } else {
-        // Account switched - update state
         const loginMethod = waap.getLoginMethod?.()
-        const walletType = loginMethod === 'waap' ? 'waap' : 'external'
+        const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
         
         setWallets([{
           address: accountsArray[0] as Address,

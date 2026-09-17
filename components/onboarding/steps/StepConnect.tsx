@@ -278,7 +278,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                 <Mail className="w-5 h-5" />
               )}
               <span>
-                {isConnecting ? 'Conectando...' : ready ? 'Iniciar sesión con email' : 'Cargando...'}
+                {isConnecting ? 'Conectando...' : ready ? 'Iniciar sesión' : 'Cargando...'}
               </span>
             </CTAButton>
 
