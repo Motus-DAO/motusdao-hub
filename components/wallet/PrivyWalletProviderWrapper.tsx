@@ -27,6 +27,7 @@ function PrivySetupRequired({ children }: { children: ReactNode }) {
           throw new Error(message)
         },
         logout: async () => {},
+        requestSharedEmail: async () => null,
         wallets: [],
         provider: null,
         isProviderReady: false,

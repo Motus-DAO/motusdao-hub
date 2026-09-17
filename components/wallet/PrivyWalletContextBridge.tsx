@@ -98,6 +98,7 @@ export function PrivyWalletContextBridge({
           login()
         },
         logout,
+        requestSharedEmail: async () => null,
         wallets: mappedWallets,
         provider,
         isProviderReady,

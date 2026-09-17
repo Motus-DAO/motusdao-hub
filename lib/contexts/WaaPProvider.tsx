@@ -42,6 +42,8 @@ interface WaaPContextType {
   // Auth methods
   login: () => Promise<void>
   logout: () => Promise<void>
+  /** Explicit email share — opens Human Tech once; do not call from auto-login. */
+  requestSharedEmail: () => Promise<string | null>
   
   // Email login (mirrors Privy's useLoginWithEmail)
   sendCode: (params: { email: string }) => Promise<void>
@@ -61,6 +63,7 @@ const WaaPContext = createContext<WaaPContextType>({
   user: null,
   login: async () => {},
   logout: async () => {},
+  requestSharedEmail: async () => null,
   sendCode: async () => {},
   loginWithCode: async () => {},
   wallets: [],
@@ -397,7 +400,6 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       const waap = waapProvider as {
         login: () => Promise<'waap' | 'human' | 'injected' | 'walletconnect' | null>
         request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
-        requestEmail: () => Promise<string>
       }
 
       // Open WaaP login modal - returns the login type chosen
@@ -410,14 +412,36 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         return
       }
 
-      // Get the user's wallet address
-      const accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
+      // Prefer silent accounts — eth_requestAccounts right after login can re-open UI / CAPTCHA.
+      let accounts = (await waap.request({ method: 'eth_accounts' })) as string[]
+      if (!accounts?.length) {
+        accounts = (await waap.request({ method: 'eth_requestAccounts' })) as string[]
+      }
 
       if (accounts && accounts.length > 0) {
         const address = accounts[0] as Address
         console.log('[WAAP] ✅ Connected with address:', address)
 
         const walletType = isEmbeddedWaapLoginMethod(loginType) ? 'waap' : 'external'
+
+        // Mark connected immediately so Topbar / onboarding sync before any email modal.
+        // Do NOT call requestEmail here — that opens a 2nd Human Tech modal + slide CAPTCHA.
+        const storedUser = localStorage.getItem('waap_user')
+        let restoredEmail: string | undefined
+        try {
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser) as WaaPUser
+            restoredEmail = parsed.email?.address
+          }
+        } catch {
+          // ignore
+        }
+
+        const waapUser: WaaPUser = {
+          id: `waap_${address.slice(2, 10)}`,
+          email: restoredEmail ? { address: restoredEmail } : undefined,
+          wallet: { address },
+        }
 
         setAuthenticated(true)
         setWallets([
@@ -428,39 +452,23 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
             connected: true,
           },
         ])
-
-        // Try to get user email (embedded Human/WaaP only)
-        let userEmail: string | undefined
-        if (isEmbeddedWaapLoginMethod(loginType)) {
-          try {
-            userEmail = (await waap.requestEmail()) as string
-            console.log('[WAAP] User email:', userEmail)
-          } catch {
-            console.log('[WAAP] User declined to share email or not available')
-          }
-        }
-        
-        const waapUser: WaaPUser = {
-          id: `waap_${address.slice(2, 10)}`,
-          email: userEmail ? { address: userEmail } : undefined,
-          wallet: { address },
-        }
-        
         setUser(waapUser)
         localStorage.setItem('waap_user', JSON.stringify(waapUser))
-        
-        // Try to switch to Celo mainnet
-        try {
-          await waap.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: CELO_CHAIN_ID_HEX }],
-          })
-          console.log('[WAAP] ✅ Switched to Celo Mainnet')
-        } catch (switchError) {
-          console.log('[WAAP] Could not switch to Celo:', switchError)
-          // May need to add the network first
-        }
-        
+
+        // Defer chain switch — sequential wallet RPCs after login trigger Human Tech
+        // "Slide to confirm" even when the user opted out for this site.
+        window.setTimeout(() => {
+          void waap
+            .request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: CELO_CHAIN_ID_HEX }],
+            })
+            .then(() => console.log('[WAAP] ✅ Switched to Celo Mainnet'))
+            .catch((switchError) =>
+              console.log('[WAAP] Could not switch to Celo:', switchError)
+            )
+        }, 2_500)
+
         console.log('[WAAP] ✅ Login complete:', waapUser)
       }
     } catch (error) {
@@ -471,6 +479,33 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       throw error
     }
   }, [waapProvider, isWaaPReady])
+
+  const requestSharedEmail = useCallback(async (): Promise<string | null> => {
+    if (!waapProvider) return null
+    const waap = waapProvider as {
+      requestEmail?: () => Promise<string>
+      getLoginMethod?: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
+    }
+    const method = waap.getLoginMethod?.()
+    if (!isEmbeddedWaapLoginMethod(method)) {
+      return user?.email?.address ?? null
+    }
+    try {
+      const email = await waap.requestEmail?.()
+      if (!email) return null
+      setUser((prev) => {
+        const next: WaaPUser = prev
+          ? { ...prev, email: { address: email } }
+          : { id: `waap_${Date.now()}`, email: { address: email } }
+        localStorage.setItem('waap_user', JSON.stringify(next))
+        return next
+      })
+      return email
+    } catch (error) {
+      console.log('[WAAP] requestEmail declined or failed:', error)
+      return null
+    }
+  }, [waapProvider, user?.email?.address])
 
   // Logout handler
   // Reference: https://docs.wallet.human.tech/docs/guides/methods#logout
@@ -662,6 +697,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         user,
         login,
         logout,
+        requestSharedEmail,
         sendCode,
         loginWithCode,
         wallets,

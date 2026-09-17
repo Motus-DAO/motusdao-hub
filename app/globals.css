@@ -519,17 +519,37 @@ body::after {
   color: rgba(0, 0, 0, 0.9) !important;
 }
 
-/* Status banners control their own text colors in light, dark, and matrix themes */
+/* Status banners own their colors — do NOT inherit glass white text (breaks warning/cream). */
 .glass .ui-status-banner,
+.glass-strong .ui-status-banner {
+  color: inherit !important;
+}
+
 .glass .ui-status-banner :where(p, div, span, li, label, ul),
-.glass-strong .ui-status-banner,
 .glass-strong .ui-status-banner :where(p, div, span, li, label, ul) {
-  color: unset !important;
+  color: inherit !important;
+}
+
+.glass .ui-status-banner[data-variant='warning'],
+.glass-strong .ui-status-banner[data-variant='warning'] {
+  background-color: rgb(255 251 235) !important; /* amber-50 */
+  border-color: rgb(252 211 77 / 0.85) !important;
+  color: rgb(69 26 3) !important; /* amber-950 — readable on cream */
+}
+
+.glass .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul),
+.glass-strong .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul) {
+  color: rgb(69 26 3) !important;
+}
+
+.glass .ui-status-banner[data-variant='success'],
+.glass-strong .ui-status-banner[data-variant='success'] {
+  color: rgb(6 78 59) !important;
 }
 
 .glass .ui-status-banner .status-banner-error,
 .glass-strong .ui-status-banner .status-banner-error {
-  color: rgb(220 38 38) !important;
+  color: rgb(185 28 28) !important;
 }
 
 .glass .gradient-text,
@@ -564,10 +584,30 @@ body::after {
 }
 
 .dark .glass .ui-status-banner,
+.dark .glass-strong .ui-status-banner {
+  color: inherit !important;
+}
+
 .dark .glass .ui-status-banner :where(p, div, span, li, label, ul),
-.dark .glass-strong .ui-status-banner,
 .dark .glass-strong .ui-status-banner :where(p, div, span, li, label, ul) {
-  color: unset !important;
+  color: inherit !important;
+}
+
+.dark .glass .ui-status-banner[data-variant='warning'],
+.dark .glass-strong .ui-status-banner[data-variant='warning'] {
+  background-color: rgb(69 26 3 / 0.92) !important; /* amber-950 */
+  border-color: rgb(245 158 11 / 0.45) !important;
+  color: rgb(255 251 235) !important; /* amber-50 */
+}
+
+.dark .glass .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul),
+.dark .glass-strong .ui-status-banner[data-variant='warning'] :where(p, div, span, li, label, ul) {
+  color: rgb(254 243 199) !important; /* amber-100 */
+}
+
+.dark .glass .ui-status-banner[data-variant='success'],
+.dark .glass-strong .ui-status-banner[data-variant='success'] {
+  color: rgb(167 243 208) !important;
 }
 
 .dark .glass .ui-status-banner .status-banner-error,
@@ -1412,16 +1452,29 @@ p[class*="HelpTextContainer"] * {
   @apply mb-2;
 }
 
-/* Human Tech WaaP overlay — keep above Hub chrome; do not inherit glass filters */
+/* Human Tech WaaP overlay — keep above Hub chrome; avoid filters that force CAPTCHA */
 #waap-wallet-iframe-container,
 #silk-wallet-iframe-container {
   z-index: 99999 !important;
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+#waap-wallet-iframe-wrapper,
+#silk-wallet-iframe-wrapper {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none !important;
+  opacity: 1 !important;
 }
 
 #waap-wallet-iframe-container iframe,
 #silk-wallet-iframe-container iframe {
   background-color: transparent;
+  opacity: 1 !important;
+  filter: none !important;
 }

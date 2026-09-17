@@ -23,6 +23,7 @@ export function WaaPWalletContextBridge({ children }: WaaPWalletContextBridgePro
         user: auth.user,
         login: auth.login,
         logout: auth.logout,
+        requestSharedEmail: auth.requestSharedEmail,
         wallets: wallets as WalletInfo[],
         provider,
         isProviderReady: isReady,

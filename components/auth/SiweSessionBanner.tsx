@@ -87,17 +87,14 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
           : 'Tu wallet está conectada, pero falta un paso más'
       }
       description={
-        <>
-          Conectar la wallet no basta para usar Motus Names y otras funciones on-chain: debes
-          firmar un mensaje de verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.
-          {eoaAddress && (
-            <span className="mt-1 block break-all font-mono text-xs opacity-90">
-              {eoaAddress}
-            </span>
-          )}
-        </>
+        compact
+          ? 'Firma un mensaje de verificación (SIWE). No cuesta gas ni mueve fondos.'
+          : 'Conectar la wallet no basta: debes firmar un mensaje de verificación (Sign-In with Ethereum). No cuesta gas ni mueve fondos.'
       }
     >
+      {eoaAddress && (
+        <p className="break-all font-mono text-xs opacity-90">{eoaAddress}</p>
+      )}
       {signError && (
         <div className="status-banner-error flex items-start gap-1.5 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -107,7 +104,11 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
 
       <CTAButton
         type="button"
-        onClick={() => void signIn()}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          void signIn()
+        }}
         disabled={signing}
         className="w-full sm:w-auto"
       >

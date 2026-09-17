@@ -23,6 +23,8 @@ export type WalletAuthState = {
   user: WalletUser | null
   login: () => Promise<void>
   logout: () => Promise<void>
+  /** Share email from embedded WaaP (opens Human Tech once). */
+  requestSharedEmail?: () => Promise<string | null>
 }
 
 export type WalletProviderState = {

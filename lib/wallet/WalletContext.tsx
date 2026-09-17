@@ -16,6 +16,7 @@ export type WalletContextValue = {
   user: WalletUser | null
   login: () => Promise<void>
   logout: () => Promise<void>
+  requestSharedEmail: () => Promise<string | null>
   wallets: WalletInfo[]
   provider: unknown | null
   isProviderReady: boolean
@@ -39,6 +40,7 @@ const defaultValue: WalletContextValue = {
   user: null,
   login: async () => {},
   logout: async () => {},
+  requestSharedEmail: async () => null,
   wallets: [],
   provider: null,
   isProviderReady: false,

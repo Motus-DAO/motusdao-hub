@@ -42,12 +42,14 @@ interface StepConnectProps {
 }
 
 export function StepConnect({ onNext, onBack }: StepConnectProps) {
-  const { ready, authenticated, user, login, providerId } = useWallet()
+  const { ready, authenticated, user, login, providerId, requestSharedEmail } = useWallet()
   const { wallets } = useWallets()
   const { data, updateData } = useOnboardingStore()
   const [isConnecting, setIsConnecting] = useState(false)
   const [siweSessionReady, setSiweSessionReady] = useState(false)
   const [connectBlockers, setConnectBlockers] = useState<string[]>([])
+  const [emailBusy, setEmailBusy] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const {
     register,
@@ -162,6 +164,24 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
       console.error('Error connecting wallet:', error)
     } finally {
       setIsConnecting(false)
+    }
+  }
+
+  const handleShareEmail = async () => {
+    setEmailBusy(true)
+    setEmailError(null)
+    try {
+      const email = await requestSharedEmail?.()
+      if (!email) {
+        setEmailError('No se compartió el correo. Intenta de nuevo o escríbelo manualmente.')
+        return
+      }
+      setValue('email', email, { shouldValidate: true })
+    } catch (error) {
+      console.error('Error sharing email:', error)
+      setEmailError('No se pudo obtener el correo de Human Tech.')
+    } finally {
+      setEmailBusy(false)
     }
   }
 
@@ -349,7 +369,6 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                     Correo Electrónico *
                   </label>
                   {privyEmail ? (
-                    // Show email from WaaP (read-only); synced to RHF via setValue above
                     <div>
                       <p className="text-sm text-muted-foreground">
                         {privyEmail}
@@ -359,8 +378,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                       </p>
                     </div>
                   ) : (
-                    // Show input field if no email from WaaP
-                    <div>
+                    <div className="space-y-2">
                       <input
                         {...register('email')}
                         type="email"
@@ -372,6 +390,24 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                             : 'border-white/10 focus:ring-mauve-500 focus:border-mauve-500'
                         }`}
                       />
+                      <CTAButton
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={emailBusy}
+                        onClick={() => void handleShareEmail()}
+                        className="w-full gap-2"
+                      >
+                        {emailBusy ? (
+                          <Loader className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Mail className="h-4 w-4" />
+                        )}
+                        {emailBusy ? 'Abriendo Human Tech…' : 'Compartir email con Human Tech'}
+                      </CTAButton>
+                      {emailError && (
+                        <p className="text-xs text-red-400">{emailError}</p>
+                      )}
                       {errors.email && (
                         <p className="text-red-400 text-xs mt-1 flex items-center space-x-1">
                           <AlertCircle className="w-3 h-3" />
@@ -410,7 +446,13 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
               </div>
               {eoaAddress && <CheckCircle className="w-5 h-5 text-green-400" />}
             </div>
+          </div>
 
+          <div
+            className="space-y-4"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
             <SiweSessionBanner compact onReadyChange={setSiweSessionReady} />
           </div>
 

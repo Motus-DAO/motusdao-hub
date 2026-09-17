@@ -40,6 +40,7 @@ export function useWallet(): WalletAuthState & {
     user: ctx.user,
     login: ctx.login,
     logout: ctx.logout,
+    requestSharedEmail: ctx.requestSharedEmail,
     providerId: resolveProviderId(ctx.configuredProvider, ctx.wallets),
     configuredProvider: ctx.configuredProvider,
     setupError: ctx.setupError,
