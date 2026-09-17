@@ -209,14 +209,14 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
           <button
             type="button"
             onClick={() => setProfileIntakeMode('manual')}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'manual' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-white'}`}
+            className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'manual' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'}`}
           >
             Llenarlo yo
           </button>
           <button
             type="button"
             onClick={() => setProfileIntakeMode('ai')}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'ai' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-white'}`}
+            className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'ai' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'}`}
           >
             Hablar con IA
           </button>
@@ -410,8 +410,8 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                         onClick={() => toggleConcern(tipo.value)}
                         className={`rounded-full border px-3 py-2 text-sm transition-colors ${
                           active
-                            ? 'border-mauve-400 bg-mauve-500/25 text-white'
-                            : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-white'
+                            ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                            : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
                         }`}
                       >
                         {tipo.label}

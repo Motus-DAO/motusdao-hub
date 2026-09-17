@@ -183,7 +183,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
                       onClick={() => setSelectedSlotId(slot.id)}
                       className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                         selectedSlotId === slot.id
-                          ? 'border-mauve-400 bg-mauve-500/20 text-white'
+                          ? 'border-mauve-400 bg-mauve-500/20 text-mauve-800 dark:text-white'
                           : 'border-white/10 hover:border-mauve-400/50'
                       }`}
                     >

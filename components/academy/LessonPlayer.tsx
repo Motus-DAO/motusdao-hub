@@ -760,7 +760,7 @@ export function LessonPlayer({
                               className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors sm:px-5 ${
                                 active
                                   ? 'bg-mauve-500/15 text-mauve-200'
-                                  : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+                                  : 'text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 dark:hover:text-white'
                               }`}
                             >
                               {done ? (

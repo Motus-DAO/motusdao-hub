@@ -816,6 +816,126 @@ html.light {
   background-color: #fff;
 }
 
+/*
+ * Light-mode accent ink
+ * ---------------------
+ * Soft chips, active rows, and status labels were authored with pastel
+ * text-*50–*400 colors for dark glass. On light surfaces (and when green
+ * accent remaps mauve→emerald), those pastels fall below readable contrast.
+ *
+ * Remap *text* utilities only — bg-* / border-* soft fills stay pastel.
+ * Matrix keeps neon; dark theme keeps pastels.
+ */
+html.light:not([data-theme="matrix"]) .text-mauve-50,
+html.light:not([data-theme="matrix"]) .text-mauve-100,
+html.light:not([data-theme="matrix"]) .hover\:text-mauve-50:hover,
+html.light:not([data-theme="matrix"]) .hover\:text-mauve-100:hover,
+html.light:not([data-theme="matrix"]) .group:hover .group-hover\:text-mauve-50,
+html.light:not([data-theme="matrix"]) .group:hover .group-hover\:text-mauve-100 {
+  color: rgb(var(--mauve-800) / var(--tw-text-opacity, 1)) !important;
+}
+html.light:not([data-theme="matrix"]) .text-mauve-100\/90 {
+  color: rgb(var(--mauve-800) / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-mauve-200,
+html.light:not([data-theme="matrix"]) .hover\:text-mauve-200:hover,
+html.light:not([data-theme="matrix"]) .group:hover .group-hover\:text-mauve-200 {
+  color: rgb(var(--mauve-700) / var(--tw-text-opacity, 1)) !important;
+}
+html.light:not([data-theme="matrix"]) .text-mauve-300,
+html.light:not([data-theme="matrix"]) .hover\:text-mauve-300:hover,
+html.light:not([data-theme="matrix"]) .group:hover .group-hover\:text-mauve-300 {
+  color: rgb(var(--mauve-700) / var(--tw-text-opacity, 1)) !important;
+}
+html.light:not([data-theme="matrix"]) .text-mauve-400,
+html.light:not([data-theme="matrix"]) .hover\:text-mauve-400:hover,
+html.light:not([data-theme="matrix"]) .group:hover .group-hover\:text-mauve-400 {
+  color: rgb(var(--mauve-600) / var(--tw-text-opacity, 1)) !important;
+}
+
+html.light:not([data-theme="matrix"]) .text-iris-50,
+html.light:not([data-theme="matrix"]) .text-iris-100,
+html.light:not([data-theme="matrix"]) .text-iris-200 {
+  color: rgb(var(--iris-800) / var(--tw-text-opacity, 1)) !important;
+}
+html.light:not([data-theme="matrix"]) .text-iris-300 {
+  color: rgb(var(--iris-700) / var(--tw-text-opacity, 1)) !important;
+}
+html.light:not([data-theme="matrix"]) .text-iris-400,
+html.light:not([data-theme="matrix"]) .hover\:text-iris-400:hover {
+  color: rgb(var(--iris-600) / var(--tw-text-opacity, 1)) !important;
+}
+
+html.light:not([data-theme="matrix"]) .text-green-50,
+html.light:not([data-theme="matrix"]) .text-green-100 {
+  color: rgb(22 101 52 / var(--tw-text-opacity, 1)) !important; /* green-800 */
+}
+html.light:not([data-theme="matrix"]) .text-green-200,
+html.light:not([data-theme="matrix"]) .hover\:text-green-200:hover {
+  color: rgb(21 128 61 / var(--tw-text-opacity, 1)) !important; /* green-700 */
+}
+html.light:not([data-theme="matrix"]) .text-green-200\/90 {
+  color: rgb(21 128 61 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-green-300,
+html.light:not([data-theme="matrix"]) .hover\:text-green-300:hover {
+  color: rgb(21 128 61 / var(--tw-text-opacity, 1)) !important; /* green-700 */
+}
+html.light:not([data-theme="matrix"]) .text-green-400,
+html.light:not([data-theme="matrix"]) .hover\:text-green-400:hover {
+  color: rgb(22 163 74 / var(--tw-text-opacity, 1)) !important; /* green-600 */
+}
+
+html.light:not([data-theme="matrix"]) .text-emerald-50,
+html.light:not([data-theme="matrix"]) .text-emerald-100 {
+  color: rgb(6 95 70 / var(--tw-text-opacity, 1)) !important; /* emerald-800 */
+}
+html.light:not([data-theme="matrix"]) .text-emerald-100\/90 {
+  color: rgb(6 95 70 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-emerald-200 {
+  color: rgb(4 120 87 / var(--tw-text-opacity, 1)) !important; /* emerald-700 */
+}
+html.light:not([data-theme="matrix"]) .text-emerald-200\/90 {
+  color: rgb(4 120 87 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-emerald-300,
+html.light:not([data-theme="matrix"]) .hover\:text-emerald-300:hover {
+  color: rgb(4 120 87 / var(--tw-text-opacity, 1)) !important; /* emerald-700 */
+}
+html.light:not([data-theme="matrix"]) .text-emerald-300\/90 {
+  color: rgb(4 120 87 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-emerald-300\/80 {
+  color: rgb(4 120 87 / 0.8) !important;
+}
+html.light:not([data-theme="matrix"]) .text-emerald-400 {
+  color: rgb(5 150 105 / var(--tw-text-opacity, 1)) !important; /* emerald-600 */
+}
+
+html.light:not([data-theme="matrix"]) .text-amber-50,
+html.light:not([data-theme="matrix"]) .text-amber-100 {
+  color: rgb(146 64 14 / var(--tw-text-opacity, 1)) !important; /* amber-800 */
+}
+html.light:not([data-theme="matrix"]) .text-amber-100\/90 {
+  color: rgb(146 64 14 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-amber-200 {
+  color: rgb(146 64 14 / var(--tw-text-opacity, 1)) !important;
+}
+html.light:not([data-theme="matrix"]) .text-amber-200\/90 {
+  color: rgb(146 64 14 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-amber-300 {
+  color: rgb(180 83 9 / var(--tw-text-opacity, 1)) !important; /* amber-700 */
+}
+html.light:not([data-theme="matrix"]) .text-amber-300\/90 {
+  color: rgb(180 83 9 / 0.9) !important;
+}
+html.light:not([data-theme="matrix"]) .text-amber-400 {
+  color: rgb(180 83 9 / var(--tw-text-opacity, 1)) !important;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -1258,6 +1378,34 @@ p[class*="HelpTextContainer"] * {
 
 .academy-prose img.academy-product-shot {
   @apply my-3 w-full max-w-md rounded-xl border border-border/60 shadow-sm;
+}
+
+.academy-prose a.academy-cta-primary {
+  @apply my-3 inline-flex items-center justify-center rounded-lg bg-mauve-600 px-5 py-3 text-sm font-semibold text-white no-underline shadow-sm transition-colors hover:bg-mauve-700 hover:text-white;
+}
+
+.dark .academy-prose a.academy-cta-primary {
+  @apply bg-mauve-500 hover:bg-mauve-400;
+}
+
+.academy-prose a.academy-cta-secondary {
+  @apply mt-2 inline-block text-sm font-medium text-mauve-700 underline-offset-4 hover:underline;
+}
+
+.dark .academy-prose a.academy-cta-secondary {
+  @apply text-mauve-300;
+}
+
+.academy-prose .academy-outcome-box {
+  @apply my-4 rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-foreground;
+}
+
+.academy-prose .academy-outcome-box p {
+  @apply mb-2 mt-0 font-semibold text-foreground;
+}
+
+.academy-prose .academy-outcome-box ul {
+  @apply mb-0 mt-2;
 }
 
 .academy-prose-summary {

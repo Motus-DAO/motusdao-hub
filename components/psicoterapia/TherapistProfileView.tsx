@@ -79,7 +79,7 @@ export function TherapistProfileView({ slug }: Props) {
         <div className="container mx-auto px-6 pb-16">
           <Link
             href="/psicoterapia"
-            className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-white"
+            className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground dark:hover:text-white"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver a terapeutas

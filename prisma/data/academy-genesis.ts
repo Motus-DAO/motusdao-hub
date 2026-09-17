@@ -105,9 +105,9 @@ Su trabajo da origen a parte de los contenidos de **Praxis**, construidos a part
           title: 'Tu mapa — solo lo que necesitas hoy',
           slug: 'tu-mapa-hoy',
           order: 2,
-          duration: 4,
+          duration: 5,
           isFreePreview: true,
-          summary: 'Cinco bloques. Un camino. Tú decides hasta dónde llegar.',
+          summary: 'Cinco bloques, Validación y Portal claros, y lo que obtienes en Fundamentos.',
           contentMDX: `# Tu mapa — solo lo que necesitas hoy
 
 ![Bloque Genesis imagen ](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_mapa-ruta/images/cmspqls170b8235ce4b0a985c.png)
@@ -119,14 +119,28 @@ Avanzas cuando tú quieras. No hay examen de entrada.
 - **Génesis** ← estás aquí. Gratis. Te orientas y decides.
 - **Fundamentos** — siguiente paso. Montas tu práctica digital con encuadre clínico. **USD 20/mes**.
 - **Praxis** — cursos y talleres de formación aplicada (habilidades clínicas, casos, ejercicios). La supervisión es una oferta aparte.
-- **Validación** — revisión documental y pase hacia funciones profesionales del ecosistema.
-- **Portal** — tu consultorio digital operando dentro de MotusDAO.
-
-Hoy solo necesitas esto: si resuena, el siguiente bloque es **Fundamentos**.
+- **Validación** — revisamos tus documentos, experiencia y requisitos profesionales.
+  - Si **aún no cumples**, te invitamos a seguir por la **ruta comunitaria**: formarte, documentar tu avance y prepararte.
+  - Si **cumples**, puedes avanzar al **Portal clínico**.
+- **Portal clínico** — tu consultorio digital operando dentro de MotusDAO. No es otro curso: es el espacio donde ejerces con las herramientas del ecosistema.
 
 ![mapa de academia metaverso](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_mapa-ruta/images/cmspqodrt0b8205496d30c53c.png)
 
-**Siguiente paso:** mira qué ganas con las herramientas del Hub.`,
+<div class="academy-outcome-box">
+<p><strong>Al terminar Fundamentos tendrás:</strong></p>
+<ul>
+<li>Tu consulta digital configurada.</li>
+<li>Un encuadre claro para la atención online.</li>
+<li>Tus herramientas esenciales organizadas.</li>
+<li>Criterios para usar IA.</li>
+</ul>
+</div>
+
+<a class="academy-cta-primary" href="/academia/02-fundamentos">Continuar a Fundamentos — USD 20/mes</a>
+
+<a class="academy-cta-secondary" href="/perfil">Completar perfil (gratis)</a>
+
+O sigue a la siguiente lección para ver las herramientas del Hub y voces de colegas.`,
         },
         {
           id: 'lesson_genesis_lo-que-hay-dentro',
@@ -164,10 +178,6 @@ También tienes **MotusAI** (con límites claros: no sustituye tu juicio clínic
 
 ## Lo que dicen colegas
 
-> “El curso ha superado mis expectativas. Los contenidos me han ayudado a reflexionar sobre mi práctica y la comunidad de aprendizaje ha sido muy enriquecedora. Es un espacio para cuestionar lo que hacemos y seguir aprendiendo con otros.”
->
-> — **Alma Laura Contreras**
-
 > “Lo más valioso para mí es el abordaje clínico: revisamos teoría y conceptos aplicados a lo que sucede día a día en el consultorio. El intercambio con los colegas genera mucha confianza y enriquece cada encuentro.”
 >
 > — **Fernando Lorenzana**
@@ -180,16 +190,21 @@ También tienes **MotusAI** (con límites claros: no sustituye tu juicio clínic
 >
 > — **Maribel Garcia**
 
-> “Valoro mucho la claridad con la que se abordan temas de lógica, matemática y topología en relación con el psicoanálisis. Los ejemplos clínicos ayudan a aterrizar la teoría y afianzar lo aprendido. Lo recomendaría para adentrarse y profundizar en el psicoanálisis.”
->
-> — **Juan Carlos Castelán López**
-
 ## Tu siguiente paso
 
-**Primario — pasa a Fundamentos**  
-Ordena tu práctica digital con encuadre clínico. **USD 20/mes.** Es el siguiente bloque de la ruta.
+<div class="academy-outcome-box">
+<p><strong>Al terminar Fundamentos tendrás:</strong></p>
+<ul>
+<li>Tu consulta digital configurada.</li>
+<li>Un encuadre claro para la atención online.</li>
+<li>Tus herramientas esenciales organizadas.</li>
+<li>Criterios para usar IA.</li>
+</ul>
+</div>
 
-**Secundario (opcional)** — completa tu perfil profesional gratis mientras exploras. No implica pago.
+<a class="academy-cta-primary" href="/academia/02-fundamentos">Continuar a Fundamentos — USD 20/mes</a>
+
+<a class="academy-cta-secondary" href="/perfil">Completar perfil (gratis)</a>
 
 Si MotusDAO no es para ti, también está bien. Ya tienes el mapa.`,
         },

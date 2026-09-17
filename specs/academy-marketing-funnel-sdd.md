@@ -244,8 +244,8 @@ Work top-down. Only one `in_progress` slice at a time unless explicitly parallel
 | **MF-01b** | Génesis: creadores Ruta PSM (Gerry + Benjamin + fotos) | Content | `done` (pending commit) | L1 + `public/academy/creators/` |
 | **MF-01c** | Génesis: fotos producto (perfil, videochat, casos) | Content | `done` (pending commit) | L3 + `public/academy/product/` |
 | **MF-01d** | Génesis: testimonios | Content | `done` (pending commit) | L3 “Qué ganas”, antes del CTA |
-| **MF-01e** | Génesis: CTA reforzado + resultado comparable Fundamentos | Content | `queued` | after testimonials |
-| **MF-01f** | Génesis: Validación + Portal en lenguaje claro | Content | `queued` | map lesson |
+| **MF-01e** | Génesis: CTA reforzado + resultado comparable Fundamentos | Content | `done` (pending commit) | mapa + cierre L3 |
+| **MF-01f** | Génesis: Validación + Portal en lenguaje claro | Content | `done` (pending commit) | mapa lesson |
 | **MF-06** | Fundamentos positioning as membership/OS | Content / Pricing page | `queued` | TBD |
 | **MF-07** | Praxis sales pages — Escucha (first SKU copy) | Content | `queued` | TBD |
 | **MF-08** | Praxis sales pages — Formulación | Content | `queued` | TBD |
@@ -285,6 +285,7 @@ For each slice:
 | 2026-09-16 | MF-01 | Seed rewrite + local seed | `academy-genesis.ts` conversion funnel; docs annex; Praxis map fixed; CTA Fundamentos. Commit `5b61046`. |
 | 2026-09-17 | MF-01b | Creators in Genesis L1 | Gerry Alvarez + Benjamin Buzali photos + copy; Praxis authorship note (personality structures research). |
 | 2026-09-17 | MF-01d | Testimonials in Genesis L3 | Five colleague quotes before Fundamentos CTA (no chapter timestamps in UI). |
+| 2026-09-17 | MF-01c/e/f | Product shots + CTA + Validación/Portal | Hub screenshots; outcome box; CTAs to Fundamentos/perfil; human Validación/Portal copy. |
 
 ---
 
