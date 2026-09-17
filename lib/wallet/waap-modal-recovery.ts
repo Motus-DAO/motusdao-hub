@@ -51,3 +51,39 @@ export function isEmbeddedWaapLoginMethod(
 ): boolean {
   return method === 'waap' || method === 'human'
 }
+
+type WaapIframeDiagnosticsLike = {
+  modalPhase?: 'idle' | 'pending' | 'visible' | 'hidden'
+  visualReadyAt?: number | null
+  modalRequestedAt?: number | null
+}
+
+/**
+ * True only when the shell is up but the iframe never painted usable UI.
+ * A healthy "Message signing request" modal must NOT count as stuck.
+ */
+export function isWaapOverlayStuckBlank(
+  diagnostics: WaapIframeDiagnosticsLike | null | undefined,
+  now = Date.now()
+): boolean {
+  if (!diagnostics) return false
+
+  const requestedAt = diagnostics.modalRequestedAt ?? null
+  const ageMs = requestedAt != null ? now - requestedAt : 0
+
+  // Actively showing wallet UI — never treat as stuck.
+  if (diagnostics.modalPhase === 'visible' && diagnostics.visualReadyAt) {
+    return false
+  }
+
+  // Requested / pending for a while with no paint.
+  if (
+    (diagnostics.modalPhase === 'pending' || diagnostics.modalPhase === 'visible') &&
+    !diagnostics.visualReadyAt &&
+    ageMs >= 10_000
+  ) {
+    return true
+  }
+
+  return false
+}

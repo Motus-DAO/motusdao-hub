@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -19,6 +20,7 @@ import {
 } from '@/lib/auth/client'
 import { SIWE_SESSION_LOADING_TIMEOUT_MS, SIWE_SIGN_TIMEOUT_MS } from '@/lib/auth/hub-session'
 import { withSignTimeout } from '@/lib/auth/signing'
+import { dismissWaapWalletOverlay } from '@/lib/wallet/waap-modal-recovery'
 
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
@@ -43,6 +45,7 @@ function useSiweSessionController(): SiweSessionValue {
   const [sessionState, setSessionState] = useState<SiweSessionState>('loading')
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState<string | null>(null)
+  const signingLockRef = useRef(false)
 
   const refresh = useCallback(async () => {
     if (!ready) return
@@ -100,6 +103,11 @@ function useSiweSessionController(): SiweSessionValue {
       return false
     }
 
+    if (signingLockRef.current) {
+      return false
+    }
+    signingLockRef.current = true
+
     setSigning(true)
     setSignError(null)
 
@@ -142,6 +150,9 @@ function useSiweSessionController(): SiweSessionValue {
       await refresh()
       return true
     } catch (error) {
+      // Unblock the UI if Human Tech left the signing shell open.
+      dismissWaapWalletOverlay()
+
       if (error instanceof Error && error.name === 'SignMessageError') {
         setSignError(error.message)
       } else if (isUserRejectedSignError(error)) {
@@ -156,6 +167,7 @@ function useSiweSessionController(): SiweSessionValue {
       setSessionState('needs_signature')
       return false
     } finally {
+      signingLockRef.current = false
       setSigning(false)
     }
   }, [provider, user?.id, eoaAddress, refresh, providerId])

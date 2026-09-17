@@ -1,80 +1,56 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import {
   dismissWaapWalletOverlay,
-  isWaapOverlayPresent,
+  isWaapOverlayStuckBlank,
 } from '@/lib/wallet/waap-modal-recovery'
 
-const STUCK_AFTER_MS = 12_000
-const POLL_MS = 1_500
+const POLL_MS = 2_000
 
 /**
- * When the Human Tech iframe shell stays up with no usable UI, offer an escape
- * hatch so users are not forced to clear cookies.
+ * Escape hatch ONLY for blank Human Tech shells (no usable UI).
+ * Must not appear during a normal signing / login modal.
  */
 export function WaapStuckModalGuard() {
   const [showEscape, setShowEscape] = useState(false)
-  const seenAtRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    let unsub: (() => void) | undefined
+    let getDiagnostics: (() => {
+      modalPhase?: 'idle' | 'pending' | 'visible' | 'hidden'
+      visualReadyAt?: number | null
+      modalRequestedAt?: number | null
+    }) | null = null
 
-    const syncFromDiagnostics = async () => {
+    const load = async () => {
       try {
-        const { getWaaPIframeDiagnostics, subscribeWaaPIframeLifecycle } =
-          await import('@human.tech/waap-sdk')
-
+        const mod = await import('@human.tech/waap-sdk')
         if (cancelled) return
-
-        unsub = subscribeWaaPIframeLifecycle((event) => {
-          if (event.phase === 'modal_requested') {
-            seenAtRef.current = seenAtRef.current ?? Date.now()
-          }
-          if (
-            event.phase === 'modal_hidden' ||
-            event.phase === 'modal_cancelled'
-          ) {
-            seenAtRef.current = null
-            setShowEscape(false)
-          }
-          if (event.phase === 'modal_visible') {
-            const diagnostics = getWaaPIframeDiagnostics()
-            if (!diagnostics.visualReadyAt) {
-              seenAtRef.current = seenAtRef.current ?? Date.now()
-            } else {
-              seenAtRef.current = null
-              setShowEscape(false)
-            }
-          }
-        })
+        getDiagnostics = () => mod.getWaaPIframeDiagnostics()
       } catch {
-        // Older/broken SDK — fall back to DOM polling only.
+        getDiagnostics = null
       }
     }
 
-    void syncFromDiagnostics()
+    void load()
 
     const poll = window.setInterval(() => {
-      const present = isWaapOverlayPresent()
-      if (!present) {
-        seenAtRef.current = null
+      if (!getDiagnostics) {
         setShowEscape(false)
         return
       }
-
-      const started = seenAtRef.current ?? Date.now()
-      seenAtRef.current = started
-      if (Date.now() - started >= STUCK_AFTER_MS) {
-        setShowEscape(true)
+      try {
+        const diagnostics = getDiagnostics()
+        setShowEscape(isWaapOverlayStuckBlank(diagnostics))
+      } catch {
+        setShowEscape(false)
       }
     }, POLL_MS)
 
     return () => {
       cancelled = true
-      unsub?.()
       window.clearInterval(poll)
     }
   }, [])
@@ -82,16 +58,14 @@ export function WaapStuckModalGuard() {
   const handleDismiss = useCallback(() => {
     dismissWaapWalletOverlay()
     setShowEscape(false)
-    seenAtRef.current = null
   }, [])
 
   if (!showEscape) return null
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-[100000] flex w-[min(92vw,24rem)] -translate-x-1/2 flex-col gap-2 rounded-xl border border-amber-400/40 bg-[#1a1224]/95 p-3 shadow-2xl backdrop-blur-md">
+    <div className="fixed bottom-4 left-1/2 z-[100000] flex w-[min(92vw,24rem)] -translate-x-1/2 flex-col gap-2 rounded-xl border border-amber-400/40 bg-[#1a1224]/95 p-3 shadow-2xl">
       <p className="text-sm text-amber-50">
-        El modal de wallet parece bloqueado. Puedes cerrarlo y reintentar el
-        inicio de sesión.
+        El modal de wallet no cargó. Ciérralo e intenta de nuevo.
       </p>
       <button
         type="button"

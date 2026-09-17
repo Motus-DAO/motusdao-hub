@@ -277,7 +277,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   }, [])
 
   // Check for existing authenticated session (auto-connect)
-  // Reference: https://docs.wallet.human.tech/docs/guides/methods#auto-connect-functionality
+  // Prefer eth_accounts (silent). eth_requestAccounts can open UI / hang on stale Silk.
   const checkExistingSession = async (provider: unknown) => {
     try {
       const waap = provider as {
@@ -285,69 +285,79 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         getLoginMethod: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
       }
 
-      // Check if user was previously logged in
       const loginMethod = waap.getLoginMethod?.()
       console.log('[WAAP] Checking existing session, login method:', loginMethod)
 
-      if (loginMethod) {
-        const AUTO_CONNECT_MS = 12_000
-        const accounts = await Promise.race([
-          waap.request({ method: 'eth_requestAccounts' }) as Promise<string[]>,
+      if (!loginMethod) {
+        console.log('[WAAP] No previous session found')
+        return
+      }
+
+      const AUTO_CONNECT_MS = 8_000
+      const withTimeout = async <T,>(promise: Promise<T>, label: string) =>
+        Promise.race([
+          promise,
           new Promise<never>((_, reject) => {
             window.setTimeout(
-              () => reject(new Error('WaaP auto-connect timed out')),
+              () => reject(new Error(`WaaP auto-connect timed out (${label})`)),
               AUTO_CONNECT_MS
             )
           }),
         ])
-        
-        if (accounts && accounts.length > 0) {
-          console.log('[WAAP] ✅ Auto-connected with address:', accounts[0])
-          
-          const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
-          
-          setAuthenticated(true)
-          setWallets([{
+
+      let accounts = (await withTimeout(
+        waap.request({ method: 'eth_accounts' }) as Promise<string[]>,
+        'eth_accounts'
+      )) as string[]
+
+      // Only escalate to eth_requestAccounts when silent accounts are empty.
+      if (!accounts?.length) {
+        accounts = (await withTimeout(
+          waap.request({ method: 'eth_requestAccounts' }) as Promise<string[]>,
+          'eth_requestAccounts'
+        )) as string[]
+      }
+
+      if (accounts && accounts.length > 0) {
+        console.log('[WAAP] ✅ Auto-connected with address:', accounts[0])
+
+        const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
+
+        setAuthenticated(true)
+        setWallets([
+          {
             address: accounts[0] as Address,
             walletClientType: walletType,
             chainId: CELO_CHAIN_ID.toString(),
             connected: true,
-          }])
-          
-          // Restore user info
-          const storedUser = localStorage.getItem('waap_user')
-          if (storedUser) {
-            setUser(JSON.parse(storedUser))
-          } else {
-            setUser({
-              id: `waap_${accounts[0].slice(2, 10)}`,
-              wallet: { address: accounts[0] },
-            })
-          }
+          },
+        ])
 
-          // Try to switch to Celo mainnet
-          try {
-            await waap.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: CELO_CHAIN_ID_HEX }],
-            })
-            console.log('[WAAP] ✅ Switched to Celo Mainnet')
-          } catch (switchError) {
-            console.log('[WAAP] Could not switch to Celo (may need to add network):', switchError)
-          }
+        const storedUser = localStorage.getItem('waap_user')
+        if (storedUser) {
+          setUser(JSON.parse(storedUser))
+        } else {
+          setUser({
+            id: `waap_${accounts[0].slice(2, 10)}`,
+            wallet: { address: accounts[0] },
+          })
         }
-      } else {
-        console.log('[WAAP] No previous session found')
+
+        try {
+          await waap.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: CELO_CHAIN_ID_HEX }],
+          })
+          console.log('[WAAP] ✅ Switched to Celo Mainnet')
+        } catch (switchError) {
+          console.log('[WAAP] Could not switch to Celo (may need to add network):', switchError)
+        }
       }
     } catch (error) {
       console.log('[WAAP] Auto-connect not available or failed:', error)
+      // Do NOT logout on timeout/recoverable errors — that thrash-disconnects
+      // users mid-session. Only clear local cache for clearly stale Silk sessions.
       if (isRecoverableWaapSdkError(error)) {
-        try {
-          const waap = provider as { logout?: () => Promise<void> }
-          await waap.logout?.()
-        } catch {
-          // Stale Silk session — ignore logout failures
-        }
         localStorage.removeItem('waap_user')
       }
     }
@@ -527,65 +537,116 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
       on: (event: string, handler: (...args: unknown[]) => void) => void
       removeListener: (event: string, handler: (...args: unknown[]) => void) => void
       getLoginMethod: () => 'waap' | 'human' | 'injected' | 'walletconnect' | null
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+    }
+
+    let emptyAccountsTimer: ReturnType<typeof setTimeout> | null = null
+
+    const clearLocalAuth = () => {
+      setAuthenticated(false)
+      setUser(null)
+      setWallets([])
     }
 
     // Account changes - handle wallet switching or disconnection
     const handleAccountsChanged = (accounts: unknown) => {
       const accountsArray = accounts as string[]
       console.log('[WAAP] accountsChanged event:', accountsArray)
-      
+
+      if (emptyAccountsTimer) {
+        clearTimeout(emptyAccountsTimer)
+        emptyAccountsTimer = null
+      }
+
       if (accountsArray.length === 0) {
-        // Wallet disconnected
-        console.log('[WAAP] Wallet disconnected')
-        setAuthenticated(false)
-        setUser(null)
-        setWallets([])
-      } else {
-        const loginMethod = waap.getLoginMethod?.()
-        const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
-        
-        setWallets([{
+        // Silk often emits [] transiently during personal_sign — confirm before wipe.
+        emptyAccountsTimer = setTimeout(() => {
+          void (async () => {
+            try {
+              const still = (await waap.request({ method: 'eth_accounts' })) as string[]
+              if (still?.length) {
+                console.log('[WAAP] Ignoring transient empty accountsChanged')
+                const loginMethod = waap.getLoginMethod?.()
+                const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
+                setAuthenticated(true)
+                setWallets([
+                  {
+                    address: still[0] as Address,
+                    walletClientType: walletType,
+                    chainId: CELO_CHAIN_ID.toString(),
+                    connected: true,
+                  },
+                ])
+                return
+              }
+            } catch {
+              // fall through to disconnect
+            }
+            console.log('[WAAP] Wallet disconnected (confirmed)')
+            clearLocalAuth()
+          })()
+        }, 1_500)
+        return
+      }
+
+      const loginMethod = waap.getLoginMethod?.()
+      const walletType = isEmbeddedWaapLoginMethod(loginMethod) ? 'waap' : 'external'
+
+      setAuthenticated(true)
+      setWallets([
+        {
           address: accountsArray[0] as Address,
           walletClientType: walletType,
           chainId: CELO_CHAIN_ID.toString(),
           connected: true,
-        }])
-        
-        // Update user
-        setUser(prev => prev ? {
-          ...prev,
-          wallet: { address: accountsArray[0] },
-        } : null)
-      }
+        },
+      ])
+
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              wallet: { address: accountsArray[0] },
+            }
+          : null
+      )
     }
 
-    // Chain changes - log and handle if needed
     const handleChainChanged = (chainId: unknown) => {
       console.log('[WAAP] chainChanged event:', chainId)
-      // Could trigger reconnection or show warning if not on Celo
     }
 
-    // Connect event
     const handleConnect = () => {
       console.log('[WAAP] connect event')
     }
 
-    // Disconnect event
     const handleDisconnect = (error: unknown) => {
       console.log('[WAAP] disconnect event:', error)
-      setAuthenticated(false)
-      setUser(null)
-      setWallets([])
+      // Debounce — same transient empty-account race as accountsChanged.
+      if (emptyAccountsTimer) clearTimeout(emptyAccountsTimer)
+      emptyAccountsTimer = setTimeout(() => {
+        void (async () => {
+          try {
+            const still = (await waap.request({ method: 'eth_accounts' })) as string[]
+            if (still?.length) {
+              console.log('[WAAP] Ignoring transient disconnect')
+              return
+            }
+          } catch {
+            // fall through
+          }
+          clearLocalAuth()
+        })()
+      }, 1_500)
     }
 
-    // Subscribe to EIP-1193 events
     waap.on('accountsChanged', handleAccountsChanged)
     waap.on('chainChanged', handleChainChanged)
     waap.on('connect', handleConnect)
     waap.on('disconnect', handleDisconnect)
 
-    // Cleanup on unmount
     return () => {
+      if (emptyAccountsTimer) clearTimeout(emptyAccountsTimer)
       waap.removeListener('accountsChanged', handleAccountsChanged)
       waap.removeListener('chainChanged', handleChainChanged)
       waap.removeListener('connect', handleConnect)
