@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WalletProviderWrapper } from "@/components/WalletProviderWrapper";
 import { AppShell } from "@/components/layout/AppShell";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -54,11 +55,13 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jura.variable} font-sans antialiased`}
       >
-        <WalletProviderWrapper>
-          <ThemeProvider>
-            <AppShell>{children}</AppShell>
-          </ThemeProvider>
-        </WalletProviderWrapper>
+        <PostHogProvider>
+          <WalletProviderWrapper>
+            <ThemeProvider>
+              <AppShell>{children}</AppShell>
+            </ThemeProvider>
+          </WalletProviderWrapper>
+        </PostHogProvider>
       </body>
     </html>
   );
