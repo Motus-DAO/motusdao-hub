@@ -21,6 +21,7 @@ import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } 
 import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
+import { trackCta } from '@/lib/track-cta'
 
 export function Topbar() {
   const { 
@@ -151,6 +152,7 @@ export function Topbar() {
   }
 
   const handleLogin = () => {
+    trackCta('Inicia Sesión', { location: 'topbar' })
     void login()
   }
 

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { trackCta } from '@/lib/track-cta'
 
 const featuredApps = [
   {
@@ -62,6 +63,7 @@ export default function Home() {
   const [showRolePicker, setShowRolePicker] = useState(false)
 
   const handleStart = async () => {
+    trackCta('Comenzar Ahora', { location: 'hero' })
     try {
       await login()
       setShowRolePicker(true)
@@ -129,7 +131,10 @@ export default function Home() {
                     <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                   </CTAButton>
                   
-                  <Link href="/docs">
+                  <Link
+                    href="/docs"
+                    onClick={() => trackCta('Documentación', { location: 'hero', href: '/docs' })}
+                  >
                     <CTAButton variant="secondary" size="lg">
                       <FileText className="w-5 h-5 mr-2" />
                       Documentación
@@ -164,7 +169,15 @@ export default function Home() {
                       <p className="text-muted-foreground mb-4">
                         Primero necesitamos algunos datos básicos para personalizar tu experiencia y activar todas las aplicaciones de MotusDAO.
                       </p>
-                      <Link href={ONBOARDING_ROUTE}>
+                      <Link
+                        href={ONBOARDING_ROUTE}
+                        onClick={() =>
+                          trackCta('Ir al registro clínico', {
+                            location: 'onboarding',
+                            href: ONBOARDING_ROUTE,
+                          })
+                        }
+                      >
                         <CTAButton size="lg" glow className="inline-flex items-center">
                           Ir al registro clínico
                           <ArrowRight className="w-5 h-5 ml-2" />
@@ -258,7 +271,12 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.8, delay: 0.3 + index * 0.1 }}
                     >
-                      <Link href={app.href}>
+                      <Link
+                        href={app.href}
+                        onClick={() =>
+                          trackCta(app.title, { location: 'featured_apps', href: app.href })
+                        }
+                      >
                         <GlassCard hover className="h-full p-6 group cursor-pointer">
                           <div className="text-center">
                             <div className={`w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-r ${app.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 relative overflow-hidden`}>
@@ -301,12 +319,28 @@ export default function Home() {
                         Tu bienestar es nuestra prioridad.
                       </p>
                       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link href="/motusai">
+                        <Link
+                          href="/motusai"
+                          onClick={() =>
+                            trackCta('Habla con un asistente IA especializado', {
+                              location: 'home_cta',
+                              href: '/motusai',
+                            })
+                          }
+                        >
                           <CTAButton size="lg" glow className="w-full sm:w-auto">
                             Habla con un asistente IA especializado
                           </CTAButton>
                         </Link>
-                        <Link href="/psicoterapia">
+                        <Link
+                          href="/psicoterapia"
+                          onClick={() =>
+                            trackCta('Agendar cita con un terapeuta', {
+                              location: 'home_cta',
+                              href: '/psicoterapia',
+                            })
+                          }
+                        >
                           <CTAButton variant="secondary" size="lg" className="w-full sm:w-auto">
                             Agendar cita con un terapeuta
                           </CTAButton>
