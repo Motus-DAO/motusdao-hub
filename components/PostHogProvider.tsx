@@ -17,12 +17,15 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
       defaults: '2026-05-30',
       person_profiles: 'identified_only',
-      capture_pageview: true,
+      // Capture after register so `site` is on the first $pageview.
+      capture_pageview: false,
       capture_pageleave: true,
-      // Keep free-tier quota for analytics; enable later if needed.
       disable_session_recording: true,
+      loaded: (client) => {
+        client.register({ site: SITE })
+        client.capture('$pageview')
+      },
     })
-    posthog.register({ site: SITE })
     initialized = true
   }, [])
 
