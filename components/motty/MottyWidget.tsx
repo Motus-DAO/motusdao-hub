@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Loader2, Send, X } from 'lucide-react'
 import { MottyAvatar } from '@/components/motty/MottyAvatar'
 import { MottyMarkdown } from '@/components/motty/MottyMarkdown'
 import { fetchAppSession } from '@/lib/auth/client'
-import { MOTTY_DEFAULT_LOCALE, mottyCopy } from '@/lib/motty/copy'
+import { MOTTY_DEFAULT_LOCALE, mottyCopyForPath } from '@/lib/motty/copy'
+import { resolveMottyPageSurface } from '@/lib/motty/page-context'
 import { useUIStore } from '@/lib/store'
 import type { MottyMessage } from '@/lib/motty/types'
 
@@ -20,11 +22,13 @@ type ChatLine = MottyMessage
 
 /**
  * Floating Motty — same FAB + modal pattern as academia.motusdao.org.
- * Separate from MotusAI (/motusai). Only shown when Hub session has a linked userId.
+ * Copy adapts to the current Hub page. Separate from MotusAI chat.
  */
 export function MottyWidget() {
   const locale = MOTTY_DEFAULT_LOCALE
-  const copy = mottyCopy(locale)
+  const pathname = usePathname()
+  const surface = resolveMottyPageSurface(pathname)
+  const copy = mottyCopyForPath(locale, pathname)
   const { theme } = useUIStore()
   const dark = theme !== 'light'
   const [ready, setReady] = useState(false)
@@ -35,6 +39,7 @@ export function MottyWidget() {
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const titleId = useId()
+  const surfaceRef = useRef(surface)
 
   useEffect(() => {
     let cancelled = false
@@ -61,6 +66,18 @@ export function MottyWidget() {
       window.clearInterval(timer)
     }
   }, [])
+
+  // When the Hub page changes, refresh chrome greeting if the user hasn't chatted yet.
+  useEffect(() => {
+    if (surfaceRef.current === surface) return
+    surfaceRef.current = surface
+
+    setLines((current) => {
+      const hasUserTurn = current.some((line) => line.role === 'user')
+      if (hasUserTurn) return current
+      return [{ role: 'assistant', content: copy.greeting }]
+    })
+  }, [surface, copy.greeting])
 
   useEffect(() => {
     if (!open) return
@@ -97,7 +114,11 @@ export function MottyWidget() {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, locale }),
+        body: JSON.stringify({
+          message,
+          locale,
+          pagePath: pathname || '/',
+        }),
       })
       const json = (await response.json()) as { reply?: string; error?: string }
       const reply =
@@ -116,7 +137,7 @@ export function MottyWidget() {
     } finally {
       setPending(false)
     }
-  }, [input, pending, locale, copy.error, copy.rateLimit])
+  }, [input, pending, locale, pathname, copy.error, copy.rateLimit])
 
   if (!ready) return null
 

@@ -4,6 +4,10 @@ import { assertAuthenticatedUser } from '@/lib/auth/guards'
 import { requireSession } from '@/lib/auth/session'
 import { runHubMottyTurn } from '@/lib/motty/agent-loop'
 import { mottyConfig } from '@/lib/motty/config'
+import {
+  resolveMottyPageSurface,
+  sanitizeMottyPagePath,
+} from '@/lib/motty/page-context'
 import { appendTurn, readMottySession, writeMottySession } from '@/lib/motty/session'
 import type { MottyLocale } from '@/lib/motty/types'
 
@@ -18,14 +22,19 @@ export async function POST(request: NextRequest) {
     const auth = await requireSession(request)
     const userId = assertAuthenticatedUser(auth)
 
-    let body: { message?: unknown; locale?: unknown }
+    let body: { message?: unknown; locale?: unknown; pagePath?: unknown }
     try {
-      body = (await request.json()) as { message?: unknown; locale?: unknown }
+      body = (await request.json()) as {
+        message?: unknown
+        locale?: unknown
+        pagePath?: unknown
+      }
     } catch {
       return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
     }
 
     // Never accept userId / wallet / permissions from the client body.
+    // pagePath is sanitized to a Hub pathname only (UI/prompt context).
     const message = typeof body.message === 'string' ? body.message.trim() : ''
     if (!message) {
       return NextResponse.json({ error: 'empty_message' }, { status: 400 })
@@ -37,13 +46,20 @@ export async function POST(request: NextRequest) {
     }
 
     const locale: MottyLocale = body.locale === 'en' ? 'en' : 'es'
+    const pagePath = sanitizeMottyPagePath(body.pagePath)
+    const pageSurface = resolveMottyPageSurface(pagePath)
     const session = await readMottySession(userId, locale)
 
     if (rateLimited(`${userId}`)) {
       return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
     }
 
-    const turn = await runHubMottyTurn({ session, userMessage: message })
+    const turn = await runHubMottyTurn({
+      session,
+      userMessage: message,
+      pageSurface,
+      pagePath,
+    })
     const next = appendTurn(turn.session, message, turn.reply)
     await writeMottySession(next)
 

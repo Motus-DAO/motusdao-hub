@@ -12,6 +12,7 @@ import { createChatCompletion, hasMottyInference, type ProviderMessage } from '@
 import { mottySystemPrompt } from '@/lib/motty/system-prompt'
 import { enabledToolSchemas, executeMottyTool } from '@/lib/motty/tools'
 import type { MottySession } from '@/lib/motty/types'
+import type { MottyPageSurface } from '@/lib/motty/page-context'
 
 const FALLBACK_ES =
   'Puedo orientarte en la Academia con Acompañamiento Personalizado Digital, pero ahora no pude completar la respuesta. Revisa /academia o escribe de nuevo en un momento.'
@@ -23,9 +24,13 @@ export async function runHubMottyTurn(input: {
   userMessage: string
   /** Optional preloaded context (tests). Production loads by session.userId. */
   learningContext?: UserLearningContext
+  pageSurface?: MottyPageSurface
+  pagePath?: string | null
 }): Promise<{ session: MottySession; reply: string; learningContext: UserLearningContext | null }> {
   const { session, userMessage } = input
   const { maxToolRounds } = mottyConfig()
+  const pageSurface = input.pageSurface ?? 'default'
+  const pagePath = input.pagePath ?? null
 
   let learningContext: UserLearningContext | null = input.learningContext ?? null
   if (!learningContext) {
@@ -45,7 +50,10 @@ export async function runHubMottyTurn(input: {
   }
 
   const messages: ProviderMessage[] = [
-    { role: 'system', content: mottySystemPrompt(session.locale) },
+    {
+      role: 'system',
+      content: mottySystemPrompt(session.locale, pageSurface, pagePath),
+    },
   ]
 
   if (learningContext) {
