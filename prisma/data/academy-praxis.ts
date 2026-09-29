@@ -128,7 +128,8 @@ export function buildPraxisBlockCourse(): SeedCourse {
     id: PRAXIS_BLOCK_ID,
     slug: PRAXIS_BLOCK_SLUG,
     title: '03 — Praxis',
-    summary: 'Formación aplicada para tu práctica profesional. Cursos y talleres desde USD 15.',
+    summary:
+      'Construye tu formación clínica a tu ritmo. Colección progresiva desde USD 15 · completa USD 100. Escucha recomendada para empezar.',
     description: intro,
     category: 'Ruta PSM',
     difficulty: 'intermediate',

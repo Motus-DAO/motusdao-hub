@@ -49,7 +49,9 @@ import {
   isPraxisCatalogSlug,
   PRAXIS_BLOCK_SLUG,
   PRAXIS_HERO_BENEFITS,
+  PRAXIS_PRICING_LINE,
   PRAXIS_PROMISE,
+  PRAXIS_ROUTE_LINE,
 } from '@/lib/academy/praxis-catalog'
 import { resolveRouteBlockSlug } from '@/lib/academy/route-blocks'
 import { invalidateUserEnrollmentsCache } from '@/lib/academy/enrollments-cache'
@@ -387,7 +389,9 @@ function PraxisBlockView({
                     <GradientText as="h1" className="mb-3 text-3xl font-bold sm:text-4xl">
                       {course.title}
                     </GradientText>
-                    <p className="mb-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{PRAXIS_PROMISE}</p>
+                    <p className="mb-2 text-base leading-relaxed text-muted-foreground sm:text-lg">{PRAXIS_PROMISE}</p>
+                    <p className="mb-2 text-sm text-muted-foreground">{PRAXIS_ROUTE_LINE}</p>
+                    <p className="mb-5 text-sm font-medium text-mauve-200">{PRAXIS_PRICING_LINE}</p>
                     <ul className="mb-6 space-y-2.5">
                       {benefits.map((benefit) => (
                         <li key={benefit} className="flex items-start gap-2.5 text-sm text-muted-foreground">
@@ -396,9 +400,16 @@ function PraxisBlockView({
                         </li>
                       ))}
                     </ul>
-                    <Link href="#catalogo" className="w-fit">
-                      <CTAButton size="lg">Ver formación</CTAButton>
-                    </Link>
+                    <div className="flex flex-wrap gap-3">
+                      <Link href="/academia/escucha-clinica-patrones" className="w-fit">
+                        <CTAButton size="lg">Empezar Escucha — USD 15</CTAButton>
+                      </Link>
+                      <Link href="#catalogo" className="w-fit">
+                        <CTAButton size="lg" variant="secondary">
+                          Ver colección
+                        </CTAButton>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </GlassCard>

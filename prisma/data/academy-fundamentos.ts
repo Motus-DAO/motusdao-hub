@@ -334,22 +334,32 @@ Lo que no ofrezco:
           order: 2,
           duration: 12,
           isFreePreview: false,
-          summary: 'Puente corto: qué aprender, supervisión clínica y rutas de programas.',
+          summary: 'Siguiente etapa: Praxis como colección desde USD 15. Escucha recomendada para empezar.',
           contentMDX: `# Qué sigue: Praxis, supervisión y programas
 
-Con Fundamentos ya tienes el piso operativo. Lo que sigue no es más teoría suelta: es **elegir qué aprender** según tu práctica.
+Con Fundamentos ya tienes el piso operativo. El siguiente paso en la **Ruta Comunitaria** es **03 — Praxis**: formación clínica aplicada en una **colección progresiva**.
 
-## 1. Qué necesitas aprender (Praxis)
+**Construye tu formación clínica a tu ritmo.** Empiezas desde **USD 15**. No tienes que comprar todo de una vez. La colección completa suma **USD 100** en compras individuales (4 cursos × 15 + programa avanzado × 40).
 
-En **03 — Praxis** eliges habilidades concretas con cursos y talleres aplicados (casos, ejercicios, criterio clínico).
+## 1. Praxis — colección progresiva
 
-Rutas típicas:
+Progreso visible **0/5 → 5/5**. Cada curso se compra por separado.
 
-- Si quieres ordenar mejor lo que escuchas → **Escucha clínica** → **Formulación de casos**
-- Si te interesan lenguaje y razonamiento → **Razonamiento clínico** → programa avanzado
-- Si te preocupa cómo intervienes → **Ética de la intervención** → supervisión cuando haya caso real
+Colección actual — **Maestro Benjamín Buzali**:
 
-Empieza por **una** necesidad de los próximos 30 días. No por el catálogo completo.
+1. **Escucha clínica y patrones relacionales — USD 15** ← *recomendado para empezar*  
+2. Formulación de casos e hipótesis clínicas — USD 15  
+3. Razonamiento clínico y análisis del discurso — USD 15  
+4. Ética de la intervención y conversación clínica — USD 15  
+5. Programa avanzado de lógica, discurso y clínica lacaniana — USD 40  
+
+Rutas típicas (si ya sabes tu necesidad):
+
+- Ordenar mejor lo que escuchas → **Escucha** → Formulación  
+- Lenguaje y razonamiento → Razonamiento → programa avanzado  
+- Cómo intervienes → Ética → supervisión cuando haya caso real  
+
+Si no sabes por dónde comenzar: **Escucha clínica (USD 15)**.
 
 ## 2. Supervisión clínica
 
@@ -357,27 +367,18 @@ Cuando un caso real te genera dudas (límites, riesgo, estancamiento, dilema ét
 
 - Oferta separada de los cursos.
 - Referencia: **USD 50 / sesión**.
-- Lleva una pregunta concreta, no “dime qué hago con este paciente”.
 
-## 3. Programas y rutas
+## 3. Después de Praxis
 
-Si quieres profundizar con un autor o método, Praxis incluye programas de autor.
-
-Primera colección disponible — **Maestro Benjamín Buzali**:
-
-1. Escucha clínica y patrones relacionales — USD 15  
-2. Formulación de casos e hipótesis clínicas — USD 15  
-3. Razonamiento clínico y análisis del discurso — USD 15  
-4. Ética de la intervención y conversación clínica — USD 15  
-5. Programa avanzado de lógica, discurso y clínica lacaniana — USD 40  
-
-Puedes entrar por un curso suelto. Completar la colección documenta un recorrido formativo más sólido dentro de MotusDAO — **sin equivaler a Validación ni Portal**.
+Completar 5/5 **no** es Validación ni Portal. La ruta te prepara para **solicitar** tu entrada al Portal Clínico: Validación humana → aprobación → invitación.
 
 ---
 
 ## Tu siguiente paso
 
-Ve a **[03 — Praxis](/academia/03-praxis)** y elige el primer curso o taller que responda a tu necesidad actual.
+<a class="academy-cta-primary" href="/academia/escucha-clinica-patrones">Empezar Escucha clínica — USD 15</a>
+
+<a class="academy-cta-secondary" href="/academia/03-praxis#catalogo">Ver catálogo Praxis</a>
 
 Si aún te falta cerrar operación en el Hub: perfil → [/perfil](/perfil) · agenda → [/disponibilidad](/disponibilidad) · consultorio → [/videochat](/videochat).`,
         },

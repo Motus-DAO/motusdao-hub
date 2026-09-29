@@ -22,8 +22,13 @@ import {
   PRAXIS_COLLECTION_FIVE_OF_FIVE_DISCLAIMER,
   PRAXIS_COLLECTION_NEXT_GOAL,
   PRAXIS_COLLECTION_ORDER,
+  PRAXIS_PRICING_LINE,
   PRAXIS_PROFESSIONAL_NOTE,
   PRAXIS_PRODUCTS,
+  PRAXIS_PROMISE,
+  PRAXIS_ROUTE_LINE,
+  PRAXIS_START_RECOMMENDED_LABEL,
+  PRAXIS_START_RECOMMENDED_SLUG,
   benjaminCollectionTotalUsd,
   findPraxisProductBySlug,
   productTypeLabel,
@@ -50,7 +55,7 @@ function formatProductPrice(
   displayCurrency: CourseCurrency,
   usdToMxn: number | null,
 ): string {
-  if (isAcademyComplimentaryPreview() && product.type !== 'supervision') return 'Gratis'
+  // Always show commercial catalog price (complimentary QA must not redefine products as free).
   if (course) return formatCoursePriceInCurrency(course, displayCurrency, usdToMxn)
   return `US$${product.priceUsd.toFixed(0)} USD${product.priceSuffix ?? ''}`
 }
@@ -118,7 +123,7 @@ function ProductCard({
   usdToMxn,
   variant = 'course',
   recommended = false,
-  recommendedLabel = 'Empieza aquí',
+  recommendedLabel = PRAXIS_START_RECOMMENDED_LABEL,
 }: {
   product: PraxisProduct
   course?: PublicCourse
@@ -137,7 +142,16 @@ function ProductCard({
   const status = productStatus(enrollment)
   const completed = status === 'completado'
   const price = formatProductPrice(product, course, displayCurrency, usdToMxn)
-  const ctaLabel = product.type === 'supervision' ? 'Ver oferta' : completed ? 'Reabrir' : 'Ver formación'
+  const isStartRecommended =
+    recommended && !completed && product.slug === PRAXIS_START_RECOMMENDED_SLUG
+  const ctaLabel =
+    product.type === 'supervision'
+      ? 'Ver oferta'
+      : completed
+        ? 'Reabrir'
+        : isStartRecommended
+          ? 'Empezar Escucha — USD 15'
+          : 'Ver formación'
 
   if (variant === 'supervision') {
     return (
@@ -327,7 +341,10 @@ function CollectionCatalogGrid({
     const course = coursesBySlug.get(product.slug)
     return productStatus(course ? enrollmentsByCourseId.get(course.id) : undefined) === 'completado'
   })
-  const recommendedLabel = hasStarted ? 'Siguiente' : 'Empieza aquí'
+  const recommendedLabel =
+    !hasStarted && nextSlug === PRAXIS_START_RECOMMENDED_SLUG
+      ? PRAXIS_START_RECOMMENDED_LABEL
+      : 'Siguiente'
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -403,7 +420,7 @@ export function PraxisCollectionProgress({
       />
       <p className="text-sm font-medium text-mauve-200">
         {isAcademyComplimentaryPreview()
-          ? `Acceso de revisión sin pago. Precio real de la colección: USD ${benjaminCollectionTotalUsd()}.`
+          ? `QA sin cobro · precios comerciales visibles. Colección completa: USD ${benjaminCollectionTotalUsd()} en compras individuales.`
           : `Colección completa: USD ${benjaminCollectionTotalUsd()} en compras individuales.`}
       </p>
       {allComplete ? (
@@ -493,12 +510,12 @@ export function PraxisCatalog({
     <section id="catalogo" className="scroll-mt-24 space-y-8">
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-mauve-400">Catálogo de Praxis</p>
-        <h2 className="mt-1 text-2xl font-bold sm:text-3xl">Elige formación</h2>
+        <h2 className="mt-1 text-2xl font-bold sm:text-3xl">Colección progresiva</h2>
         <p className="mt-2 max-w-4xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Praxis reúne cursos breves, talleres, programas de autor, ejercicios, casos educativos y espacios de
-          aprendizaje entre colegas. No necesitas recorrer todo el catálogo ni seguir una sola escuela clínica. Puedes
-          empezar por la habilidad que hoy te resulte más útil y continuar cuando tenga sentido para ti.
+          {PRAXIS_PROMISE} {PRAXIS_ROUTE_LINE} Compra cursos individuales; no hace falta pagar toda la colección de
+          entrada. Escucha clínica es la recomendación si no sabes por dónde comenzar.
         </p>
+        <p className="mt-2 text-sm font-medium text-mauve-200">{PRAXIS_PRICING_LINE}</p>
       </div>
 
       <CollectionProgressTrack
@@ -519,7 +536,7 @@ export function PraxisCatalog({
 
       <p className="text-sm font-medium text-mauve-200">
         {isAcademyComplimentaryPreview()
-          ? `Acceso de revisión sin pago. Precio real de la colección: USD ${benjaminCollectionTotalUsd()}.`
+          ? `QA sin cobro · precios comerciales visibles. Colección completa: USD ${benjaminCollectionTotalUsd()} en compras individuales.`
           : `Colección completa: USD ${benjaminCollectionTotalUsd()} en compras individuales.`}
       </p>
       {!allComplete && <p className="text-sm font-medium">{PRAXIS_COLLECTION_NEXT_GOAL}</p>}
@@ -541,8 +558,12 @@ export function PraxisCatalog({
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{PRAXIS_COLLECTION_FIVE_OF_FIVE}</p>
         )}
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{PRAXIS_COLLECTION_FIVE_OF_FIVE_DISCLAIMER}</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          La ruta te prepara para solicitar tu entrada al Portal Clínico. Portal requiere revisión humana, aprobación e
+          invitación.
+        </p>
         <Link href="/academia/04-validacion" className="mt-4 inline-block">
-          <CTAButton>Ir a 04 — Validación</CTAButton>
+          <CTAButton>Conocer 04 — Validación</CTAButton>
         </Link>
       </GlassCard>
     </section>

@@ -32,15 +32,23 @@ export const PRAXIS_CATEGORY = 'Praxis'
 export const PRAXIS_PROFESSIONAL_NOTE =
   'La formación de MotusDAO es educación continua. No sustituye formación universitaria, licencia o cédula profesional, supervisión clínica ni las obligaciones éticas y legales aplicables a cada profesional.'
 
-/** Featured promise from 00-bloque-03-praxis.md — do not rewrite. */
-export const PRAXIS_PROMISE =
-  'Aprende haciendo. Elige habilidades concretas, trabaja con casos y ejercicios, y profundiza a tu ritmo.'
+/** Commercial packaging promise (Ruta Comunitaria). Pedagogical MD body stays separate. */
+export const PRAXIS_PROMISE = 'Construye tu formación clínica a tu ritmo.'
 
-/** First three bullets from “Lo que vas a hacer en Praxis” — do not rewrite. */
+export const PRAXIS_ROUTE_LINE =
+  'Praxis es la etapa de formación aplicada de la Ruta Comunitaria: después de Fundamentos y antes de Validación humana.'
+
+export const PRAXIS_PRICING_LINE =
+  'Empieza desde USD 15. Compra cursos individuales. Colección completa: USD 100 (4×15 + programa USD 40).'
+
+export const PRAXIS_START_RECOMMENDED_LABEL = 'Recomendado para empezar'
+export const PRAXIS_START_RECOMMENDED_SLUG = 'escucha-clinica-patrones'
+
+/** First three bullets from “Lo que vas a hacer en Praxis” — packaging-aligned. */
 export const PRAXIS_HERO_BENEFITS = [
-  'Elegir formación según una necesidad real de tu práctica',
-  'Trabajar con casos ficticios o compuestos y ejercicios guiados',
-  'Separar lo que observas de lo que infieres',
+  'Avanzar por una colección progresiva sin pagar todo de entrada',
+  'Empezar por Escucha clínica (USD 15) si no sabes por dónde comenzar',
+  'Documentar progreso 0/5 → 5/5 sin equivaler a Validación ni Portal',
 ] as const
 
 /** Featured catalog copy from 00-bloque-03-praxis.md — do not rewrite. */
@@ -211,13 +219,13 @@ export function benjaminCollectionTotalUsd(): number {
 }
 
 export const PRAXIS_COLLECTION_NEXT_GOAL =
-  'Completa el siguiente producto de tu colección y lleva tu progreso a 5/5.'
+  'Progreso de colección: completa el siguiente producto y avanza hacia 5/5 — a tu ritmo, en compras individuales.'
 
 export const PRAXIS_COLLECTION_FIVE_OF_FIVE =
-  'Cuando llegues a 5/5, tendrás el recorrido formativo completo de la colección actual de Praxis y podrás entrar al siguiente bloque con una trayectoria educativa más completa para documentar.'
+  'Con 5/5 documentas el recorrido formativo completo de esta colección. Eso refuerza tu trayectoria educativa; no es Validación ni acceso al Portal.'
 
 export const PRAXIS_COLLECTION_FIVE_OF_FIVE_DISCLAIMER =
-  'Esto no equivale a licencia, certificación oficial, aprobación clínica ni acceso automático al Portal. La siguiente etapa, 04 — Validación, revisa criterios y documentación por separado.'
+  'Completar Praxis ≠ Validación ≠ Portal. La ruta te prepara para solicitar tu entrada al Portal Clínico: Validación humana → aprobación → invitación. 04 — Validación revisa criterios y documentación por separado.'
 
 export function productTypeLabel(type: PraxisProductType): string {
   switch (type) {

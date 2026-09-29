@@ -1,20 +1,21 @@
 ---
 title: "03 — Praxis"
-subtitle: "Formación aplicada para tu práctica profesional"
-pricing_label: "Cursos y talleres desde USD 15"
+subtitle: "Construye tu formación clínica a tu ritmo"
+pricing_label: "Desde USD 15 · colección completa USD 100"
 status: "live"
 ---
 
 # 03 — Praxis
 
-**Aprende haciendo. Elige habilidades concretas, trabaja con casos y ejercicios, y profundiza a tu ritmo.**
+**Construye tu formación clínica a tu ritmo.**
 
-En Fundamentos ordenaste cómo operar tu práctica digital. En Praxis das el siguiente paso: eliges qué quieres aprender, lo practicas con actividades aplicadas y construyes una ruta de formación que responda a tu momento profesional.
+Praxis es la etapa de formación aplicada de la **Ruta Comunitaria** (después de Fundamentos y antes de Validación humana). Es una **colección progresiva**: compras cursos individuales desde **USD 15**. La colección completa suma **USD 100** (4×15 + programa USD 40). No hace falta pagar todo de entrada.
 
-Praxis reúne **cursos breves, talleres, programas de autor, ejercicios, casos educativos y espacios de aprendizaje entre colegas**. No necesitas recorrer todo el catálogo ni seguir una sola escuela clínica. Puedes empezar por la habilidad que hoy te resulte más útil y continuar cuando tenga sentido para ti.
+**Escucha clínica (USD 15)** es la recomendación si no sabes por dónde comenzar — Praxis no es solo Escucha; es la colección completa.
 
-**Cursos y talleres desde USD 15.**  
-La supervisión clínica es una oferta separada.
+Progreso visible **0/5 → 5/5**. Completar 5/5 documenta tu recorrido formativo; **no** es Validación ni Portal. La ruta te prepara para solicitar tu entrada al Portal Clínico (Validación humana → aprobación → invitación).
+
+La supervisión clínica es una oferta separada (USD 50 / sesión).
 
 ---
 
