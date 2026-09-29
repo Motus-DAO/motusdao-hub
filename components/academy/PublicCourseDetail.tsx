@@ -24,11 +24,13 @@ import { GradientText } from '@/components/ui/GradientText'
 import { Section } from '@/components/ui/Section'
 import {
   courseAmountsInBothCurrencies,
+  coursePriceAmount,
   courseRequiresPayment,
   formatCoursePriceInCurrency,
   formatMoneyAmount,
   type CourseCurrency,
 } from '@/lib/academy/course-pricing'
+import { isAcademyComplimentaryPreview } from '@/lib/academy/complimentary-preview'
 import { isMonthlyCourse } from '@/lib/academy/enrollment-access'
 import {
   courseDuration,
@@ -142,9 +144,12 @@ function EnrollmentCTA({
 }) {
   const continueSlug = firstLessonSlug(course)
   const priceLabel = formatPrice(course, payCurrency, usdToMxn)
+  const hasCatalogPrice = coursePriceAmount(course) > 0
   const paidCourse = courseRequiresPayment(course)
   const monthlyMembership = isMonthlyCourse(course)
   const usesStripeCheckout = paidCourse && stripeEnabled
+  const complimentaryQaEnroll =
+    isAcademyComplimentaryPreview() && hasCatalogPrice && !usesStripeCheckout
   const amounts =
     usdToMxn && usdToMxn > 0 ? courseAmountsInBothCurrencies(course, usdToMxn) : null
   const selectedAmount = amounts?.[payCurrency]
@@ -213,13 +218,17 @@ function EnrollmentCTA({
         </p>
       )}
       <p className="mb-3 text-center text-sm text-muted-foreground">
-        {priceLabel === 'Gratis'
+        {!hasCatalogPrice
           ? 'Acceso gratuito'
           : usesStripeCheckout
             ? monthlyMembership
               ? `${priceLabel} — membresía mensual con Stripe`
               : `${priceLabel} — pago seguro con Stripe`
-            : `${priceLabel} — inscripción sin pago en v1`}
+            : complimentaryQaEnroll
+              ? monthlyMembership
+                ? `${priceLabel} · Membresía de Práctica Digital (también USD 120/año) — inscripción QA sin cobro`
+                : `${priceLabel} — inscripción QA sin cobro`
+              : `${priceLabel} — inscripción sin pago en v1`}
       </p>
       {usesStripeCheckout && (
         <div className="mb-4 space-y-2">
@@ -279,8 +288,10 @@ function EnrollmentCTA({
                 </>
               )}
             </>
+          ) : complimentaryQaEnroll ? (
+            'Inscribirse (QA sin cobro)'
           ) : (
-            'Empieza ahora'
+            'Inscribirse al bloque'
           )}
         </CTAButton>
       )}
@@ -519,11 +530,12 @@ function CourseDetailView({
   const reviewCount = course.reviewCount ?? 0
   const showReviews = reviewCount >= MIN_REVIEWS_TO_SHOW
   const priceLabel = formatPrice(course, payCurrency, usdToMxn)
-  const priceCaption = !courseRequiresPayment(course)
-    ? 'Gratis'
-    : isMonthlyCourse(course)
-      ? 'por mes'
-      : 'pago único'
+  const priceCaption =
+    !(coursePriceAmount(course) > 0)
+      ? 'Gratis'
+      : isMonthlyCourse(course)
+        ? 'por mes'
+        : 'pago único'
 
   return (
     <div className="min-h-screen bg-background">

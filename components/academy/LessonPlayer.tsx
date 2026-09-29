@@ -44,10 +44,12 @@ import {
   type PublicCourse,
 } from '@/lib/academy/public-course'
 import {
+  coursePriceAmount,
   courseRequiresPayment,
   formatCoursePrice,
   type CourseCurrency,
 } from '@/lib/academy/course-pricing'
+import { isAcademyComplimentaryPreview } from '@/lib/academy/complimentary-preview'
 import { isMonthlyCourse } from '@/lib/academy/enrollment-access'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -92,24 +94,33 @@ function LockedLessonPanel({
   stripeEnabled: boolean
   payCurrency: CourseCurrency
 }) {
+  const hasCatalogPrice = coursePriceAmount(course) > 0
   const paidCourse = courseRequiresPayment(course)
   const monthlyMembership = isMonthlyCourse(course)
   const usesStripeCheckout = paidCourse && stripeEnabled
+  const complimentaryQaEnroll =
+    isAcademyComplimentaryPreview() && hasCatalogPrice && !usesStripeCheckout
   const priceLabel = formatCoursePrice(course)
 
   const description = usesStripeCheckout
     ? monthlyMembership
       ? `Este bloque requiere una membresía mensual (${priceLabel}) para acceder a esta lección.`
       : `Este bloque requiere pago (${priceLabel}) para acceder a esta lección.`
-    : paidCourse && !stripeEnabled
-      ? 'Este bloque requiere pago, pero el checkout no está disponible en este momento.'
-      : 'Inscríbete en el bloque para acceder a esta lección.'
+    : complimentaryQaEnroll
+      ? monthlyMembership
+        ? `Membresía comercial (${priceLabel}). En QA puedes inscribirte sin cobro para acceder a esta lección.`
+        : `Precio comercial (${priceLabel}). En QA puedes inscribirte sin cobro para acceder a esta lección.`
+      : paidCourse && !stripeEnabled
+        ? 'Este bloque requiere pago, pero el checkout no está disponible en este momento.'
+        : 'Inscríbete en el bloque para acceder a esta lección.'
 
   const ctaLabel = usesStripeCheckout
     ? monthlyMembership
       ? 'Suscribirse e inscribirse'
       : 'Comprar e inscribirse'
-    : 'Inscribirse al bloque'
+    : complimentaryQaEnroll
+      ? 'Inscribirse (QA sin cobro)'
+      : 'Inscribirse al bloque'
 
   return (
     <GlassCard className="p-8 text-center">

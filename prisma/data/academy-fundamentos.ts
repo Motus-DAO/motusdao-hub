@@ -10,12 +10,28 @@ export const FUNDAMENTOS_COURSE: SeedCourse = {
   slug: '02-fundamentos',
   title: '02 — Fundamentos',
   summary:
-    'Deja de improvisar tu consulta online: encuadre, herramientas justas, ética clara y colegas que entienden el trabajo clínico. USD 20/mes.',
-  description: `**Fundamentos** es la Membresía de Práctica Digital (USD 20/mes · 120/año).
+    'Deja de improvisar tu consulta online: encuadre, herramientas justas, ética clara y colegas que entienden el trabajo clínico. USD 20/mes · USD 120/año.',
+  description: `**Fundamentos** es la **Membresía de Práctica Digital** (USD 20/mes · USD 120/año).
 
-Si estás listo para dejar de improvisar tu consulta online, aquí organizas tu práctica con una ruta corta y accionable: encuadre listo, herramientas que sí usas, ética digital, un perfil que atrae a los pacientes correctos, y una **comunidad de colegas** (Telegram y encuentros) que entiende el trabajo clínico.
+Deja de improvisar tu consulta online: encuadre, herramientas justas, ética clara y colegas que entienden el trabajo clínico.
 
-Lo esencial ya está. El resto lo activas a tu ritmo.`,
+**Incluye:**
+- Encuadre para atención online
+- Herramientas esenciales del Hub para operar
+- Ética digital
+- Perfil profesional
+- Comunidad de colegas (Telegram + encuentros)
+
+**No incluye** (ofertas aparte o con validación):
+- Cursos de Praxis
+- Supervisión humana
+- Supervisor virtual
+- Agentes autónomos
+- Validación
+- Pase / PSM activo
+- Portal Clínico (requiere validación humana e invitación)
+
+Completar cursos ≠ Validación ≠ Portal.`,
   category: 'Membresía',
   difficulty: 'beginner',
   isPublished: true,
@@ -25,13 +41,11 @@ Lo esencial ya está. El resto lo activas a tu ritmo.`,
   instructor: 'MotusDAO',
   instructorTitle: 'Academia de Psicología Digital',
   learningOutcomes: [
-    'Encuadre online para atención en línea.',
-    'Usar o acceder al consultorio virtual.',
-    'Aperturar agenda y disponibilidad.',
-    'Usar notas clínicas con mínimos de seguridad.',
-    'Saber cómo cobrar internacionalmente.',
-    'Usar IA como copiloto (sin sustituir tu juicio clínico).',
-    'Perfil profesional con visibilidad.',
+    'Encuadre claro para atención online.',
+    'Usar las herramientas esenciales del Hub para operar.',
+    'Ética digital aplicable a tu práctica.',
+    'Perfil profesional visible y usable.',
+    'Comunidad de colegas (Telegram y encuentros).',
   ],
   modules: [
     {
@@ -106,7 +120,7 @@ Guárdala en tus notas o en tu Perfil MotusDAO.
           order: 2,
           duration: 25,
           isFreePreview: false,
-          summary: 'Ejercicios en el Hub: consultorio, agenda, PsyChat, notas, cobros e IA.',
+          summary: 'Ejercicios con el set esencial del Hub para operar (consultorio, agenda, notas; IA con límites).',
           contentMDX: `# Herramientas que sí necesitas (y solo esas)
 
 No necesitas diez apps. Necesitas un **set corto** que sostenga tu práctica sin volverte “experto tech”.

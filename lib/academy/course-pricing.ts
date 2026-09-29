@@ -40,9 +40,10 @@ export function formatMoneyAmount(amount: number, currency: CourseCurrency): str
   return `${formatted} ${currency}`
 }
 
+/** Catalog/commercial price label — ignores complimentary preview (checkout stays gated by courseRequiresPayment). */
 export function formatCoursePrice(course: PricedCourse): string {
   const amount = coursePriceAmount(course)
-  if (!courseRequiresPayment(course)) return 'Gratis'
+  if (!(amount > 0)) return 'Gratis'
   return formatMoneyAmount(amount, normalizeCourseCurrency(course.priceCurrency)) + coursePriceSuffix(course)
 }
 
@@ -50,7 +51,6 @@ export function courseAmountsInBothCurrencies(
   course: PricedCourse,
   usdToMxn: number
 ): { MXN: number; USD: number } | null {
-  if (!courseRequiresPayment(course)) return null
   const amount = coursePriceAmount(course)
   if (!(amount > 0)) return null
   const base = normalizeCourseCurrency(course.priceCurrency)
@@ -65,7 +65,6 @@ export function formatCoursePriceInCurrency(
   currency: CourseCurrency,
   usdToMxn?: number | null
 ): string {
-  if (!courseRequiresPayment(course)) return 'Gratis'
   const amount = coursePriceAmount(course)
   if (!(amount > 0)) return 'Gratis'
 
