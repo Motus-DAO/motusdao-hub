@@ -122,7 +122,11 @@ Avanzas cuando tú quieras. No hay examen de entrada. Completar Génesis no es r
 - **Fundamentos** — **Membresía de Práctica Digital** (USD 20/mes · USD 120/año). *Deja de improvisar tu consulta online: encuadre, herramientas justas, ética clara y colegas que entienden el trabajo clínico.*
 - **Praxis** — cursos y talleres de formación aplicada (aparte de la membresía). La supervisión humana es otra oferta.
 - **Validación** — revisión humana de documentos, experiencia y requisitos. Completar cursos **no** es Validación.
-- **Portal clínico** — requiere **validación humana e invitación**. No se incluye en Fundamentos ni se activa solo por terminar cursos.
+- **Portal clínico** — requiere **validación humana, aprobación e invitación**. No se incluye en Fundamentos ni se activa solo por terminar cursos.
+
+Si **ya tienes una práctica activa** y experiencia documentable, también puedes solicitar **ingreso profesional directo** (revisión + onboarding existente). Eso no salta la Validación humana: ambas rutas convergen ahí.
+
+<a class="academy-cta-secondary" href="/registro">Iniciar registro profesional</a>
 
 ![mapa de academia metaverso](https://ryjkpaiknsnjyydxwugl.supabase.co/storage/v1/object/public/academy-courses/course_genesis_clinica_digital/lesson_genesis_mapa-ruta/images/cmspqodrt0b8205496d30c53c.png)
 

@@ -49,23 +49,45 @@ Documenta avance, credenciales y encuadre. Si cumples criterios, puedes adquirir
           summary: 'Revisión de preparación para funciones profesionales en el ecosistema.',
           contentMDX: `# Qué es el bloque Validación
 
-Validación es el bloque donde se revisa si una persona está lista para avanzar hacia **funciones más profesionales** dentro del ecosistema.
+Validación es el **punto de convergencia**: revisión humana compartida por las dos formas de llegar al Portal Clínico.
 
-El foco es:
+## ¿Dónde estás hoy?
+
+**Ruta Comunitaria** — quieres construir u ordenar tu práctica:
+
+Génesis → Fundamentos → Praxis → **Validación**
+
+**Ingreso profesional directo** — ya tienes una práctica activa:
+
+Revisión de perfil → Onboarding profesional → **Validación**
+
+Ambas rutas convergen aquí:
+
+**Validación humana → aprobación → invitación → Portal Clínico**
+
+Completar la Ruta Comunitaria **no** garantiza aprobación. Ninguna ruta garantiza acceso al Portal.
+
+## Qué revisa este bloque
 
 - ordenar evidencia;
 - revisar credenciales;
 - documentar encuadre;
 - definir si corresponde supervisión, pase beta o aplicación al Portal Clínico.
 
-## Qué haces en este bloque
+## Qué haces aquí
 
-1. Documentas tu avance en la ruta.
+1. Documentas tu avance (ruta comunitaria) o tu trayectoria (ingreso directo).
 2. Reúnes credenciales y requisitos profesionales.
 3. Revisas tu encuadre clínico.
 4. Defines si corresponde supervisión.
 5. Recibes retroalimentación cuando aplique.
 6. Preparas tu posible aplicación al Pase Motus Beta o al Portal Clínico.
+
+## Siguiente paso según tu ruta
+
+<a class="academy-cta-primary" href="/academia/03-praxis#catalogo">Seguir en Praxis (Ruta Comunitaria)</a>
+
+<a class="academy-cta-secondary" href="/registro">Iniciar registro profesional (ingreso directo)</a>
 
 ## Qué puede desbloquear
 
@@ -145,11 +167,13 @@ Tras revisión documental, MotusDAO puede **invitarte** a adquirir el **Pase cl�
 - Licencia para ejercer ni certificación oficial.
 - Garantía de pacientes o ingresos.
 
-## Dos rutas
+## Dos rutas (misma revisión)
 
-**Comunitaria** — Genesis → Fundamentos → Praxis → Validación → Pase.
+**Ruta Comunitaria** — Génesis → Fundamentos → Praxis → Validación → Pase (si hay aprobación e invitación).
 
-**Directa** — Profesionales con experiencia documentable; revisión acelerada en este bloque.`,
+**Ingreso profesional directo** — profesionales con experiencia documentable; revisión + onboarding profesional existente en /registro. También converge en Validación humana.
+
+Ninguna ruta garantiza aprobación ni acceso automático al Portal.`,
         },
         {
           id: 'lesson_validacion_cierre',
@@ -170,9 +194,9 @@ Tras revisión documental, MotusDAO puede **invitarte** a adquirir el **Pase cl�
 
 ## Siguiente bloque: 05 — Portal Clínico
 
-Si cuentas con experiencia clínica documentable y cumples criterios de onboarding, puedes **aplicar al acceso beta** del Portal Clínico.
+Tras Validación humana, si hay **aprobación** e **invitación**, puedes avanzar al Portal Clínico.
 
-Si aún construyes tu práctica, la ruta comunitaria puede ser mejor entrada — sin atajos éticos.`,
+Si aún construyes tu práctica, la **Ruta Comunitaria** es la entrada habitual. Si ya tienes práctica activa, el **ingreso profesional directo** usa el registro profesional existente — sin saltar la revisión humana.`,
         },
       ],
     },
@@ -226,25 +250,32 @@ Operación recurrente con **pase clínico USD 50/mes** (o anual desde Validació
           summary: 'Bloque profesional para operar con herramientas digitales.',
           contentMDX: `# Qué es el Portal Clínico
 
-El Portal Clínico es el bloque **profesional** de MotusDAO.
+El Portal Clínico es el bloque **profesional** de MotusDAO: operas con herramientas digitales según permisos.
 
-Está pensado para psicólogos **activos** con experiencia clínica documentable que quieren operar con herramientas digitales dentro del ecosistema.
+Se llega **después** de Validación humana → aprobación → invitación. No hay compra pública del Portal.
+
+## Cómo se llega
+
+- **Ruta Comunitaria** — Génesis → Fundamentos → Praxis → Validación → (si hay aprobación e invitación) Portal.
+- **Ingreso profesional directo** — práctica activa → revisión + onboarding profesional → Validación → (si hay aprobación e invitación) Portal.
+
+Completar formación o el registro **no** garantiza aprobación ni acceso.
 
 ## Para quién es
 
-Profesionales que quieren entrar **sin recorrer toda la formación desde cero**, si cumplen:
+Profesionales que quieren operar con herramientas digitales dentro del ecosistema, con:
 
 - cédula profesional o equivalente aplicable;
-- experiencia clínica comprobable;
+- experiencia clínica comprobable (según la vía);
 - onboarding obligatorio;
 - aceptación de criterios éticos y operativos;
 - revisión de encuadre.
 
 ## Qué haces en este bloque
 
-1. Aplicas al acceso beta.
-2. Presentas documentación profesional.
-3. Completas el onboarding.
+1. Recibes invitación tras aprobación.
+2. Presentas o confirmas documentación profesional.
+3. Completas el onboarding operativo.
 4. Configuras tu perfil.
 5. Accedes a herramientas digitales.
 6. Participas según permisos otorgados.`,
@@ -259,25 +290,33 @@ Profesionales que quieren entrar **sin recorrer toda la formación desde cero**,
           summary: 'Entrada directa vs ruta comunitaria.',
           contentMDX: `# Requisitos y rutas de entrada
 
-## Entrada directa
+Llegas al Portal **después** de revisión humana, aprobación e invitación. No hay compra pública.
 
-Para profesionales con trayectoria documentable que cumplen onboarding y revisión. **No es el camino por defecto.**
+## Ruta Comunitaria
 
-## Ruta comunitaria (referencia)
+Para quien construye u ordena su práctica digital:
 
-1. Comunidad gratuita.
-2. Membresía de Práctica Digital.
-3. ~seis talleres en Praxis.
-4. ~tres supervisiones.
-5. Pase comunitario.
+1. Génesis (Paso 01 gratuito).
+2. Fundamentos — Membresía de Práctica Digital.
+3. Praxis — colección formativa a tu ritmo.
+4. Validación humana.
+5. Si hay aprobación e invitación → Portal.
 
-Costo acumulado orientativo del primer año: **USD 560–650**.
+## Ingreso profesional directo
+
+Para quien **ya tiene una práctica activa** y experiencia documentable: revisión de perfil + onboarding profesional existente.
+
+<a class="academy-cta-secondary" href="/registro">Iniciar registro profesional</a>
+
+## Convergencia
+
+Ambas rutas pasan por **Validación humana**. Ninguna garantiza aprobación. El Portal requiere aprobación e invitación.
 
 ## Siguiente paso
 
-Si ya tienes experiencia clínica documentable, puedes aplicar al Portal Clínico beta.
+Si todavía construyes tu práctica, continúa la Ruta Comunitaria.
 
-Si todavía construyes tu práctica, la ruta comunitaria puede ser mejor entrada.`,
+Si ya operas con experiencia documentable, inicia el registro profesional — sin saltar la revisión.`,
         },
       ],
     },

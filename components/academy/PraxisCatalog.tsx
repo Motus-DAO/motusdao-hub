@@ -559,12 +559,22 @@ export function PraxisCatalog({
         )}
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{PRAXIS_COLLECTION_FIVE_OF_FIVE_DISCLAIMER}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          La ruta te prepara para solicitar tu entrada al Portal Clínico. Portal requiere revisión humana, aprobación e
-          invitación.
+          Validación es revisión humana — no se compra con Praxis y completar la colección no garantiza
+          aprobación. La ruta comunitaria te prepara para solicitar entrada al Portal Clínico: Validación →
+          aprobación → invitación. Si ya tienes práctica activa, también puedes solicitar ingreso profesional
+          directo.
         </p>
-        <Link href="/academia/04-validacion" className="mt-4 inline-block">
-          <CTAButton>Conocer 04 — Validación</CTAButton>
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href="/academia/04-validacion" className="inline-block">
+            <CTAButton>Conocer 04 — Validación</CTAButton>
+          </Link>
+          <Link
+            href="/registro"
+            className="inline-flex items-center text-sm font-medium text-mauve-300 underline-offset-4 hover:underline"
+          >
+            Ingreso profesional directo
+          </Link>
+        </div>
       </GlassCard>
     </section>
   )
