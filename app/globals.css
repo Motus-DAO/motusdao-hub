@@ -1630,3 +1630,97 @@ p[class*="HelpTextContainer"] * {
 #silk-wallet-iframe-container[style*="opacity: 0"] {
   pointer-events: none !important;
 }
+
+/* Motty chat markdown (parity with Landing Motty modal) */
+.motty-md {
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.motty-md > *:first-child {
+  margin-top: 0;
+}
+
+.motty-md > *:last-child {
+  margin-bottom: 0;
+}
+
+.motty-md p,
+.motty-md ul,
+.motty-md ol,
+.motty-md blockquote {
+  margin: 0.45em 0;
+}
+
+.motty-md h1,
+.motty-md h2,
+.motty-md h3 {
+  margin: 0.7em 0 0.3em;
+  font-family: var(--font-jura), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.motty-md h1 {
+  font-size: 1.05rem;
+}
+
+.motty-md h2,
+.motty-md h3 {
+  font-size: 0.95rem;
+}
+
+.motty-md ul,
+.motty-md ol {
+  padding-left: 1.15rem;
+}
+
+.motty-md li {
+  margin: 0.2em 0;
+}
+
+.motty-md li + li {
+  margin-top: 0.15em;
+}
+
+.motty-md a {
+  color: #e879f9;
+  text-underline-offset: 2px;
+  text-decoration: underline;
+}
+
+.motty-md strong {
+  font-weight: 650;
+}
+
+.motty-md code {
+  font-size: 0.8em;
+  padding: 0.1em 0.3em;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.motty-md pre {
+  overflow-x: auto;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.motty-md pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.motty-md hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  margin: 0.7em 0;
+}
+
+.motty-md blockquote {
+  border-left: 3px solid rgba(168, 85, 247, 0.45);
+  padding-left: 0.75rem;
+  color: rgba(255, 255, 255, 0.72);
+}

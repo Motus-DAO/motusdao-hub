@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { MottyWidget } from '@/components/motty/MottyWidget'
 import { SidebarWrapper } from './SidebarWrapper'
 import { Topbar } from './Topbar'
 import { Footer } from './Footer'
@@ -45,6 +46,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Footer />
         </div>
       </div>
+      {/* Motty FAB — separate from MotusAI; same pattern as academia.motusdao.org */}
+      <MottyWidget />
     </div>
   )
 }

@@ -1,6 +1,5 @@
 'use client'
 
-import { MottyPanel } from '@/components/motty/MottyPanel'
 import { AnimatedAIChat } from '@/components/ui/animated-ai-chat'
 import { useUIStore } from '@/lib/store'
 import { useWallet, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
@@ -87,9 +86,7 @@ export default function MotusAIPage() {
   return (
     <div className="flex min-h-[calc(100dvh-5rem)] flex-col bg-background">
       <div className="flex flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
-        <div className="flex w-full max-w-2xl flex-col gap-5">
-          <MottyPanel />
-
+        <div className="flex w-full max-w-2xl flex-col gap-3">
           {role === 'psm' && (
             <div
               className={`rounded-xl border px-4 py-2 text-xs ${

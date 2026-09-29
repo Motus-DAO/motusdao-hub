@@ -21,7 +21,7 @@ export function MottyMarkdown({ children }: MottyMarkdownProps) {
 
   return (
     <div
-      className="motty-md prose prose-sm max-w-none dark:prose-invert [&_a]:text-violet-400 [&_a]:underline"
+      className="motty-md"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
