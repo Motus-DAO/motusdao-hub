@@ -1,5 +1,10 @@
 import { mottyConfig } from '@/lib/motty/config'
 import {
+  formatLearningContextForPrompt,
+  loadUserLearningContext,
+  type UserLearningContext,
+} from '@/lib/motty/learning-context'
+import {
   formatKnowledgeForVisitor,
   searchPublicKnowledge,
 } from '@/lib/motty/mcp'
@@ -16,23 +21,47 @@ const FALLBACK_EN =
 export async function runHubMottyTurn(input: {
   session: MottySession
   userMessage: string
-}): Promise<{ session: MottySession; reply: string }> {
+  /** Optional preloaded context (tests). Production loads by session.userId. */
+  learningContext?: UserLearningContext
+}): Promise<{ session: MottySession; reply: string; learningContext: UserLearningContext | null }> {
   const { session, userMessage } = input
   const { maxToolRounds } = mottyConfig()
 
+  let learningContext: UserLearningContext | null = input.learningContext ?? null
+  if (!learningContext) {
+    try {
+      learningContext = await loadUserLearningContext(session.userId)
+    } catch {
+      learningContext = null
+    }
+  } else if (learningContext.userId !== session.userId) {
+    // Never allow injecting another user's context into this turn.
+    learningContext = null
+  }
+
   if (!hasMottyInference()) {
-    const reply = await groundedFallback(userMessage, session.locale)
-    return { session, reply }
+    const reply = await groundedFallback(userMessage, session.locale, learningContext)
+    return { session, reply, learningContext }
   }
 
   const messages: ProviderMessage[] = [
     { role: 'system', content: mottySystemPrompt(session.locale) },
+  ]
+
+  if (learningContext) {
+    messages.push({
+      role: 'system',
+      content: formatLearningContextForPrompt(learningContext),
+    })
+  }
+
+  messages.push(
     ...session.messages.map((message) => ({
       role: message.role as 'user' | 'assistant',
       content: message.content,
     })),
-    { role: 'user', content: userMessage },
-  ]
+    { role: 'user', content: userMessage }
+  )
 
   const tools = enabledToolSchemas()
   let working = session
@@ -44,7 +73,7 @@ export async function runHubMottyTurn(input: {
 
     if (!calls.length) {
       const reply = (message.content ?? '').trim() || fallbackCopy(session.locale)
-      return { session: working, reply }
+      return { session: working, reply, learningContext }
     }
 
     messages.push({
@@ -84,22 +113,31 @@ export async function runHubMottyTurn(input: {
   })
 
   const reply = (last.message.content ?? '').trim() || fallbackCopy(session.locale)
-  return { session: working, reply }
+  return { session: working, reply, learningContext }
 }
 
 async function groundedFallback(
   userMessage: string,
-  locale: MottySession['locale']
+  locale: MottySession['locale'],
+  learningContext: UserLearningContext | null
 ): Promise<string> {
   try {
     const hits = await searchPublicKnowledge({ query: userMessage })
     const context = formatKnowledgeForVisitor(hits)
-    if (!hits.length || !context) return fallbackCopy(locale)
+    const stage = learningContext?.currentRouteStage
+    const nextPath = stage ? `/academia/${stage}` : '/academia/02-fundamentos'
+
+    if (!hits.length || !context) {
+      if (locale === 'en') {
+        return `I am Motty. ${stage ? `Your current route stage looks like ${stage}.` : ''} Open ${nextPath} or /academia.`
+      }
+      return `Soy Motty. ${stage ? `Tu etapa actual parece ${stage}.` : ''} Abre ${nextPath} o /academia.`
+    }
 
     if (locale === 'en') {
-      return `I am Motty, your Academy accompaniment guide in MotusDAO Hub.\n\n${context}\n\nNext: open /academia or /academia/02-fundamentos.`
+      return `I am Motty, your Academy accompaniment guide in MotusDAO Hub.\n\n${context}\n\nNext: open ${nextPath}.`
     }
-    return `Soy Motty, tu guía de Acompañamiento Personalizado Digital en el Hub.\n\n${context}\n\nSiguiente paso: revisa /academia o /academia/02-fundamentos.`
+    return `Soy Motty, tu guía de Acompañamiento Personalizado Digital en el Hub.\n\n${context}\n\nSiguiente paso: revisa ${nextPath}.`
   } catch {
     return fallbackCopy(locale)
   }
