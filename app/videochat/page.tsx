@@ -6,9 +6,10 @@ import { Section } from '@/components/ui/Section'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
-import { Video, RefreshCcw, Shield, Link2, CheckCircle } from 'lucide-react'
+import { Video, RefreshCcw, Shield, Link2, CheckCircle, CircleDot } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
+  buildNativeJitsiMeetingUrl,
   buildQuickJitsiUrl,
   buildVideochatUrl,
   getJitsiDomain,
@@ -408,6 +409,19 @@ function VideochatInner() {
     setJoinKey((k) => k + 1)
   }, [isGuestSession, roomInfo, guestName, fetchGuestToken])
 
+  /** Same room on jitsi.motusdao.org (top-level) so Chrome local recording works. */
+  const openNativeJitsiForRecording = useCallback(() => {
+    if (!roomInfo || typeof window === 'undefined') return
+    const url = buildNativeJitsiMeetingUrl({
+      domain: roomInfo.domain,
+      roomName: roomInfo.roomName,
+      jwt: jwtToken,
+    })
+    // Leave the embed so you are not double-joined while recording.
+    endCall()
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [roomInfo, jwtToken, endCall])
+
   useEffect(() => {
     if (callEnded) return
     if (!isJitsiReady) return
@@ -655,6 +669,17 @@ function VideochatInner() {
               >
                 Copiar link de sala
               </CTAButton>
+              {roomInfo && jwtToken && !roomInfo.domain.includes('ngrok') && (
+                <CTAButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={openNativeJitsiForRecording}
+                  title="Abre la misma sala en jitsi.motusdao.org (Chrome). El tester puede quedarse en el Hub."
+                >
+                  <CircleDot className="w-4 h-4 mr-1" />
+                  Grabar en mi PC
+                </CTAButton>
+              )}
               {!roomInfo?.domain.includes('ngrok') && roomInfo && (
                 <CTAButton
                   variant="ghost"

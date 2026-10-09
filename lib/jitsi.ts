@@ -48,6 +48,29 @@ export function getJitsiProtocol(domain = getJitsiDomain()): 'http' | 'https' {
     : 'https'
 }
 
+/**
+ * Top-level Jitsi Meet URL. Local browser recording works here (Chrome),
+ * not inside the Hub cross-origin iframe.
+ */
+export function buildNativeJitsiMeetingUrl(params: {
+  domain: string
+  roomName: string
+  jwt?: string | null
+}): string {
+  const host = normalizeJitsiHost(params.domain)
+  const protocol = getJitsiProtocol(params.domain)
+  const roomPath = params.roomName
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+  const url = new URL(`${protocol}://${host}/${roomPath}`)
+  if (params.jwt) {
+    url.searchParams.set('jwt', params.jwt)
+  }
+  return url.toString()
+}
+
 function buildJitsiUrlForRoom(roomName: string): string {
   const domain = getJitsiDomain()
   const host = domain.includes('://') ? new URL(domain).host : domain
