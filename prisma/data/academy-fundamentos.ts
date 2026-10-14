@@ -111,7 +111,7 @@ Situaciones que no atiendo / derivo:
 
 Guárdala en tus notas o en tu Perfil MotusDAO.
 
-**Siguiente lección:** ejercicios reales en la plataforma — consultorio, agenda y PsyChat.`,
+**Siguiente lección:** ejercicios reales en la plataforma — consultorio, agenda y Psychat.`,
         },
         {
           id: 'lesson_02_fundamentos_herramientas',
@@ -157,15 +157,15 @@ Si no hay agenda visible, la consulta online se vuelve caos.
 
 ---
 
-## Ejercicio 3 — Una consulta de prueba con PsyChat
+## Ejercicio 3 — Una consulta de prueba con Psychat
 
-**PsyChat** (en el Hub aparece como **MotusAI**) es tu copiloto: ordenar ideas, preparar intervenciones, pensar casos. **No sustituye tu juicio clínico.**
+**Psychat** es tu copiloto en el Hub: ordenar ideas, preparar intervenciones, pensar casos. **No sustituye tu juicio clínico.**
 
-1. Abre **[PsyChat / MotusAI](/motusai)**.
+1. Abre **[Psychat](/psychat)**.
 2. Haz una consulta con un caso **ficticio** (sin datos reales de pacientes).
 3. Guarda una regla personal: qué sí / no le pides a la IA.
 
-**Listo cuando:** usaste PsyChat una vez con un caso inventado y sabes sus límites.
+**Listo cuando:** usaste Psychat una vez con un caso inventado y sabes sus límites.
 
 ---
 
@@ -190,7 +190,7 @@ Si no hay agenda visible, la consulta online se vuelve caos.
 
 - [ ] Abrí mi consultorio y copié el link → [/videochat](/videochat)
 - [ ] Publiqué horarios → [/disponibilidad](/disponibilidad)
-- [ ] Hice una prueba en PsyChat → [/motusai](/motusai)
+- [ ] Hice una prueba en Psychat → [/psychat](/psychat)
 - [ ] Sé dónde guardo notas con privacidad
 - [ ] Sé cómo voy a cobrar (incluido internacional si aplica)
 

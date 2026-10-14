@@ -94,10 +94,10 @@ export function Footer() {
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <Link 
-                    href="/motusai" 
+                    href="/psychat" 
                     className="flex items-center justify-between p-3 hover:bg-foreground/5 rounded-lg transition-colors group"
                   >
-                    <span>MotusAI</span>
+                    <span>Psychat</span>
                     <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <Link 

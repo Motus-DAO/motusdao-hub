@@ -39,7 +39,7 @@
       ]
     },
     {
-      "source": "/motusai",
+      "source": "/psychat",
       "headers": [
         {
           "key": "Content-Security-Policy",
@@ -48,13 +48,25 @@
       ]
     },
     {
-      "source": "/motusai/:path*",
+      "source": "/psychat/:path*",
       "headers": [
         {
           "key": "Content-Security-Policy",
           "value": "frame-ancestors 'self' https://metaverso.motusdao.org https://play.workadventu.re https://*.workadventu.re;"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/motusai",
+      "destination": "/psychat",
+      "permanent": true
+    },
+    {
+      "source": "/motusai/:path*",
+      "destination": "/psychat/:path*",
+      "permanent": true
     }
   ],
   "rewrites": [

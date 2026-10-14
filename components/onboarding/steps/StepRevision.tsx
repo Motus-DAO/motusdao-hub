@@ -757,7 +757,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                   className="mt-1 w-4 h-4"
                 />
               <span className="text-muted-foreground">
-                Autorizo que MotusAI procese datos de matching con VeniceAI (privacidad por diseño; opcional).
+                Autorizo que Psychat procese datos de matching con VeniceAI (privacidad por diseño; opcional).
               </span>
             </label>
             {!consentsComplete && (

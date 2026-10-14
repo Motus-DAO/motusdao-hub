@@ -2,7 +2,7 @@ import type { MottyLocale } from '@/lib/motty/types'
 
 export type MottyPageSurface =
   | 'home'
-  | 'motusai'
+  | 'psychat'
   | 'academia'
   | 'pagos'
   | 'perfil'
@@ -29,17 +29,17 @@ const PAGE_COPY: Record<MottyLocale, PageCopySet> = {
       greeting:
         'Hola. Soy Motty, tu asistente personal en el Hub. ¿En qué te puedo ayudar desde el inicio?',
       disclaimer:
-        'Orientación general del Hub. No es MotusAI, terapia ni diagnóstico clínico.',
+        'Orientación general del Hub. No es Psychat, terapia ni diagnóstico clínico.',
       placeholder: '¿En qué te ayudo en el Hub?',
     },
-    motusai: {
-      title: 'Motty · MotusAI',
+    psychat: {
+      title: 'Motty · Psychat',
       subtitle: 'Te ayudo a entender esta página',
       greeting:
-        'Estás en MotusAI. Yo soy Motty (acompañamiento de ruta): te explico para qué sirve esta pantalla y cómo usarla. MotusAI es el chat de abajo; yo no lo reemplazo.',
+        'Estás en Psychat. Yo soy Motty (acompañamiento de ruta): te explico para qué sirve esta pantalla y cómo usarla. Psychat es el chat de abajo; yo no lo reemplazo.',
       disclaimer:
-        'Guía sobre la página MotusAI. No sustituye el chat MotusAI ni supervisión clínica.',
-      placeholder: '¿Qué quieres entender de MotusAI?',
+        'Guía sobre la página Psychat. No sustituye el chat Psychat ni supervisión clínica.',
+      placeholder: '¿Qué quieres entender de Psychat?',
     },
     academia: {
       title: 'Motty · Academia',
@@ -99,9 +99,9 @@ const PAGE_COPY: Record<MottyLocale, PageCopySet> = {
       title: 'Motty · Acompañamiento',
       subtitle: 'Acompañamiento Personalizado Digital en el Hub',
       greeting:
-        'Soy Motty. Te acompaño en el Hub: preguntas a tu ritmo y orientación según la página en la que estás. No sustituyo supervisión humana ni MotusAI.',
+        'Soy Motty. Te acompaño en el Hub: preguntas a tu ritmo y orientación según la página en la que estás. No sustituyo supervisión humana ni Psychat.',
       disclaimer:
-        'Orientación en el Hub autenticado. No es MotusAI, terapia ni diagnóstico clínico.',
+        'Orientación en el Hub autenticado. No es Psychat, terapia ni diagnóstico clínico.',
       placeholder: '¿En qué te ayudo en esta página?',
     },
   },
@@ -112,17 +112,17 @@ const PAGE_COPY: Record<MottyLocale, PageCopySet> = {
       greeting:
         'Hi. I am Motty, your personal assistant in the Hub. How can I help from home?',
       disclaimer:
-        'General Hub guidance. Not MotusAI, therapy, or clinical diagnosis.',
+        'General Hub guidance. Not Psychat, therapy, or clinical diagnosis.',
       placeholder: 'How can I help in the Hub?',
     },
-    motusai: {
-      title: 'Motty · MotusAI',
+    psychat: {
+      title: 'Motty · Psychat',
       subtitle: 'I help you understand this page',
       greeting:
-        'You are on MotusAI. I am Motty (route accompaniment): I explain what this screen is for. MotusAI is the chat below; I do not replace it.',
+        'You are on Psychat. I am Motty (route accompaniment): I explain what this screen is for. Psychat is the chat below; I do not replace it.',
       disclaimer:
-        'Guidance about the MotusAI page. Does not replace MotusAI chat or clinical supervision.',
-      placeholder: 'What do you want to understand about MotusAI?',
+        'Guidance about the Psychat page. Does not replace Psychat chat or clinical supervision.',
+      placeholder: 'What do you want to understand about Psychat?',
     },
     academia: {
       title: 'Motty · Academy',
@@ -182,9 +182,9 @@ const PAGE_COPY: Record<MottyLocale, PageCopySet> = {
       title: 'Motty · Accompaniment',
       subtitle: 'Digital personalized accompaniment in the Hub',
       greeting:
-        'I am Motty. I accompany you in the Hub according to the page you are on. I do not replace human supervision or MotusAI.',
+        'I am Motty. I accompany you in the Hub according to the page you are on. I do not replace human supervision or Psychat.',
       disclaimer:
-        'Guidance in the authenticated Hub. Not MotusAI, therapy, or clinical diagnosis.',
+        'Guidance in the authenticated Hub. Not Psychat, therapy, or clinical diagnosis.',
       placeholder: 'How can I help on this page?',
     },
   },
@@ -195,7 +195,9 @@ export function resolveMottyPageSurface(pathname: string | null | undefined): Mo
   const path = (pathname || '/').split('?')[0].replace(/\/+$/, '') || '/'
 
   if (path === '/') return 'home'
-  if (path === '/motusai' || path.startsWith('/motusai/')) return 'motusai'
+  if (path === '/psychat' || path.startsWith('/psychat/')) return 'psychat'
+  // Legacy product URL (redirects to /psychat)
+  if (path === '/motusai' || path.startsWith('/motusai/')) return 'psychat'
   if (path === '/academia' || path.startsWith('/academia/')) return 'academia'
   if (path === '/pagos' || path.startsWith('/pagos/')) return 'pagos'
   if (path === '/perfil' || path.startsWith('/perfil/')) return 'perfil'

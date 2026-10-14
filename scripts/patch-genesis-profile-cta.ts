@@ -61,9 +61,9 @@ En **Disponibilidad** publicas tus horarios. Cuando alguien reserva, se crea el 
 
 Desde **Videochat** (y desde Perfil → abrir consultorio) tienes salas seguras de videollamada: el paciente entra desde el celular, sin instalar nada, con un link único. Cada vínculo de atención puede operar por **app** o en el **metaverso**.
 
-## MotusAI
+## Psychat
 
-En **MotusAI** tienes un asistente orientado a profesionales clínicos de MotusDAO: preguntas sobre el ecosistema, los cursos y apoyo para pensar casos (incluye un modo supervisor experimental). **No sustituye tu juicio clínico** ni es una historia clínica.
+En **Psychat** tienes un asistente orientado a profesionales clínicos de MotusDAO: preguntas sobre el ecosistema, los cursos y apoyo para pensar casos (incluye un modo supervisor experimental). **No sustituye tu juicio clínico** ni es una historia clínica.
 
 ## Academia
 

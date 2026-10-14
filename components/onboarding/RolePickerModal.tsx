@@ -119,7 +119,7 @@ export function RolePickerModal({ isOpen, onClose }: RolePickerModalProps) {
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <Brain className="w-4 h-4 text-blue-400" />
-                      <span>MotusAI personalizado</span>
+                      <span>Psychat personalizado</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <GraduationCap className="w-4 h-4 text-green-400" />

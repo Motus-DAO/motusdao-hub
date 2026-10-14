@@ -1129,7 +1129,7 @@ export default function PerfilPage() {
                                     </p>
                                   ) : (
                                     <p className="text-xs text-muted-foreground">
-                                      Puedes solicitar una cita desde MotusAI; el consultorio sigue siendo el mismo.
+                                      Puedes solicitar una cita desde Psychat; el consultorio sigue siendo el mismo.
                                     </p>
                                   )}
                                 </div>

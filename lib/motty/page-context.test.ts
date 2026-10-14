@@ -9,7 +9,8 @@ import {
 describe('Motty page context', () => {
   it('maps Hub paths to surfaces', () => {
     assert.equal(resolveMottyPageSurface('/'), 'home')
-    assert.equal(resolveMottyPageSurface('/motusai'), 'motusai')
+    assert.equal(resolveMottyPageSurface('/psychat'), 'psychat')
+    assert.equal(resolveMottyPageSurface('/motusai'), 'psychat')
     assert.equal(resolveMottyPageSurface('/academia/02-fundamentos'), 'academia')
     assert.equal(resolveMottyPageSurface('/pagos'), 'pagos')
     assert.equal(resolveMottyPageSurface('/perfil'), 'perfil')

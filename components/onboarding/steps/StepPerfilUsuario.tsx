@@ -583,7 +583,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 <label className="flex items-start gap-2">
                   <input {...register('consentToAIProcessing')} type="checkbox" className="mt-1" />
                   <span className="text-sm">
-                    Acepto que MotusAI procese mis respuestas con{' '}
+                    Acepto que Psychat procese mis respuestas con{' '}
                     <strong>VeniceAI</strong> (privacidad por diseño: el procesamiento se realiza
                     sin retención identificable de mis datos) si uso intake asistido
                   </span>

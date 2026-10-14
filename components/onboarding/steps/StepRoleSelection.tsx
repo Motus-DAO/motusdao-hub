@@ -100,7 +100,7 @@ export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Brain className="h-4 w-4 text-blue-400" />
-                  <span>MotusAI con VeniceAI (privacidad)</span>
+                  <span>Psychat con VeniceAI (privacidad)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-purple-400" />

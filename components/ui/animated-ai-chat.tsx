@@ -124,10 +124,10 @@ interface ChatMessage {
 }
 
 const USUARIO_GREETING =
-  '¡Hola! Soy MotusAI, tu asistente especializado en salud mental. ¿En qué puedo ayudarte hoy?'
+  '¡Hola! Soy Psychat, tu asistente especializado en salud mental. ¿En qué puedo ayudarte hoy?'
 
 const PSM_GREETING =
-  'Hola. Soy MotusAI en modo de apoyo clínico. Comparte tu caso (anónimo) o activa el Modo Supervisor para una reflexión estructurada.'
+  'Hola. Soy Psychat en modo de apoyo clínico. Comparte tu caso (anónimo) o activa el Modo Supervisor para una reflexión estructurada.'
 
 const CLINICAL_EXAMPLE =
   'Tengo un paciente que tiene ansiedad. Comenta que no se siente "el hombre", por lo que he decidido abordar este tema desde la teoría de género y social, dándole herramientas de nuevas masculinidades y enfocándome en trabajar su autoestima.'
@@ -259,7 +259,7 @@ export function AnimatedAIChat({
           ])
         })
         .catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Error al conectar con MotusAI'
+          const msg = err instanceof Error ? err.message : 'Error al conectar con Psychat'
           setError(msg)
           setMessages((prev) => [
             ...prev,
@@ -542,13 +542,13 @@ export function AnimatedAIChat({
               <div className="flex items-center gap-2">
                 <Image src="/venice-logo.svg" alt="Venice" width={14} height={14} className="rounded-sm" />
                 <span className={cn('font-medium', isLight ? 'text-slate-700' : 'text-white/80')}>
-                  MotusAI · VeniceAI · privacidad en el procesamiento
+                  Psychat · VeniceAI · privacidad en el procesamiento
                 </span>
               </div>
               <p className="mt-1">
                 {isPsm
                   ? 'No incluyas datos identificables de pacientes. Usamos VeniceAI para procesar con privacidad. La IA no sustituye juicio clínico ni supervisión profesional.'
-                  : 'MotusAI usa VeniceAI para procesar con privacidad. Ofrece orientación de apoyo; no sustituye atención profesional ni emergencias.'}
+                  : 'Psychat usa VeniceAI para procesar con privacidad. Ofrece orientación de apoyo; no sustituye atención profesional ni emergencias.'}
               </p>
             </div>
           </motion.div>

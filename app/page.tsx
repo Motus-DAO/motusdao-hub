@@ -27,10 +27,10 @@ import { trackCta } from '@/lib/track-cta'
 
 const featuredApps = [
   {
-    title: 'MotusAI',
+    title: 'Psychat',
     description: 'Asistente de IA especializado en salud mental',
     icon: Bot,
-    href: '/motusai',
+    href: '/psychat',
     color: 'from-blue-500 to-purple-600'
   },
   {
@@ -320,11 +320,11 @@ export default function Home() {
                       </p>
                       <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link
-                          href="/motusai"
+                          href="/psychat"
                           onClick={() =>
                             trackCta('Habla con un asistente IA especializado', {
                               location: 'home_cta',
-                              href: '/motusai',
+                              href: '/psychat',
                             })
                           }
                         >

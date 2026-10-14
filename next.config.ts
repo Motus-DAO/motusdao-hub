@@ -18,10 +18,24 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/motusai',
+        destination: '/psychat',
+        permanent: true,
+      },
+      {
+        source: '/motusai/:path*',
+        destination: '/psychat/:path*',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
-        source: "/motusai",
+        source: "/psychat",
         headers: [
           {
             key: "Content-Security-Policy",
@@ -30,7 +44,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/motusai/:path*",
+        source: "/psychat/:path*",
         headers: [
           {
             key: "Content-Security-Policy",

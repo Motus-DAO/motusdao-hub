@@ -258,11 +258,11 @@ export function StepExito({ onComplete }: StepExitoProps) {
     subtitle: 'Bienvenido a MotusDAO. Tu cuenta de usuario está lista para usar.',
     features: [
       { icon: Heart, label: 'Acceso a psicoterapia', description: 'Conecta con profesionales' },
-      { icon: Bot, label: 'MotusAI personalizado', description: 'Asistente de IA especializado' },
+      { icon: Bot, label: 'Psychat personalizado', description: 'Asistente de IA especializado' },
       { icon: GraduationCap, label: 'Cursos de bienestar', description: 'Recursos para tu salud mental' },
       { icon: Home, label: 'Bitácora privada', description: 'Diario personal seguro' },
     ],
-    primaryAction: { label: 'Ir a MotusAI', path: '/motusai', icon: Bot },
+    primaryAction: { label: 'Ir a Psychat', path: '/psychat', icon: Bot },
     secondaryAction: { label: 'Ir a Inicio', path: '/', icon: Home },
   }
 

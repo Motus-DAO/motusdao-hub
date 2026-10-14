@@ -95,7 +95,7 @@ export const useUIStore = create<UIState>()(
 export const getNavigationItems = (role: UserRole) => {
   const baseItems = [
     { name: 'Inicio', href: '/', icon: 'Home' },
-    { name: 'MotusAI', href: '/motusai', icon: 'Bot' },
+    { name: 'Psychat', href: '/psychat', icon: 'Bot' },
     { name: 'Academia', href: '/academia', icon: 'GraduationCap' },
     { name: 'Pagos', href: '/pagos', icon: 'CreditCard' },
     { name: 'Videochat', href: '/videochat', icon: 'Video' },

@@ -260,7 +260,7 @@ export function IntakeLiveForm({
           <PsmSectionBlock title="Consentimientos">
             <div className="space-y-2">
               <LiveCheckbox
-                label="Acepto que MotusAI procese mis respuestas con VeniceAI (privacidad por diseño) si uso intake asistido"
+                label="Acepto que Psychat procese mis respuestas con VeniceAI (privacidad por diseño) si uso intake asistido"
                 checked={data.consentToAIProcessing ?? false}
                 onChange={(v) => set('consentToAIProcessing', v)}
               />
