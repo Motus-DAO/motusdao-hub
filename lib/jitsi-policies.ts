@@ -1,13 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import {
-  getJitsiRoomPrefix,
+  getJitsiRoomKind,
+  getMetaverseRoomPrefix,
   isJitsiQuickRoomsEnabled,
   parseMatchIdFromOfficeRoom,
   parsePsmIdFromOpenRoom,
-  parseQuickRoomSlug,
+  type JitsiRoomKind,
 } from '@/lib/jitsi'
 
-export type JitsiRoomKind = 'office' | 'clinical' | 'metaverse' | 'open' | 'quick' | 'unknown'
+export type { JitsiRoomKind }
+export { getJitsiRoomKind, getMetaverseRoomPrefix }
 
 export interface JitsiAccessResult {
   allowed: boolean
@@ -16,17 +18,40 @@ export interface JitsiAccessResult {
   reason?: string
 }
 
-export function getMetaverseRoomPrefix(): string {
-  return process.env.NEXT_PUBLIC_JITSI_METAVERSE_PREFIX || 'motusdao-meta-'
-}
+export function decideOfficeRoomAccess(params: {
+  actorId: string
+  isAdmin: boolean
+  match: { userId: string; psmId: string } | null
+}): JitsiAccessResult {
+  if (params.isAdmin) {
+    return { allowed: true, kind: 'office', moderator: true }
+  }
 
-export function getJitsiRoomKind(roomName: string): JitsiRoomKind {
-  if (parseMatchIdFromOfficeRoom(roomName)) return 'office'
-  if (parsePsmIdFromOpenRoom(roomName)) return 'open'
-  if (parseQuickRoomSlug(roomName)) return 'quick'
-  if (roomName.startsWith(getJitsiRoomPrefix())) return 'clinical'
-  if (roomName.startsWith(getMetaverseRoomPrefix())) return 'metaverse'
-  return 'unknown'
+  if (!params.match) {
+    return {
+      allowed: false,
+      kind: 'office',
+      moderator: false,
+      reason: 'No tienes acceso a este consultorio o el emparejamiento ya no está activo.',
+    }
+  }
+
+  const isPatient = params.match.userId === params.actorId
+  const isPsm = params.match.psmId === params.actorId
+  if (!isPatient && !isPsm) {
+    return {
+      allowed: false,
+      kind: 'office',
+      moderator: false,
+      reason: 'No tienes acceso a este consultorio o el emparejamiento ya no está activo.',
+    }
+  }
+
+  return {
+    allowed: true,
+    kind: 'office',
+    moderator: isPsm,
+  }
 }
 
 async function authorizeOfficeRoom(
@@ -47,25 +72,15 @@ async function authorizeOfficeRoom(
     where: {
       id: matchId,
       status: 'active',
-      OR: [{ userId: actorId }, { psmId: actorId }],
     },
-    select: { psmId: true },
+    select: { userId: true, psmId: true },
   })
 
-  if (!match) {
-    return {
-      allowed: false,
-      kind: 'office',
-      moderator: false,
-      reason: 'No tienes acceso a este consultorio o el emparejamiento ya no está activo.',
-    }
-  }
-
-  return {
-    allowed: true,
-    kind: 'office',
-    moderator: match.psmId === actorId,
-  }
+  return decideOfficeRoomAccess({
+    actorId,
+    isAdmin: false,
+    match,
+  })
 }
 
 async function authorizeOpenRoom(

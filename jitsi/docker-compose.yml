@@ -16,7 +16,7 @@ services:
       - ./branding/images:/config/images:ro
     environment:
       - ENABLE_AUTH=${ENABLE_AUTH:-1}
-      - ENABLE_GUESTS=${ENABLE_GUESTS:-1}
+      - ENABLE_GUESTS=${ENABLE_GUESTS:-0}
       - ENABLE_LETSENCRYPT=${ENABLE_LETSENCRYPT:-0}
       - ENABLE_HTTP_REDIRECT=${ENABLE_HTTP_REDIRECT:-1}
       - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-}
@@ -43,7 +43,7 @@ services:
     environment:
       - AUTH_TYPE=${AUTH_TYPE:-jwt}
       - ENABLE_AUTH=${ENABLE_AUTH:-1}
-      - ENABLE_GUESTS=${ENABLE_GUESTS:-1}
+      - ENABLE_GUESTS=${ENABLE_GUESTS:-0}
       - GLOBAL_MODULES=${GLOBAL_MODULES:-}
       - GLOBAL_CONFIG=${GLOBAL_CONFIG:-}
       - LDAP_URL=${LDAP_URL:-}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { authFetch } from '@/lib/auth/client'
+import { buildVideochatUrl, resolveVideochatRoom } from '@/lib/jitsi'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { motion } from 'framer-motion'
@@ -16,9 +17,14 @@ import {
   User,
   UserCheck,
   Video,
-  ExternalLink,
   MessageSquare
 } from 'lucide-react'
+
+function sessionVideoLabel(externalUrl: string): string {
+  const resolved = resolveVideochatRoom({ url: externalUrl })
+  if (!resolved) return externalUrl
+  return `https://${resolved.domain}/${resolved.roomName}`
+}
 
 interface Session {
   id: string
@@ -461,14 +467,11 @@ export default function AdminSesionesPage() {
                   </td>
                   <td className="py-4 px-4">
                     <a
-                      href={session.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={buildVideochatUrl(session.externalUrl)}
                       className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
                     >
                       <Video className="w-4 h-4" />
-                      <span className="truncate max-w-[200px]">{session.externalUrl}</span>
-                      <ExternalLink className="w-3 h-3" />
+                      <span className="truncate max-w-[200px]">{sessionVideoLabel(session.externalUrl)}</span>
                     </a>
                   </td>
                   <td className="py-4 px-4">
@@ -577,13 +580,10 @@ export default function AdminSesionesPage() {
                     URL de Videochat
                   </h3>
                   <a
-                    href={selectedSession.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={buildVideochatUrl(selectedSession.externalUrl)}
                     className="flex items-center gap-2 text-blue-400 hover:text-blue-300 break-all"
                   >
-                    <span>{selectedSession.externalUrl}</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <span>{sessionVideoLabel(selectedSession.externalUrl)}</span>
                   </a>
                 </GlassCard>
 

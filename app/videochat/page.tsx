@@ -12,13 +12,15 @@ import {
   buildNativeJitsiMeetingUrl,
   buildQuickJitsiUrl,
   buildVideochatUrl,
-  getJitsiDomain,
+  canOpenJitsiMeeting,
   getJitsiProtocol,
   isJitsiQuickRoomsEnabled,
   normalizeJitsiHost,
   parseMatchIdFromOfficeRoom,
   parsePsmIdFromOpenRoom,
   parseQuickRoomSlug,
+  refuseGuestToken,
+  resolveVideochatRoom,
 } from '@/lib/jitsi'
 import { fetchAppSession, authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -57,8 +59,6 @@ declare global {
     JitsiMeetExternalAPI?: JitsiExternalAPIConstructor
   }
 }
-
-const JITSI_DEFAULT_DOMAIN = getJitsiDomain()
 
 const getJitsiProtocolForDomain = (domain: string) => getJitsiProtocol(domain)
 
@@ -131,37 +131,17 @@ function VideochatInner() {
     const roomFromQuery = searchParams.get('room') || undefined
     const urlFromQuery = searchParams.get('url') || undefined
 
-    // Si llega una URL completa de Jitsi (por ejemplo desde /api/sessions.externalUrl), la usamos tal cual
-    // si no, construimos un roomName contra el dominio configurado
+    // A pasted host is not trusted. Therapy rooms are rewritten to jitsi.motusdao.org.
     if (urlFromQuery) {
-      try {
-        const parsed = new URL(urlFromQuery)
-        const roomName = parsed.pathname.replace(/^\//, '')
-        if (roomName) {
-          setRoomInfo({ domain: parsed.host, roomName })
-        } else {
-          setRoomInfo(null)
-        }
-        return
-      } catch {
-        if (roomFromQuery) {
-          setRoomInfo({ domain: JITSI_DEFAULT_DOMAIN, roomName: roomFromQuery })
-        } else {
-          setRoomInfo(null)
-        }
-        return
-      }
+      setRoomInfo(resolveVideochatRoom({ url: urlFromQuery, room: roomFromQuery }))
+      return
     }
 
     if (!psmRoomsLoaded) return
     // PSM rooms are set via redirect to ?url=...
     if (isPsm) return
 
-    if (roomFromQuery) {
-      setRoomInfo({ domain: JITSI_DEFAULT_DOMAIN, roomName: roomFromQuery })
-    } else {
-      setRoomInfo(null)
-    }
+    setRoomInfo(resolveVideochatRoom({ room: roomFromQuery }))
   }, [searchParams, isPsm, psmRoomsLoaded])
 
   // PSM: load open + secure room URLs
@@ -230,6 +210,11 @@ function VideochatInner() {
       router.push(buildVideochatUrl(target))
     }
   }
+
+  // The script tag is keyed by host. Wait for that host's library before joining.
+  useEffect(() => {
+    setIsJitsiReady(false)
+  }, [roomInfo?.domain])
 
   // Fallback: si el script carga pero onReady no se dispara por alguna razón,
   // revisamos periódicamente si window.JitsiMeetExternalAPI existe
@@ -320,6 +305,11 @@ function VideochatInner() {
 
   const handleJoinAsGuest = async () => {
     if (!roomInfo) return
+    const refused = refuseGuestToken(roomInfo.roomName)
+    if (refused) {
+      setGuestError(refused.error)
+      return
+    }
     const cleanName = guestName.trim()
     if (cleanName.length < 2) {
       setGuestError('Ingresa un nombre para mostrar (mínimo 2 caracteres).')
@@ -377,6 +367,7 @@ function VideochatInner() {
   const fetchGuestToken = useCallback(
     async (name: string) => {
       if (!roomInfo) return false
+      if (refuseGuestToken(roomInfo.roomName)) return false
       const response = await fetch('/api/jitsi/guest-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -412,6 +403,9 @@ function VideochatInner() {
   /** Same room on jitsi.motusdao.org (top-level) so Chrome local recording works. */
   const openNativeJitsiForRecording = useCallback(() => {
     if (!roomInfo || typeof window === 'undefined') return
+    if (!canOpenJitsiMeeting({ domain: roomInfo.domain, roomName: roomInfo.roomName, jwt: jwtToken })) {
+      return
+    }
     const url = buildNativeJitsiMeetingUrl({
       domain: roomInfo.domain,
       roomName: roomInfo.roomName,
@@ -441,8 +435,7 @@ function VideochatInner() {
 
     const jitsiDomain = normalizeJitsiHost(roomInfo.domain)
 
-    const isSelfHosted = !jitsiDomain.includes('meet.jit.si')
-    if (isSelfHosted && !jwtToken) {
+    if (!canOpenJitsiMeeting({ domain: jitsiDomain, roomName: roomInfo.roomName, jwt: jwtToken })) {
       return
     }
 
@@ -526,35 +519,17 @@ function VideochatInner() {
 
   return (
     <>
+      {roomInfo && (
       <Script
-        src={(() => {
-          // Build script URL properly
-          const protocol = getJitsiProtocolForDomain(JITSI_DEFAULT_DOMAIN)
-          const domain = JITSI_DEFAULT_DOMAIN.includes('://') 
-            ? new URL(JITSI_DEFAULT_DOMAIN).host 
-            : JITSI_DEFAULT_DOMAIN
-          const scriptUrl = `${protocol}://${domain}/external_api.js`
-          console.log('📜 Loading Jitsi script from:', scriptUrl)
-          return scriptUrl
-        })()}
+        key={roomInfo.domain}
+        src={`${getJitsiProtocolForDomain(roomInfo.domain)}://${normalizeJitsiHost(roomInfo.domain)}/external_api.js`}
         strategy="afterInteractive"
         onReady={() => setIsJitsiReady(true)}
-        onError={(e) => {
-          const errorMsg = e instanceof Error ? e.message : String(e) || 'Error desconocido'
-          const protocol = getJitsiProtocolForDomain(JITSI_DEFAULT_DOMAIN)
-          const domain = JITSI_DEFAULT_DOMAIN.includes('://') 
-            ? new URL(JITSI_DEFAULT_DOMAIN).host 
-            : JITSI_DEFAULT_DOMAIN
-          const scriptUrl = `${protocol}://${domain}/external_api.js`
-          console.error('Error cargando Jitsi external_api.js:', {
-            error: errorMsg,
-            domain,
-            protocol,
-            url: scriptUrl,
-          })
-          setScriptError(`No se pudo cargar la librería de Jitsi desde ${domain}. Verifica que el servidor esté corriendo.`)
+        onError={() => {
+          setScriptError(`No se pudo cargar la librería de Jitsi desde ${roomInfo.domain}. Verifica que el servidor esté corriendo.`)
         }}
       />
+      )}
 
       <Section className="max-w-6xl mx-auto">
         <div className="mb-8">
@@ -674,7 +649,7 @@ function VideochatInner() {
                   variant="secondary"
                   size="sm"
                   onClick={openNativeJitsiForRecording}
-                  title="Abre la misma sala en jitsi.motusdao.org (Chrome). El tester puede quedarse en el Hub."
+                  title="Abre la misma sala en el servidor de video (Chrome), con el token del Hub."
                 >
                   <CircleDot className="w-4 h-4 mr-1" />
                   Grabar en mi PC
@@ -747,12 +722,23 @@ function VideochatInner() {
                     size="lg"
                     className="w-full sm:w-auto min-w-[200px]"
                     onClick={() => {
-                      if (typeof window !== 'undefined' && roomInfo) {
-                        const domain = normalizeJitsiHost(roomInfo.domain)
-                        const protocol = getJitsiProtocolForDomain(domain)
-                        const url = `${protocol}://${domain}/${roomInfo.roomName}${jwtToken ? `?jwt=${jwtToken}` : ''}`
-                        window.open(url, '_blank', 'noopener,noreferrer')
+                      if (typeof window === 'undefined' || !roomInfo) return
+                      if (!canOpenJitsiMeeting({
+                        domain: roomInfo.domain,
+                        roomName: roomInfo.roomName,
+                        jwt: jwtToken,
+                      })) {
+                        return
                       }
+                      window.open(
+                        buildNativeJitsiMeetingUrl({
+                          domain: roomInfo.domain,
+                          roomName: roomInfo.roomName,
+                          jwt: jwtToken,
+                        }),
+                        '_blank',
+                        'noopener,noreferrer',
+                      )
                     }}
                   >
                     <Video className="w-5 h-5 mr-2" />
@@ -790,7 +776,7 @@ function VideochatInner() {
                 </div>
               ) : (
                 <>
-              {(!isJitsiReady || isLoadingToken) && (
+              {(!isJitsiReady || isLoadingToken) && !needsHubLogin && (
                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm px-6 text-center">
                   {tokenError || scriptError || (isLoadingToken ? 'Configurando sala segura...' : 'Cargando componente de video...')}
                 </div>
@@ -901,7 +887,11 @@ function VideochatInner() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground px-6 text-center z-10 bg-black/80">
                   <p className="text-foreground font-medium">No se pudo acceder a la sala</p>
                   <p>{tokenError}</p>
-                  {isQuickRoom ? (
+                  {tokenError.includes('Jitsi abierto') ? (
+                    <p className="text-xs">
+                      Falta el secreto del Jitsi abierto en el Hub. La sala no se abre hasta que esté configurado.
+                    </p>
+                  ) : isQuickRoom ? (
                     <p className="text-xs">
                       Sala rápida: verifica que NEXT_PUBLIC_JITSI_QUICK_ROOMS=true y reinicia el servidor.
                     </p>
@@ -928,10 +918,8 @@ function VideochatInner() {
 
           {process.env.NODE_ENV === 'development' && (
           <p className="text-xs text-muted-foreground">
-            Nota: en producción configura tu dominio de Jitsi en{' '}
-            <code>NEXT_PUBLIC_JITSI_DOMAIN</code> y un prefijo de sala en{' '}
-            <code>NEXT_PUBLIC_JITSI_ROOM_PREFIX</code> para generar rooms más
-            predecibles y privados.
+            Nota: el consultorio abre solo en jitsi.motusdao.org y pide un token del Hub.
+            meet.jit.si no es una sala de terapia.
           </p>
           )}
         </GlassCard>

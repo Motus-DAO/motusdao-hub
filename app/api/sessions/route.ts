@@ -5,13 +5,15 @@ import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError } from '@/lib/auth/session'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
-import { buildOfficeJitsiUrl } from '@/lib/jitsi'
+import { therapySessionExternalUrl } from '@/lib/jitsi'
 
 /**
  * POST /api/sessions
  * Crea una nueva sesión de terapia para un usuario ya emparejado
  *
  * Body: { userId: string, externalUrl?: string }
+ *
+ * externalUrl in the body is ignored. The stored link is the office room on jitsi.motusdao.org.
  *
  * - Verifica que el usuario exista y sea role === 'usuario'
  * - Verifica que tenga un Match activo con un PSM
@@ -23,7 +25,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       userId,
-      externalUrl,
       scheduledStart,
       scheduledEnd,
       timezone,
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionId = randomUUID()
-    const url = externalUrl || buildOfficeJitsiUrl(activeMatch.id)
+    const url = therapySessionExternalUrl(activeMatch.id)
 
     const session = await prisma.session.create({
       data: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { assertAuthenticatedUser, isAdmin } from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { AuthError } from '@/lib/auth/errors'
+import { meetingSecretKindForRoom } from '@/lib/jitsi'
 import { authorizeJitsiRoomAccess, getJitsiRoomKind } from '@/lib/jitsi-policies'
 import { resolveJitsiDisplayName } from '@/lib/jitsi-display-name'
 import { signJitsiAccessToken } from '@/lib/jitsi-token'
@@ -45,6 +46,11 @@ export async function POST(request: NextRequest) {
       throw new AuthError(403, access.reason || 'No autorizado para esta sala')
     }
 
+    const secretKind = meetingSecretKindForRoom(roomName)
+    if (!secretKind) {
+      throw new AuthError(403, 'Sala no reconocida. Usa tu consultorio desde Perfil.')
+    }
+
     const displayName = await resolveJitsiDisplayName(actorId)
 
     const token = signJitsiAccessToken({
@@ -54,6 +60,7 @@ export async function POST(request: NextRequest) {
       userEmail,
       moderator: access.moderator,
       kind: access.kind,
+      secretKind,
     })
 
     return NextResponse.json({
@@ -71,6 +78,20 @@ export async function POST(request: NextRequest) {
         {
           error: error.message,
           hint: 'Configura JITSI_APP_SECRET y JITSI_APP_ID en tus variables de entorno',
+        },
+        { status: 500 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      (error.message === 'Jitsi abierto no está configurado' ||
+        error.message === 'El secreto del Jitsi abierto no puede ser el de terapia')
+    ) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          hint: 'Configura JITSI_OPEN_APP_ID y JITSI_OPEN_APP_SECRET, distintos del secreto de terapia',
         },
         { status: 500 }
       )

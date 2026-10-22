@@ -5,6 +5,7 @@ import {
   isJitsiQuickRoomsEnabled,
   parsePsmIdFromOpenRoom,
   parseQuickRoomSlug,
+  refuseGuestToken,
 } from '@/lib/jitsi'
 import { signJitsiGuestToken } from '@/lib/jitsi-token'
 
@@ -38,6 +39,11 @@ export async function POST(request: NextRequest) {
         { error: 'Ingresa un nombre para mostrar (mínimo 2 caracteres)' },
         { status: 400 }
       )
+    }
+
+    const refused = refuseGuestToken(roomName)
+    if (refused) {
+      return NextResponse.json({ error: refused.error }, { status: refused.status })
     }
 
     const quickSlug = parseQuickRoomSlug(roomName)
@@ -102,7 +108,19 @@ export async function POST(request: NextRequest) {
       moderator: false,
     })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Jitsi JWT no está configurado') {
+    if (
+      error instanceof Error &&
+      error.message === 'Un invitado no puede abrir un consultorio ni una sala clínica.'
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
+
+    if (
+      error instanceof Error &&
+      (error.message === 'Jitsi JWT no está configurado' ||
+        error.message === 'Jitsi abierto no está configurado' ||
+        error.message === 'El secreto del Jitsi abierto no puede ser el de terapia')
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
