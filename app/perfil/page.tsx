@@ -41,6 +41,7 @@ import {
   PROFILE_WALLET_READY_TIMEOUT_MS,
   profileLoadErrorMessage,
   resolveProfileAccessGate,
+  sessionBelongsToWallet,
   type ProfileLoadErrorKind,
 } from '@/lib/auth/hub-session'
 import { motusNameService } from '@/lib/motus-name-service'
@@ -58,6 +59,18 @@ interface ProfileData {
   bio?: string
   language: string
   avatarUrl?: string
+}
+
+const EMPTY_PROFILE: ProfileData = {
+  nombre: '',
+  apellido: '',
+  telefono: '',
+  fechaNacimiento: '',
+  ciudad: '',
+  pais: '',
+  bio: '',
+  language: 'es',
+  avatarUrl: '',
 }
 
 interface UserData {
@@ -265,8 +278,19 @@ export default function PerfilPage() {
   const [motusName, setMotusName] = useState<string | null>(null)
   const [isLoadingMotusName, setIsLoadingMotusName] = useState(false)
 
+  if (!isSessionReady && (userData || profileData.nombre)) {
+    setUserData(null)
+    setProfileData(EMPTY_PROFILE)
+    setMatchData(null)
+    setActiveSession(null)
+    setEnrollments([])
+    setMotusName(null)
+  }
+
   // Fetch profile data from API — Hub session is canonical; do not look up by email/wallet.
   useEffect(() => {
+    let cancelled = false
+
     const fetchProfile = async () => {
       if (!ready) return
 
@@ -299,6 +323,7 @@ export default function PerfilPage() {
         const response = await authFetch('/api/profile')
         
         if (!response.ok) {
+          if (cancelled) return
           const body = (await response.json().catch(() => ({}))) as { code?: string }
           const kind = classifyProfileLoadError(response.status, body.code)
           setErrorKind(kind)
@@ -308,7 +333,19 @@ export default function PerfilPage() {
         }
 
         const data = await response.json()
-        
+        if (cancelled) return
+
+        if (
+          data.user?.eoaAddress &&
+          eoaAddress &&
+          !sessionBelongsToWallet(data.user.eoaAddress, eoaAddress)
+        ) {
+          setUserData(null)
+          setProfileData(EMPTY_PROFILE)
+          setIsLoading(false)
+          return
+        }
+
         if (data.profile) {
           setProfileData({
             nombre: data.profile.nombre || '',
@@ -337,12 +374,15 @@ export default function PerfilPage() {
         setErrorKind('generic')
         setError(err instanceof Error ? err.message : profileLoadErrorMessage('generic'))
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
 
-    fetchProfile()
-  }, [ready, authenticated, isSessionReady, sessionState, isSigningSession])
+    void fetchProfile()
+    return () => {
+      cancelled = true
+    }
+  }, [ready, authenticated, isSessionReady, sessionState, isSigningSession, eoaAddress])
 
   // Fetch match data
   useEffect(() => {

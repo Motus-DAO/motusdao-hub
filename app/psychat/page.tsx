@@ -2,15 +2,21 @@
 
 import { AnimatedAIChat } from '@/components/ui/animated-ai-chat'
 import { useUIStore } from '@/lib/store'
-import { useWallet, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
+import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { buildVideochatUrl } from '@/lib/jitsi'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
+import { getEOAAddress } from '@/lib/wallet-utils'
 
 export default function PsychatPage() {
   const { role, theme } = useUIStore()
   const isLight = theme === 'light'
   const { user, authenticated, ready, providerId } = useWallet()
+  const { wallets } = useWallets()
+  const { isSessionReady } = useSiweSession()
+  const sessionEoa = getEOAAddress(wallets)
   const router = useRouter()
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
@@ -19,8 +25,8 @@ export default function PsychatPage() {
     try {
       setSessionError(null)
 
-      if (!ready || !authenticated) {
-        setSessionError('Necesitas iniciar sesión para hablar con un terapeuta humano.')
+      if (!ready || !authenticated || !isSessionReady) {
+        setSessionError('Confirma la sesión de esta wallet antes de pedir una sesión humana.')
         return
       }
 
@@ -48,6 +54,13 @@ export default function PsychatPage() {
 
       const profileData = await profileRes.json()
       const userId = profileData.user?.id as string | undefined
+      if (
+        profileData.user?.eoaAddress &&
+        sessionEoa &&
+        !sessionBelongsToWallet(profileData.user.eoaAddress, sessionEoa)
+      ) {
+        throw new Error('La sesión del Hub no corresponde a la wallet conectada. Cierra sesión y vuelve a entrar.')
+      }
 
       if (!userId) {
         throw new Error('No se pudo obtener tu ID de usuario.')

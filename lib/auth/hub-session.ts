@@ -19,6 +19,15 @@ export type ProfileLoadErrorKind =
   | 'forbidden'
   | 'generic'
 
+/** Cookie wallet and the wallet WaaP has connected right now. */
+export function sessionBelongsToWallet(
+  sessionEoa: string | null | undefined,
+  currentEoa: string | null | undefined
+): boolean {
+  if (!sessionEoa || !currentEoa) return false
+  return sessionEoa.toLowerCase() === currentEoa.toLowerCase()
+}
+
 export function shouldBootstrapHubSession(input: {
   walletReady: boolean
   walletAuthenticated: boolean

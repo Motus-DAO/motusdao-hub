@@ -34,7 +34,9 @@ import { WfiatSwapPanel } from '@/components/payments/WfiatSwapPanel'
 import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
 import { motusNameService } from '@/lib/motus-name-service'
 import type { Address } from 'viem'
-import { getPrimaryWallet } from '@/lib/wallet-utils'
+import { getEOAAddress, getPrimaryWallet } from '@/lib/wallet-utils'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import {
   motusUserToRipioExternalRef,
   type RipioRampFlow,
@@ -138,7 +140,9 @@ const QRScanner = dynamic(
 
 export default function PagosPage() {
   const { authenticated, user, ready, providerId } = useWallet()
+  const { isSessionReady } = useSiweSession()
   const { wallets } = useWallets()
+  const sessionEoa = getEOAAddress(wallets)
   const primaryWallet = getPrimaryWallet(wallets || [])
   const walletAddress = primaryWallet?.address || null
   const [isStartingOnramp, setIsStartingOnramp] = useState(false)
@@ -469,7 +473,10 @@ export default function PagosPage() {
   // Fetch Motus user id for stable Ripio external_ref
   useEffect(() => {
     const fetchUser = async () => {
-      if (!ready || !authenticated || !userEmail) return
+      if (!ready || !authenticated || !userEmail || !isSessionReady) {
+        setUserData(null)
+        return
+      }
 
       try {
         const params = new URLSearchParams()
@@ -479,6 +486,14 @@ export default function PagosPage() {
         const profileResponse = await fetch(`/api/profile?${params.toString()}`)
         if (profileResponse.ok) {
           const profileData = await profileResponse.json()
+          if (
+            profileData.user?.eoaAddress &&
+            sessionEoa &&
+            !sessionBelongsToWallet(profileData.user.eoaAddress, sessionEoa)
+          ) {
+            setUserData(null)
+            return
+          }
           setUserData(profileData.user)
         }
       } catch (err) {
@@ -487,7 +502,7 @@ export default function PagosPage() {
     }
 
     void fetchUser()
-  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId])
+  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId, isSessionReady, sessionEoa])
 
   const handleStartRipioRamp = async (flow: RipioRampFlow) => {
     if (!authenticated) {

@@ -22,6 +22,9 @@ import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 import { trackCta } from '@/lib/track-cta'
+import { logoutAppSession } from '@/lib/auth/client'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 
 export function Topbar() {
   const { 
@@ -38,6 +41,7 @@ export function Topbar() {
   
   // WaaP authentication hooks (replaces Privy)
   const { ready, authenticated, user, login, logout, providerId } = useWallet()
+  const { isSessionReady } = useSiweSession()
   const { wallets } = useWallets()
   
   // ZeroDev smart wallet hook
@@ -98,7 +102,7 @@ export function Topbar() {
   // Do NOT overwrite an intentional admin/psm UI choice for dual-role users.
   useEffect(() => {
     const syncUserRole = async () => {
-      if (!ready || !authenticated || !user) return
+      if (!ready || !authenticated || !user || !isSessionReady) return
 
       const userEmail = user?.email?.address || user?.google?.email
       const walletIdentity = getWalletIdentity(user, providerId)
@@ -114,6 +118,14 @@ export function Topbar() {
         
         if (response.ok) {
           const data = await response.json()
+          if (
+            data.user?.eoaAddress &&
+            eoaAddress &&
+            !sessionBelongsToWallet(data.user.eoaAddress, eoaAddress)
+          ) {
+            return
+          }
+
           if (data.user?.role) {
             const dbRole = data.user.role as 'usuario' | 'psm' | 'admin'
             const platformAdmin =
@@ -144,7 +156,7 @@ export function Topbar() {
 
     syncUserRole()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated, user?.id])
+  }, [ready, authenticated, user?.id, isSessionReady, eoaAddress])
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'matrix') => {
     setTheme(newTheme)
@@ -157,6 +169,7 @@ export function Topbar() {
   }
 
   const handleLogout = () => {
+    void logoutAppSession()
     logout()
     setShowUserDropdown(false)
   }

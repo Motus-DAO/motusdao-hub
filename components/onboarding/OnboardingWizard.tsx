@@ -159,6 +159,7 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
+            className="onboarding-hit-target"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}

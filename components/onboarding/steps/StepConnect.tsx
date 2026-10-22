@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,6 +10,7 @@ import {
   Mail, 
   AlertCircle, 
   CheckCircle,
+  Check,
   Loader,
   X
 } from 'lucide-react'
@@ -19,6 +20,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { useOnboardingStore, isValidCeloAddress } from '@/lib/onboarding-store'
 import { getConnectBlockers, onboardingBackButtonClass } from '@/lib/onboarding-ui'
+import { releaseHiddenWaapOverlayInput, releaseWaapOverlayInput } from '@/lib/wallet/waap-modal-recovery'
 import { celoMainnet } from '@/lib/celo'
 import { 
   getEOAAddress
@@ -61,11 +63,16 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     resolver: zodResolver(connectSchema),
     defaultValues: {
       email: user?.email?.address || user?.google?.email || data.email || '',
-      acceptTerms: false,
-      acceptPrivacy: false
+      acceptTerms: data.consentToTerms === true,
+      acceptPrivacy: data.consentToPrivacy === true
     },
     mode: 'onChange'
   })
+
+  const toggleConsent = (field: 'acceptTerms' | 'acceptPrivacy', next: boolean) => {
+    setValue(field, next, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
+    updateData(field === 'acceptTerms' ? { consentToTerms: next } : { consentToPrivacy: next })
+  }
 
   // Watch email field to update validation
   const watchedEmail = watch('email')
@@ -189,6 +196,30 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
     }
   }, [privyEmail, setValue])
 
+  // Survive a remount after the wallet modal closes. The click itself also writes the store.
+  useEffect(() => {
+    if (data.consentToTerms === true && acceptTerms !== true) {
+      setValue('acceptTerms', true, { shouldValidate: true })
+    }
+    if (data.consentToPrivacy === true && acceptPrivacy !== true) {
+      setValue('acceptPrivacy', true, { shouldValidate: true })
+    }
+  }, [acceptPrivacy, acceptTerms, data.consentToPrivacy, data.consentToTerms, setValue])
+
+  // A hidden WaaP shell keeps a full-screen hit target after signing.
+  useEffect(() => {
+    if (!authenticated) return
+    releaseHiddenWaapOverlayInput()
+    if (siweSessionReady) {
+      releaseWaapOverlayInput()
+    }
+    const timer = window.setTimeout(() => {
+      releaseHiddenWaapOverlayInput()
+      if (siweSessionReady) releaseWaapOverlayInput()
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [authenticated, siweSessionReady])
+
   const handleConnectWallet = async () => {
     if (!ready) return
     
@@ -289,7 +320,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="w-full max-w-2xl mx-auto"
+        className="onboarding-hit-target w-full max-w-2xl mx-auto"
       >
         <GlassCard className="p-8">
           <div className="text-center mb-8">
@@ -354,7 +385,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="w-full max-w-2xl mx-auto"
+      className="onboarding-hit-target w-full max-w-2xl mx-auto"
     >
       <GlassCard className="p-8">
         <div className="text-center mb-8">
@@ -367,7 +398,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="onboarding-hit-target space-y-6">
           {/* Account Information */}
           <div className="space-y-4">
             {/* Email Display/Input */}
@@ -454,23 +485,26 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
             <SiweSessionBanner compact onReadyChange={setSiweSessionReady} />
           </div>
 
-          {/* Terms and Privacy */}
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <input
-                {...register('acceptTerms')}
-                type="checkbox"
-                id="acceptTerms"
-                className="mt-1 w-4 h-4 text-mauve-600 bg-transparent border-white/20 rounded focus:ring-mauve-500 focus:ring-2"
-              />
-              <label htmlFor="acceptTerms" className="text-sm text-foreground">
-                Acepto los{' '}
-                <a href="/terms" className="text-mauve-400 hover:text-mauve-300 underline">
-                  términos y condiciones
-                </a>{' '}
-                de MotusDAO *
-              </label>
-            </div>
+          {/* Terms and Privacy.
+              The whole sentence is the control. A link inside the label was
+              taking the click and never toggled the box. */}
+          <div className="onboarding-hit-target space-y-4">
+            <ConsentCheck
+              checked={acceptTerms === true}
+              onToggle={() => toggleConsent('acceptTerms', acceptTerms !== true)}
+            >
+              Acepto los{' '}
+              <span className="text-mauve-400 underline">términos y condiciones</span>
+              {' '}de MotusDAO *
+            </ConsentCheck>
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-8 inline-block text-xs text-mauve-400 underline hover:text-mauve-300"
+            >
+              Leer términos
+            </a>
             {errors.acceptTerms && (
               <p className="text-red-400 text-sm flex items-center space-x-1">
                 <AlertCircle className="w-4 h-4" />
@@ -478,21 +512,22 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
               </p>
             )}
 
-            <div className="flex items-start space-x-3">
-              <input
-                {...register('acceptPrivacy')}
-                type="checkbox"
-                id="acceptPrivacy"
-                className="mt-1 w-4 h-4 text-mauve-600 bg-transparent border-white/20 rounded focus:ring-mauve-500 focus:ring-2"
-              />
-              <label htmlFor="acceptPrivacy" className="text-sm text-foreground">
-                Acepto la{' '}
-                <a href="/privacy" className="text-mauve-400 hover:text-mauve-300 underline">
-                  política de privacidad
-                </a>{' '}
-                y el manejo de mis datos *
-              </label>
-            </div>
+            <ConsentCheck
+              checked={acceptPrivacy === true}
+              onToggle={() => toggleConsent('acceptPrivacy', acceptPrivacy !== true)}
+            >
+              Acepto la{' '}
+              <span className="text-mauve-400 underline">política de privacidad</span>
+              {' '}y el manejo de mis datos *
+            </ConsentCheck>
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-8 inline-block text-xs text-mauve-400 underline hover:text-mauve-300"
+            >
+              Leer política
+            </a>
             {errors.acceptPrivacy && (
               <p className="text-red-400 text-sm flex items-center space-x-1">
                 <AlertCircle className="w-4 h-4" />
@@ -509,7 +544,7 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
           </div>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6">
+          <div className="onboarding-hit-target flex flex-wrap items-center justify-between gap-3 pt-6">
             <button
               type="button"
               onClick={onBack}
@@ -542,5 +577,37 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
         </form>
       </GlassCard>
     </motion.div>
+  )
+}
+
+function ConsentCheck({
+  checked,
+  onToggle,
+  children,
+}: {
+  checked: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={onToggle}
+      className="onboarding-hit-target flex w-full items-start gap-3 rounded-lg text-left"
+    >
+      <span
+        aria-hidden
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+          checked
+            ? 'border-mauve-400 bg-mauve-500 text-white'
+            : 'border-white/40 bg-white/15'
+        }`}
+      >
+        {checked ? <Check className="h-3.5 w-3.5" /> : null}
+      </span>
+      <span className="text-sm leading-6 text-foreground">{children}</span>
+    </button>
   )
 }

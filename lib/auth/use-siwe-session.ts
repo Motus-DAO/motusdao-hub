@@ -16,10 +16,19 @@ import {
   establishSiweSession,
   fetchAppSession,
   isUserRejectedSignError,
+  logoutAppSession,
   waitForExistingHubBootstrap,
 } from '@/lib/auth/client'
-import { SIWE_SESSION_LOADING_TIMEOUT_MS, SIWE_SIGN_TIMEOUT_MS } from '@/lib/auth/hub-session'
+import {
+  sessionBelongsToWallet,
+  SIWE_SESSION_LOADING_TIMEOUT_MS,
+  SIWE_SIGN_TIMEOUT_MS,
+} from '@/lib/auth/hub-session'
 import { withSignTimeout } from '@/lib/auth/signing'
+import {
+  releaseHiddenWaapOverlayInput,
+  releaseWaapOverlayInput,
+} from '@/lib/wallet/waap-modal-recovery'
 
 export type SiweSessionState = 'loading' | 'ready' | 'needs_signature' | 'no_wallet'
 
@@ -46,6 +55,17 @@ function useSiweSessionController(): SiweSessionValue {
   const [signError, setSignError] = useState<string | null>(null)
   const signingLockRef = useRef(false)
   const signAbortRef = useRef<AbortController | null>(null)
+  const acceptedEoaRef = useRef<string | null>(null)
+
+  if (
+    sessionState === 'ready' &&
+    eoaAddress &&
+    acceptedEoaRef.current &&
+    !sessionBelongsToWallet(acceptedEoaRef.current, eoaAddress)
+  ) {
+    acceptedEoaRef.current = null
+    setSessionState('loading')
+  }
 
   useEffect(() => {
     return () => signAbortRef.current?.abort()
@@ -66,16 +86,21 @@ function useSiweSessionController(): SiweSessionValue {
 
     try {
       const session = await fetchAppSession()
-      if (session.authenticated && session.eoaAddress) {
+      if (sessionBelongsToWallet(session.eoaAddress, eoaAddress)) {
+        acceptedEoaRef.current = eoaAddress.toLowerCase()
         setSessionState('ready')
         setSignError(null)
         return
       }
 
-      // Surface the sign CTA immediately. Do NOT auto-call personal_sign here:
-      // background WaaP signing often hangs with no modal, and then "Firmar"
-      // waits forever on the shared in-flight bootstrap.
+      acceptedEoaRef.current = null
+      if (session.authenticated) {
+        await logoutAppSession()
+      }
+      // Drop the old cookie. Do not auto-sign: a background personal_sign
+      // often hangs, and the new account must confirm its own session.
       setSessionState('needs_signature')
+      setSignError(null)
     } catch (error) {
       setSessionState('needs_signature')
       setSignError(
@@ -183,6 +208,13 @@ function useSiweSessionController(): SiweSessionValue {
       }
       signingLockRef.current = false
       setSigning(false)
+      // The sign modal is done. Drop its invisible backdrop so the
+      // terms checkboxes underneath can be clicked.
+      releaseHiddenWaapOverlayInput()
+      window.setTimeout(() => {
+        releaseHiddenWaapOverlayInput()
+        releaseWaapOverlayInput()
+      }, 300)
     }
   }, [provider, user?.id, eoaAddress, refresh, providerId])
 

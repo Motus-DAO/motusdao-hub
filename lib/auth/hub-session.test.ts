@@ -7,6 +7,7 @@ import {
   resolveProfileAccessGate,
   resolveProfileSessionAccess,
   runHubSessionBootstrap,
+  sessionBelongsToWallet,
   shouldBootstrapHubSession,
   shouldShowCompleteRegistration,
   UNLINKED_WALLET_CODE,
@@ -69,6 +70,13 @@ describe('Hub session + /perfil auth', () => {
       userId: 'user_admin',
     })
     assert.equal(shouldShowCompleteRegistration('not_found'), true)
+  })
+
+  it('A Hub cookie for another wallet does not belong to the connected account', () => {
+    assert.equal(sessionBelongsToWallet(ORIGINAL_EOA, ORIGINAL_EOA), true)
+    assert.equal(sessionBelongsToWallet(ORIGINAL_EOA, OTHER_EOA), false)
+    assert.equal(sessionBelongsToWallet(ORIGINAL_EOA.toUpperCase(), ORIGINAL_EOA), true)
+    assert.equal(sessionBelongsToWallet(null, OTHER_EOA), false)
   })
 
   it('Different wallet → 401/unlinked, never registration CTA', () => {
