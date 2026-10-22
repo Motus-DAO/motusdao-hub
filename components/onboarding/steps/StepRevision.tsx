@@ -22,6 +22,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import Image from 'next/image'
+import { aiProcessingConsentCopy } from '@/lib/ai-consent-copy'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { UploadedDocumentPreview } from '@/components/onboarding/UploadedDocumentPreview'
@@ -756,9 +757,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 onChange={(e) => updateData({ consentToAIProcessing: e.target.checked })}
                   className="mt-1 w-4 h-4"
                 />
-              <span className="text-muted-foreground">
-                Autorizo que Psychat procese datos de matching con VeniceAI (privacidad por diseño; opcional).
-              </span>
+              <span className="text-muted-foreground">{aiProcessingConsentCopy()}</span>
             </label>
             {!consentsComplete && (
               <p className="text-xs text-amber-300">

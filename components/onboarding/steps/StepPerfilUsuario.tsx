@@ -23,6 +23,7 @@ import { deriveConcernFields } from '@/lib/intake-concerns'
 import { inputFieldClass, onboardingFormSurfaceClass } from '@/lib/onboarding-form-helpers'
 import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
 import { cn } from '@/lib/utils'
+import { aiProcessingConsentCopy } from '@/lib/ai-consent-copy'
 
 const usuarioSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -582,11 +583,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
               <div className="space-y-3 border-t border-border pt-4">
                 <label className="flex items-start gap-2">
                   <input {...register('consentToAIProcessing')} type="checkbox" className="mt-1" />
-                  <span className="text-sm">
-                    Acepto que Psychat procese mis respuestas con{' '}
-                    <strong>VeniceAI</strong> (privacidad por diseño: el procesamiento se realiza
-                    sin retención identificable de mis datos) si uso intake asistido
-                  </span>
+                  <span className="text-sm">{aiProcessingConsentCopy()}</span>
                 </label>
                 <label className="flex items-start gap-2">
                   <input {...register('consentToShareWithPSM')} type="checkbox" className="mt-1" />

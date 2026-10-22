@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { aiProcessingConsentCopy } from '@/lib/ai-consent-copy'
 import { useOnboardingStore, type UserRole, type OnboardingData } from '@/lib/onboarding-store'
 import { fieldLabel } from '@/lib/intake-chat-progress'
 import { concernOptions, deriveConcernFields } from '@/lib/intake-concerns'
@@ -260,7 +261,7 @@ export function IntakeLiveForm({
           <PsmSectionBlock title="Consentimientos">
             <div className="space-y-2">
               <LiveCheckbox
-                label="Acepto que Psychat procese mis respuestas con VeniceAI (privacidad por diseño) si uso intake asistido"
+                label={aiProcessingConsentCopy()}
                 checked={data.consentToAIProcessing ?? false}
                 onChange={(v) => set('consentToAIProcessing', v)}
               />

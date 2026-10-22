@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useEffect, useRef, useCallback, useTransition, useState } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import {
@@ -11,10 +11,14 @@ import {
   MessageSquare,
   PhoneCall,
   SendIcon,
+  ChevronDown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { marked } from 'marked'
 import { useUIStore, type UserRole } from '@/lib/store'
+import { VENICE_PRIVACY_URL } from '@/lib/ai-consent-copy'
+import { creditUsedPercent } from '@/lib/ai-credit'
+import { sendEncryptedPsychat } from '@/lib/venice-e2ee'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -138,6 +142,26 @@ export interface AnimatedAIChatProps {
   onRequestHumanSession?: () => void | Promise<void>
   isCreatingSession?: boolean
   sessionError?: string | null
+  /** When set, the composer does not call the model. */
+  sendBlockedReason?: string | null
+  providerLabel?: string
+  /** venice | openai. The Venice note renders only for venice. */
+  aiProvider?: string | null
+  modelLabel?: string | null
+  modelId?: string | null
+  privacyMode?: 'tee' | 'e2ee'
+  onPrivacyModeChange?: (mode: 'tee' | 'e2ee') => void
+  credit?: {
+    remainingUsd: number
+    allowanceUsd: number
+    dailyUsd: number
+    purchasedUsd: number
+  } | null
+  onCreditRefresh?: () => void
+  onBuyCredit?: (amountUsd: 5 | 10) => void
+  buyingPack?: 5 | 10 | null
+  creditShopError?: string | null
+  notice?: React.ReactNode
 }
 
 export function AnimatedAIChat({
@@ -146,6 +170,19 @@ export function AnimatedAIChat({
   onRequestHumanSession,
   isCreatingSession = false,
   sessionError = null,
+  sendBlockedReason = null,
+  providerLabel = 'el proveedor configurado',
+  aiProvider = null,
+  modelLabel = null,
+  modelId = null,
+  privacyMode = 'tee',
+  onPrivacyModeChange,
+  credit = null,
+  onCreditRefresh,
+  onBuyCredit,
+  buyingPack = null,
+  creditShopError = null,
+  notice = null,
 }: AnimatedAIChatProps) {
   const containerHeightClass = fullScreen ? 'min-h-screen' : 'min-h-[calc(100dvh-8rem)]'
   const { theme } = useUIStore()
@@ -153,6 +190,8 @@ export function AnimatedAIChat({
   const isPsm = role === 'psm'
 
   const [value, setValue] = useState('')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const e2eeAvailable = aiProvider === 'venice' && (!modelId || modelId.startsWith('e2ee-'))
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -162,7 +201,6 @@ export function AnimatedAIChat({
   ])
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
@@ -199,82 +237,98 @@ export function AnimatedAIChat({
 
   const handleSendMessage = () => {
     const userMessage = value.trim()
-    if (!userMessage || isTyping) return
+    if (!userMessage || isTyping || sendBlockedReason) return
 
     setValue('')
     adjustHeight(true)
     setError(null)
+    setIsTyping(true)
 
-    startTransition(() => {
-      setIsTyping(true)
-      const nextMessages: ChatMessage[] = [
-        ...messages,
-        { id: `user-${Date.now()}`, role: 'user', content: userMessage },
-      ]
-      setMessages(nextMessages)
+    const nextMessages: ChatMessage[] = [
+      ...messages,
+      { id: `user-${Date.now()}`, role: 'user', content: userMessage },
+    ]
+    setMessages(nextMessages)
 
-      const apiMessages = nextMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
+    const apiMessages = nextMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }))
 
-      fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+    const request =
+      privacyMode === 'e2ee'
+        ? sendEncryptedPsychat(
+            apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant')
+          ).then((text) => ({ mode: 'qa' as const, text }))
+        : fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: apiMessages }),
+          }).then(async (res) => {
+            const data = (await res.json().catch(() => ({}))) as {
+              error?: string
+              code?: string
+              mode?: string
+              text?: string
+              message?: string
+              apertura?: string
+              reflexion?: string
+              cierre?: string
+              recomendacion?: string
+              disponibilidad?: string
+              ragSources?: RagSource[]
+            }
+            if (!res.ok) {
+              if (data.code === 'ai_credit_exhausted') {
+                setError(data.error || 'Se acabó el crédito de IA de hoy.')
+                onCreditRefresh?.()
+                return null
+              }
+              throw new Error(data.error || 'Error al procesar la solicitud')
+            }
+            return data
+          })
+
+    void request
+      .then((data) => {
+        if (!data) return
+        onCreditRefresh?.()
+        let content = ''
+        if (data.mode === 'supervisor' && 'apertura' in data) {
+          content = `## Apertura de significantes\n\n${data.apertura}\n\n## Reflexión sobre el discurso\n\n${data.reflexion}\n\n## Cierre analítico\n\n${data.cierre}\n\n## Recomendación final\n\n${data.recomendacion}\n\n## Disponibilidad\n\n${data.disponibilidad}`
+        } else {
+          const message = 'message' in data ? data.message : undefined
+          content = data.text || message || 'No se pudo generar una respuesta.'
+        }
+
+        const ragSources = 'ragSources' in data && Array.isArray(data.ragSources) ? data.ragSources : undefined
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content,
+            ragSources,
+          },
+        ])
       })
-        .then(async (res) => {
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}))
-            throw new Error((data as { error?: string }).error || 'Error al procesar la solicitud')
-          }
-          return res.json() as Promise<{
-            mode?: string
-            text?: string
-            message?: string
-            apertura?: string
-            reflexion?: string
-            cierre?: string
-            recomendacion?: string
-            disponibilidad?: string
-            ragSources?: RagSource[]
-          }>
-        })
-        .then((data) => {
-          let content = ''
-          if (data.mode === 'supervisor') {
-            content = `## Apertura de significantes\n\n${data.apertura}\n\n## Reflexión sobre el discurso\n\n${data.reflexion}\n\n## Cierre analítico\n\n${data.cierre}\n\n## Recomendación final\n\n${data.recomendacion}\n\n## Disponibilidad\n\n${data.disponibilidad}`
-          } else {
-            content = data.text || data.message || 'No se pudo generar una respuesta.'
-          }
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              content,
-              ragSources: Array.isArray(data.ragSources) ? data.ragSources : undefined,
-            },
-          ])
-        })
-        .catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Error al conectar con Psychat'
-          setError(msg)
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              content:
-                'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en unos momentos.',
-            },
-          ])
-        })
-        .finally(() => {
-          setIsTyping(false)
-        })
-    })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Error al conectar con Psychat'
+        setError(msg)
+        if (privacyMode === 'e2ee') return
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content:
+              'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en unos momentos.',
+          },
+        ])
+      })
+      .finally(() => {
+        setIsTyping(false)
+      })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -348,6 +402,7 @@ export function AnimatedAIChat({
             >
               {isPsm ? 'Consulta clínica o supervisión analítica' : 'Tu asistente de salud mental'}
             </motion.p>
+            {notice}
           </div>
 
           {(error || sessionError) && (
@@ -507,30 +562,35 @@ export function AnimatedAIChat({
                 )}
               </div>
 
-              <motion.button
-                type="button"
-                onClick={handleSendMessage}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={isTyping || !value.trim()}
-                className={cn(
-                  'flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                  value.trim()
-                    ? isLight
-                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-300/60'
-                      : 'bg-white text-[#0A0A0B] shadow-lg shadow-white/10'
-                    : isLight
-                      ? 'bg-slate-200/80 text-slate-500'
-                      : 'bg-white/[0.05] text-white/40',
-                )}
-              >
-                {isTyping ? (
-                  <LoaderIcon className="h-4 w-4 animate-[spin_2s_linear_infinite]" />
-                ) : (
-                  <SendIcon className="h-4 w-4" />
-                )}
-                <span>Enviar</span>
-              </motion.button>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {credit ? (
+                  <CreditMeter credit={credit} isLight={isLight} privacyMode={privacyMode} />
+                ) : null}
+                <motion.button
+                  type="button"
+                  onClick={handleSendMessage}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={isTyping || !value.trim() || Boolean(sendBlockedReason)}
+                  className={cn(
+                    'flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+                    value.trim()
+                      ? isLight
+                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-300/60'
+                        : 'bg-white text-[#0A0A0B] shadow-lg shadow-white/10'
+                      : isLight
+                        ? 'bg-slate-200/80 text-slate-500'
+                        : 'bg-white/[0.05] text-white/40',
+                  )}
+                >
+                  {isTyping ? (
+                    <LoaderIcon className="h-4 w-4 animate-[spin_2s_linear_infinite]" />
+                  ) : (
+                    <SendIcon className="h-4 w-4" />
+                  )}
+                  <span>Enviar</span>
+                </motion.button>
+              </div>
             </div>
 
             <div
@@ -542,14 +602,98 @@ export function AnimatedAIChat({
               <div className="flex items-center gap-2">
                 <Image src="/venice-logo.svg" alt="Venice" width={14} height={14} className="rounded-sm" />
                 <span className={cn('font-medium', isLight ? 'text-slate-700' : 'text-white/80')}>
-                  Psychat · VeniceAI · privacidad en el procesamiento
+                  Psychat · {providerLabel}
                 </span>
               </div>
-              <p className="mt-1">
-                {isPsm
-                  ? 'No incluyas datos identificables de pacientes. Usamos VeniceAI para procesar con privacidad. La IA no sustituye juicio clínico ni supervisión profesional.'
-                  : 'Psychat usa VeniceAI para procesar con privacidad. Ofrece orientación de apoyo; no sustituye atención profesional ni emergencias.'}
-              </p>
+              {aiProvider === 'venice' ? (
+                <>
+                  <p className="mt-1 leading-relaxed">
+                    Este chat usa {modelLabel ?? 'el modelo configurado'} con{' '}
+                    <a
+                      href={VENICE_PRIVACY_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn('underline', isLight ? 'text-slate-800' : 'text-white/80')}
+                    >
+                      Venice
+                    </a>
+                    .{' '}
+                    {privacyMode === 'e2ee'
+                      ? 'Privacidad reforzada: tu mensaje sale cifrado de tu navegador.'
+                      : 'Este modo no es anónimo ni utiliza cifrado de extremo a extremo.'}
+                  </p>
+                  <button
+                    type="button"
+                    aria-expanded={advancedOpen}
+                    onClick={() => setAdvancedOpen((open) => !open)}
+                    className={cn(
+                      'mt-2 inline-flex items-center gap-1 font-medium',
+                      isLight ? 'text-slate-800' : 'text-white/80'
+                    )}
+                  >
+                    Ajustes avanzados
+                    <ChevronDown className={cn('h-3 w-3 transition', advancedOpen && 'rotate-180')} />
+                  </button>
+                  {advancedOpen ? (
+                    <fieldset className="mt-2 space-y-3">
+                      <legend className="font-medium">Elige cómo proteger tus conversaciones</legend>
+                      <p>Tú decides cómo se procesan tus mensajes. Puedes cambiar el modo de privacidad cuando quieras.</p>
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="radio"
+                          name="psychat-privacy"
+                          className="mt-1"
+                          checked={privacyMode === 'tee'}
+                          onChange={() => onPrivacyModeChange?.('tee')}
+                        />
+                        <span>
+                          <span className="font-medium">Privacidad estándar.</span> Tus mensajes se procesan en un
+                          entorno protegido. MotusDAO puede procesar el texto necesario para enviar tu consulta.
+                          Tecnología: TEE (Trusted Execution Environment).
+                        </span>
+                      </label>
+                      <label className={cn('flex items-start gap-2', !e2eeAvailable && 'opacity-50')}>
+                        <input
+                          type="radio"
+                          name="psychat-privacy"
+                          className="mt-1"
+                          checked={privacyMode === 'e2ee'}
+                          disabled={!e2eeAvailable}
+                          onChange={() => onPrivacyModeChange?.('e2ee')}
+                        />
+                        <span>
+                          <span className="font-medium">Privacidad reforzada.</span> Tu mensaje sale cifrado de tu
+                          navegador. MotusDAO no puede leer su contenido durante el envío al servicio de IA. Tecnología:
+                          cifrado de extremo a extremo (E2EE).
+                        </span>
+                      </label>
+                    </fieldset>
+                  ) : null}
+                </>
+              ) : null}
+              {onBuyCredit ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {([5, 10] as const).map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      disabled={buyingPack !== null}
+                      onClick={() => onBuyCredit(amount)}
+                      className={cn(
+                        'rounded-md border px-2 py-1',
+                        isLight ? 'border-slate-300 text-slate-800' : 'border-white/20 text-white/80'
+                      )}
+                    >
+                      {buyingPack === amount ? 'Abriendo pago…' : `Comprar ${amount} USD`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {creditShopError ? <p className="mt-1">{creditShopError}</p> : null}
+              {isPsm ? (
+                <p className="mt-1">No incluyas datos identificables de pacientes. Las emergencias se revisan con humanos.</p>
+              ) : null}
+              {sendBlockedReason ? <p className="mt-1">{sendBlockedReason}</p> : null}
             </div>
           </motion.div>
         </motion.div>
@@ -598,6 +742,103 @@ export function AnimatedAIChat({
           }}
         />
       )}
+    </div>
+  )
+}
+
+function CreditMeter({
+  credit,
+  isLight,
+  privacyMode,
+}: {
+  credit: {
+    remainingUsd: number
+    allowanceUsd: number
+    dailyUsd: number
+    purchasedUsd: number
+  }
+  isLight: boolean
+  privacyMode: 'tee' | 'e2ee'
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const used = creditUsedPercent(credit)
+  const left = 100 - used
+  const privacyLabel = privacyMode === 'e2ee' ? 'Privacidad reforzada' : 'Privacidad estándar'
+  const size = 20
+  const trackWidth = 2
+  const arcWidth = 2.5
+  const radius = (size - arcWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const dash = used >= 100 ? circumference : (used / 100) * circumference
+  const arc = isLight ? '#e11d48' : '#ffffff'
+  const track = isLight ? 'rgba(15,23,42,0.18)' : 'rgba(255,255,255,0.2)'
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={`Uso, ${used}%. ${privacyLabel}`}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-full',
+          isLight ? 'hover:bg-slate-200/80' : 'hover:bg-white/[0.06]',
+        )}
+      >
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" style={{ maxWidth: 'none' }}>
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={track} strokeWidth={trackWidth} />
+          {used > 0 ? (
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={arc}
+              strokeWidth={arcWidth}
+              strokeLinecap={used >= 100 ? 'butt' : 'round'}
+              strokeDasharray={`${dash} ${circumference}`}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+              style={{ transition: 'stroke-dasharray 400ms ease' }}
+            />
+          ) : null}
+        </svg>
+      </button>
+      {open ? (
+        <div
+          role="dialog"
+          aria-label="Detalle del crédito"
+          style={{ width: 280, maxWidth: 'none' }}
+          className={cn(
+            'absolute bottom-full right-0 z-30 mb-2 rounded-xl border px-3 py-3 text-left text-sm leading-snug shadow-xl',
+            isLight
+              ? 'border-slate-300/80 bg-white text-slate-700'
+              : 'border-white/15 bg-[#16161a] text-white/80',
+          )}
+        >
+          <p className={cn('font-medium', isLight ? 'text-slate-900' : 'text-white')}>{used}% usado</p>
+          <p className="mt-2">Te queda {left}% del uso de hoy.</p>
+          <p className="mt-2">{privacyLabel}</p>
+          <p className="mt-2">Se renueva a medianoche, hora de Ciudad de México.</p>
+        </div>
+      ) : null}
     </div>
   )
 }

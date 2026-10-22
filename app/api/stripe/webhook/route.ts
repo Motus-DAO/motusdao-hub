@@ -7,6 +7,7 @@ import {
   recordSubscriptionRenewalPayment,
 } from '@/lib/academy/stripe-subscription'
 import { fulfillCourseFromStripeSession } from '@/lib/academy/stripe-session'
+import { fulfillAiCreditPurchase } from '@/lib/ai-credit-purchase'
 import { getInvoiceSubscriptionId } from '@/lib/academy/stripe-api-helpers'
 import { getStripeClient, getStripeWebhookSecret } from '@/lib/stripe'
 
@@ -40,6 +41,10 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+        if (session.metadata?.kind === 'ai_credit') {
+          await fulfillAiCreditPurchase(session)
+          break
+        }
         await fulfillCourseFromStripeSession(session)
         break
       }

@@ -10,10 +10,24 @@ export function getAIProvider() {
 
 export function getAIModel() {
   if (getAIProvider() === 'venice') {
-    return process.env.VENICE_MODEL || process.env.OPENAI_MODEL || 'llama-3.3-70b'
+    // Private + TEE-capable. A normal request is plaintext into the enclave.
+    // Client-side E2EE is a later slice and is not this call.
+    return process.env.VENICE_MODEL || 'e2ee-deepseek-v4-flash'
   }
 
   return process.env.OPENAI_MODEL || 'gpt-4o'
+}
+
+export function getAIDisclosure() {
+  const provider = getAIProvider()
+  const model = getAIModel()
+  const runsInTee = provider === 'venice' && model.startsWith('e2ee-')
+  return {
+    provider,
+    providerLabel: provider === 'venice' ? 'Venice' : 'OpenAI',
+    model,
+    runsInTee,
+  }
 }
 
 export function hasAIKey() {
@@ -22,6 +36,14 @@ export function hasAIKey() {
   }
 
   return Boolean(process.env.OPENAI_API_KEY)
+}
+
+export function getVeniceBaseUrl() {
+  return (process.env.VENICE_API_BASE_URL || 'https://api.venice.ai/api/v1').replace(/\/$/, '')
+}
+
+export function getVeniceApiKey() {
+  return process.env.VENICE_INFERENCE_KEY || process.env.VENICE_API_KEY || ''
 }
 
 export function getAIClient() {

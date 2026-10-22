@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAIClient, getAIModel, getAIProvider, hasAIKey } from '@/lib/ai-client'
+import { requireAiProcessingConsent } from '@/lib/auth/ai-consent'
+import { handleAuthError } from '@/lib/auth/session'
+import { AiCreditExhaustedError, estimateTokens } from '@/lib/ai-credit'
+import { releaseAiCredit, reserveAiCredit, settleAiCredit } from '@/lib/ai-credit-store'
 import { getPsmMissingFieldKeys } from '@/lib/intake/psm-intake-v1'
 import { getFieldOrder } from '@/lib/intake-chat-progress'
 import type { OnboardingData } from '@/lib/onboarding-store'
@@ -68,7 +72,7 @@ const QUESTION_GUIDE = {
   usuario: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica',
     q2: 'clinicalConcern, preferenciaAsignacion, urgencyLevel, languages, availabilityNotes, preferredTherapyStyle',
-    q3: 'consentToAIProcessing, consentToShareWithPSM, consentToClinicalMatching (y campos opcionales restantes)',
+    q3: 'consentToShareWithPSM, consentToClinicalMatching (y campos opcionales restantes). No pidas ni inferas consentToAIProcessing.',
   },
   psm: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios',
@@ -90,15 +94,15 @@ Reglas:
 - Una pregunta enfocada por turno; no hagas multiples preguntas largas.
 - Extrae datos en extractedData con claves exactas. Fusiona con datos actuales; no borres campos ya capturados.
 - No inventes datos. Campos faltantes van en missingFields.
-- Si hay senales de crisis, autolesion o emergencia: riskAlert=crisis_possible, urgencyLevel=crisis (usuario), recomienda ayuda local brevemente.
+- No decidas riesgo, diagnostico ni tratamiento. riskAlert siempre es none. Si la persona describe una emergencia, el assistantMessage solo indica servicios locales de emergencia. No cambies urgencyLevel por eso.
 - Valores: urgencyLevel low|medium|high|crisis. preferredModality siempre es video (no preguntes modalidad). preferenciaAsignacion automatica|explorar.
-- Si usas IA, menciona que MotusAI procesa con VeniceAI (privacidad por diseño).
+- No menciones un proveedor fijo. No pongas consentToAIProcessing en extractedData.
 - Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes, clinicalComplexityLevels, excludedCases, riskFlags.
 - clinicalComplexityLevels valores: low_complexity, medium_complexity, high_with_support, no_active_crisis.
 - serviceTypes valores: individual_therapy, psychological_guidance, psychoeducation, clinical_supervision, groups_workshops, courses, psychological_assessment, non_clinical_support, research_interviews.
 - excludedCases: slugs preset (self_harm_crisis, active_psychosis, substance_detox, legal_forensic, minors, active_violence_no_support, unstable_medical_psychiatric, case_by_case_intake) o texto libre para casos adicionales.
 - emergencyProtocolStatus: own_protocol, institutional_protocol, not_yet, want_motus_guidance.
-- Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, languages, consentToAIProcessing=true, consentToShareWithPSM=true, consentToClinicalMatching=true. preferredModality siempre video (no preguntar). clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array.
+- Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, languages, consentToShareWithPSM=true, consentToClinicalMatching=true. preferredModality siempre video (no preguntar). clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array. consentToAIProcessing no es campo de este chat.
 - PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles, especialidades, languages, timezone, weeklyTherapyHours (1-80), maxActiveUsers, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes (min 1), clinicalComplexityLevels (min 1), emergencyProtocolStatus. excludedCases es opcional. NO autocompletar legalDeclarations.
 - assistantMessage debe ser conversacional y terminar con la siguiente pregunta (excepto en handoff_ready).
 
@@ -129,6 +133,7 @@ function normalizeParsedResponse(
     typeof parsed.extractedData === 'object' && parsed.extractedData !== null
       ? (parsed.extractedData as Record<string, unknown>)
       : {}
+  delete extractedData.consentToAIProcessing
 
   const missingFields = computeMissingFields(role, mergedData)
   const rawPhase = parsed.phase
@@ -169,7 +174,7 @@ function normalizeParsedResponse(
             : 'medium'
           : 'medium',
     extractedData,
-    riskAlert: parsed.riskAlert === 'crisis_possible' ? 'crisis_possible' : 'none',
+    riskAlert: 'none',
     phase: isComplete ? 'handoff_ready' : phase,
     questionIndex: isComplete ? 3 : questionIndex,
   }
@@ -195,7 +200,6 @@ function computeMissingFields(
     'urgencyLevel',
     'languages',
     'availabilityNotes',
-    'consentToAIProcessing',
     'consentToShareWithPSM',
     'consentToClinicalMatching',
   ]
@@ -211,12 +215,25 @@ function computeMissingFields(
 }
 
 export async function POST(request: NextRequest) {
+  let userId: string
+  try {
+    const session = await requireAiProcessingConsent(request)
+    if (!session.userId) {
+      return NextResponse.json({ error: 'Se necesita una cuenta del Hub para usar la IA.' }, { status: 403 })
+    }
+    userId = session.userId
+  } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+    throw error
+  }
+
   if (!hasAIKey()) {
     return NextResponse.json(
       {
         error: `Missing ${getAIProvider() === 'venice' ? 'VENICE_INFERENCE_KEY' : 'OPENAI_API_KEY'}`,
       },
-      { status: 401 }
+      { status: 503 }
     )
   }
 
@@ -234,29 +251,50 @@ export async function POST(request: NextRequest) {
         ? '\nCRITICAL: Respond with ONLY a raw JSON object. No markdown fences, no text before or after JSON.'
         : ''
 
-    const response = await client.chat.completions.create({
-      model: getAIModel(),
-      ...(provider === 'openai' ? { response_format: RESPONSE_SCHEMA } : {}),
-      temperature: 0.2,
-      max_tokens: 1400,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'system',
-          content: `Rol: ${body.role}. Fase actual: ${currentPhase}, questionIndex: ${currentQ}.
+    const model = getAIModel()
+    const messages = [
+      { role: 'system' as const, content: SYSTEM_PROMPT },
+      {
+        role: 'system' as const,
+        content: `Rol: ${body.role}. Fase actual: ${currentPhase}, questionIndex: ${currentQ}.
 Q1 campos: ${guide.q1}
 Q2 campos: ${guide.q2}
 Q3 campos: ${guide.q3}
 Todos los campos: ${fields}
 Datos actuales: ${JSON.stringify(body.currentData || {})}
 Devuelve SOLO JSON valido con assistantMessage, isComplete, missingFields, confidence, extractedData, riskAlert, phase, questionIndex.${veniceJsonReminder}`,
-        },
-        ...body.messages.map((message) => ({
-          role: message.role as 'user' | 'assistant',
-          content: message.content,
-        })),
-      ],
+      },
+      ...body.messages.map((message) => ({
+        role: message.role as 'user' | 'assistant',
+        content: message.content,
+      })),
+    ]
+    const hold = await reserveAiCredit({
+      userId,
+      model,
+      inputText: messages.map((message) => message.content).join('\n'),
+      requestedMaxTokens: 1400,
     })
+    let response
+    let settled = false
+    try {
+      response = await client.chat.completions.create({
+        model,
+        ...(provider === 'openai' ? { response_format: RESPONSE_SCHEMA } : {}),
+        temperature: 0.2,
+        max_tokens: hold.maxTokens,
+        messages,
+      })
+      await settleAiCredit(hold.chargeId, {
+        model,
+        promptTokens: response.usage?.prompt_tokens ?? estimateTokens(messages.map((message) => message.content).join('\n')),
+        completionTokens: response.usage?.completion_tokens ?? estimateTokens(response.choices[0]?.message?.content || ''),
+      })
+      settled = true
+    } catch (completionError) {
+      if (!settled) await releaseAiCredit(hold.chargeId)
+      throw completionError
+    }
 
     const text = response.choices[0]?.message?.content || '{}'
     let parsed: Record<string, unknown>
@@ -296,6 +334,13 @@ Devuelve SOLO JSON valido con assistantMessage, isComplete, missingFields, confi
     return NextResponse.json(normalized)
   } catch (error) {
     console.error('Error in onboarding AI intake:', error)
+
+    if (error instanceof AiCreditExhaustedError) {
+      return NextResponse.json(
+        { error: error.message, code: 'ai_credit_exhausted', remainingUsd: error.remainingUsd },
+        { status: 429 }
+      )
+    }
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

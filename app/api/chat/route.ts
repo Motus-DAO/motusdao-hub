@@ -2,40 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAIClient, getAIModel, getAIProvider, getVeniceChatOptions, hasAIKey } from "@/lib/ai-client";
 import { isKnowledgeRagEnabled, retrieveMotusContext } from "@/lib/motus-knowledge";
 import { isUsableChatOutput, sanitizeModelOutput, SHORT_INPUT_FALLBACK } from "@/lib/ai-output";
+import { requireAiProcessingConsent } from "@/lib/auth/ai-consent";
+import { handleAuthError } from "@/lib/auth/session";
+import { AiCreditExhaustedError, estimateTokens, formatCreditNote } from "@/lib/ai-credit";
+import { getCreditSnapshot, releaseAiCredit, reserveAiCredit, settleAiCredit } from "@/lib/ai-credit-store";
 import type OpenAI from "openai";
+import { PSYCHAT_SYSTEM_PROMPT } from "@/lib/psychat-prompt";
 
-const SYSTEM_PROMPT = `Eres el Asistente Oficial de MotusDAO.
-Capacidades:
-A) Q&A MotusDAO: Responde preguntas sobre misión, academia, pagos, referidos, gobernanza, eventos. Si un dato no consta, dilo y sugiere cómo obtenerlo. No inventes.
-B) "Modo Supervisor" (verificación de caso): Cuando el usuario pida "modo supervisor" o equivalente, produce 5 secciones con texto original cada vez (sin plantillas, sin emojis, sin consejos clínicos):
-   - Apertura de significantes: abre un significante clave y relaciónalo con deseo/falta.
-   - Reflexión sobre el discurso: piensa tensiones/contradicciones sin satisfacer demandas.
-   - Cierre analítico: introduce un nuevo significante y su efecto de significación.
-   - Recomendación final: sugiere supervisión en el Dispositivo de Verificación de Casos.
-   - Disponibilidad: ofrece disponibilidad como supervisor.
-
-Directrices del análisis:
-1) No satisfacer demandas del sujeto. 2) Mantener todo dentro del dispositivo analítico.
-3) Trabajar desde deseo y falta (¬ϕ(x), D). 4) Ciclo lógico: ∃x¬ϕ(x)→∀xϕ(x)→¬∀xϕ(x)→¬∃x¬ϕ(x)→∃x¬ϕ(x).
-5) Apertura y cierre de significantes. 6) Generar espacio de reflexión (no soluciones).
-7) Recomendar supervisión. 8) Ofrecer disponibilidad.
-
-Medios de la dirección de la cura (síntesis operativa):
-- No se satisfacen demandas; se abre camino a la confesión del deseo.
-- La resistencia aparece como incompatibilidad del deseo con la palabra.
-- La angustia puede señalar el deseo y abrir el discurso al nivel de los significantes.
-
-Seguridad: No des consejos médicos/psiquiátricos. Deriva a profesionales cuando corresponda.
-Estilo: Claro, sobrio, preciso, en español. En "modo supervisor", apegarse a las 5 secciones con texto original.
-
-Few-shots (añadir tal cual al system, al final)
-[EJEMPLO 1 — entrada breve de caso]
-Caso: "Paciente refiere celos difusos y evita confrontar; demanda garantías."
-Salida esperada (resumen de estilo, NO plantilla): Apertura centrada en "garantías"; reflexión sobre demanda/evitación; cierre con nuevo significante "responsabilidad"; recomendación de supervisión; disponibilidad.
-
-[EJEMPLO 2 — entrada breve de caso]
-Caso: "Siente vacío y dice 'nada me alcanza'; alterna hiperactividad y abandono."
-Salida esperada: Apertura en "vacío"; reflexión tensiones hiperactividad/abandono; cierre con "límite"; recomendación; disponibilidad.`;
+const SYSTEM_PROMPT = PSYCHAT_SYSTEM_PROMPT;
 
 const SUPERVISOR_SCHEMA = {
   type: "json_schema" as const,
@@ -65,7 +39,7 @@ async function createReliableChatCompletion(
   client: OpenAI,
   messages: Array<{ role: "system" | "assistant" | "user"; content: string }>,
   options: { temperature: number; max_tokens: number; response_format?: typeof SUPERVISOR_SCHEMA }
-): Promise<string> {
+): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
   const base = {
     model: getAIModel(),
     messages,
@@ -78,32 +52,53 @@ async function createReliableChatCompletion(
     { ...base, temperature: Math.min(options.temperature, 0.3) },
   ]
 
+  let promptTokens = 0
+  let completionTokens = 0
+  const inputText = messages.map((message) => message.content).join("\n")
+
   for (const params of attempts) {
     const response = await client.chat.completions.create(params)
-    const cleaned = sanitizeModelOutput(response.choices[0]?.message?.content ?? "")
-    if (isUsableChatOutput(cleaned)) return cleaned
+    const raw = response.choices[0]?.message?.content ?? ""
+    promptTokens += response.usage?.prompt_tokens ?? estimateTokens(inputText)
+    completionTokens += response.usage?.completion_tokens ?? estimateTokens(raw)
+    const cleaned = sanitizeModelOutput(raw)
+    if (isUsableChatOutput(cleaned)) return { text: cleaned, promptTokens, completionTokens }
   }
 
-  return SHORT_INPUT_FALLBACK
+  return { text: SHORT_INPUT_FALLBACK, promptTokens, completionTokens }
 }
 
 export async function POST(req: NextRequest) {
+  let userId: string
+  try {
+    const session = await requireAiProcessingConsent(req)
+    if (!session.userId) {
+      return NextResponse.json({ error: 'Se necesita una cuenta del Hub para usar la IA.' }, { status: 403 })
+    }
+    userId = session.userId
+  } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+    throw error
+  }
+
   if (!hasAIKey()) {
-    return NextResponse.json({ error: `Missing ${getAIProvider() === 'venice' ? 'VENICE_INFERENCE_KEY' : 'OPENAI_API_KEY'}` }, { status: 401 });
+    return NextResponse.json({ error: `Missing ${getAIProvider() === 'venice' ? 'VENICE_INFERENCE_KEY' : 'OPENAI_API_KEY'}` }, { status: 503 });
   }
 
   try {
     const client = getAIClient();
     const body = await req.json();
-    const userMessages = (body?.messages || []) as {role:"user"|"assistant"|"system", content:string}[];
-    const clientSnippets = (body?.contextSnippets || []) as string[];
-
-    if (!userMessages || !Array.isArray(userMessages)) {
+    const rawMessages = body?.messages
+    if (!Array.isArray(rawMessages)) {
       return NextResponse.json(
         { error: 'Messages array is required' },
         { status: 400 }
       );
     }
+    const userMessages = (rawMessages as {role:"user"|"assistant"|"system", content:string}[])
+      .filter((message) => message.role === "user" || message.role === "assistant");
+    const clientSnippets = (body?.contextSnippets || []) as string[];
 
     // Construir conversación
     const input: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
@@ -144,41 +139,77 @@ export async function POST(req: NextRequest) {
     // Tomar el último mensaje de usuario para rutear modo — userText already computed above
     // Agregar mensajes de usuario con tipos correctos
     userMessages.forEach(msg => {
-      input.push({ role: msg.role as "system" | "assistant" | "user", content: msg.content });
+      input.push({ role: msg.role, content: msg.content });
     });
 
-    if (wantsSupervisorMode(userText)) {
-      const text = await createReliableChatCompletion(client, input, {
-        response_format: SUPERVISOR_SCHEMA,
-        temperature: 0.7,
-        max_tokens: 1000,
-      });
+    const requestedMaxTokens = wantsSupervisorMode(userText) ? 1000 : 800
+    const model = getAIModel()
+    const hold = await reserveAiCredit({
+      userId,
+      model,
+      inputText: input.map((message) => message.content).join("\n"),
+      requestedMaxTokens,
+    })
 
-      let json;
-      try { 
-        json = JSON.parse(text); 
-      } catch { 
-        json = {
-          apertura: "Error en el análisis",
-          reflexion: "No se pudo procesar la respuesta",
-          cierre: "Reintentar el análisis",
-          recomendacion: "Contactar soporte técnico",
-          disponibilidad: "Disponible para nueva consulta"
-        }; 
+    let settled = false
+    try {
+      const result = await createReliableChatCompletion(client, input, {
+        ...(wantsSupervisorMode(userText) ? { response_format: SUPERVISOR_SCHEMA } : {}),
+        temperature: 0.7,
+        max_tokens: hold.maxTokens,
+      })
+      await settleAiCredit(hold.chargeId, {
+        model,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+      })
+      settled = true
+      const credit = await getCreditSnapshot(userId)
+
+      if (wantsSupervisorMode(userText)) {
+        let json;
+        try {
+          json = JSON.parse(result.text);
+        } catch {
+          json = {
+            apertura: "Error en el análisis",
+            reflexion: "No se pudo procesar la respuesta",
+            cierre: "Reintentar el análisis",
+            recomendacion: "Contactar soporte técnico",
+            disponibilidad: "Disponible para nueva consulta"
+          };
+        }
+
+        return NextResponse.json({
+          mode: "supervisor",
+          ...json,
+          ragSources,
+          credit,
+          creditNote: formatCreditNote(credit),
+        });
       }
 
-      return NextResponse.json({ mode: "supervisor", ...json, ragSources });
+      return NextResponse.json({
+        mode: "qa",
+        text: result.text,
+        ragSources,
+        ragEnabled: isKnowledgeRagEnabled(),
+        credit,
+        creditNote: formatCreditNote(credit),
+      });
+    } catch (completionError) {
+      if (!settled) await releaseAiCredit(hold.chargeId)
+      throw completionError
     }
 
-    // Q&A normal
-    const answer = await createReliableChatCompletion(client, input, {
-      temperature: 0.7,
-      max_tokens: 800,
-    });
-
-    return NextResponse.json({ mode: "qa", text: answer, ragSources, ragEnabled: isKnowledgeRagEnabled() });
-
   } catch (e: unknown) {
+    if (e instanceof AiCreditExhaustedError) {
+      return NextResponse.json(
+        { error: e.message, code: 'ai_credit_exhausted', remainingUsd: e.remainingUsd },
+        { status: 429 }
+      )
+    }
+
     const provider = getAIProvider();
     const providerLabel = provider === 'venice' ? 'Venice' : 'OpenAI';
     console.error(`${providerLabel} API Error:`, e);
