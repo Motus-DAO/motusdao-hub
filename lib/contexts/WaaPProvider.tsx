@@ -15,6 +15,7 @@ import {
   isEmbeddedWaapLoginMethod,
   releaseHiddenWaapOverlayInput,
   releaseWaapOverlayInput,
+  syncWaapOverlayInput,
 } from '@/lib/wallet/waap-modal-recovery'
 
 // ============================================================================
@@ -225,7 +226,18 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
 
         void checkExistingSession(provider)
 
-        return unsubscribeLifecycle
+        const releaseTimer = window.setInterval(() => {
+          try {
+            syncWaapOverlayInput(waapSdk.getWaaPIframeDiagnostics())
+          } catch {
+            releaseHiddenWaapOverlayInput()
+          }
+        }, 1000)
+
+        return () => {
+          window.clearInterval(releaseTimer)
+          unsubscribeLifecycle()
+        }
       } catch (error) {
         console.error('[WAAP] ❌ Error initializing WaaP:', error)
         if (!cancelled) setReady(true)

@@ -1623,12 +1623,45 @@ p[class*="HelpTextContainer"] * {
   color: var(--status-error) !important;
 }
 
+/*
+ * The wallet shell is position:fixed with left, right, and width all set.
+ * Global max-width: 100% leaves a strip on the right where clicks still land.
+ * Stretch it to the viewport while it is open. JS drops pointer-events when
+ * the modal is not actually in use.
+ */
+#waap-wallet-iframe-container,
+#silk-wallet-iframe-container {
+  max-width: none !important;
+  max-height: none !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+}
+
 /* A closed WaaP shell must never intercept Hub controls behind it. */
 #waap-wallet-iframe-container[style*="visibility: hidden"],
-#waap-wallet-iframe-container[style*="opacity: 0"],
+#waap-wallet-iframe-container[style*="opacity: 0;"],
+#waap-wallet-iframe-container[style$="opacity: 0"],
 #silk-wallet-iframe-container[style*="visibility: hidden"],
-#silk-wallet-iframe-container[style*="opacity: 0"] {
+#silk-wallet-iframe-container[style*="opacity: 0;"],
+#silk-wallet-iframe-container[style$="opacity: 0"] {
   pointer-events: none !important;
+}
+
+/*
+ * Framer Motion sets pointer-events: none inline while a step fades in.
+ * If a wallet modal update interrupts that animation, the wizard stays
+ * visible but stops receiving clicks. !important beats that inline style.
+ */
+.onboarding-hit-target {
+  pointer-events: auto !important;
+}
+
+/* Global max-width: 100% collapses native checkbox hit targets in WebKit. */
+input[type='checkbox'],
+input[type='radio'] {
+  max-width: none;
+  flex-shrink: 0;
 }
 
 /* Motty chat markdown (parity with Landing Motty modal) */
