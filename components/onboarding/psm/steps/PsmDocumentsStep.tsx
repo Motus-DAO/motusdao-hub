@@ -67,7 +67,7 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
             label="Documento de cédula"
             description="PDF o imagen de tu cédula profesional."
             accept="image/jpeg,image/png,image/webp,application/pdf"
-            hint="PDF o imagen. Máximo 10MB."
+            hint="PDF o imagen. Máximo 20MB."
             fileName={getFileNameFromStoragePath(data.cedulaDocumentPath)}
             onUpload={(file) => uploadDocument(file, 'cedula')}
             onClear={() => updateData({ cedulaDocumentPath: undefined })}
@@ -76,7 +76,7 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
             label="Documento de título"
             description="PDF o imagen de tu título universitario."
             accept="image/jpeg,image/png,image/webp,application/pdf"
-            hint="PDF o imagen. Máximo 10MB."
+            hint="PDF o imagen. Máximo 20MB."
             fileName={getFileNameFromStoragePath(data.tituloDocumentPath)}
             onUpload={(file) => uploadDocument(file, 'titulo')}
             onClear={() => updateData({ tituloDocumentPath: undefined })}

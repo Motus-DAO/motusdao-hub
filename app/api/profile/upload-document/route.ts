@@ -87,7 +87,12 @@ export async function POST(request: NextRequest) {
       message.includes('does not match') ||
       message.includes('required')
         ? 403
-        : message.includes('Invalid') || message.includes('too large') || message.includes('Unsupported')
+        : message.includes('Invalid') ||
+            message.includes('too large') ||
+            message.includes('Unsupported') ||
+            message.includes('PDF') ||
+            message.includes('demasiado grande') ||
+            message.includes('vacío')
           ? 400
           : 500
 

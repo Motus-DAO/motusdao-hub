@@ -1,5 +1,6 @@
 import { getAddress, isAddress } from 'viem'
 import { getSupabaseAdmin } from './supabase-admin'
+import { resolveProfessionalDocument } from './storage-document'
 
 export const STORAGE_BUCKETS = {
   avatars: 'avatars',
@@ -12,14 +13,12 @@ export const STORAGE_BUCKETS = {
 export type DocumentType = 'cedula' | 'titulo'
 
 const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
-const DOCUMENT_MIME_TYPES = [...AVATAR_MIME_TYPES, 'application/pdf'] as const
 const ACADEMY_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const
 const ACADEMY_PDF_MIME_TYPES = ['application/pdf'] as const
 const ACADEMY_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024
 const COURSE_COVER_MAX_BYTES = 5 * 1024 * 1024
-const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
 const ACADEMY_VIDEO_MAX_BYTES = 100 * 1024 * 1024
 const ACADEMY_PDF_MAX_BYTES = 10 * 1024 * 1024
 const ACADEMY_IMAGE_MAX_BYTES = 10 * 1024 * 1024
@@ -144,18 +143,23 @@ export async function uploadProfessionalDocument(params: {
   ownerKey: string
   documentType: DocumentType
 }): Promise<{ storagePath: string }> {
-  validateFile(params.file, DOCUMENT_MIME_TYPES, DOCUMENT_MAX_BYTES)
+  const head = new Uint8Array(await params.file.slice(0, 16).arrayBuffer())
+  const resolved = resolveProfessionalDocument({
+    type: params.file.type,
+    name: params.file.name,
+    size: params.file.size,
+    head,
+  })
 
   const ownerKey = normalizeWalletAddress(params.ownerKey)
-  const ext = getExtension(params.file.type)
-  const storagePath = `${ownerKey}/${params.documentType}.${ext}`
+  const storagePath = `${ownerKey}/${params.documentType}.${resolved.ext}`
   const buffer = Buffer.from(await params.file.arrayBuffer())
 
   const supabase = getSupabaseAdmin()
   const { error } = await supabase.storage
     .from(STORAGE_BUCKETS.professionalDocuments)
     .upload(storagePath, buffer, {
-      contentType: params.file.type,
+      contentType: resolved.mime,
       upsert: true,
     })
 

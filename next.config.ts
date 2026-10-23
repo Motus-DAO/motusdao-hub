@@ -4,6 +4,10 @@ const workAdventureFrameAncestors =
   "frame-ancestors 'self' https://metaverso.motusdao.org https://play.workadventu.re https://*.workadventu.re;";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Scanned cédula PDFs plus the multipart envelope exceed the 10MB default.
+    middlewareClientMaxBodySize: '25mb',
+  },
   images: {
     remotePatterns: [
       {
