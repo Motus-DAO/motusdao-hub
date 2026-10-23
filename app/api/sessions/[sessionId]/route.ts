@@ -5,6 +5,8 @@ import { assertAuthenticatedUser, isAdmin } from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { AuthError } from '@/lib/auth/errors'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
+import { cancellationRefundAllowed } from '@/lib/stripe-connect'
+import { refundConnectedPayment } from '@/lib/stripe-therapy'
 
 const updateSchema = z.object({
   action: z.enum(['accept', 'complete', 'cancel', 'reschedule']),
@@ -27,7 +29,17 @@ export async function PATCH(
 
     const therapySession = await prisma.session.findUnique({
       where: { id: sessionId },
-      select: { id: true, userId: true, psmId: true, status: true },
+      select: {
+        id: true,
+        userId: true,
+        psmId: true,
+        status: true,
+        scheduledStart: true,
+        paidAt: true,
+        refundedAt: true,
+        stripePaymentIntentId: true,
+        stripeConnectedAccountId: true,
+      },
     })
 
     if (!therapySession) {
@@ -39,6 +51,52 @@ export async function PATCH(
     }
 
     const now = new Date()
+    let refunded = false
+    if (
+      body.action === 'cancel' &&
+      therapySession.paidAt &&
+      !therapySession.refundedAt &&
+      therapySession.stripePaymentIntentId &&
+      therapySession.stripeConnectedAccountId
+    ) {
+      if (!cancellationRefundAllowed(therapySession.scheduledStart, now)) {
+        const updatedSession = await prisma.session.update({
+          where: { id: sessionId },
+          data: {
+            status: 'cancelled',
+            cancelledAt: now,
+            cancelReason: body.cancelReason || 'Cancelada dentro de las 48 horas. El pago se conserva.',
+          },
+          include: {
+            user: { include: { profile: true } },
+            psm: { include: { profile: true } },
+            match: true,
+          },
+        })
+        await recordClinicalAccess({
+          request,
+          actorUserId: actorId,
+          targetUserId: therapySession.userId,
+          action: 'update',
+          resource: 'session',
+          resourceId: therapySession.id,
+          reason: 'session_cancel_keep_payment',
+          metadata: { psmId: therapySession.psmId },
+        })
+        return NextResponse.json({
+          success: true,
+          refunded: false,
+          session: updatedSession,
+        })
+      }
+
+      await refundConnectedPayment(
+        therapySession.stripeConnectedAccountId,
+        therapySession.stripePaymentIntentId
+      )
+      refunded = true
+    }
+
     const data =
       body.action === 'accept'
         ? { status: 'accepted' as const, acceptedAt: now }
@@ -49,6 +107,7 @@ export async function PATCH(
                 status: 'cancelled' as const,
                 cancelledAt: now,
                 cancelReason: body.cancelReason || 'Cancelada por participante',
+                refundedAt: refunded ? now : undefined,
               }
             : {
                 scheduledStart: body.scheduledStart ? new Date(body.scheduledStart) : undefined,
@@ -85,6 +144,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
+      refunded,
       session: updatedSession,
     })
   } catch (error) {
