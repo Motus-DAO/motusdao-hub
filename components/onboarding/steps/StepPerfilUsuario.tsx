@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -40,18 +40,36 @@ const usuarioSchema = z.object({
   preferenciaAsignacion: z.enum(['automatica', 'explorar'], {
     required_error: 'Debes seleccionar una preferencia de asignación'
   }),
-  urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis']),
+  urgencyLevel: z.enum(['low', 'medium', 'high', 'unsure'], {
+    required_error: 'Elige cómo te has sentido últimamente'
+  }),
   preferredTherapyStyle: z.array(z.string()).default([]),
   languages: z.array(z.string()).default(['es']),
   availabilityNotes: z.string().optional(),
-  paymentPreference: z.string().optional(),
-  therapistGenderPreference: z.string().optional(),
+  paymentPreference: z.string().optional().refine((value) => {
+    if (!value) return true
+    return normalizePaymentPreference(value) === value
+  }, 'Elige una forma de pago de la lista'),
   priorTherapyExperience: z.boolean().default(false),
   medicationOrDiagnosisContext: z.string().optional(),
   riskFlags: z.array(z.string()).default([]),
   consentToAIProcessing: z.boolean().default(false),
-  consentToShareWithPSM: z.boolean().refine(value => value === true, 'Debes aceptar compartir tu perfil con el profesional asignado'),
-  consentToClinicalMatching: z.boolean().refine(value => value === true, 'Debes aceptar el uso de tus datos para matching clínico')
+  consentToTerms: z.boolean().refine((value) => value === true, 'Acepta los Términos de servicio'),
+  consentToPrivacy: z.boolean().default(false),
+  consentToShareWithPSM: z.boolean().default(false),
+  consentToClinicalMatching: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (
+    data.consentToPrivacy !== true ||
+    data.consentToShareWithPSM !== true ||
+    data.consentToClinicalMatching !== true
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Autoriza el uso de tus datos de salud para buscar atención profesional',
+      path: ['consentToPrivacy'],
+    })
+  }
 })
 
 type UsuarioFormInput = z.input<typeof usuarioSchema>
@@ -90,6 +108,44 @@ const languageOptions = [
   { value: 'pt', label: 'Portugués' }
 ]
 
+const paymentOptions = [
+  { value: 'local_mx', label: 'Pagos por transferencia local México' },
+  { value: 'international', label: 'Pagos por transferencia internacional' },
+  { value: 'digital', label: 'Monedas digitales' },
+] as const
+
+function normalizePaymentPreference(value?: string) {
+  const allowed = new Set<string>(paymentOptions.map((option) => option.value))
+  return (value || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => allowed.has(part))
+    .join(',')
+}
+
+const feelingOptions = [
+  {
+    value: 'low',
+    title: 'He tenido algunas dificultades',
+    detail: 'Pero puedo continuar con mis actividades.',
+  },
+  {
+    value: 'medium',
+    title: 'Me está costando sentirme bien',
+    detail: 'Está afectando algunas partes de mi vida.',
+  },
+  {
+    value: 'high',
+    title: 'Estoy pasando por un momento difícil',
+    detail: 'Me cuesta llevar a cabo mis actividades cotidianas.',
+  },
+  {
+    value: 'unsure',
+    title: 'No estoy seguro/a',
+    detail: 'Prefiero hablarlo directamente con un profesional.',
+  },
+] as const
+
 const riskFlagOptions = [
   { value: 'none', label: 'Ninguno' },
   { value: 'self_harm', label: 'Autolesión o ideación suicida' },
@@ -114,6 +170,7 @@ const paises = [
 ]
 
 export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
+  const [showInfoUse, setShowInfoUse] = useState(false)
   const { data, updateData, profileIntakeMode, setProfileIntakeMode } = useOnboardingStore()
   const intakeMode = profileIntakeMode ?? 'manual'
 
@@ -143,16 +200,17 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       clinicalConcern: data.clinicalConcern || (data.tipoAtencion ? [data.tipoAtencion] : []),
       problematica: data.problematica || '',
       preferenciaAsignacion: data.preferenciaAsignacion || undefined,
-      urgencyLevel: data.urgencyLevel || 'medium',
+      urgencyLevel: data.urgencyLevel === 'crisis' ? undefined : data.urgencyLevel || undefined,
       preferredTherapyStyle: data.preferredTherapyStyle || [],
       languages: data.languages || ['es'],
       availabilityNotes: data.availabilityNotes || '',
-      paymentPreference: data.paymentPreference || '',
-      therapistGenderPreference: data.therapistGenderPreference || 'no_preference',
+      paymentPreference: normalizePaymentPreference(data.paymentPreference),
       priorTherapyExperience: data.priorTherapyExperience ?? false,
       medicationOrDiagnosisContext: data.medicationOrDiagnosisContext || '',
       riskFlags: data.riskFlags || ['none'],
       consentToAIProcessing: data.consentToAIProcessing ?? false,
+      consentToTerms: data.consentToTerms ?? false,
+      consentToPrivacy: data.consentToPrivacy ?? false,
       consentToShareWithPSM: data.consentToShareWithPSM ?? false,
       consentToClinicalMatching: data.consentToClinicalMatching ?? false
     },
@@ -169,6 +227,26 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
     setValue('clinicalConcern', next, { shouldDirty: true, shouldValidate: true })
     setValue('tipoAtencion', next[0] || undefined, { shouldDirty: true, shouldValidate: false })
   }
+
+  const selectedPayments = (watch('paymentPreference') || '').split(',').filter(Boolean)
+
+  const togglePayment = (value: string) => {
+    const next = selectedPayments.includes(value)
+      ? selectedPayments.filter((item) => item !== value)
+      : [...selectedPayments, value]
+    setValue('paymentPreference', next.join(','), { shouldDirty: true, shouldValidate: true })
+  }
+
+  const setHealthDataConsent = (next: boolean) => {
+    setValue('consentToPrivacy', next, { shouldDirty: true, shouldValidate: true })
+    setValue('consentToShareWithPSM', next, { shouldDirty: true, shouldValidate: true })
+    setValue('consentToClinicalMatching', next, { shouldDirty: true, shouldValidate: true })
+  }
+
+  const healthDataConsent =
+    watch('consentToPrivacy') === true &&
+    watch('consentToShareWithPSM') === true &&
+    watch('consentToClinicalMatching') === true
 
   const onSubmit = (formData: UsuarioFormData) => {
     const concernFields = deriveConcernFields({
@@ -468,20 +546,39 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="urgencyLevel" className="block text-sm font-medium">
-                  Urgencia *
-                </label>
-                <select
-                  {...register('urgencyLevel')}
-                  id="urgencyLevel"
-                  className={inputFieldClass()}
-                >
-                  <option value="low">Baja</option>
-                  <option value="medium">Media</option>
-                  <option value="high">Alta</option>
-                  <option value="crisis">Crisis</option>
-                </select>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Encuentra apoyo profesional</p>
+                  <p className="text-sm font-medium mt-2">¿Cómo te has sentido últimamente?</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Esto nos ayuda a entender qué tipo de apoyo estás buscando. No es una evaluación clínica.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {feelingOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className={cn('flex items-center space-x-3 cursor-pointer transition-colors hover:bg-muted/60', onboardingFormSurfaceClass)}
+                    >
+                      <input
+                        {...register('urgencyLevel')}
+                        type="radio"
+                        value={option.value}
+                        className="w-4 h-4 text-mauve-600 bg-transparent border-white/20 focus:ring-mauve-500"
+                      />
+                      <div>
+                        <p className="font-medium">{option.title}</p>
+                        <p className="text-sm text-muted-foreground">{option.detail}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {errors.urgencyLevel && (
+                  <p className="text-red-400 text-sm flex items-center space-x-1">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{errors.urgencyLevel.message}</span>
+                  </p>
+                )}
                 <p className={cn('text-xs text-muted-foreground')}>
                   Las sesiones con profesionales son por video.
                 </p>
@@ -526,28 +623,31 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 {errors.availabilityNotes && <p className="text-red-400 text-sm">{errors.availabilityNotes.message}</p>}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Preferencia de pago</p>
+                <p className="text-xs text-muted-foreground">
+                  Estas son las formas de pago que aceptamos. Puedes marcar más de una.
+                </p>
                 <div className="space-y-2">
-                  <label htmlFor="paymentPreference" className="block text-sm font-medium">Preferencia de pago</label>
-                  <input
-                    {...register('paymentPreference')}
-                    id="paymentPreference"
-                    placeholder="Tarjeta, cripto, transferencia..."
-                    className={inputFieldClass()}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="therapistGenderPreference" className="block text-sm font-medium">Preferencia de terapeuta</label>
-                  <select
-                    {...register('therapistGenderPreference')}
-                    id="therapistGenderPreference"
-                    className={inputFieldClass()}
-                  >
-                    <option value="no_preference">Sin preferencia</option>
-                    <option value="female">Mujer</option>
-                    <option value="male">Hombre</option>
-                    <option value="non_binary">No binario</option>
-                  </select>
+                  {paymentOptions.map((option) => {
+                    const active = selectedPayments.includes(option.value)
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => togglePayment(option.value)}
+                        className={cn(
+                          'w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors',
+                          active
+                            ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                            : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -569,7 +669,10 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
               </div>
 
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Señales de riesgo</label>
+                <p className="text-sm font-medium">Señales de riesgo</p>
+                <p className="text-xs text-muted-foreground">
+                  Márcalas solo si alguna está presente. Si no, deja Ninguno.
+                </p>
                 <div className="grid md:grid-cols-2 gap-2">
                   {riskFlagOptions.map(flag => (
                     <label key={flag.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
@@ -580,22 +683,79 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 </div>
               </div>
 
-              <div className="space-y-3 border-t border-border pt-4">
-                <label className="flex items-start gap-2">
-                  <input {...register('consentToAIProcessing')} type="checkbox" className="mt-1" />
-                  <span className="text-sm">{aiProcessingConsentCopy()}</span>
+              <section className="space-y-4 border-t border-border pt-5">
+                <div>
+                  <h3 className="text-base font-medium">Privacidad y consentimiento</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Tu información es personal. Tú decides cómo se utiliza para ayudarte a encontrar atención profesional.
+                  </p>
+                </div>
+
+                <label className={cn('flex items-start gap-3', onboardingFormSurfaceClass, 'p-3')}>
+                  <input {...register('consentToTerms')} type="checkbox" className="mt-1" />
+                  <span className="text-sm">
+                    He leído y acepto los{' '}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      Términos de servicio
+                    </a>
+                    .
+                  </span>
                 </label>
-                <label className="flex items-start gap-2">
-                  <input {...register('consentToShareWithPSM')} type="checkbox" className="mt-1" />
-                  <span className="text-sm">Acepto compartir mi perfil de intake con el profesional asignado *</span>
+                {errors.consentToTerms && <p className="text-red-400 text-sm">{errors.consentToTerms.message}</p>}
+
+                <label className={cn('flex items-start gap-3', onboardingFormSurfaceClass, 'p-3')}>
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={healthDataConsent}
+                    onChange={(event) => setHealthDataConsent(event.target.checked)}
+                  />
+                  <span className="text-sm">
+                    Autorizo el uso de mis datos de salud para buscar atención profesional, según el{' '}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      Aviso de privacidad
+                    </a>
+                    .
+                  </span>
                 </label>
-                {errors.consentToShareWithPSM && <p className="text-red-400 text-sm">{errors.consentToShareWithPSM.message}</p>}
-                <label className="flex items-start gap-2">
-                  <input {...register('consentToClinicalMatching')} type="checkbox" className="mt-1" />
-                  <span className="text-sm">Acepto que MotusDAO use estos datos para matching clínico *</span>
-                </label>
-                {errors.consentToClinicalMatching && <p className="text-red-400 text-sm">{errors.consentToClinicalMatching.message}</p>}
-              </div>
+                {errors.consentToPrivacy && <p className="text-red-400 text-sm">{errors.consentToPrivacy.message}</p>}
+
+                <div>
+                  <button
+                    type="button"
+                    aria-expanded={showInfoUse}
+                    onClick={() => setShowInfoUse((open) => !open)}
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronDown className={cn('w-4 h-4 transition-transform', showInfoUse && 'rotate-180')} />
+                    ¿Cómo se utilizará mi información?
+                  </button>
+                  {showInfoUse && (
+                    <div className="mt-3 space-y-3 rounded-xl border border-white/10 px-3 py-3 text-sm text-muted-foreground">
+                      <p>Tu perfil sirve para que veas profesionales y elijas con quién trabajar.</p>
+                      <p>Si autorizas tus datos de salud, ese perfil se puede compartir con el profesional que elijas. No se publica y no es una evaluación clínica.</p>
+                      <label className="flex items-start gap-3 text-foreground">
+                        <input {...register('consentToAIProcessing')} type="checkbox" className="mt-1" />
+                        <span>{aiProcessingConsentCopy()}</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
           </div>
 

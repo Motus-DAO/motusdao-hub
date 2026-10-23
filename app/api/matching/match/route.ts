@@ -79,12 +79,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.patient.urgencyLevel === 'crisis') {
-      return NextResponse.json(
-        { error: 'Este caso requiere una ruta de crisis antes de hacer matching automático' },
-        { status: 400 }
-      )
-    }
     const patient = user.patient
 
     // Check if user already has an active match

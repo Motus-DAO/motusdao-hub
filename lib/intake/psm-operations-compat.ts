@@ -23,7 +23,7 @@ export type ClinicalComplexityLevel =
   | 'high_with_support'
   | 'no_active_crisis'
 
-const LEGACY_URGENCY_TO_COMPLEXITY: Record<UrgencyLevel, ClinicalComplexityLevel> = {
+const LEGACY_URGENCY_TO_COMPLEXITY: Record<Exclude<UrgencyLevel, 'unsure'>, ClinicalComplexityLevel> = {
   low: 'low_complexity',
   medium: 'medium_complexity',
   high: 'high_with_support',
@@ -48,9 +48,10 @@ export function resolveClinicalComplexityLevels(
   }
 
   if (data.worksWithUrgencyLevels?.length) {
-    return data.worksWithUrgencyLevels.map(
-      (level) => LEGACY_URGENCY_TO_COMPLEXITY[level] ?? 'medium_complexity'
-    )
+    return data.worksWithUrgencyLevels.flatMap((level) => {
+      if (level === 'unsure') return []
+      return [LEGACY_URGENCY_TO_COMPLEXITY[level] ?? 'medium_complexity']
+    })
   }
 
   return []

@@ -50,6 +50,15 @@ function normalizeOnboardingEoa(eoaAddress: string): string {
   return getAddress(eoaAddress.trim()).toLowerCase()
 }
 
+/** The body wallet must be the wallet that signed the SIWE session. */
+export function sessionMatchesOnboardingWallet(sessionEoa: string, bodyEoa: string) {
+  try {
+    return normalizeOnboardingEoa(bodyEoa) === normalizeOnboardingEoa(sessionEoa)
+  } catch {
+    return false
+  }
+}
+
 function normalizeExistingEoa(eoaAddress: string | null | undefined): string | null {
   if (!eoaAddress) return null
   try {

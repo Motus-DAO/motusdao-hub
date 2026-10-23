@@ -50,7 +50,7 @@ const FIELD_LABELS: Record<string, string> = {
   tipoAtencion: 'Área principal',
   problematica: 'Motivo de consulta',
   preferenciaAsignacion: 'Asignación',
-  urgencyLevel: 'Urgencia',
+  urgencyLevel: 'Cómo te has sentido',
   languages: 'Idiomas',
   availabilityNotes: 'Disponibilidad',
   preferredTherapyStyle: 'Enfoque terapéutico',

@@ -10,7 +10,7 @@ import { formatCeloAddress } from './celo'
 export type UserRole = 'usuario' | 'psm'
 export type { UsuarioIntakeTrack }
 export type IntakeSource = 'manual' | 'ai_assisted' | 'hybrid'
-export type UrgencyLevel = 'low' | 'medium' | 'high' | 'crisis'
+export type UrgencyLevel = 'low' | 'medium' | 'high' | 'crisis' | 'unsure'
 export type Modality = 'video' | 'chat' | 'in_person' | 'hybrid'
 
 export interface OnboardingData {

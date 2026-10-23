@@ -5,8 +5,10 @@ import { toInputJson } from '@/lib/prisma-json'
 import { deriveConcernFields } from '@/lib/intake-concerns'
 import { createCrisisEventIfNeeded } from '@/lib/crisis'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
-import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
+import { resolveOnboardingIdentity, sessionMatchesOnboardingWallet } from '@/lib/onboarding-identity'
+import { userConsentRejection } from '@/lib/onboarding-consent'
 import { resolveAuthIdentityFields } from '@/lib/auth/identity'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
 
 const stringArray = z.array(z.string()).default([])
 const optionalStringArray = z.array(z.string()).optional()
@@ -42,23 +44,28 @@ const userOnboardingSchema = z
   problematica: z.string().optional(),
   preferenciaAsignacion: z.enum(['automatica', 'explorar']).optional(),
   clinicalConcern: optionalStringArray,
-  urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis']).default('medium'),
+  urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis', 'unsure']).default('medium'),
   preferredModality: z.enum(['video', 'chat', 'in_person', 'hybrid']).default('video'),
   preferredTherapyStyle: stringArray,
   languages: z.array(z.string()).default(['es']),
   timezone: z.string().optional(),
   availability: z.record(z.unknown()).default({}),
-  paymentPreference: z.string().optional(),
+  paymentPreference: z.string().optional().refine((value) => {
+    if (!value) return true
+    const allowed = new Set(['local_mx', 'international', 'digital'])
+    const parts = value.split(',').map((part) => part.trim()).filter(Boolean)
+    return parts.length > 0 && parts.every((part) => allowed.has(part)) && new Set(parts).size === parts.length
+  }, 'Elige una forma de pago de la lista'),
   therapistGenderPreference: z.string().optional(),
   priorTherapyExperience: z.boolean().optional(),
   medicationOrDiagnosisContext: z.string().optional(),
   riskFlags: stringArray,
 
-  consentToTerms: z.boolean().default(true),
-  consentToPrivacy: z.boolean().default(true),
+  consentToTerms: z.boolean().default(false),
+  consentToPrivacy: z.boolean().default(false),
   consentToAIProcessing: z.boolean().default(false),
-  consentToShareWithPSM: z.boolean().default(true),
-  consentToClinicalMatching: z.boolean().default(true),
+  consentToShareWithPSM: z.boolean().default(false),
+  consentToClinicalMatching: z.boolean().default(false),
   consentPolicyVersion: z.string().default('v1'),
   consentLocale: z.string().default('es'),
 })
@@ -89,12 +96,25 @@ const userOnboardingSchema = z
         })
       }
     }
+
+    const consentError = userConsentRejection(data)
+    if (consentError) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: consentError,
+        path: ['consentToTerms'],
+      })
+    }
   })
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request)
     const body = await request.json()
     const data = userOnboardingSchema.parse(body)
+    if (!sessionMatchesOnboardingWallet(session.eoaAddress, data.eoaAddress)) {
+      return NextResponse.json({ error: 'La wallet no coincide con la sesión.' }, { status: 403 })
+    }
     const isPlatformTrack = data.intakeTrack === 'platform'
     const concernFields = deriveConcernFields({
       tipoAtencion: data.tipoAtencion,
@@ -325,12 +345,14 @@ export async function POST(request: NextRequest) {
         intakeSource: result.intakeSource
       },
       matching: {
-        eligible: !isPlatformTrack && data.urgencyLevel !== 'crisis',
+        eligible: !isPlatformTrack,
         preference: patientPreferencia,
         intakeTrack: data.intakeTrack,
       }
     }, { status: existingUser ? 200 : 201 })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
     console.error('Error creating user:', error)
 
     if (error instanceof z.ZodError) {

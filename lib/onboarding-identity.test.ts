@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   decideOnboardingIdentity,
+  sessionMatchesOnboardingWallet,
   shouldMutateUserOnOnboarding,
 } from './onboarding-identity'
+import { psmConsentRejection, userConsentRejection } from './onboarding-consent'
 import { ALREADY_REGISTERED_CODE } from './auth/hub-session'
 
 const ORIGINAL_EOA = '0x1111111111111111111111111111111111111111'
@@ -74,5 +76,49 @@ describe('Onboarding identity freeze', () => {
       assert.equal(incomplete.identitySync.eoaAddress, OTHER_EOA)
     }
     assert.equal(shouldMutateUserOnOnboarding(incomplete), true)
+  })
+})
+
+describe('Onboarding wallet session', () => {
+  it('accepts the same wallet and rejects another', () => {
+    assert.equal(
+      sessionMatchesOnboardingWallet(
+        '0xd8da6bf26964af9d7eed9e03e53415d37aa96045',
+        '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
+      ),
+      true
+    )
+    assert.equal(sessionMatchesOnboardingWallet(ORIGINAL_EOA, OTHER_EOA), false)
+    assert.equal(sessionMatchesOnboardingWallet(ORIGINAL_EOA, 'not-a-wallet'), false)
+  })
+
+  it('treats omitted consents as a rejected signup', () => {
+    const omitted = {
+      consentToTerms: false,
+      consentToPrivacy: false,
+      consentToShareWithPSM: false,
+      consentToClinicalMatching: false,
+    }
+    assert.equal(userConsentRejection({ intakeTrack: 'therapy', ...omitted }), 'Faltan los consentimientos de términos y privacidad.')
+    assert.equal(
+      userConsentRejection({
+        intakeTrack: 'therapy',
+        ...omitted,
+        consentToTerms: true,
+        consentToPrivacy: true,
+      }),
+      'Faltan los consentimientos para compartir el perfil y el matching.'
+    )
+    assert.equal(
+      userConsentRejection({
+        intakeTrack: 'platform',
+        ...omitted,
+        consentToTerms: true,
+        consentToPrivacy: true,
+      }),
+      null
+    )
+    assert.equal(psmConsentRejection(omitted), 'Faltan los consentimientos de términos y privacidad.')
+    assert.equal(psmConsentRejection({ consentToTerms: true, consentToPrivacy: true }), null)
   })
 })

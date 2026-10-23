@@ -75,7 +75,12 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
   }
 
   const consentsComplete =
-    role !== 'psm' || arePsmLegalDeclarationsComplete(data)
+    role === 'psm'
+      ? arePsmLegalDeclarationsComplete(data)
+      : data.consentToTerms === true &&
+        data.consentToPrivacy === true &&
+        (isPlatformUser ||
+          (data.consentToShareWithPSM === true && data.consentToClinicalMatching === true))
   const legalDeclarations = resolveLegalDeclarations(data)
 
   const toggleAllRequiredDeclarations = (checked: boolean) => {
@@ -147,9 +152,9 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
         avatarStoragePath: data.avatarStoragePath,
         motusName: data.motusName,
         mnsTxHash: data.mnsTxHash,
-        consentToTerms: role === 'psm' ? arePsmLegalDeclarationsComplete(data) : true,
-        consentToPrivacy: role === 'psm' ? arePsmLegalDeclarationsComplete(data) : true,
-        consentToAIProcessing: role === 'psm' ? (data.consentToAIProcessing ?? false) : false,
+        consentToTerms: role === 'psm' ? arePsmLegalDeclarationsComplete(data) : data.consentToTerms === true,
+        consentToPrivacy: role === 'psm' ? arePsmLegalDeclarationsComplete(data) : data.consentToPrivacy === true,
+        consentToAIProcessing: data.consentToAIProcessing === true,
       }
 
       const rolePayload =
@@ -176,13 +181,12 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 timezone: data.timezone,
                 availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
                 paymentPreference: data.paymentPreference,
-                therapistGenderPreference: data.therapistGenderPreference,
                 priorTherapyExperience: data.priorTherapyExperience,
                 medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
                 riskFlags: data.riskFlags || [],
-                consentToAIProcessing: data.consentToAIProcessing ?? false,
-                consentToShareWithPSM: data.consentToShareWithPSM ?? true,
-                consentToClinicalMatching: data.consentToClinicalMatching ?? true,
+                consentToAIProcessing: data.consentToAIProcessing === true,
+                consentToShareWithPSM: data.consentToShareWithPSM === true,
+                consentToClinicalMatching: data.consentToClinicalMatching === true,
               }
           : buildPsmApiPayload(data)
 
