@@ -36,6 +36,7 @@ import { authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
 import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
+import { SpeiPaymentCard } from '@/components/payments/SpeiPaymentCard'
 import {
   classifyProfileLoadError,
   PROFILE_WALLET_READY_TIMEOUT_MS,
@@ -1048,6 +1049,12 @@ export default function PerfilPage() {
                   </form>
                 </GlassCard>
               </motion.div>
+
+              {(userData?.role === 'usuario' || userData?.role === 'psm') && (
+                <div className="mt-8">
+                  <SpeiPaymentCard />
+                </div>
+              )}
 
               {/* Match Information */}
               {(userData?.role === 'usuario' || userData?.role === 'psm') && (

@@ -13,9 +13,9 @@ const prismaClientOptions: Prisma.PrismaClientOptions = {
 }
 
 // The dev server keeps the first client on globalThis. A schema change leaves
-// that instance without new models, so delegates like aiCreditCharge are missing.
-const cachedPrisma = globalForPrisma.prisma as (PrismaClient & { aiCreditCharge?: unknown }) | undefined
-if (cachedPrisma && cachedPrisma.aiCreditCharge == null) {
+// that instance without new models, so delegates like sessionTransferEvent are missing.
+const cachedPrisma = globalForPrisma.prisma as (PrismaClient & { sessionTransferEvent?: unknown }) | undefined
+if (cachedPrisma && cachedPrisma.sessionTransferEvent == null) {
   void cachedPrisma.$disconnect()
   globalForPrisma.prisma = undefined
 }

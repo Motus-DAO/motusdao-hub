@@ -406,6 +406,9 @@ model PSMProfile {
   participaCursos        Boolean            @default(false)
   participaInvestigacion Boolean            @default(false)
   participaComunidad     Boolean            @default(false)
+  speiBeneficiaryName    String?
+  speiBankName           String?
+  speiClabe              String?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -511,10 +514,11 @@ model Session {
   cancelReason String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  match        Match?        @relation(fields: [matchId], references: [id])
-  orderItems   OrderItem[]
-  paymentLogs  PaymentLog[]
-  reviews      Review[]
+  match          Match?                 @relation(fields: [matchId], references: [id])
+  orderItems     OrderItem[]
+  paymentLogs    PaymentLog[]
+  reviews        Review[]
+  transferEvents SessionTransferEvent[]
   psm          User          @relation("sessions_psmIdTousers", fields: [psmId], references: [id], onDelete: Cascade)
   user         User          @relation("sessions_userIdTousers", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -522,6 +526,23 @@ model Session {
   @@index([userId, status])
   @@index([scheduledStart, scheduledEnd])
   @@map("sessions")
+}
+
+model SessionTransferEvent {
+  id          String   @id @default(cuid())
+  sessionId   String
+  actorUserId String
+  kind        String
+  amount      Decimal? @db.Decimal(12, 2)
+  currency    String   @default("MXN")
+  reference   String?
+  note        String?
+  createdAt   DateTime @default(now())
+  actor       User     @relation("session_transfer_actor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("session_transfer_events")
 }
 
 model ProviderAvailabilitySlot {
@@ -627,6 +648,7 @@ model User {
   reviewsReceivedAsPSM  Review[]           @relation("reviews_psm")
   sessionsAsPSM         Session[]          @relation("sessions_psmIdTousers")
   sessionsAsUser        Session[]          @relation("sessions_userIdTousers")
+  sessionTransferEvents SessionTransferEvent[] @relation("session_transfer_actor")
 
   @@map("users")
 }
