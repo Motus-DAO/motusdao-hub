@@ -172,7 +172,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 intakeTrack: 'therapy' as const,
                 tipoAtencion: concernFields.tipoAtencion,
                 problematica: data.problematica,
-                preferenciaAsignacion: data.preferenciaAsignacion,
+                preferenciaAsignacion: 'explorar' as const,
                 clinicalConcern: concernFields.clinicalConcern,
                 urgencyLevel: data.urgencyLevel || 'medium',
                 preferredModality: 'video' as const,
@@ -484,15 +484,6 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                     <span className="text-sm font-medium">Motivo de consulta</span>
                   </div>
                   <p className="text-white">{data.problematica || 'No especificado'}</p>
-                </div>
-                <div className="p-4 glass rounded-xl">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <User className="w-4 h-4 text-purple-400" />
-                    <span className="text-sm font-medium">Preferencia de asignación</span>
-                  </div>
-                  <p className="text-white capitalize">
-                    {data.preferenciaAsignacion === 'automatica' ? 'Asignación automática' : 'Explorar perfiles'}
-                  </p>
                 </div>
               </div>
             </div>

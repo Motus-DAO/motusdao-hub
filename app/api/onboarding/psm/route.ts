@@ -8,8 +8,10 @@ import {
   PSM_MIN_NARRATIVE_LENGTH,
   resolveProfessionalNarrative,
 } from '@/lib/intake/psm-intake-v1'
-import { resolveOnboardingIdentity } from '@/lib/onboarding-identity'
+import { resolveOnboardingIdentity, sessionMatchesOnboardingWallet } from '@/lib/onboarding-identity'
+import { psmConsentRejection } from '@/lib/onboarding-consent'
 import { resolveAuthIdentityFields } from '@/lib/auth/identity'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { buildPsmSlug, ensureUniqueSlug } from '@/lib/psm/slug'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 import { isStorageMediaRef } from '@/lib/academy/media'
@@ -72,14 +74,22 @@ const psmOnboardingSchema = z.object({
   participaInvestigacion: z.boolean().default(false),
   participaComunidad: z.boolean().default(false),
 
-  consentToTerms: z.boolean().default(true),
-  consentToPrivacy: z.boolean().default(true),
+  consentToTerms: z.boolean().default(false),
+  consentToPrivacy: z.boolean().default(false),
   consentToAIProcessing: z.boolean().default(false),
   consentToShareWithPSM: z.boolean().default(false),
   consentToClinicalMatching: z.boolean().default(false),
   consentPolicyVersion: z.string().default('v1'),
   consentLocale: z.string().default('es'),
 }).superRefine((data, ctx) => {
+  const consentError = psmConsentRejection(data)
+  if (consentError) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: consentError,
+      path: ['consentToTerms'],
+    })
+  }
   if (!data.cedulaDocumentPath && !data.tituloDocumentPath) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -185,8 +195,12 @@ function buildPsmProfileFields(
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request)
     const body = await request.json()
     const data = psmOnboardingSchema.parse(body)
+    if (!sessionMatchesOnboardingWallet(session.eoaAddress, data.eoaAddress)) {
+      return NextResponse.json({ error: 'La wallet no coincide con la sesión.' }, { status: 403 })
+    }
 
     const identity = await resolveOnboardingIdentity({
       email: data.email,
@@ -367,6 +381,8 @@ export async function POST(request: NextRequest) {
       }
     }, { status: existingUser ? 200 : 201 })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
     console.error('Error creating PSM:', error)
 
     if (error instanceof z.ZodError) {

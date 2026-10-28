@@ -52,7 +52,7 @@ const userOnboardingSchema = z
   availability: z.record(z.unknown()).default({}),
   paymentPreference: z.string().optional().refine((value) => {
     if (!value) return true
-    const allowed = new Set(['local_mx', 'international', 'digital'])
+    const allowed = new Set(['local_mx', 'international'])
     const parts = value.split(',').map((part) => part.trim()).filter(Boolean)
     return parts.length > 0 && parts.every((part) => allowed.has(part)) && new Set(parts).size === parts.length
   }, 'Elige una forma de pago de la lista'),
@@ -76,13 +76,6 @@ const userOnboardingSchema = z
           code: z.ZodIssueCode.custom,
           message: 'El motivo de consulta es obligatorio para usuarios terapéuticos',
           path: ['problematica'],
-        })
-      }
-      if (!data.preferenciaAsignacion) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'La preferencia de asignación es obligatoria',
-          path: ['preferenciaAsignacion'],
         })
       }
     }
@@ -130,7 +123,7 @@ export async function POST(request: NextRequest) {
       data.problematica ||
       data.platformNotes ||
       platformSummary
-    const patientPreferencia = data.preferenciaAsignacion || 'explorar'
+    const patientPreferencia = 'explorar' as const
 
     const identity = await resolveOnboardingIdentity({
       email: data.email,

@@ -37,14 +37,11 @@ const usuarioSchema = z.object({
   tipoAtencion: z.string().optional(),
   clinicalConcern: z.array(z.string()).default([]),
   problematica: z.string().min(20, 'Cuéntanos un poco más sobre lo que te trae aquí (mínimo 20 caracteres)'),
-  preferenciaAsignacion: z.enum(['automatica', 'explorar'], {
-    required_error: 'Debes seleccionar una preferencia de asignación'
-  }),
   urgencyLevel: z.enum(['low', 'medium', 'high', 'unsure'], {
     required_error: 'Elige cómo te has sentido últimamente'
   }),
   preferredTherapyStyle: z.array(z.string()).default([]),
-  languages: z.array(z.string()).default(['es']),
+  languages: z.array(z.string()).min(1, 'Elige al menos un idioma').default(['es']),
   availabilityNotes: z.string().optional(),
   paymentPreference: z.string().optional().refine((value) => {
     if (!value) return true
@@ -99,19 +96,51 @@ const therapyStyles = [
   { value: 'humanista', label: 'Humanista' },
   { value: 'psicoanalisis', label: 'Psicoanálisis' },
   { value: 'sistemica', label: 'Sistémica' },
-  { value: 'no_preference', label: 'Sin preferencia' }
-]
+] as const
+
+const knownTherapyStyles = new Set<string>(therapyStyles.map((style) => style.value))
+
+function customTherapyStyle(values: string[]) {
+  return values.filter((value) => value !== 'no_preference' && !knownTherapyStyles.has(value)).join(', ')
+}
 
 const languageOptions = [
-  { value: 'es', label: 'Español' },
   { value: 'en', label: 'Inglés' },
-  { value: 'pt', label: 'Portugués' }
-]
+  { value: 'es', label: 'Español' },
+] as const
+
+const knownLanguages = new Set<string>(languageOptions.map((language) => language.value))
+
+const legacyLanguageLabels: Record<string, string> = {
+  pt: 'Portugués',
+  fr: 'Francés',
+}
+
+function customLanguage(values: string[]) {
+  return values
+    .filter((value) => !knownLanguages.has(value))
+    .map((value) => legacyLanguageLabels[value] || value)
+    .join(', ')
+}
+
+function languageFormValue(values: string[] | undefined) {
+  const source = values?.length ? values : ['es']
+  const known = source.filter((value) => knownLanguages.has(value))
+  const custom = customLanguage(source)
+  return custom ? [...known, custom] : known
+}
 
 const paymentOptions = [
-  { value: 'local_mx', label: 'Pagos por transferencia local México' },
-  { value: 'international', label: 'Pagos por transferencia internacional' },
-  { value: 'digital', label: 'Monedas digitales' },
+  {
+    value: 'local_mx',
+    label: 'Pagos locales',
+    detail: 'Transferencia directa en moneda local, de persona a persona. Solo si el profesional está en tu país.',
+  },
+  {
+    value: 'international',
+    label: 'Pagos internacionales',
+    detail: 'Cuando el profesional está en otro país.',
+  },
 ] as const
 
 function normalizePaymentPreference(value?: string) {
@@ -170,9 +199,27 @@ const paises = [
 ]
 
 export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
-  const [showInfoUse, setShowInfoUse] = useState(false)
   const { data, updateData, profileIntakeMode, setProfileIntakeMode } = useOnboardingStore()
+  const [showInfoUse, setShowInfoUse] = useState(false)
+  const storedTherapyStyles = (data.preferredTherapyStyle || []).filter((value) => value !== 'no_preference')
+  const [wantsTherapyStyle, setWantsTherapyStyle] = useState<boolean | null>(
+    data.preferredTherapyStyle?.includes('no_preference')
+      ? false
+      : storedTherapyStyles.length > 0
+        ? true
+        : null
+  )
+  const [customTherapyText, setCustomTherapyText] = useState(customTherapyStyle(storedTherapyStyles))
+  const initialLanguages = languageFormValue(data.languages)
+  const [customLanguageText, setCustomLanguageText] = useState(customLanguage(data.languages || []))
+  const [wantsOtherLanguage, setWantsOtherLanguage] = useState(customLanguage(data.languages || []).length > 0)
   const intakeMode = profileIntakeMode ?? 'manual'
+
+  useEffect(() => {
+    if (data.preferenciaAsignacion !== 'explorar') {
+      updateData({ preferenciaAsignacion: 'explorar' })
+    }
+  }, [data.preferenciaAsignacion, updateData])
 
   useEffect(() => {
     const missing = getStepBlockerKeys(3, 'usuario', data)
@@ -199,10 +246,9 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       tipoAtencion: data.tipoAtencion || '',
       clinicalConcern: data.clinicalConcern || (data.tipoAtencion ? [data.tipoAtencion] : []),
       problematica: data.problematica || '',
-      preferenciaAsignacion: data.preferenciaAsignacion || undefined,
       urgencyLevel: data.urgencyLevel === 'crisis' ? undefined : data.urgencyLevel || undefined,
-      preferredTherapyStyle: data.preferredTherapyStyle || [],
-      languages: data.languages || ['es'],
+      preferredTherapyStyle: (data.preferredTherapyStyle || []).filter((value) => value !== 'no_preference'),
+      languages: initialLanguages,
       availabilityNotes: data.availabilityNotes || '',
       paymentPreference: normalizePaymentPreference(data.paymentPreference),
       priorTherapyExperience: data.priorTherapyExperience ?? false,
@@ -226,6 +272,51 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
 
     setValue('clinicalConcern', next, { shouldDirty: true, shouldValidate: true })
     setValue('tipoAtencion', next[0] || undefined, { shouldDirty: true, shouldValidate: false })
+  }
+
+  const selectedTherapyStyles = (watch('preferredTherapyStyle') || []).filter((value) => knownTherapyStyles.has(value))
+
+  const writeTherapyStyles = (known: string[], custom: string) => {
+    const extra = custom.trim()
+    setValue('preferredTherapyStyle', extra ? [...known, extra] : known, { shouldDirty: true, shouldValidate: true })
+  }
+
+  const chooseTherapyPreference = (yes: boolean) => {
+    setWantsTherapyStyle(yes)
+    if (!yes) {
+      setCustomTherapyText('')
+      setValue('preferredTherapyStyle', [], { shouldDirty: true, shouldValidate: true })
+    }
+  }
+
+  const toggleTherapyStyle = (value: string) => {
+    const next = selectedTherapyStyles.includes(value)
+      ? selectedTherapyStyles.filter((item) => item !== value)
+      : [...selectedTherapyStyles, value]
+    writeTherapyStyles(next, customTherapyText)
+  }
+
+  const selectedLanguages = (watch('languages') || []).filter((value) => knownLanguages.has(value))
+
+  const writeLanguages = (known: string[], custom: string, includeCustom: boolean) => {
+    const extra = includeCustom ? custom.trim() : ''
+    setValue('languages', extra ? [...known, extra] : known, { shouldDirty: true, shouldValidate: true })
+  }
+
+  const toggleLanguage = (value: string) => {
+    const next = selectedLanguages.includes(value)
+      ? selectedLanguages.filter((item) => item !== value)
+      : [...selectedLanguages, value]
+    writeLanguages(next, customLanguageText, wantsOtherLanguage)
+  }
+
+  const chooseOtherLanguage = () => {
+    const next = !wantsOtherLanguage
+    setWantsOtherLanguage(next)
+    if (!next) {
+      setCustomLanguageText('')
+      writeLanguages(selectedLanguages, '', false)
+    }
   }
 
   const selectedPayments = (watch('paymentPreference') || '').split(',').filter(Boolean)
@@ -504,49 +595,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
               </div>
 
               <div className="space-y-3">
-                <label className="block text-sm font-medium">
-                  Preferencia de asignación *
-                </label>
-                <div className="space-y-2">
-                  <label className={cn("flex items-center space-x-3 cursor-pointer transition-colors hover:bg-muted/60", onboardingFormSurfaceClass)}>
-                    <input
-                      {...register('preferenciaAsignacion')}
-                      type="radio"
-                      value="automatica"
-                      className="w-4 h-4 text-mauve-600 bg-transparent border-white/20 focus:ring-mauve-500"
-                    />
-                    <div>
-                      <p className="font-medium">Asignación automática</p>
-                      <p className="text-sm text-muted-foreground">
-                        Te asignaremos el profesional más adecuado según tu perfil
-                      </p>
-                    </div>
-                  </label>
-                  
-                  <label className={cn("flex items-center space-x-3 cursor-pointer transition-colors hover:bg-muted/60", onboardingFormSurfaceClass)}>
-                    <input
-                      {...register('preferenciaAsignacion')}
-                      type="radio"
-                      value="explorar"
-                      className="w-4 h-4 text-mauve-600 bg-transparent border-white/20 focus:ring-mauve-500"
-                    />
-                    <div>
-                      <p className="font-medium">Explorar perfiles</p>
-                      <p className="text-sm text-muted-foreground">
-                        Podrás revisar y elegir entre diferentes profesionales
-                      </p>
-                    </div>
-                  </label>
-                </div>
-                {errors.preferenciaAsignacion && (
-                  <p className="text-red-400 text-sm flex items-center space-x-1">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{errors.preferenciaAsignacion.message}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3">
                 <div>
                   <p className="text-sm font-medium">Encuentra apoyo profesional</p>
                   <p className="text-sm font-medium mt-2">¿Cómo te has sentido últimamente?</p>
@@ -585,27 +633,128 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
               </div>
 
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Enfoque terapéutico preferido</label>
+                <p className="text-sm font-medium">¿Tienes un enfoque terapéutico preferido?</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {therapyStyles.map(style => (
-                    <label key={style.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
-                      <input {...register('preferredTherapyStyle')} type="checkbox" value={style.value} />
-                      <span className="text-sm">{style.label}</span>
-                    </label>
-                  ))}
+                  <button
+                    type="button"
+                    aria-pressed={wantsTherapyStyle === false}
+                    onClick={() => chooseTherapyPreference(false)}
+                    className={cn(
+                      'rounded-xl border px-4 py-3 text-sm transition-colors',
+                      wantsTherapyStyle === false
+                        ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                        : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
+                    )}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={wantsTherapyStyle === true}
+                    onClick={() => chooseTherapyPreference(true)}
+                    className={cn(
+                      'rounded-xl border px-4 py-3 text-sm transition-colors',
+                      wantsTherapyStyle === true
+                        ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                        : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
+                    )}
+                  >
+                    Sí
+                  </button>
                 </div>
+                {wantsTherapyStyle === true && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {therapyStyles.map((style) => {
+                        const active = selectedTherapyStyles.includes(style.value)
+                        return (
+                          <button
+                            key={style.value}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => toggleTherapyStyle(style.value)}
+                            className={cn(
+                              'rounded-xl border px-3 py-2 text-left text-sm transition-colors',
+                              active
+                                ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                                : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
+                            )}
+                          >
+                            {style.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="customTherapyStyle" className="block text-sm font-medium">
+                        Si tu enfoque preferido no está en la lista, escríbelo
+                      </label>
+                      <input
+                        id="customTherapyStyle"
+                        value={customTherapyText}
+                        onChange={(event) => {
+                          setCustomTherapyText(event.target.value)
+                          writeTherapyStyles(selectedTherapyStyles, event.target.value)
+                        }}
+                        className={inputFieldClass()}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Idiomas *</label>
+                <p className="text-sm font-medium">¿Cuál es tu preferencia de idioma?</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {languageOptions.map(language => (
-                    <label key={language.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
-                      <input {...register('languages')} type="checkbox" value={language.value} />
-                      <span className="text-sm">{language.label}</span>
-                    </label>
-                  ))}
+                  {languageOptions.map((language) => {
+                    const active = selectedLanguages.includes(language.value)
+                    return (
+                      <button
+                        key={language.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => toggleLanguage(language.value)}
+                        className={cn(
+                          'rounded-xl border px-3 py-2 text-sm transition-colors',
+                          active
+                            ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                            : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
+                        )}
+                      >
+                        {language.label}
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    aria-pressed={wantsOtherLanguage}
+                    onClick={chooseOtherLanguage}
+                    className={cn(
+                      'rounded-xl border px-3 py-2 text-sm transition-colors',
+                      wantsOtherLanguage
+                        ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
+                        : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
+                    )}
+                  >
+                    Otro
+                  </button>
                 </div>
+                {wantsOtherLanguage && (
+                  <div className="space-y-2">
+                    <label htmlFor="customLanguage" className="block text-sm font-medium">
+                      Escribe el idioma
+                    </label>
+                    <input
+                      id="customLanguage"
+                      value={customLanguageText}
+                      onChange={(event) => {
+                        setCustomLanguageText(event.target.value)
+                        writeLanguages(selectedLanguages, event.target.value, true)
+                      }}
+                      className={inputFieldClass()}
+                    />
+                  </div>
+                )}
                 {errors.languages && <p className="text-red-400 text-sm">{errors.languages.message}</p>}
               </div>
 
@@ -626,7 +775,7 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
               <div className="space-y-3">
                 <p className="text-sm font-medium">Preferencia de pago</p>
                 <p className="text-xs text-muted-foreground">
-                  Estas son las formas de pago que aceptamos. Puedes marcar más de una.
+                  Motus todavía no cobra la sesión. Esto solo indica qué vía puedes usar. Si el profesional está en otro país, el pago local no aplica.
                 </p>
                 <div className="space-y-2">
                   {paymentOptions.map((option) => {
@@ -638,13 +787,14 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                         aria-pressed={active}
                         onClick={() => togglePayment(option.value)}
                         className={cn(
-                          'w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors',
+                          'w-full rounded-xl border px-4 py-3 text-left transition-colors',
                           active
                             ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
                             : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
                         )}
                       >
-                        {option.label}
+                        <span className="block text-sm">{option.label}</span>
+                        <span className="mt-1 block text-xs opacity-80">{option.detail}</span>
                       </button>
                     )
                   })}

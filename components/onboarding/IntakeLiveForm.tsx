@@ -222,13 +222,6 @@ export function IntakeLiveForm({
           <PsmSectionBlock title="Preferencias">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <LiveInput
-                label={fieldLabel('preferenciaAsignacion')}
-                value={data.preferenciaAsignacion || ''}
-                onChange={(v) =>
-                  set('preferenciaAsignacion', v as 'automatica' | 'explorar')
-                }
-              />
-              <LiveInput
                 label={fieldLabel('urgencyLevel')}
                 value={data.urgencyLevel || ''}
                 onChange={(v) => set('urgencyLevel', v)}
