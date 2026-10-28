@@ -1,6 +1,6 @@
 # Chat-data slice 3 — Consented summary + FHIR — Spec
 
-> Status: **READY FOR QA** · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §4 exit 2 + §5 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
+> Status: **SHIPPED** @ `7b5577a` · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §4 exit 2 + §5 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
 
 Deliver: user-authored summary text; FHIR `DocumentReference` envelope; minimal **therapist-readable** store for active match; revoke; not expediente.
 
@@ -28,9 +28,9 @@ Non-goals: NOM-004 expediente; SMART on FHIR; auto-share bitácora/Psychat; encr
 
 ## 3. QA gate
 
-- [ ] `npx tsx --test lib/fhir/document-reference.test.ts`
-- [ ] `npx prisma migrate deploy`
-- [ ] `npx tsc --noEmit`
+- [x] `npx tsx --test lib/fhir/document-reference.test.ts`
+- [ ] `npx prisma migrate deploy` (run in target env)
+- [x] `npx tsc --noEmit`
 
 ## 4. Exit
 

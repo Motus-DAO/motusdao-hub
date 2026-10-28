@@ -19,7 +19,7 @@ For a future auditor: **order and non-goals stay as in SDD-chat-data**; each row
 |------|----------------|----------|
 | **1** — [chat-data-slice-1-bitacora-export.md](./chat-data-slice-1-bitacora-export.md) | Export bitácora | Published file format, key recipe doc, download button |
 | **2** — [chat-data-slice-2-psychat-archive-export.md](./chat-data-slice-2-psychat-archive-export.md) | Psychat opt-in + export | **SHIPPED** — archive, sidebar, help (TEE/E2EE) |
-| **3** — [chat-data-slice-3-consented-summary-fhir.md](./chat-data-slice-3-consented-summary-fhir.md) | FHIR second exit | Consented summary + DocumentReference + PSM read |
+| **3** — [chat-data-slice-3-consented-summary-fhir.md](./chat-data-slice-3-consented-summary-fhir.md) | FHIR second exit | **SHIPPED** — consented summary, DocumentReference, PSM panel |
 | **4** — `chat-data-slice-4-training-copy-consent.md` (TBD) | Training yes + payment | Readable copy, separate consent, care unchanged if no |
 | **5** — `chat-data-slice-5-rootrouter-enclave.md` (TBD) | Proxy + session TEE + always-on | Phased AC: local proxy → session enclave → optional always-on |
 
