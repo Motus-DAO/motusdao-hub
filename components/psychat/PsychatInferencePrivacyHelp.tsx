@@ -173,6 +173,20 @@ export function PsychatInferencePrivacyHelp() {
           Ir a compartir resumen →
         </Link>
       </GlassCard>
+
+      <GlassCard className="p-6 space-y-3">
+        <GradientText as="h2" className="text-xl font-semibold">
+          Tercera salida: entrenamiento (opcional)
+        </GradientText>
+        <p>
+          Si quieres liberar una <strong className="text-foreground">copia en claro</strong> que tú redactas
+          para entrenar modelos — distinto de Psychat, bitácora cifrada y resumen al PSM — con aviso propio y
+          compensación registrada (sin pago automático en esta versión).
+        </p>
+        <Link href="/contribuir-entrenamiento" className="text-mauve-400 underline text-sm">
+          Ir a contribuir entrenamiento →
+        </Link>
+      </GlassCard>
     </div>
   )
 }

@@ -460,6 +460,7 @@ model ConsentRecord {
   consentToShareWithPSM     Boolean  @default(false)
   consentToClinicalMatching Boolean  @default(false)
   consentToPsychatArchive   Boolean  @default(false)
+  consentToTrainingCopy     Boolean  @default(false)
   source                    String   @default("onboarding")
   policyVersion             String   @default("v1")
   locale                    String   @default("es")
@@ -473,6 +474,24 @@ model ConsentRecord {
 
   @@index([userId, acceptedAt])
   @@map("consent_records")
+}
+
+model TrainingCopyContribution {
+  id              String               @id @default(cuid())
+  userId          String
+  title           String?
+  copyText        String               @db.Text
+  processorLabel  String               @default("MotusDAO y socios de entrenamiento autorizados")
+  policyVersion   String
+  compensationUsd Decimal              @default(0) @db.Decimal(12, 2)
+  payoutStatus    TrainingPayoutStatus @default(none)
+  revokedAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("training_copy_contributions")
 }
 
 model AiCreditCharge {
@@ -673,6 +692,7 @@ model User {
   psychatArchiveSnapshot PsychatArchiveSnapshot?
   consentedSummariesAuthored ConsentedClinicalSummary[]
   consentedSummariesReceived ConsentedClinicalSummary[] @relation("consented_summary_psm")
+  trainingCopyContributions TrainingCopyContribution[]
   psmMatches            Match[]            @relation("matches_psmIdTousers")
   userMatches           Match[]            @relation("matches_userIdTousers")
   patient               PatientProfile?
@@ -690,6 +710,13 @@ model User {
   sessionTransferEvents SessionTransferEvent[] @relation("session_transfer_actor")
 
   @@map("users")
+}
+
+enum TrainingPayoutStatus {
+  none
+  recorded
+  paid
+  cancelled
 }
 
 enum AuthProvider {
@@ -717,6 +744,7 @@ enum ClinicalResource {
   journal_entry
   psychat_archive
   consented_summary
+  training_copy
   match
   session
   document

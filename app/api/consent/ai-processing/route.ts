@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { hasStoredAiProcessingConsent } from '@/lib/auth/ai-consent'
+import { consentFlagsFromPrevious } from '@/lib/consent/copy-previous-flags'
 import { AuthError } from '@/lib/auth/errors'
 
 export async function GET(request: NextRequest) {
@@ -42,14 +43,9 @@ export async function POST(request: NextRequest) {
     await prisma.consentRecord.create({
       data: {
         userId: session.userId,
-        consentToTerms: previous?.consentToTerms ?? false,
-        consentToPrivacy: previous?.consentToPrivacy ?? false,
+        ...consentFlagsFromPrevious(previous),
         consentToAIProcessing: true,
-        consentToShareWithPSM: previous?.consentToShareWithPSM ?? false,
-        consentToClinicalMatching: previous?.consentToClinicalMatching ?? false,
         source: 'psychat',
-        policyVersion: previous?.policyVersion ?? 'v1',
-        locale: previous?.locale ?? 'es',
       },
     })
 

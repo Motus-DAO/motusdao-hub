@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { hasStoredPsychatArchiveConsent } from '@/lib/auth/psychat-archive-consent'
+import { consentFlagsFromPrevious } from '@/lib/consent/copy-previous-flags'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,15 +39,10 @@ export async function POST(request: NextRequest) {
     await prisma.consentRecord.create({
       data: {
         userId: session.userId,
-        consentToTerms: previous?.consentToTerms ?? false,
-        consentToPrivacy: previous?.consentToPrivacy ?? false,
-        consentToAIProcessing: previous?.consentToAIProcessing ?? false,
-        consentToShareWithPSM: previous?.consentToShareWithPSM ?? false,
-        consentToClinicalMatching: previous?.consentToClinicalMatching ?? false,
+        ...consentFlagsFromPrevious(previous),
         consentToPsychatArchive: body.enabled,
         source: 'psychat_archive',
         policyVersion: previous?.policyVersion ?? '2026-10-27',
-        locale: previous?.locale ?? 'es',
       },
     })
 

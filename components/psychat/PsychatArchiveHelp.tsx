@@ -179,7 +179,13 @@ export function PsychatArchiveHelp({ showRecoverCta = true }: Props) {
         </GradientText>
         <ul className="list-disc list-inside space-y-2">
           <li>No es tu bitácora personal (otra llave, otro propósito).</li>
-          <li>No es entrenamiento de modelos de IA (otro consentimiento, otro proceso).</li>
+          <li>
+            No es entrenamiento de modelos de IA — eso es otro consentimiento:{' '}
+            <Link href="/contribuir-entrenamiento" className="text-mauve-400 underline">
+              copia legible para entrenamiento
+            </Link>
+            .
+          </li>
           <li>No sustituye atención humana ni emergencias.</li>
         </ul>
       </GlassCard>
