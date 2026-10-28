@@ -9,6 +9,7 @@
 | [processors-inventory.md](./processors-inventory.md) | Inventario técnico interno |
 | [ipfs-storage-audit.md](./ipfs-storage-audit.md) | IPFS / Lighthouse |
 | [regimen-tratamiento-datos.md](./regimen-tratamiento-datos.md) | Decisión MX / US pre-revenue |
+| [pendientes-post-beta.md](./pendientes-post-beta.md) | **Deuda consciente** (legal, ARCO, DPA, slice 7) — no bloquea beta |
 | [privacy-notice-research-es.md](./privacy-notice-research-es.md) | Investigación de referencia |
 
 Spec: `specs/safety-slice-6-program-gap.md`. Revisar con abogado al tener tracción o ingresos US clínicos.

@@ -45,7 +45,9 @@
 
 Slice 6 program gap is closed for **beta / go-to-market**. Re-open when: (a) first paying US clinical flow, (b) training consent collection, or (c) razón social / domicilio fiscal formal — update aviso and subprocessors.
 
-Next coding slice per safety plan: **slice 7 — Bitácora ciphertext** (`specs/safety-slice-7` TBD).
+Next coding slice per safety plan: **slice 7 — Bitácora ciphertext** (`specs/safety-slice-7-bitacora-ciphertext.md` TBD).
+
+**Deferred after beta (tracked):** [docs/compliance/pendientes-post-beta.md](../docs/compliance/pendientes-post-beta.md).
 
 ## 6. Decisions — LOCKED (pre-revenue)
 
