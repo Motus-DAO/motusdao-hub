@@ -4,6 +4,9 @@ export const PSYCHAT_ARCHIVE_PAYLOAD_VERSION = 1 as const
 export const PSYCHAT_ARCHIVE_EXPORT_FORMAT = 'motus-psychat-archive-export' as const
 export const PSYCHAT_ARCHIVE_EXPORT_VERSION = 1 as const
 
+/** Browser event: sidebar/listeners refetch archive metadata after PUT/DELETE. */
+export const PSYCHAT_ARCHIVE_CHANGED_EVENT = 'motus-psychat-archive-changed' as const
+
 export const psychatArchiveOptInCopy =
   'Guardar una copia cifrada de este chat en mi cuenta Motus (opcional; apagado por defecto). El equipo de la app no puede leer el texto — solo tú, con tu wallet.'
 
@@ -11,6 +14,9 @@ export const psychatArchiveOptInCopy =
 export const psychatCopy = {
   accountBackup: 'Copia en tu cuenta Motus',
   noAccountBackup: 'Sin copia guardada en tu cuenta.',
+  singleAccountSnapshotHint:
+    'En tu cuenta hay una sola copia: cada guardado la reemplaza. Los .json locales solo viven en “En pantalla” hasta que los vuelvas a abrir.',
+  deleteAccountBackup: 'Borrar copia de mi cuenta',
   savedToAccount: 'Copia cifrada guardada en tu cuenta Motus.',
   saveToAccount: 'Guardar en mi cuenta Motus',
   recoverFromJson: 'Recuperar desde archivo .json',

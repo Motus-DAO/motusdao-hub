@@ -125,9 +125,11 @@ export function PsychatArchiveHelp({ showRecoverCta = true }: Props) {
           ¿Cómo lo borro?
         </GradientText>
         <p>
-          Desmarca “Guardar copia cifrada” en Psychat. Eso apaga la función y{' '}
-          <strong className="text-foreground">elimina la copia de tu cuenta Motus</strong>. El chat
-          que ves en pantalla no desaparece; solo deja de existir el respaldo cifrado en la app.
+          Desmarca “Guardar copia cifrada” en Psychat, o usa el icono de papelera junto a la copia
+          en el menú lateral. Eso{' '}
+          <strong className="text-foreground">elimina la copia de tu cuenta Motus</strong> (la
+          casilla de opt-in puede seguir activa). El chat que ves en pantalla no desaparece; solo
+          deja de existir el respaldo cifrado en la app.
         </p>
         <p>
           Si además exportaste un `.json`, ese archivo sigue donde lo hayas guardado hasta que tú
@@ -152,7 +154,7 @@ export function PsychatArchiveHelp({ showRecoverCta = true }: Props) {
               <td className="py-2">Útil si borraste la copia en la app o quieres backup fuera del Hub.</td>
             </tr>
             <tr>
-              <td className="py-2 pr-2">La borras desactivando la casilla.</td>
+              <td className="py-2 pr-2">La borras con la papelera del menú o desactivando la casilla (esta última también apaga el guardado automático).</td>
               <td className="py-2">La borras tú donde la guardaste.</td>
             </tr>
           </tbody>

@@ -20,6 +20,7 @@ import { usePsychatArchiveKeyContext } from '@/components/psychat/PsychatArchive
 import {
   buildPsychatArchiveExportFile,
   downloadPsychatArchiveExport,
+  notifyPsychatArchiveChanged,
   upsertPsychatArchive,
 } from '@/lib/psychat-archive/client'
 import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
@@ -205,7 +206,10 @@ export function PsychatArchivePanel({ isSessionReady, messages }: Props) {
       })
       if (!res.ok) throw new Error('No se pudo guardar la preferencia')
       setOptIn(enabled)
-      if (!enabled) setSaveState('idle')
+      if (!enabled) {
+        setSaveState('idle')
+        notifyPsychatArchiveChanged()
+      }
     } catch {
       alert('No se pudo actualizar la preferencia de archivo.')
     } finally {

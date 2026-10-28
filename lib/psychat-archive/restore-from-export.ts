@@ -1,4 +1,5 @@
 import { authFetch } from '@/lib/auth/client'
+import { notifyPsychatArchiveChanged } from '@/lib/psychat-archive/client'
 import type { PsychatArchiveExportFile } from './export-format'
 import { parsePsychatArchiveExportFile } from './export-format'
 import { decryptPsychatArchivePayload } from './crypto'
@@ -52,5 +53,6 @@ export async function restorePsychatExportToAccount(
       'No se pudo guardar en tu cuenta Motus. ¿Tienes activada la copia cifrada en Psychat?'
     )
   }
+  notifyPsychatArchiveChanged()
   return 1
 }

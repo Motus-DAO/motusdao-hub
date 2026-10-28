@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FileUp, MessageSquare, MessageSquarePlus, Server } from 'lucide-react'
+import { FileUp, MessageSquare, MessageSquarePlus, Server, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { usePsychatArchiveKeyContext } from '@/components/psychat/PsychatArchiveKeyContext'
-import { fetchPsychatArchiveRow } from '@/lib/psychat-archive/client'
+import { deletePsychatArchiveOnServer, fetchPsychatArchiveRow } from '@/lib/psychat-archive/client'
 import { loadPsychatArchiveFromExportFile, loadPsychatArchiveFromServer } from '@/lib/psychat-archive/load-archive'
 import { readPsychatArchiveExportFile } from '@/lib/psychat-archive/restore-from-export'
-import { psychatCopy } from '@/lib/psychat-archive/constants'
+import { PSYCHAT_ARCHIVE_CHANGED_EVENT, psychatCopy } from '@/lib/psychat-archive/constants'
 import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
 
 type Props = {
@@ -27,6 +27,7 @@ export function PsychatSessionsSidebar({
 }: Props) {
   const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null)
   const [loadingServer, setLoadingServer] = useState(false)
+  const [deletingServer, setDeletingServer] = useState(false)
   const [menuError, setMenuError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const {
@@ -52,6 +53,12 @@ export function PsychatSessionsSidebar({
     refreshServerMeta()
   }, [refreshServerMeta, activeSessionLabel])
 
+  useEffect(() => {
+    const onArchiveChanged = () => refreshServerMeta()
+    window.addEventListener(PSYCHAT_ARCHIVE_CHANGED_EVENT, onArchiveChanged)
+    return () => window.removeEventListener(PSYCHAT_ARCHIVE_CHANGED_EVENT, onArchiveChanged)
+  }, [refreshServerMeta])
+
   const openServerCopy = async () => {
     const key = getKey()
     if (!key || !eoaAddress) return
@@ -70,6 +77,24 @@ export function PsychatSessionsSidebar({
       setMenuError(e instanceof Error ? e.message : 'No se pudo abrir la copia')
     } finally {
       setLoadingServer(false)
+    }
+  }
+
+  const deleteServerCopy = async () => {
+    if (deletingServer) return
+    const ok = window.confirm(
+      '¿Borrar la copia cifrada de tu cuenta Motus? El chat en pantalla no se borra; solo el respaldo en la nube. Puedes volver a guardar después.'
+    )
+    if (!ok) return
+    setMenuError(null)
+    setDeletingServer(true)
+    try {
+      await deletePsychatArchiveOnServer()
+      setServerUpdatedAt(null)
+    } catch (e) {
+      setMenuError(e instanceof Error ? e.message : 'No se pudo borrar la copia')
+    } finally {
+      setDeletingServer(false)
     }
   }
 
@@ -139,6 +164,9 @@ export function PsychatSessionsSidebar({
           <div className="px-2 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Copias para abrir
           </div>
+          <p className="px-3 pb-1 text-[10px] leading-snug text-muted-foreground">
+            {psychatCopy.singleAccountSnapshotHint}
+          </p>
 
           {!isUnlocked ? (
             <div className="space-y-2 px-1">
@@ -159,23 +187,40 @@ export function PsychatSessionsSidebar({
           ) : (
             <>
               {serverUpdatedAt ? (
-                <button
-                  type="button"
-                  disabled={loadingServer}
-                  onClick={() => void openServerCopy()}
+                <div
                   className={cn(
-                    'flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-foreground/5',
-                    isServerActive ? 'bg-mauve-500/15 text-foreground' : 'text-muted-foreground'
+                    'flex items-stretch gap-0.5 rounded-lg',
+                    isServerActive && 'bg-mauve-500/15'
                   )}
                 >
-                  <Server className="h-4 w-4 shrink-0 mt-0.5 text-mauve-400" />
-                  <span className="text-xs leading-snug">
-                    {loadingServer ? 'Abriendo…' : serverLabel}
-                    <span className="block text-[10px] opacity-80">
-                      {new Date(serverUpdatedAt).toLocaleTimeString()}
+                  <button
+                    type="button"
+                    disabled={loadingServer || deletingServer}
+                    onClick={() => void openServerCopy()}
+                    className={cn(
+                      'flex min-w-0 flex-1 items-start gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-foreground/5',
+                      isServerActive ? 'text-foreground' : 'text-muted-foreground'
+                    )}
+                  >
+                    <Server className="h-4 w-4 shrink-0 mt-0.5 text-mauve-400" />
+                    <span className="text-xs leading-snug">
+                      {loadingServer ? 'Abriendo…' : serverLabel}
+                      <span className="block text-[10px] opacity-80">
+                        {new Date(serverUpdatedAt).toLocaleTimeString()}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    title={psychatCopy.deleteAccountBackup}
+                    aria-label={psychatCopy.deleteAccountBackup}
+                    disabled={loadingServer || deletingServer}
+                    onClick={() => void deleteServerCopy()}
+                    className="shrink-0 rounded-lg px-2 py-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               ) : (
                 <p className="px-3 py-1 text-xs text-muted-foreground">{psychatCopy.noAccountBackup}</p>
               )}

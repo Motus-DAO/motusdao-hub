@@ -18,7 +18,7 @@ For a future auditor: **order and non-goals stay as in SDD-chat-data**; each row
 | Spec | SDD §9 step(s) | Delivers |
 |------|----------------|----------|
 | **1** — [chat-data-slice-1-bitacora-export.md](./chat-data-slice-1-bitacora-export.md) | Export bitácora | Published file format, key recipe doc, download button |
-| **2** — [chat-data-slice-2-psychat-archive-export.md](./chat-data-slice-2-psychat-archive-export.md) | Psychat opt-in + export | **SHIPPED** — archive, sidebar, help (TEE/E2EE) |
+| **2** — [chat-data-slice-2-psychat-archive-export.md](./chat-data-slice-2-psychat-archive-export.md) | Psychat opt-in + export | **SHIPPED** — archive, sidebar sync/delete, export/recover, help (TEE/E2EE); prod smoke 28 Oct 2026 |
 | **3** — [chat-data-slice-3-consented-summary-fhir.md](./chat-data-slice-3-consented-summary-fhir.md) | FHIR second exit | **SHIPPED** — consented summary, DocumentReference, PSM panel |
 | **4** — [chat-data-slice-4-training-copy-consent.md](./chat-data-slice-4-training-copy-consent.md) | Training yes + payment | **SHIPPED** — readable copy, consent, compensation recorded |
 | **5** — [chat-data-slice-5-rootrouter-enclave.md](./chat-data-slice-5-rootrouter-enclave.md) | Proxy + session TEE + always-on | **SHIPPED** fase 1 @ `06b9523`; enclave env-gated |

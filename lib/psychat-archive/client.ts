@@ -1,5 +1,6 @@
 import { authFetch } from '@/lib/auth/client'
 import {
+  PSYCHAT_ARCHIVE_CHANGED_EVENT,
   PSYCHAT_ARCHIVE_EXPORT_FORMAT,
   PSYCHAT_ARCHIVE_EXPORT_VERSION,
   PSYCHAT_ARCHIVE_PURPOSE,
@@ -16,6 +17,11 @@ export type PsychatArchiveApiRow = {
   iv: string
   keyVersion: number
   updatedAt: string
+}
+
+export function notifyPsychatArchiveChanged(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(PSYCHAT_ARCHIVE_CHANGED_EVENT))
 }
 
 export async function fetchPsychatArchiveRow(): Promise<PsychatArchiveApiRow | null> {
@@ -44,6 +50,7 @@ export async function upsertPsychatArchive(
     }),
   })
   if (!res.ok) throw new Error('No se pudo guardar el archivo cifrado')
+  notifyPsychatArchiveChanged()
 }
 
 export async function deletePsychatArchiveOnServer(): Promise<void> {
@@ -51,6 +58,7 @@ export async function deletePsychatArchiveOnServer(): Promise<void> {
   if (!res.ok && res.status !== 404) {
     throw new Error('No se pudo borrar la copia de tu cuenta')
   }
+  notifyPsychatArchiveChanged()
 }
 
 export async function buildPsychatArchiveExportFile(eoaAddress: string) {
