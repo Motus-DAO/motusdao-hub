@@ -1,6 +1,6 @@
 # Safety slice 7 — Bitácora ciphertext — Spec
 
-> Status: **SHIPPED (local)** · Owner: product · 27 Oct 2026
+> Status: **SHIPPED** on `main` at `f7f2615` · Owner: product · 27 Oct 2026
 >
 > Purpose: journal bodies are AES-GCM ciphertext in Postgres; only the owner’s wallet (second signature) can decrypt. Motus and admins see metadata only.
 >
