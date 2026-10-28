@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'El resumen es demasiado largo.' }, { status: 400 })
     }
 
-    let match = body.matchId
+    const match = body.matchId
       ? await prisma.match.findFirst({
           where: { id: body.matchId, userId: session.userId, status: 'active' },
         })
