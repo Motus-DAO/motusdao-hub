@@ -1,6 +1,6 @@
 # Safety slice 1 — Therapy rooms stay on the private Jitsi — Spec
 
-> Status: **LOCKED** · Owner: product · Slice size: ≤1 day
+> Status: **SHIPPED** on `main` at `9e99066` · Owner: product · 22 Oct 2026 · Slice size: ≤1 day
 >
 > Purpose: a therapy room in the Hub cannot be opened on public `meet.jit.si` or on the open meeting host by someone who only knows the room name. The link is `jitsi.motusdao.org`. The Hub will not open that room without its own token, and a guest token is never minted for an office or clinical room.
 >

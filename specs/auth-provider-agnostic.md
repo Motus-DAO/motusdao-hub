@@ -1,6 +1,6 @@
 # Auth Provider Agnostic — Slice A/B
 
-> Status: **ACTIVE** · Owner: product + eng · Slice size: ≤1 day
+> Status: **SHIPPED** on `main` at `ccdea1f` · WaaP/Privy env toggle `96fa36c` · Owner: product + eng · Slice size: ≤1 day
 >
 > Purpose: introduce a wallet/auth facade so app code depends on a provider-agnostic interface (`useWallet`) instead of vendor-specific hooks (`useWaaP`).
 
@@ -76,11 +76,11 @@ No API changes in this slice.
 
 ## 7. QA gate (Definition of Done for this slice)
 
-- [ ] Acceptance criteria pass.
-- [ ] `npm run lint` passes.
-- [ ] `npx tsc --noEmit` passes.
-- [ ] No new `useWaaP` imports in migrated files.
-- [ ] Non-goals respected.
+- [x] Acceptance criteria pass (`WalletProviderWrapper`, `@/lib/wallet` consumers, SIWE unchanged).
+- [x] `npm run lint` passes.
+- [x] `npx tsc --noEmit` passes.
+- [x] No new `useWaaP` imports in migrated app surfaces (WaaP tree bridges only).
+- [x] Non-goals respected (Privy toggle via `NEXT_PUBLIC_WALLET_PROVIDER`; ZeroDev out of scope).
 
 ## 8. Exit conditions (when the loop stops)
 
