@@ -273,6 +273,7 @@ export function ZeroDevSmartWalletProvider({
               headers: {
                 'Content-Type': 'application/json',
               },
+              credentials: 'include',
               body: requestBodyToSend,
             })
 

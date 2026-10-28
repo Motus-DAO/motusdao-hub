@@ -129,6 +129,7 @@ export async function callPimlicoPaymaster(
   const response = await fetch(proxyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -205,6 +206,7 @@ async function callPimlicoStubData(
   const response = await fetch(proxyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -351,6 +353,7 @@ export async function checkPaymasterBalance(chainId: number = CELO_MAINNET_CHAIN
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,

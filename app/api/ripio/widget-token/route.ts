@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { sessionOwnsSpendAddress } from '@/lib/platform-spend-guard'
 import {
   isRipioRampFlow,
   isValidCeloAddress,
@@ -9,6 +11,7 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request)
     const body = await request.json()
     const address = typeof body.address === 'string' ? body.address.trim() : ''
     const externalRef =
@@ -19,6 +22,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'address inválida (se espera 0x + 40 hex)' },
         { status: 400 }
+      )
+    }
+
+    if (!sessionOwnsSpendAddress(session, address)) {
+      return NextResponse.json(
+        { error: 'La dirección no coincide con tu sesión.' },
+        { status: 403 }
       )
     }
 
@@ -78,6 +88,9 @@ export async function POST(request: NextRequest) {
       expiresHint: 'Token Ripio Widget ~10 horas',
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('[ripio/widget-token]', error)
     return NextResponse.json(
       {

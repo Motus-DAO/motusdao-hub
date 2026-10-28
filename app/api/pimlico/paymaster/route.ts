@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { isAllowedPimlicoMethod } from '@/lib/platform-spend-guard'
 
 /**
  * API Route para proxy de Pimlico Paymaster
@@ -14,6 +16,8 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 export async function POST(request: NextRequest) {
   try {
+    await requireSession(request)
+
     const pimlicoApiKey = process.env.PIMLICO_API_KEY // Sin NEXT_PUBLIC_ - solo servidor
     
     if (!pimlicoApiKey) {
@@ -96,6 +100,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!isAllowedPimlicoMethod(method)) {
+      return NextResponse.json(
+        {
+          jsonrpc: '2.0',
+          id: rpcId,
+          error: {
+            code: -32601,
+            message: 'Method not allowed on this proxy',
+          },
+        },
+        { status: 403 }
+      )
+    }
+
     // Pimlico API endpoint
     const pimlicoApiUrl = `https://api.pimlico.io/v2/${chainId}/rpc?apikey=${pimlicoApiKey}`
 
@@ -169,6 +187,9 @@ export async function POST(request: NextRequest) {
     // Return the full JSON-RPC response (the SDK expects this format)
     return NextResponse.json(data)
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('[PIMLICO PAYMASTER PROXY] Error:', error)
     return NextResponse.json(
       { 

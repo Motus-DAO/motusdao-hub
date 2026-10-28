@@ -1,29 +1,41 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
 import { celoMainnet } from '@/lib/celo'
 import { privateKeyToAccount } from 'viem/accounts'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
+import {
+  faucetAccountKey,
+  normalizeSpendAddress,
+  sessionOwnsSpendAddress,
+} from '@/lib/platform-spend-guard'
 
-// WaaP reserves ~0.12 CELO/tx on Celo; MNS may need approve + register (2 txs)
 const FAUCET_AMOUNT = '0.3'
 
-// Simple in-memory rate limiting (per address) for this server process.
-// NOTE: For production, replace with Redis or a DB-based limit.
-const lastClaimByAddress = new Map<string, number>()
+const lastClaimByAccount = new Map<string, number>()
 const MIN_INTERVAL_MS =
   process.env.NODE_ENV === 'development' ? 2 * 60 * 1000 : 60 * 60 * 1000
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request)
+
     const body = await request.json().catch(() => null) as
       | { address?: string }
       | null
 
-    const to = body?.address?.toLowerCase()
+    const to = body?.address?.trim()
 
     if (!to || !/^0x[a-fA-F0-9]{40}$/.test(to)) {
       return NextResponse.json(
         { error: 'Dirección inválida' },
-        { status: 400 },
+        { status: 400 }
+      )
+    }
+
+    if (!sessionOwnsSpendAddress(session, to)) {
+      return NextResponse.json(
+        { error: 'La dirección no coincide con tu sesión.' },
+        { status: 403 }
       )
     }
 
@@ -31,13 +43,13 @@ export async function POST(request: Request) {
     if (!faucetPk) {
       return NextResponse.json(
         { error: 'Faucet no configurado en el servidor' },
-        { status: 500 },
+        { status: 500 }
       )
     }
 
-    // Basic per-address rate limiting
+    const accountKey = faucetAccountKey(session)
     const now = Date.now()
-    const last = lastClaimByAddress.get(to) ?? 0
+    const last = lastClaimByAccount.get(accountKey) ?? 0
     if (now - last < MIN_INTERVAL_MS) {
       const minutesLeft = Math.ceil((MIN_INTERVAL_MS - (now - last)) / 60000)
       return NextResponse.json(
@@ -45,7 +57,7 @@ export async function POST(request: Request) {
           error: 'Has reclamado recientemente',
           retryInMinutes: minutesLeft,
         },
-        { status: 429 },
+        { status: 429 }
       )
     }
 
@@ -62,32 +74,42 @@ export async function POST(request: Request) {
       transport: http(),
     })
 
+    const recipient = normalizeSpendAddress(to)
+    if (!recipient) {
+      return NextResponse.json(
+        { error: 'Dirección inválida' },
+        { status: 400 }
+      )
+    }
+
     const value = parseEther(FAUCET_AMOUNT)
 
     const txHash = await walletClient.sendTransaction({
-      to: to as `0x${string}`,
+      to: recipient,
       value,
     })
 
     await publicClient.waitForTransactionReceipt({ hash: txHash })
 
-    lastClaimByAddress.set(to, Date.now())
+    lastClaimByAccount.set(accountKey, Date.now())
 
     return NextResponse.json({
       success: true,
       txHash,
       amount: FAUCET_AMOUNT,
-      to,
+      to: recipient,
     })
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('[Faucet] Error enviando CELO:', error)
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : 'Error desconocido en faucet',
       },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }
-

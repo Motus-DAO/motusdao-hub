@@ -208,6 +208,7 @@ export default function MotusNamesPage() {
       const res = await fetch('/api/faucet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ address: waapAddress }),
       })
 

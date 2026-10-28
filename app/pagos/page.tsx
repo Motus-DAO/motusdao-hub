@@ -540,6 +540,7 @@ export default function PagosPage() {
       const response = await fetch('/api/ripio/widget-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           address: destinationAddress,
           externalRef,

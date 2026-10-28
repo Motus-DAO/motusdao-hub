@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { isAllowedPimlicoMethod } from '@/lib/platform-spend-guard'
 
 /**
  * API Route para proxy de Pimlico Bundler
@@ -10,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 export async function POST(request: NextRequest) {
   try {
+    await requireSession(request)
+
     const pimlicoApiKey = process.env.PIMLICO_API_KEY // Sin NEXT_PUBLIC_ - solo servidor
     
     if (!pimlicoApiKey) {
@@ -176,6 +180,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!isAllowedPimlicoMethod(jsonRpcRequest.method)) {
+      return NextResponse.json(
+        {
+          jsonrpc: '2.0',
+          id: jsonRpcRequest.id,
+          error: {
+            code: -32601,
+            message: 'Method not allowed on this proxy',
+          },
+        },
+        { status: 403 }
+      )
+    }
+
     // Pimlico Bundler API endpoint (requires API key)
     const pimlicoApiUrl = `https://api.pimlico.io/v2/${chainId}/rpc?apikey=${pimlicoApiKey}`
 
@@ -227,6 +245,9 @@ export async function POST(request: NextRequest) {
     // Return the full JSON-RPC response (viem expects this format)
     return NextResponse.json(data)
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('[PIMLICO BUNDLER PROXY] Error:', error)
     return NextResponse.json(
       { 

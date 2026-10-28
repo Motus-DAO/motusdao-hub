@@ -84,6 +84,7 @@ export async function ensureFaucetCeloForMns(address: Address): Promise<FaucetRe
     const res = await fetch('/api/faucet', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ address }),
     })
     const body = await res.json()

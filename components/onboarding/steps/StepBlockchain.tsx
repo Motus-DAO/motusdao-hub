@@ -241,6 +241,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
       const res = await fetch('/api/faucet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ address: signingAddress }),
       })
 

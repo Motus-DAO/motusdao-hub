@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { guardAdmin } from '@/lib/auth/admin-route'
+import {
+  contactPostRateLimited,
+  contactRateLimitClientKey,
+} from '@/lib/platform-spend-guard'
 
 export async function POST(request: NextRequest) {
   try {
+    const clientKey = contactRateLimitClientKey(request)
+    if (contactPostRateLimited(clientKey)) {
+      return NextResponse.json(
+        { error: 'Demasiados mensajes. Intenta más tarde.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
     const { name, email, message, userId } = body
 
-    // Validate required fields
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: 'Name, email, and message are required' },
@@ -14,7 +26,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -23,21 +34,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create contact message
     const contactMessage = await prisma.contactMessage.create({
       data: {
         name,
         email,
         message,
-        userId: userId || null
-      }
+        userId: userId || null,
+      },
     })
 
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         message: 'Contact message sent successfully',
-        id: contactMessage.id
+        id: contactMessage.id,
       },
       { status: 201 }
     )
@@ -51,6 +61,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const denied = await guardAdmin(request)
+  if (denied) return denied
+
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -67,12 +80,12 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               email: true,
-              role: true
-            }
-          }
-        }
+              role: true,
+            },
+          },
+        },
       }),
-      prisma.contactMessage.count()
+      prisma.contactMessage.count(),
     ])
 
     return NextResponse.json({
@@ -81,8 +94,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     })
   } catch (error) {
     console.error('Error fetching contact messages:', error)
