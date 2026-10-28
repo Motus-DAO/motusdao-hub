@@ -70,6 +70,8 @@ npx -p @rootrouter/proxy@beta rootrouter-proxy
 
 `ROOTROUTER_UPSTREAM_ORIGIN` debe ser la misma URL donde abriste Psychat.
 
+Si **8787 está ocupado** (p. ej. Hermes en tu Mac): en Psychat → Memoria pon `http://127.0.0.1:8790` y usa el mismo puerto en `export PORT=8790` del comando copiado.
+
 En el repo **motusdao-hub**:
 
 ```bash

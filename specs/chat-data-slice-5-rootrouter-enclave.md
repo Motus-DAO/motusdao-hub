@@ -35,7 +35,7 @@
 
 - [x] `npx tsx --test lib/psychat-context/settings.test.ts`
 - [x] `CI=true npm run build`
-- [ ] Manual QA: RootRouter local + upstream token
+- [ ] Manual QA: RootRouter local + upstream token (prod: `app.motusdao.org`; si 8787 ocupado → URL `8790` + mismo `PORT` en terminal)
 
 ## 4. Exit
 

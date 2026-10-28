@@ -20,6 +20,7 @@ import {
 import { checkRootRouterProxyHealth } from '@/lib/psychat-context/proxy-health'
 import { authFetch } from '@/lib/auth/client'
 import { rootRouterProxyStartScript } from '@/lib/psychat-context/rootrouter-cli-copy'
+import { alternatePsychatProxyUrl } from '@/lib/psychat-context/proxy-port'
 
 type Capabilities = {
   sessionEnclaveEnabled?: boolean
@@ -46,12 +47,18 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
   useEffect(() => {
     if (!open) return
     setDraft(readPsychatContextSettings())
-    setProxyStartScript(rootRouterProxyStartScript(window.location.origin))
     void fetch('/api/psychat/context-capabilities')
       .then((r) => (r.ok ? r.json() : null))
       .then((d: Capabilities | null) => setCaps(d ?? {}))
       .catch(() => undefined)
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    setProxyStartScript(
+      rootRouterProxyStartScript(window.location.origin, draft.localProxyUrl)
+    )
+  }, [open, draft.localProxyUrl])
 
   const testProxy = useCallback(async () => {
     setChecking(true)
@@ -170,7 +177,11 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
               <input
                 className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2"
                 value={draft.localProxyUrl}
-                onChange={(e) => setDraft((d) => ({ ...d, localProxyUrl: e.target.value }))}
+                onChange={(e) => {
+                  const localProxyUrl = e.target.value
+                  setDraft((d) => ({ ...d, localProxyUrl }))
+                  setProxyOk(null)
+                }}
                 placeholder="http://127.0.0.1:8787"
               />
             </label>
@@ -182,8 +193,8 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
             {proxyStartScript ? (
               <div className="rounded-lg border border-white/10 bg-black/30 p-2">
                 <p className="text-[11px] text-muted-foreground">
-                  Pega en terminal y déjalo corriendo. Node 20+. La URL del Hub se ajusta sola según dónde abriste
-                  Psychat. Comprueba con «Probar conexión».
+                  Pega en terminal y déjalo corriendo. Node 20+. El puerto debe coincidir con la URL de arriba. Si ves{' '}
+                  <code className="text-xs">EADDRINUSE</code> en 8787, usa el botón de puerto alternativo abajo.
                 </p>
                 <pre className="mt-2 whitespace-pre-wrap text-[11px] text-muted-foreground">{proxyStartScript}</pre>
                 <button
@@ -212,9 +223,23 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
               <p className="text-emerald-400 text-xs">Proxy accesible desde este navegador.</p>
             ) : null}
             {proxyOk === false ? (
-              <p className="text-amber-300 text-xs">
-                No hubo respuesta. ¿Está corriendo el proxy? Revisa CORS y que uses 127.0.0.1, no localhost remoto.
-              </p>
+              <div className="space-y-2 text-xs text-amber-300">
+                <p>
+                  No hubo respuesta en esa URL. ¿Proxy encendido? Usa <code className="text-xs">127.0.0.1</code>, no
+                  localhost remoto.
+                </p>
+                <button
+                  type="button"
+                  className="underline text-mauve-300"
+                  onClick={() => {
+                    const next = alternatePsychatProxyUrl(draft.localProxyUrl)
+                    setDraft((d) => ({ ...d, localProxyUrl: next }))
+                    setProxyOk(null)
+                  }}
+                >
+                  Puerto ocupado — probar 8790 (o volver a 8787)
+                </button>
+              </div>
             ) : null}
             {bridgeSnippet ? (
               <div className="rounded-lg border border-white/10 bg-black/30 p-2">
