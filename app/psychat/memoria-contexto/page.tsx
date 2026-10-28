@@ -25,11 +25,19 @@ export default function PsychatMemoriaContextoPage() {
         </p>
 
         <GlassCard className="space-y-3 p-6">
-          <p className="font-medium text-foreground">Pasos rápidos (RootRouter local)</p>
+          <p className="font-medium text-foreground">Dos terminales</p>
           <ol className="list-decimal list-inside space-y-2">
-            <li>Ejecuta RootRouter proxy en tu PC (puerto 8787).</li>
-            <li>En Psychat → Memoria → genera la clave upstream y configúrala en RootRouter.</li>
-            <li>Prueba conexión, guarda, y chatea en modo estándar (TEE).</li>
+            <li>
+              Hub: <code className="text-xs">npm run dev</code> o abre tu deploy.
+            </li>
+            <li>
+              Proxy: en Psychat → <strong className="text-foreground">Memoria</strong> → copia el comando{' '}
+              <code className="text-xs">npx -p @rootrouter/proxy@beta rootrouter-proxy</code> con{' '}
+              <code className="text-xs">ROOTROUTER_UPSTREAM_ORIGIN</code> = URL del Hub.
+            </li>
+            <li>
+              <code className="text-xs">curl http://127.0.0.1:8787/healthz</code> debe responder ok.
+            </li>
           </ol>
           <CTAButton asChild className="mt-2">
             <Link href="/psychat">Abrir Psychat</Link>

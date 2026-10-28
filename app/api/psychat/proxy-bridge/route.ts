@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { handleAuthError, requireSession, getRequestOrigin } from '@/lib/auth/session'
 import { createRootRouterBridgeToken } from '@/lib/auth/rootrouter-bridge-token'
 import { hasStoredAiProcessingConsent } from '@/lib/auth/ai-consent'
-import { ROOTROUTER_UPSTREAM_PATH } from '@/lib/psychat-context/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,16 +16,17 @@ export async function POST(request: NextRequest) {
     }
 
     const origin = getRequestOrigin(request)
-    const upstreamUrl = `${origin}${ROOTROUTER_UPSTREAM_PATH}`
     const bridgeToken = createRootRouterBridgeToken(session.userId)
 
     return NextResponse.json({
-      upstreamUrl,
+      upstreamOrigin: origin,
+      upstreamPath: '/v1/chat/completions',
+      upstreamUrl: `${origin}/v1/chat/completions`,
       bridgeToken,
       expiresInSeconds: 15 * 60,
       proxyPath: '/v1/chat/completions',
       note:
-        'Configura RootRouter para usar esta URL como upstream OpenAI-compatible con esta clave (15 min). Motus no guarda store.json.',
+        'ROOTROUTER_UPSTREAM_ORIGIN = origen del Hub. Psychat envía Authorization Bearer en cada mensaje al proxy.',
     })
   } catch (error) {
     const authResponse = handleAuthError(error)

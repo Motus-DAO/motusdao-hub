@@ -1,11 +1,7 @@
 export async function checkRootRouterProxyHealth(baseUrl: string, timeoutMs = 4000): Promise<boolean> {
   const root = baseUrl.replace(/\/$/, '')
-  const controllers = [
-    `${root}/health`,
-    `${root}/v1/models`,
-    `${root}/`,
-  ]
-  for (const url of controllers) {
+  const paths = [`${root}/healthz`, `${root}/health`, `${root}/v1/models`]
+  for (const url of paths) {
     try {
       const res = await fetch(url, {
         method: 'GET',

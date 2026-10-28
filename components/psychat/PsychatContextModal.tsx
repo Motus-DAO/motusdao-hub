@@ -19,6 +19,7 @@ import {
 } from '@/lib/psychat-context/settings'
 import { checkRootRouterProxyHealth } from '@/lib/psychat-context/proxy-health'
 import { authFetch } from '@/lib/auth/client'
+import { rootRouterProxyStartScript } from '@/lib/psychat-context/rootrouter-cli-copy'
 
 type Capabilities = {
   sessionEnclaveEnabled?: boolean
@@ -39,11 +40,13 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
   const [proxyOk, setProxyOk] = useState<boolean | null>(null)
   const [checking, setChecking] = useState(false)
   const [bridgeSnippet, setBridgeSnippet] = useState<string | null>(null)
+  const [proxyStartScript, setProxyStartScript] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setDraft(readPsychatContextSettings())
+    setProxyStartScript(rootRouterProxyStartScript(window.location.origin))
     void fetch('/api/psychat/context-capabilities')
       .then((r) => (r.ok ? r.json() : null))
       .then((d: Capabilities | null) => setCaps(d ?? {}))
@@ -68,17 +71,23 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
   const loadBridgeSnippet = async () => {
     const res = await authFetch('/api/psychat/proxy-bridge', { method: 'POST' })
     const data = (await res.json().catch(() => ({}))) as {
-      upstreamUrl?: string
-      bridgeToken?: string
+      upstreamOrigin?: string
       error?: string
     }
-    if (!res.ok || !data.upstreamUrl) {
-      setBridgeSnippet(data.error || 'Inicia sesión en el Hub para generar la clave upstream.')
+    if (!res.ok) {
+      setBridgeSnippet(data.error || 'Inicia sesión en el Hub.')
       return
     }
     setBridgeSnippet(
-      `# RootRouter upstream (OpenAI-compatible) — expira en ~15 min\nbase_url: ${data.upstreamUrl}\napi_key: ${data.bridgeToken}\n`
+      `# Solo necesitas esto en el proxy (ver script abajo):\nROOTROUTER_UPSTREAM_ORIGIN=${data.upstreamOrigin ?? window.location.origin}\n\nPsychat envía el token del Hub en cada mensaje; no lo pegues en RootRouter.`
     )
+  }
+
+  const copyProxyScript = async () => {
+    if (!proxyStartScript) return
+    await navigator.clipboard.writeText(proxyStartScript)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const save = () => {
@@ -165,16 +174,34 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
               />
             </label>
             <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-              <li>Instala y ejecuta RootRouter proxy en tu PC (puerto 8787).</li>
-              <li>Genera la clave upstream hacia Motus (crédito + consentimiento).</li>
-              <li>Pega la config en RootRouter; Psychat enviará mensajes al proxy.</li>
+              <li>En una terminal, arranca el proxy (comando abajo).</li>
+              <li>Comprueba con «Probar conexión».</li>
+              <li>Guarda y chatea en Psychat con privacidad estándar (TEE).</li>
             </ol>
+            {proxyStartScript ? (
+              <div className="rounded-lg border border-white/10 bg-black/30 p-2">
+                <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground">{proxyStartScript}</pre>
+                <button
+                  type="button"
+                  className="mt-2 inline-flex items-center gap-1 text-xs underline"
+                  onClick={() => void copyProxyScript()}
+                >
+                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  Copiar comando del proxy
+                </button>
+              </div>
+            ) : null}
+            <p className="text-[11px] text-muted-foreground">
+              Repo RootRouter:{' '}
+              <code className="text-xs">npx rootrouter@beta init cursor --project-store</code> (Cursor) · paquete{' '}
+              <code className="text-xs">@rootrouter/proxy@beta</code>
+            </p>
             <div className="flex flex-wrap gap-2">
               <CTAButton variant="secondary" size="sm" onClick={() => void testProxy()} disabled={checking}>
                 {checking ? 'Comprobando…' : 'Probar conexión'}
               </CTAButton>
               <CTAButton variant="secondary" size="sm" onClick={() => void loadBridgeSnippet()}>
-                Generar clave upstream
+                Ver upstream del Hub
               </CTAButton>
             </div>
             {proxyOk === true ? (
