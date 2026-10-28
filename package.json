@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --test lib/auth/hub-session.test.ts lib/onboarding-identity.test.ts lib/accent-color.test.ts lib/celo.test.ts lib/ripio/wfiat.test.ts lib/textile/fx.test.ts lib/motty/namespaces.test.ts lib/motty/session.test.ts lib/motty/learning-context.test.ts lib/motty/page-context.test.ts lib/wallet/waap-modal-recovery.test.ts lib/jitsi-safety.test.ts lib/ai-credit.test.ts lib/venice-e2ee.test.ts lib/spei.test.ts lib/storage-document.test.ts lib/platform-spend-guard.test.ts lib/auth/siwe-domain.test.ts lib/auth/admin-access.test.ts lib/auth/session-policy.test.ts lib/psychat-archive/crypto.test.ts lib/psychat-archive/export-format.test.ts lib/fhir/document-reference.test.ts lib/training-copy/compensation.test.ts lib/psychat-context/settings.test.ts",
