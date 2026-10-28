@@ -1,6 +1,6 @@
 # Chat-data slice 1 — Bitácora export — Spec
 
-> Status: **IN PROGRESS** · Owner: product · 27 Oct 2026
+> Status: **SHIPPED** on `main` at `99452c1` · Owner: product · 27 Oct 2026
 >
 > Purpose: portable **ciphertext** package + published key recipe so the same wallet opens entries on another device. Motus still cannot read bodies.
 >
