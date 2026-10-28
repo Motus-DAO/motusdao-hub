@@ -1,15 +1,42 @@
 # Chat-data slice 5 — RootRouter proxy + enclaves — Spec
 
-> Status: **NOT STARTED** · Blocked on: slices 1–4 product paths stable.
->
-> Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §6–8 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
+> Status: **READY FOR QA** (fase 1 shipped in code; fases 2–3 gated by env) · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §6–7
 
-Phased AC (one spec, three phases):
+## 1. Scope
 
-1. **Local proxy** — Psychat `base_url` → person’s RootRouter; Motus does not index `store.json`.
-2. **Session enclave** — attestation-gated room; key wiped when session ends.
-3. **Always-on enclave** — optional; higher cost.
+### Fase 1 — Local RootRouter ✅
 
-Non-goals: encrypting bitácora into RootRouter; Cursor/Codex base URL (reference only).
+- UI modal `PsychatContextModal` + footer chip on Psychat.
+- localStorage settings `motus-psychat-context-settings-v1`.
+- Client send via `sendPsychatViaRootRouterProxy` → local proxy → upstream `/api/chat/rootrouter-upstream`.
+- Bridge JWT 15m: `POST /api/psychat/proxy-bridge`.
+- Docs: [psychat-memoria-contexto-es.md](../docs/guides/psychat-memoria-contexto-es.md), [psychat-rootrouter-context.md](../docs/architecture/psychat-rootrouter-context.md).
+- Page: `/psychat/memoria-contexto`.
 
-Acceptance detail — to write when slice 5 starts.
+### Fase 2 — Session enclave 🔶
+
+- `GET /api/psychat/enclave-attestation`, `NEXT_PUBLIC_PSYCHAT_SESSION_ENCLAVE_URL`.
+- UI mode visible when env set; attestation mock via `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK`.
+
+### Fase 3 — Always-on ⏳
+
+- `NEXT_PUBLIC_PSYCHAT_ALWAYS_ON_ENCLAVE=true` to expose mode (no infra in repo).
+
+## 2. Acceptance criteria
+
+1. **Given** hub_default, **when** user sends, **then** `POST /api/chat` (unchanged).
+2. **Given** local_rootrouter + proxy down, **when** send, **then** clear error.
+3. **Given** local_rootrouter + proxy up + upstream configured, **when** send, **then** completion via proxy path; Hub does not require full history in RAG for upstream route.
+4. **Given** E2EE mode, **when** local_rootrouter selected, **then** UI warns; send uses E2EE path (not proxy).
+5. **Given** modal, **when** user saves local mode without checkbox, **then** save disabled.
+6. **Given** docs paths, **when** opened, **then** instructions match APIs table.
+
+## 3. QA gate
+
+- [ ] `npx tsc --noEmit`
+- [ ] `CI=true npm run build`
+- [ ] Manual: proxy health, bridge token, one message through local path
+
+## 4. Exit
+
+Chat-data track complete after SHIPPED commit + roadmap row.

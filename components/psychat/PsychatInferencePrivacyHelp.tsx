@@ -187,6 +187,20 @@ export function PsychatInferencePrivacyHelp() {
           Ir a contribuir entrenamiento →
         </Link>
       </GlassCard>
+
+      <GlassCard className="p-6 space-y-3">
+        <GradientText as="h2" className="text-xl font-semibold">
+          Memoria de contexto (RootRouter)
+        </GradientText>
+        <p>
+          Distinto de TEE/E2EE por mensaje: elige si el contexto largo vive en el Hub, en RootRouter local, o
+          (beta) en un enclave de sesión. En Psychat usa el botón <strong className="text-foreground">Memoria</strong>{' '}
+          bajo el chat.
+        </p>
+        <Link href="/psychat/memoria-contexto" className="text-mauve-400 underline text-sm">
+          Guía memoria de contexto →
+        </Link>
+      </GlassCard>
     </div>
   )
 }

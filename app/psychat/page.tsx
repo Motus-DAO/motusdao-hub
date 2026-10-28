@@ -15,6 +15,14 @@ import { PsychatArchiveKeyProvider } from '@/components/psychat/PsychatArchiveKe
 import { PsychatSessionsSidebar } from '@/components/psychat/PsychatSessionsSidebar'
 import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
 import { consumePsychatThreadForOpen } from '@/lib/psychat-archive/chat-session-bridge'
+import { PsychatContextModal } from '@/components/psychat/PsychatContextModal'
+import { psychatContextModeLabels } from '@/lib/psychat-context/constants'
+import {
+  defaultPsychatContextSettings,
+  readPsychatContextSettings,
+  resolveProxyBaseUrl,
+  type PsychatContextSettings,
+} from '@/lib/psychat-context/settings'
 
 export default function PsychatPage() {
   const { role, theme } = useUIStore()
@@ -45,6 +53,12 @@ export default function PsychatPage() {
   const [chatSessionKey, setChatSessionKey] = useState('initial')
   const [loadedThread, setLoadedThread] = useState<PsychatArchiveMessage[] | null>(null)
   const [activeSessionLabel, setActiveSessionLabel] = useState('Nuevo chat')
+  const [contextSettings, setContextSettings] = useState<PsychatContextSettings>(defaultPsychatContextSettings)
+  const [contextModalOpen, setContextModalOpen] = useState(false)
+
+  useEffect(() => {
+    setContextSettings(readPsychatContextSettings())
+  }, [])
 
   const refreshCredit = useCallback(() => {
     if (!isSessionReady) {
@@ -293,8 +307,18 @@ export default function PsychatPage() {
     }
   }
 
+  const proxyBase = resolveProxyBaseUrl(contextSettings)
+  const useRootRouterProxy =
+    contextSettings.mode === 'local_rootrouter' ||
+    (contextSettings.mode === 'session_enclave' && Boolean(proxyBase))
+
   return (
     <PsychatArchiveKeyProvider>
+      <PsychatContextModal
+        open={contextModalOpen}
+        onClose={() => setContextModalOpen(false)}
+        onSaved={setContextSettings}
+      />
       <div className="flex min-h-[calc(100dvh-5rem)] w-full flex-col bg-background sm:flex-row">
         <PsychatSessionsSidebar
           isSessionReady={isSessionReady}
@@ -342,6 +366,10 @@ export default function PsychatPage() {
               buyingPack={buyingPack}
               creditShopError={creditShopError}
               onMessagesChange={setArchiveMessages}
+              contextModeLabel={psychatContextModeLabels[contextSettings.mode]}
+              useRootRouterProxy={useRootRouterProxy}
+              rootRouterProxyUrl={proxyBase ?? ''}
+              onOpenContextSettings={() => setContextModalOpen(true)}
               notice={
               <div
                 className={`mx-auto max-w-xl rounded-xl border px-4 py-3 text-left text-sm ${

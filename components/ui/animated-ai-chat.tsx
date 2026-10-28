@@ -19,6 +19,7 @@ import { useUIStore, type UserRole } from '@/lib/store'
 import { psychatPrivacyTeaser, VENICE_PRIVACY_URL } from '@/lib/ai-consent-copy'
 import { creditUsedPercent } from '@/lib/ai-credit'
 import { sendEncryptedPsychat } from '@/lib/venice-e2ee'
+import { sendPsychatViaRootRouterProxy } from '@/lib/psychat-context/send-local-proxy'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -166,6 +167,11 @@ export interface AnimatedAIChatProps {
   /** When this key changes, the thread resets or loads `loadedThread`. */
   chatSessionKey?: string
   loadedThread?: Array<{ role: 'user' | 'assistant'; content: string }> | null
+  /** Slice 5 — RootRouter / enclave context routing */
+  contextModeLabel?: string
+  useRootRouterProxy?: boolean
+  rootRouterProxyUrl?: string
+  onOpenContextSettings?: () => void
 }
 
 export function AnimatedAIChat({
@@ -188,6 +194,10 @@ export function AnimatedAIChat({
   onMessagesChange,
   chatSessionKey = 'default',
   loadedThread = null,
+  contextModeLabel = 'Estándar (Hub)',
+  useRootRouterProxy = false,
+  rootRouterProxyUrl = '',
+  onOpenContextSettings,
 }: AnimatedAIChatProps) {
   const containerHeightClass = fullScreen ? 'min-h-screen' : 'min-h-[calc(100dvh-8rem)]'
   const { theme } = useUIStore()
@@ -279,12 +289,21 @@ export function AnimatedAIChat({
       content: m.content,
     }))
 
+    const useProxy =
+      useRootRouterProxy && privacyMode === 'tee' && rootRouterProxyUrl.trim().length > 0
+
     const request =
       privacyMode === 'e2ee'
         ? sendEncryptedPsychat(
             apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant')
           ).then((text) => ({ mode: 'qa' as const, text }))
-        : fetch('/api/chat', {
+        : useProxy
+          ? sendPsychatViaRootRouterProxy(
+              rootRouterProxyUrl,
+              modelId || 'gpt-4o-mini',
+              apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant')
+            ).then((r) => ({ mode: 'qa' as const, text: r.text }))
+          : fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messages: apiMessages }),
@@ -639,6 +658,23 @@ export function AnimatedAIChat({
               {aiProvider === 'venice' ? (
                 <>
                   <p className="mt-1.5 leading-relaxed">{psychatPrivacyTeaser(privacyMode)}</p>
+                  {onOpenContextSettings ? (
+                    <button
+                      type="button"
+                      onClick={onOpenContextSettings}
+                      className={cn(
+                        'mt-2 inline-flex items-center gap-1 rounded-md border px-2 py-1',
+                        isLight ? 'border-slate-300 text-slate-800' : 'border-white/15 text-white/75'
+                      )}
+                    >
+                      Memoria: {contextModeLabel}
+                    </button>
+                  ) : null}
+                  {useRootRouterProxy && privacyMode === 'e2ee' ? (
+                    <p className="mt-1 text-amber-400/90">
+                      Memoria RootRouter requiere modo estándar (TEE), no reforzado (E2EE).
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     aria-expanded={advancedOpen}
