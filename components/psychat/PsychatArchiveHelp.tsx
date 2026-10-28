@@ -75,6 +75,11 @@ export function PsychatArchiveHelp({ showRecoverCta = true }: Props) {
           cerrado: la plataforma guarda el sobre, pero no tiene la llave para abrirlo.
         </p>
         <p>
+          Queda <strong className="text-foreground">cifrado</strong>: nadie — ni Motus ni tú — puede leer
+          el contenido hasta que lo <strong className="text-foreground">descifres</strong> de nuevo con
+          tu wallet (la firma de desbloqueo del archivo Psychat).
+        </p>
+        <p>
           Opcionalmente puedes bajar un archivo <strong className="text-foreground">.json</strong>{' '}
           (“Exportar”): el mismo sobre, pero en tu computadora, USB o nube personal (Drive, etc.).
         </p>
