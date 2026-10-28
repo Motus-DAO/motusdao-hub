@@ -86,8 +86,9 @@ export function deriveCurrentRouteStage(
 }
 
 export function resolveAllowedKnowledgeScopes(
-  _context: Pick<UserLearningContext, 'accessibleCourses'>
+  context: Pick<UserLearningContext, 'accessibleCourses'>
 ): readonly MottyKnowledgeScope[] {
+  void context.accessibleCourses
   // Premium lesson/corpus namespaces are NOT granted here: no Motty↔enrollment
   // entitlement mapping exists yet. Keep retrieval on public brand/product only.
   return PUBLIC_KNOWLEDGE_NAMESPACES

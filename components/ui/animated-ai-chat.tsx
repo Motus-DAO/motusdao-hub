@@ -16,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { marked } from 'marked'
 import { useUIStore, type UserRole } from '@/lib/store'
-import { VENICE_PRIVACY_URL } from '@/lib/ai-consent-copy'
+import { psychatPrivacyTeaser, VENICE_PRIVACY_URL } from '@/lib/ai-consent-copy'
 import { creditUsedPercent } from '@/lib/ai-credit'
 import { sendEncryptedPsychat } from '@/lib/venice-e2ee'
 
@@ -175,9 +175,7 @@ export function AnimatedAIChat({
   isCreatingSession = false,
   sessionError = null,
   sendBlockedReason = null,
-  providerLabel = 'el proveedor configurado',
   aiProvider = null,
-  modelLabel = null,
   modelId = null,
   privacyMode = 'tee',
   onPrivacyModeChange,
@@ -625,29 +623,22 @@ export function AnimatedAIChat({
                 isLight ? 'border-slate-300/70 text-slate-600' : 'border-white/[0.05] text-white/60',
               )}
             >
-              <div className="flex items-center gap-2">
-                <Image src="/venice-logo.svg" alt="Venice" width={14} height={14} className="rounded-sm" />
-                <span className={cn('font-medium', isLight ? 'text-slate-700' : 'text-white/80')}>
-                  Psychat · {providerLabel}
-                </span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Image src="/venice-logo.svg" alt="" width={14} height={14} className="rounded-sm" aria-hidden />
+                <span className={cn('font-medium', isLight ? 'text-slate-700' : 'text-white/80')}>Psychat</span>
+                <span className={isLight ? 'text-slate-500' : 'text-white/45'}>·</span>
+                <a
+                  href={VENICE_PRIVACY_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn('underline', isLight ? 'text-slate-600' : 'text-white/55')}
+                >
+                  Privacidad del proveedor
+                </a>
               </div>
               {aiProvider === 'venice' ? (
                 <>
-                  <p className="mt-1 leading-relaxed">
-                    Este chat usa {modelLabel ?? 'el modelo configurado'} con{' '}
-                    <a
-                      href={VENICE_PRIVACY_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn('underline', isLight ? 'text-slate-800' : 'text-white/80')}
-                    >
-                      Venice
-                    </a>
-                    .{' '}
-                    {privacyMode === 'e2ee'
-                      ? 'Privacidad reforzada: tu mensaje sale cifrado de tu navegador.'
-                      : 'Este modo no es anónimo ni utiliza cifrado de extremo a extremo.'}
-                  </p>
+                  <p className="mt-1.5 leading-relaxed">{psychatPrivacyTeaser(privacyMode)}</p>
                   <button
                     type="button"
                     aria-expanded={advancedOpen}
@@ -662,8 +653,7 @@ export function AnimatedAIChat({
                   </button>
                   {advancedOpen ? (
                     <fieldset className="mt-2 space-y-3">
-                      <legend className="font-medium">Elige cómo proteger tus conversaciones</legend>
-                      <p>Tú decides cómo se procesan tus mensajes. Puedes cambiar el modo de privacidad cuando quieras.</p>
+                      <legend className="font-medium">Modo de privacidad al enviar</legend>
                       <label className="flex items-start gap-2">
                         <input
                           type="radio"
@@ -673,9 +663,9 @@ export function AnimatedAIChat({
                           onChange={() => onPrivacyModeChange?.('tee')}
                         />
                         <span>
-                          <span className="font-medium">Privacidad estándar.</span> Tus mensajes se procesan en un
-                          entorno protegido. MotusDAO puede procesar el texto necesario para enviar tu consulta.
-                          Tecnología: TEE (Trusted Execution Environment).
+                          <span className="font-medium">Estándar (TEE).</span> Motus enruta tu consulta al
+                          proveedor de IA; el modelo corre en un entorno aislado y protegido (Trusted Execution
+                          Environment).
                         </span>
                       </label>
                       <label className={cn('flex items-start gap-2', !e2eeAvailable && 'opacity-50')}>
@@ -688,11 +678,17 @@ export function AnimatedAIChat({
                           onChange={() => onPrivacyModeChange?.('e2ee')}
                         />
                         <span>
-                          <span className="font-medium">Privacidad reforzada.</span> Tu mensaje sale cifrado de tu
-                          navegador. MotusDAO no puede leer su contenido durante el envío al servicio de IA. Tecnología:
-                          cifrado de extremo a extremo (E2EE).
+                          <span className="font-medium">Reforzado (E2EE).</span> Cifras en el navegador antes de
+                          enviar; Motus no puede leer el contenido en tránsito hacia el servicio de IA.
                         </span>
                       </label>
+                      <p className={cn('text-[11px] leading-relaxed', isLight ? 'text-slate-500' : 'text-white/45')}>
+                        Modelo, flujo completo y límites:{' '}
+                        <a href="/psychat/archivo" className="underline">
+                          guía Psychat → archivo
+                        </a>
+                        .
+                      </p>
                     </fieldset>
                   ) : null}
                 </>

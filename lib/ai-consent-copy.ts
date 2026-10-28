@@ -17,3 +17,11 @@ export function chatModelLabel(modelId: string | null | undefined) {
   if (!modelId) return null
   return CHAT_MODEL_LABELS[modelId] ?? modelId
 }
+
+/** One-line footer under Psychat input — positive framing, no model name. */
+export function psychatPrivacyTeaser(mode: 'tee' | 'e2ee') {
+  if (mode === 'e2ee') {
+    return 'Modo reforzado: tu mensaje sale cifrado desde este navegador; Motus reenvía bloques cifrados al proveedor de IA.'
+  }
+  return 'Modo estándar: tu consulta se procesa en un entorno protegido (TEE) del proveedor de IA. Puedes activar cifrado reforzado abajo.'
+}

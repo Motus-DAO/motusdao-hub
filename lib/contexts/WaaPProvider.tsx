@@ -555,16 +555,14 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
   }, [waapProvider])
 
   // Legacy Privy-shaped email helpers — WaaP owns email OTP inside its modal.
-  const sendCode = useCallback(
-    async (_params: { email: string }) => {
+  const sendCode = useCallback(async () => {
       console.log('[WAAP] Opening Human Tech modal instead of legacy email OTP')
       await login()
     },
     [login]
   )
 
-  const loginWithCode = useCallback(
-    async (_params: { code: string }) => {
+  const loginWithCode = useCallback(async () => {
       console.log('[WAAP] loginWithCode redirected to Human Tech modal')
       await login()
     },

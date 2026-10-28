@@ -91,9 +91,9 @@ export function PsychatArchiveHelp({ showRecoverCta = true }: Props) {
         </GradientText>
         <ul className="list-disc list-inside space-y-2">
           <li>
-            <strong className="text-foreground">Solo tú</strong>, con la misma wallet y la firma de
-            desbloqueo del archivo Psychat. No basta con “entrar” al Hub: hace falta esa firma
-            distinta a la bitácora.
+            <strong className="text-foreground">Sé dueño de tus datos.</strong> Solo tú puedes leer esta
+            copia, con la misma wallet y la firma de desbloqueo del archivo Psychat. No basta con “entrar”
+            al Hub: hace falta esa firma distinta a la bitácora.
           </li>
         </ul>
       </GlassCard>
