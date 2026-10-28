@@ -1,6 +1,6 @@
 # Chat-data slice 2 — Psychat archive + export — Spec
 
-> Status: **SHIPPED** on `main` · initial `a5aecb2` · prod UX hardening **28 Oct 2026** (sidebar sync + delete)
+> Status: **SHIPPED** on `main` · initial `a5aecb2` · prod UX hardening `2926dbc` · 28 Oct 2026
 >
 > Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §2.2 + §4 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
 
