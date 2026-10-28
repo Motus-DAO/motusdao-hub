@@ -7,6 +7,7 @@ import {
 } from '@/lib/storage'
 import { resolveUploadActor } from '@/lib/storage-auth'
 import { handleAuthError } from '@/lib/auth/session'
+import { mapProfessionalDocumentUploadError } from '@/lib/storage-upload-error'
 
 const documentTypeSchema = z.enum(['cedula', 'titulo'])
 
@@ -81,21 +82,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    const status =
-      message.includes('Not authorized') ||
-      message.includes('does not match') ||
-      message.includes('required')
-        ? 403
-        : message.includes('Invalid') ||
-            message.includes('too large') ||
-            message.includes('Unsupported') ||
-            message.includes('PDF') ||
-            message.includes('demasiado grande') ||
-            message.includes('vacío')
-          ? 400
-          : 500
-
-    return NextResponse.json({ error: message }, { status })
+    const mapped = mapProfessionalDocumentUploadError(error)
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status })
   }
 }

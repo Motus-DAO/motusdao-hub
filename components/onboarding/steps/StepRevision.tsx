@@ -498,35 +498,39 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 </h3>
                 <EditButton onClick={() => goToPsmStep(0)} />
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 glass rounded-xl">
+              <div className="grid md:grid-cols-2 gap-4 min-w-0">
+                <div className="p-4 glass rounded-xl min-w-0 overflow-hidden">
                   <div className="flex items-center space-x-2 mb-2">
                     <Award className="w-4 h-4 text-yellow-400" />
                     <span className="text-sm font-medium">Cédula profesional</span>
                   </div>
                   <p className="text-white">{data.cedulaProfesional || 'No especificada'}</p>
                 </div>
-                <div className="p-4 glass rounded-xl">
+                <div className="p-4 glass rounded-xl min-w-0 overflow-hidden">
                   <div className="flex items-center space-x-2 mb-2">
                     <User className="w-4 h-4 text-blue-400" />
                     <span className="text-sm font-medium">Años de experiencia</span>
                   </div>
                   <p className="text-white">{data.experienciaAnios || 0} años</p>
                 </div>
-                <div className="p-4 glass-card rounded-lg md:col-span-2">
+                <div className="p-4 glass-card rounded-lg md:col-span-2 min-w-0 overflow-hidden">
                   <div className="flex items-center space-x-2 mb-2">
                     <Edit className="w-4 h-4 text-green-400" />
                     <span className="text-sm font-medium">Formación académica</span>
                   </div>
-                  <p className="text-white">{data.formacionAcademica || 'No especificada'}</p>
+                  <p className="text-white break-words [overflow-wrap:anywhere] whitespace-pre-wrap">
+                    {data.formacionAcademica || 'No especificada'}
+                  </p>
                 </div>
                 {(data.professionalNarrative || data.biografia) && (
-                  <div className="p-4 glass-card rounded-lg md:col-span-2">
+                  <div className="p-4 glass-card rounded-lg md:col-span-2 min-w-0 overflow-hidden">
                     <div className="flex items-center space-x-2 mb-2">
                       <Edit className="w-4 h-4 text-purple-400" />
                       <span className="text-sm font-medium">Descripción de tu práctica</span>
                     </div>
-                    <p className="text-white">{data.professionalNarrative || data.biografia}</p>
+                    <p className="text-white break-words [overflow-wrap:anywhere] whitespace-pre-wrap">
+                      {data.professionalNarrative || data.biografia}
+                    </p>
                   </div>
                 )}
                 <div className="p-4 glass-card rounded-lg md:col-span-2">

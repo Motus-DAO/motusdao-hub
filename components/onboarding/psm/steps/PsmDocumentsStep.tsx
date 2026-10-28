@@ -4,6 +4,10 @@ import { useState } from 'react'
 import { FileUploadField } from '@/components/ui/FileUploadField'
 import { useOnboardingStore } from '@/lib/onboarding-store'
 import {
+  clientRejectOversizedProfessionalDocument,
+} from '@/lib/storage-upload-error'
+import { PROFESSIONAL_DOCUMENT_MAX_LABEL } from '@/lib/storage-document'
+import {
   getFileNameFromStoragePath,
   uploadProfessionalDocument,
 } from '@/lib/storage-client'
@@ -67,7 +71,8 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
             label="Documento de cédula"
             description="PDF o imagen de tu cédula profesional."
             accept="image/jpeg,image/png,image/webp,application/pdf"
-            hint="PDF o imagen. Máximo 20MB."
+            hint={`PDF o imagen. Máximo ${PROFESSIONAL_DOCUMENT_MAX_LABEL}.`}
+            validateFile={clientRejectOversizedProfessionalDocument}
             fileName={getFileNameFromStoragePath(data.cedulaDocumentPath)}
             onUpload={(file) => uploadDocument(file, 'cedula')}
             onClear={() => updateData({ cedulaDocumentPath: undefined })}
@@ -76,7 +81,8 @@ export function PsmDocumentsStep({ onContinue, onBack }: Props) {
             label="Documento de título"
             description="PDF o imagen de tu título universitario."
             accept="image/jpeg,image/png,image/webp,application/pdf"
-            hint="PDF o imagen. Máximo 20MB."
+            hint={`PDF o imagen. Máximo ${PROFESSIONAL_DOCUMENT_MAX_LABEL}.`}
+            validateFile={clientRejectOversizedProfessionalDocument}
             fileName={getFileNameFromStoragePath(data.tituloDocumentPath)}
             onUpload={(file) => uploadDocument(file, 'titulo')}
             onClear={() => updateData({ tituloDocumentPath: undefined })}

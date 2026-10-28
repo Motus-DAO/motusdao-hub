@@ -1,4 +1,13 @@
-export const PROFESSIONAL_DOCUMENT_MAX_BYTES = 20 * 1024 * 1024
+export const PROFESSIONAL_DOCUMENT_MAX_BYTES = 25 * 1024 * 1024
+
+export const PROFESSIONAL_DOCUMENT_MAX_LABEL = '25 MB'
+
+export function professionalDocumentSizeError(fileSizeBytes: number): string {
+  const maxMb = PROFESSIONAL_DOCUMENT_MAX_BYTES / (1024 * 1024)
+  const fileMb = fileSizeBytes / (1024 * 1024)
+  const fileLabel = fileMb >= 0.1 ? `${fileMb.toFixed(1)} MB` : `${Math.round(fileSizeBytes / 1024)} KB`
+  return `El archivo pesa ${fileLabel} y supera el máximo permitido (${maxMb} MB). Comprime el PDF o sube una imagen más ligera.`
+}
 
 const IMAGE_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -70,7 +79,7 @@ export function resolveProfessionalDocument(input: {
     throw new Error('El archivo está vacío.')
   }
   if (input.size > PROFESSIONAL_DOCUMENT_MAX_BYTES) {
-    throw new Error('El archivo es demasiado grande. El máximo es 20MB.')
+    throw new Error(professionalDocumentSizeError(input.size))
   }
 
   const declared = baseMimeType(input.type)

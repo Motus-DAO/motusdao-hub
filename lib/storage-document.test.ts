@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { looksLikePdf, resolveProfessionalDocument } from './storage-document'
+import { looksLikePdf, PROFESSIONAL_DOCUMENT_MAX_BYTES, resolveProfessionalDocument } from './storage-document'
 
 const PDF = Uint8Array.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34])
 const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0])
@@ -60,6 +60,19 @@ describe('professional document upload', () => {
         head: JPEG,
       }),
       { mime: 'image/jpeg', ext: 'jpg' }
+    )
+  })
+
+  it('rejects files over the app limit with a clear size message', () => {
+    assert.throws(
+      () =>
+        resolveProfessionalDocument({
+          type: 'application/pdf',
+          name: 'cedula.pdf',
+          size: PROFESSIONAL_DOCUMENT_MAX_BYTES + 1,
+          head: PDF,
+        }),
+      /supera el máximo permitido/
     )
   })
 })

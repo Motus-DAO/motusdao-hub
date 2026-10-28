@@ -10,6 +10,8 @@ type FileUploadFieldProps = {
   accept: string
   hint?: string
   fileName?: string
+  /** Reject before upload (e.g. professional documents max size). */
+  validateFile?: (file: File) => string | null
   /** Remote URL for uploaded image preview */
   previewUrl?: string
   disabled?: boolean
@@ -36,6 +38,13 @@ function formatUploadError(message: string): string {
   if (normalized === 'Error al subir el archivo') {
     return 'No se pudo subir el archivo. Intenta de nuevo.'
   }
+  if (
+    normalized.includes('supera el máximo') ||
+    normalized.includes('demasiado grande') ||
+    normalized.toLowerCase().includes('too large')
+  ) {
+    return normalized
+  }
   return normalized
 }
 
@@ -47,6 +56,7 @@ export function FileUploadField({
   fileName,
   previewUrl,
   disabled = false,
+  validateFile,
   onUpload,
   onClear,
 }: FileUploadFieldProps) {
@@ -79,6 +89,14 @@ export function FileUploadField({
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
+
+    const validationError = validateFile?.(file)
+    if (validationError) {
+      setError(formatUploadError(validationError))
+      setJustUploaded(false)
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
 
     let objectUrl: string | null = null
     if (localPreview) {
