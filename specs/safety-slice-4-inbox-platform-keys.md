@@ -75,7 +75,7 @@
 
 ## 8. Exit conditions
 
-This slice stops here. The next spec is slice 5 (admin session and audit) in [docs/specs/SDD-safety-plan.md](../docs/specs/SDD-safety-plan.md). Slice 6 (vendor list and privacy notice) can continue in parallel.
+This slice stops here. Slice 5 (admin session and audit) shipped next; see `specs/safety-slice-5-admin-session-audit.md`. Next coding slice: 7 (Bitácora ciphertext) after slice 6 human work, per [docs/specs/SDD-safety-plan.md](../docs/specs/SDD-safety-plan.md).
 
 ## 9. Decisions — LOCKED
 
