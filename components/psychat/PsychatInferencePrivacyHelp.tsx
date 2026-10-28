@@ -157,6 +157,22 @@ export function PsychatInferencePrivacyHelp() {
           </li>
         </ul>
       </GlassCard>
+
+      <GlassCard className="p-6 space-y-3">
+        <GradientText as="h2" className="text-xl font-semibold">
+          Segunda salida: resumen para tu profesional
+        </GradientText>
+        <p>
+          Distinto de la copia cifrada de Psychat o la bitácora: tú{' '}
+          <strong className="text-foreground">escribes un resumen</strong> y lo compartes con tu
+          psicólogo/a emparejado. Va en un sobre FHIR (<code className="text-xs">DocumentReference</code>
+          ) para interoperabilidad, pero el Hub lo guarda como texto legible solo para ese match — no
+          es expediente clínico.
+        </p>
+        <Link href="/compartir-resumen" className="text-mauve-400 underline text-sm">
+          Ir a compartir resumen →
+        </Link>
+      </GlassCard>
     </div>
   )
 }

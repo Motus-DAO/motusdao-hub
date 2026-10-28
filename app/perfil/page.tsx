@@ -49,6 +49,8 @@ import { motusNameService } from '@/lib/motus-name-service'
 import { buildVideochatUrl } from '@/lib/jitsi'
 import { useRouter } from 'next/navigation'
 import { asStringArray } from '@/lib/prisma-json'
+import Link from 'next/link'
+import { PatientSharedSummariesPanel } from '@/components/clinical-summary/PatientSharedSummariesPanel'
 
 interface ProfileData {
   nombre: string
@@ -1161,11 +1163,20 @@ export default function PerfilPage() {
                                 )}
                               </div>
 
+                              <div className="pt-3 border-t border-white/5">
+                                <p className="text-sm font-semibold mb-1">Resumen para tu profesional</p>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  Comparte un texto breve (no bitácora ni Psychat completos). Tu psicólogo/a
+                                  emparejado lo lee aquí en el Hub.
+                                </p>
+                                <CTAButton asChild size="sm" variant="secondary">
+                                  <Link href="/compartir-resumen">Compartir resumen</Link>
+                                </CTAButton>
+                              </div>
+
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-white/5">
                                 <div>
-                                  <p className="text-sm font-semibold mb-1">
-                                    Sesión de terapia
-                                  </p>
+                                  <p className="text-sm font-semibold mb-1">Sesión de terapia</p>
                                   {isLoadingSession ? (
                                     <p className="text-xs text-muted-foreground">
                                       Cargando información de tu sesión...
@@ -1434,6 +1445,10 @@ export default function PerfilPage() {
                                     Abrir consultorio
                                   </CTAButton>
                                 )}
+                                <PatientSharedSummariesPanel
+                                  patientUserId={match.user.id}
+                                  patientName={`${match.user.nombre ?? ''} ${match.user.apellido ?? ''}`.trim()}
+                                />
                               </div>
                             ))}
                           </div>

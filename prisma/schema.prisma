@@ -113,6 +113,27 @@ model PsychatArchiveSnapshot {
   @@map("psychat_archive_snapshots")
 }
 
+model ConsentedClinicalSummary {
+  id                    String    @id @default(cuid())
+  userId                String
+  matchId               String
+  psmId                 String
+  title                 String?
+  summaryText           String
+  fhirDocumentReference Json      @db.JsonB
+  revokedAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match                 Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  psm                   User      @relation("consented_summary_psm", fields: [psmId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([psmId, createdAt])
+  @@index([matchId])
+  @@map("consented_clinical_summaries")
+}
+
 model ClinicalAccessLog {
   id           String   @id @default(cuid())
   actorUserId  String?
@@ -190,6 +211,7 @@ model Match {
   user      User        @relation("matches_userIdTousers", fields: [userId], references: [id], onDelete: Cascade)
   criteria  MatchCriterion[]
   sessions  Session[]
+  consentedClinicalSummaries ConsentedClinicalSummary[]
 
   @@index([psmId, status])
   @@index([userId, status])
@@ -649,6 +671,8 @@ model User {
   lessonProgress        LessonProgress[]
   journalEntries        JournalEntry[]
   psychatArchiveSnapshot PsychatArchiveSnapshot?
+  consentedSummariesAuthored ConsentedClinicalSummary[]
+  consentedSummariesReceived ConsentedClinicalSummary[] @relation("consented_summary_psm")
   psmMatches            Match[]            @relation("matches_psmIdTousers")
   userMatches           Match[]            @relation("matches_userIdTousers")
   patient               PatientProfile?
@@ -692,6 +716,7 @@ enum ClinicalResource {
   psm_profile
   journal_entry
   psychat_archive
+  consented_summary
   match
   session
   document
