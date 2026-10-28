@@ -1,5 +1,6 @@
-# Specs and ops — not part of the Next.js build graph (legal markdown under docs/compliance/legal is required)
+# Docs, specs, and ops — not part of the Next.js build graph
 archive/
+docs/
 specs/
 infra/
 jitsi/

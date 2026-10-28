@@ -10,6 +10,7 @@ const traceExcludeGlobs = [
   "./jitsi/**",
   "./scripts/**",
   "./specs/**",
+  "./docs/**",
   "./contracts/*.sol",
   "./node_modules/@nomicfoundation/**",
   "./node_modules/hardhat/**",
