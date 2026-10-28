@@ -1,6 +1,6 @@
 # Chat-data slice 4 — Training copy consent — Spec
 
-> Status: **READY FOR QA** · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §2.3 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
+> Status: **SHIPPED** @ `b785a48` · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §2.3 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
 
 Deliver: separate consent UI, readable copy collection, compensation recorded (0/5/10 USD); refusal does not change care.
 
@@ -27,10 +27,10 @@ Non-goals: training on ciphertext; implied consent from Psychat or bitácora; au
 
 ## 3. QA gate
 
-- [ ] `npx tsx --test lib/training-copy/compensation.test.ts`
-- [ ] `npx prisma migrate deploy`
-- [ ] `npx tsc --noEmit`
-- [ ] `CI=true npm run build`
+- [x] `npx tsx --test lib/training-copy/compensation.test.ts`
+- [ ] `npx prisma migrate deploy` (target env)
+- [x] `npx tsc --noEmit`
+- [x] `CI=true npm run build`
 
 ## 4. Exit
 
