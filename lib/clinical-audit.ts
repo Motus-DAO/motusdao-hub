@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import type { ClinicalResource } from '@prisma/client'
+import type { ClinicalResource, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { toInputJson } from '@/lib/prisma-json'
 
@@ -14,9 +14,24 @@ type AuditInput = {
   metadata?: Record<string, unknown>
 }
 
-export async function recordClinicalAccess(input: AuditInput): Promise<void> {
+export class ClinicalAuditError extends Error {
+  constructor(cause?: unknown) {
+    super('Clinical access audit failed')
+    this.name = 'ClinicalAuditError'
+    if (cause instanceof Error) {
+      this.cause = cause
+    }
+  }
+}
+
+type AuditClient = Prisma.TransactionClient | typeof prisma
+
+export async function recordClinicalAccess(
+  input: AuditInput,
+  client: AuditClient = prisma
+): Promise<void> {
   try {
-    await prisma.clinicalAccessLog.create({
+    await client.clinicalAccessLog.create({
       data: {
         actorUserId: input.actorUserId ?? null,
         targetUserId: input.targetUserId ?? null,
@@ -33,6 +48,17 @@ export async function recordClinicalAccess(input: AuditInput): Promise<void> {
       },
     })
   } catch (error) {
-    console.warn('[clinical-audit] failed to record access event', error)
+    console.error('[clinical-audit] failed to record access event', error)
+    throw new ClinicalAuditError(error)
   }
+}
+
+export function handleClinicalAuditError(error: unknown): Response | null {
+  if (error instanceof ClinicalAuditError) {
+    return Response.json(
+      { error: 'No se pudo registrar el acceso clínico' },
+      { status: 500 }
+    )
+  }
+  return null
 }

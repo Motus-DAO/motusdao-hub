@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
-import { recordClinicalAccess } from '@/lib/clinical-audit'
+import {
+  handleClinicalAuditError,
+  recordClinicalAccess,
+} from '@/lib/clinical-audit'
 import {
   resolveProfileSessionAccess,
   UNLINKED_WALLET_CODE,
@@ -22,42 +25,46 @@ export async function POST(request: NextRequest) {
 
     const session = await requireSelfOrAdmin(request, userId)
 
-    // Create or update profile
-    const profile = await prisma.profile.upsert({
-      where: { userId },
-      update: {
-        nombre,
-        apellido,
-        telefono,
-        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
-        ciudad,
-        pais,
-        avatarUrl,
-        bio,
-        language: language || 'es'
-      },
-      create: {
-        userId,
-        nombre,
-        apellido,
-        telefono,
-        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : new Date(),
-        ciudad,
-        pais,
-        avatarUrl,
-        bio,
-        language: language || 'es'
-      }
-    })
-
-    await recordClinicalAccess({
-      request,
-      actorUserId: session.userId,
-      targetUserId: userId,
-      action: 'upsert',
-      resource: 'profile',
-      resourceId: profile.id,
-      reason: 'profile_update',
+    const profile = await prisma.$transaction(async (tx) => {
+      const row = await tx.profile.upsert({
+        where: { userId },
+        update: {
+          nombre,
+          apellido,
+          telefono,
+          fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
+          ciudad,
+          pais,
+          avatarUrl,
+          bio,
+          language: language || 'es',
+        },
+        create: {
+          userId,
+          nombre,
+          apellido,
+          telefono,
+          fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : new Date(),
+          ciudad,
+          pais,
+          avatarUrl,
+          bio,
+          language: language || 'es',
+        },
+      })
+      await recordClinicalAccess(
+        {
+          request,
+          actorUserId: session.userId,
+          targetUserId: userId,
+          action: 'upsert',
+          resource: 'profile',
+          resourceId: row.id,
+          reason: 'profile_update',
+        },
+        tx
+      )
+      return row
     })
 
     return NextResponse.json({
@@ -68,6 +75,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const authResponse = handleAuthError(error)
     if (authResponse) return authResponse
+    const auditResponse = handleClinicalAuditError(error)
+    if (auditResponse) return auditResponse
 
     console.error('Error updating profile:', error)
     return NextResponse.json(
@@ -215,30 +224,34 @@ export async function PUT(request: NextRequest) {
 
     const session = await requireSelfOrAdmin(request, userId)
 
-    // Update profile
-    const profile = await prisma.profile.update({
-      where: { userId },
-      data: {
-        nombre,
-        apellido,
-        telefono,
-        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
-        ciudad,
-        pais,
-        avatarUrl,
-        bio,
-        language: language || 'es'
-      }
-    })
-
-    await recordClinicalAccess({
-      request,
-      actorUserId: session.userId,
-      targetUserId: userId,
-      action: 'update',
-      resource: 'profile',
-      resourceId: profile.id,
-      reason: 'profile_update',
+    const profile = await prisma.$transaction(async (tx) => {
+      const row = await tx.profile.update({
+        where: { userId },
+        data: {
+          nombre,
+          apellido,
+          telefono,
+          fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
+          ciudad,
+          pais,
+          avatarUrl,
+          bio,
+          language: language || 'es',
+        },
+      })
+      await recordClinicalAccess(
+        {
+          request,
+          actorUserId: session.userId,
+          targetUserId: userId,
+          action: 'update',
+          resource: 'profile',
+          resourceId: row.id,
+          reason: 'profile_update',
+        },
+        tx
+      )
+      return row
     })
 
     return NextResponse.json({
@@ -249,6 +262,8 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     const authResponse = handleAuthError(error)
     if (authResponse) return authResponse
+    const auditResponse = handleClinicalAuditError(error)
+    if (auditResponse) return auditResponse
 
     console.error('Error updating profile:', error)
     return NextResponse.json(

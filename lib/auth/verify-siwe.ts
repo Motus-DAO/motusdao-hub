@@ -1,6 +1,7 @@
 import { SiweMessage } from 'siwe'
 import { getAddress, recoverMessageAddress, type Hex } from 'viem'
 import { AuthError } from './errors'
+import { assertAllowedSiweDomain } from './siwe-domain'
 
 export function normalizeSignature(signature: string): Hex {
   const trimmed = signature.trim()
@@ -16,9 +17,8 @@ export function normalizeSignature(signature: string): Hex {
 export async function verifySiweLogin(params: {
   message: string
   signature: string
-  domain: string
 }): Promise<{ address: string; nonce: string }> {
-  const { message, signature, domain } = params
+  const { message, signature } = params
 
   let siweMessage: SiweMessage
   try {
@@ -27,12 +27,7 @@ export async function verifySiweLogin(params: {
     throw new AuthError(401, 'Invalid sign-in message format')
   }
 
-  if (siweMessage.domain !== domain) {
-    throw new AuthError(
-      401,
-      `Domain mismatch (expected ${domain}, message has ${siweMessage.domain})`
-    )
-  }
+  assertAllowedSiweDomain(siweMessage.domain)
 
   if (!siweMessage.nonce) {
     throw new AuthError(401, 'Missing nonce in sign-in message')

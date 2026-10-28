@@ -5,13 +5,16 @@ import type { AuthProvider, Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   SESSION_COOKIE_NAME,
+  SESSION_IDLE_MAX_SECONDS,
   SESSION_MAX_AGE_SECONDS,
+  SESSION_SLIDE_MIN_SECONDS,
 } from './constants'
 import { AuthError } from './errors'
 import {
   getDevBypassAdminContext,
   isDevAdminBypassEnabled,
 } from './dev-bypass'
+import { userHasAdminPrivileges } from './admin-access'
 
 export type SessionPayload = {
   sub: string | null
@@ -19,6 +22,7 @@ export type SessionPayload = {
   role: Role | null
   isPlatformAdmin?: boolean
   authProvider?: AuthProvider | null
+  lastActiveAt?: number
 }
 
 export type AuthContext = {
@@ -58,26 +62,66 @@ export function getRequestDomain(request: NextRequest): string {
   return new URL(origin).host
 }
 
+export function isSessionIdleExpired(
+  lastActiveAt: number,
+  nowSeconds = Math.floor(Date.now() / 1000)
+): boolean {
+  if (!lastActiveAt) return false
+  return nowSeconds - lastActiveAt > SESSION_IDLE_MAX_SECONDS
+}
+
+function payloadFromVerifiedToken(
+  verified: jwt.JwtPayload & SessionPayload
+): SessionPayload | null {
+  if (!verified.eoa) return null
+
+  const lastActiveAt = verified.lastActiveAt ?? verified.iat ?? 0
+  if (isSessionIdleExpired(lastActiveAt)) {
+    return null
+  }
+
+  return {
+    sub: verified.sub ?? null,
+    eoa: verified.eoa.toLowerCase(),
+    role: (verified.role as Role | null) ?? null,
+    isPlatformAdmin: verified.isPlatformAdmin === true,
+    authProvider: (verified.authProvider as AuthProvider | null) ?? null,
+    lastActiveAt,
+  }
+}
+
 function decodeSessionToken(token: string): SessionPayload | null {
   try {
-    const payload = jwt.verify(token, getAuthSecret()) as SessionPayload
-    if (!payload.eoa) return null
-    return {
-      sub: payload.sub ?? null,
-      eoa: payload.eoa.toLowerCase(),
-      role: payload.role ?? null,
-      isPlatformAdmin: payload.isPlatformAdmin === true,
-      authProvider: payload.authProvider ?? null,
-    }
+    const verified = jwt.verify(token, getAuthSecret()) as jwt.JwtPayload &
+      SessionPayload
+    return payloadFromVerifiedToken(verified)
   } catch {
     return null
   }
 }
 
+function toAuthContext(payload: SessionPayload): AuthContext {
+  return {
+    userId: payload.sub,
+    eoaAddress: payload.eoa,
+    role: payload.role,
+    isPlatformAdmin: payload.isPlatformAdmin === true,
+    authProvider: payload.authProvider ?? null,
+  }
+}
+
 export function createSessionToken(payload: SessionPayload): string {
-  return jwt.sign(payload, getAuthSecret(), {
-    expiresIn: SESSION_MAX_AGE_SECONDS,
-  })
+  const now = Math.floor(Date.now() / 1000)
+  return jwt.sign(
+    {
+      ...payload,
+      lastActiveAt: now,
+    },
+    getAuthSecret(),
+    {
+      expiresIn: SESSION_MAX_AGE_SECONDS,
+    }
+  )
 }
 
 export function getSessionCookieOptions() {
@@ -90,6 +134,18 @@ export function getSessionCookieOptions() {
   }
 }
 
+async function slideSessionActivity(payload: SessionPayload): Promise<void> {
+  const now = Math.floor(Date.now() / 1000)
+  const last = payload.lastActiveAt ?? 0
+  if (now - last < SESSION_SLIDE_MIN_SECONDS) {
+    return
+  }
+
+  const cookieStore = await cookies()
+  const refreshed = createSessionToken(payload)
+  cookieStore.set(SESSION_COOKIE_NAME, refreshed, getSessionCookieOptions())
+}
+
 export async function getSessionFromRequest(
   request: NextRequest
 ): Promise<AuthContext | null> {
@@ -99,13 +155,7 @@ export async function getSessionFromRequest(
   const payload = decodeSessionToken(token)
   if (!payload) return null
 
-  return {
-    userId: payload.sub,
-    eoaAddress: payload.eoa,
-    role: payload.role,
-    isPlatformAdmin: payload.isPlatformAdmin === true,
-    authProvider: payload.authProvider ?? null,
-  }
+  return toAuthContext(payload)
 }
 
 export async function getSession(): Promise<AuthContext | null> {
@@ -116,23 +166,24 @@ export async function getSession(): Promise<AuthContext | null> {
   const payload = decodeSessionToken(token)
   if (!payload) return null
 
-  return {
-    userId: payload.sub,
-    eoaAddress: payload.eoa,
-    role: payload.role,
-    isPlatformAdmin: payload.isPlatformAdmin === true,
-    authProvider: payload.authProvider ?? null,
-  }
+  return toAuthContext(payload)
 }
 
 export async function requireSession(
   request: NextRequest
 ): Promise<AuthContext> {
-  const session = await getSessionFromRequest(request)
-  if (!session) {
+  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value
+  if (!token) {
     throw new AuthError(401, 'Authentication required')
   }
-  return session
+
+  const payload = decodeSessionToken(token)
+  if (!payload) {
+    throw new AuthError(401, 'Authentication required')
+  }
+
+  await slideSessionActivity(payload)
+  return toAuthContext(payload)
 }
 
 export async function requireAdmin(
@@ -147,25 +198,20 @@ export async function requireAdmin(
     throw new AuthError(403, 'Admin access required')
   }
 
-  if (session.role === 'admin' || session.isPlatformAdmin) {
-    return session
-  }
-
-  // Stale SIWE JWT after dual-role grant: confirm platform admin from DB
   const user = await prisma.user.findFirst({
     where: { id: session.userId, deletedAt: null },
     select: { role: true, isPlatformAdmin: true },
   })
 
-  if (user && (user.role === 'admin' || user.isPlatformAdmin)) {
-    return {
-      ...session,
-      role: user.role,
-      isPlatformAdmin: true,
-    }
+  if (!userHasAdminPrivileges(user)) {
+    throw new AuthError(403, 'Admin access required')
   }
 
-  throw new AuthError(403, 'Admin access required')
+  return {
+    ...session,
+    role: user!.role,
+    isPlatformAdmin: user!.isPlatformAdmin === true,
+  }
 }
 
 export { handleAuthError } from './errors'

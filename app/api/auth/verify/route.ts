@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { consumeAuthNonce } from '@/lib/auth/nonce'
 import {
   createSessionToken,
-  getRequestDomain,
   getSessionCookieOptions,
   type SessionPayload,
 } from '@/lib/auth/session'
@@ -23,12 +22,9 @@ const verifySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = verifySchema.parse(await request.json())
-    const domain = getRequestDomain(request)
-
     const { address, nonce } = await verifySiweLogin({
       message: body.message,
       signature: body.signature,
-      domain,
     })
 
     const nonceValid = await consumeAuthNonce(address, nonce)
