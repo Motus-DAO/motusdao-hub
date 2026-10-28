@@ -40,8 +40,8 @@ Elige **dónde vive el contexto largo** que el asistente usa para responder. Es 
 |------|-------------|---------------|
 | **Estándar (Hub)** | El hilo va en el navegador; inferencia vía Motus (`/api/chat`). RAG Motus opcional. | ✅ Default |
 | **Memoria local (RootRouter)** | `store.json` en **tu PC**; Psychat habla con `http://127.0.0.1:8787`. Motus no indexa ese archivo. | ✅ Fase 1 |
-| **Sala de sesión (enclave)** | Proxy efímero con attestation del build RootRouter. | 🔶 Beta (requiere env ops) |
-| **Enclave 24/7** | Proxy siempre encendido en enclave. | ⏳ Próximamente |
+| **Sala de sesión (enclave)** | Proxy efímero en **Phala** con attestation del build RootRouter. | 🔶 Beta (ops Phala + env) |
+| **Enclave 24/7** | Proxy siempre encendido en enclave **Phala**. | ⏳ Tras fase 2 ops |
 
 ---
 
@@ -103,7 +103,9 @@ No hace falta pegar API keys en RootRouter: el proxy **reenvía** el header `Aut
 
 ---
 
-## Fase 2 — Enclave de sesión (ops)
+## Fase 2 — Enclave de sesión (Phala)
+
+Decisión LOCKED: [psychat-enclave-phala-decision.md](../architecture/psychat-enclave-phala-decision.md).
 
 Variables de entorno (deploy):
 
@@ -141,4 +143,4 @@ Variables de entorno (deploy):
 
 ## Referentes externos
 
-SMOS, Organism, Mem0 (proxy + memoria local), Phala/NEAR/TrustedRouter (TEE inferencia/enclave). Motus integra **Psychat + crédito Hub + wallet slices 1–4**.
+SMOS, Organism, Mem0 (proxy + memoria local), **Phala** (enclave contexto RootRouter; ver decision doc), TrustedRouter / Venice TEE (inferencia). Motus integra **Psychat + crédito Hub + wallet slices 1–4**.

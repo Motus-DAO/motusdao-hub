@@ -15,7 +15,7 @@ Browser (Psychat)
                      └─ Venice/OpenAI via lib/ai-client
 ```
 
-Session / always-on enclave: same diagram with proxy URL from env + attestation gate (phase 2).
+Session / always-on enclave: same diagram with proxy URL on **Phala** + attestation gate (phase 2). See [psychat-enclave-phala-decision.md](./psychat-enclave-phala-decision.md).
 
 ## Code map
 

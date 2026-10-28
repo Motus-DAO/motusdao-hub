@@ -157,6 +157,19 @@ Para desarrollo local, puedes usar:
 5. ✅ Verifica que la base de datos no esté pausada
 6. ✅ Redeploy después de cambiar variables de entorno
 
+## Build time (expectations + do-not)
+
+Baseline for this repo on Vercel is often **~6–8 minutes** (many API routes, Prisma, heavy deps). Micro-optimizations rarely reach **~2 minutes** without architectural change.
+
+**Do not** add `docs/` to `.vercelignore` or `outputFileTracingExcludes` for `./docs/**`. Legal pages prerender at build time and read markdown from:
+
+- `docs/compliance/legal/aviso-de-privacidad-integral.md` (`/privacy`)
+- `docs/compliance/legal/terminos-y-condiciones.md`, cookies, subprocesadores (`lib/legal/load-legal-markdown.ts`)
+
+A deploy that excludes those paths fails with `ENOENT` on `/privacy`. If optimizing deploy size, exclude only `archive/`, `specs/`, `infra/`, `jitsi/`, `scripts/` — never `docs/compliance/legal/`.
+
+Reverted Oct 2026: full Vercel “lean deploy” experiment (`6268591`) broke prod; **HEAD restored** to pre-optimization `vercel.json` / `next.config.ts`.
+
 ## Recursos
 
 - [Supabase Connection Pooling](https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler)
