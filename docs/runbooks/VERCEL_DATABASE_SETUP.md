@@ -129,7 +129,7 @@ El `package.json` ya incluye la generación de Prisma Client:
 {
   "scripts": {
     "postinstall": "prisma generate",
-    "build": "prisma generate && next build --turbopack"
+    "build": "next build --turbopack"
   }
 }
 ```
