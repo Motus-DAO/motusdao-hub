@@ -11,7 +11,7 @@
 ## 1. Scope
 
 - `app/bitacora/page.tsx` uses SIWE `userId`, session cookies, unlock signature, client encrypt/decrypt.
-- Copy: personal diary, not expediente clínico; matched PSM cannot read; lost wallet key = lost journal.
+- Copy: personal diary, not expediente; **same in-app text for user and PSM** (`lib/safe-notes/bitacora-disclosure.ts`) — Motus/admins/others cannot read body; wallet unlock only.
 - `lib/safe-notes/*` — purpose `motus-safe-notes`, `keyVersion` 1, AAD = lowercased EOA, Web Crypto AES-GCM.
 - `journal_entries`: `ciphertext`, optional `iv`, `keyVersion`; no `mood` / `tags` columns (inside encrypted JSON).
 - `POST` / `PUT` accept ciphertext + iv only. `GET` returns ciphertext to **owner**; **admin listing another user** returns id + timestamps only.
@@ -79,4 +79,4 @@ fetch('/api/bitacora?userId=YOUR_USER_ID', { credentials: 'include' })
 
 ## 8. Exit conditions
 
-Slice 7 stops here. Next plan work: [docs/specs/SDD-chat-data.md](../docs/specs/SDD-chat-data.md) (export button, Psychat archive key, etc.). Update [docs/compliance/pendientes-post-beta.md](../docs/compliance/pendientes-post-beta.md) aviso copy when product claims “Motus cannot read journal” in production.
+Slice 7 stops here. Next plan work: [specs/chat-data-roadmap.md](../specs/chat-data-roadmap.md) — slice **1** (export) in progress.

@@ -40,7 +40,7 @@ Si incorporamos persona moral o domicilio fiscal distinto, publicaremos la actua
 - Crear y administrar tu cuenta (incluida autenticación con wallet / SIWE).
 - Onboarding, matching con profesionales, agenda y sesiones de videoterapia.
 - Operar **Psychat** y formularios de intake asistidos por IA, con el consentimiento específico de procesamiento por IA cuando aplique.
-- Bitácora personal (diario); hoy almacenada en nuestro backend — **no** es el expediente clínico del profesional.
+- Bitácora personal (diario): cifrado en el navegador antes de almacenarse; MotusDAO no puede leer el contenido (solo metadatos como fecha). **No** es el expediente clínico del profesional ni del paciente.
 - Academia, pagos de cursos y créditos de IA.
 - Seguridad, prevención de fraude y auditoría de accesos a datos clínicos en el Hub.
 
@@ -92,7 +92,7 @@ Al usar el Servicio desde México hacia encargados en el extranjero, aceptas que
 | Tipo | Plazo orientativo |
 |------|-------------------|
 | Cuenta e intake | Mientras mantengas cuenta activa; después, bloqueo o supresión según solicitud ARCO y obligaciones legales |
-| Bitácora | Mientras mantengas la cuenta; contenido en texto claro en servidor hasta que activemos cifrado en cliente (se anunciará en aviso actualizado) |
+| Bitácora | Mientras mantengas la cuenta; contenido cifrado en servidor (solo tu wallet lo abre); metadatos de entrada conservados |
 | Psychat (visita) | No guardamos el hilo completo en base de datos por defecto en la sesión actual |
 | Logs de seguridad y auditoría clínica | Plazo acotado necesario para seguridad e investigación de incidentes (orden de meses, salvo obligación legal mayor) |
 | Pagos y facturación | Lo que exijan obligaciones fiscales y contables |

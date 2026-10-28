@@ -127,3 +127,20 @@ export async function deleteBitacoraEntry(id: string): Promise<void> {
   })
   if (!res.ok) throw new Error('No se pudo eliminar la entrada')
 }
+
+export async function buildBitacoraExportFile(
+  userId: string,
+  eoaAddress: string
+) {
+  const { buildSafeNotesExportFile } = await import('@/lib/safe-notes/export-format')
+  const rows = await fetchBitacoraEntries(userId)
+  return buildSafeNotesExportFile({
+    eoaAddress,
+    entries: rows.map((row) => ({
+      id: row.id,
+      ciphertext: row.ciphertext,
+      iv: row.iv ?? '',
+      createdAt: row.createdAt,
+    })),
+  })
+}

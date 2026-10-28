@@ -14,7 +14,10 @@ import {
   Smile,
   Frown,
   Meh,
-  TrendingUp
+  TrendingUp,
+  Lock,
+  ShieldAlert,
+  Download,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
@@ -27,9 +30,15 @@ import {
   deleteBitacoraEntry,
   hydrateBitacoraEntries,
   saveBitacoraEntry,
+  buildBitacoraExportFile,
   type BitacoraEntryView,
 } from '@/lib/safe-notes/client-bitacora'
-import { Lock, ShieldAlert } from 'lucide-react'
+import { downloadSafeNotesExport } from '@/lib/safe-notes/export-format'
+import {
+  BITACORA_DISCLOSURE_LEAD,
+  BITACORA_DISCLOSURE_RECOVERY,
+  BITACORA_DISCLOSURE_TITLE,
+} from '@/lib/safe-notes/bitacora-disclosure'
 
 type JournalEntry = BitacoraEntryView
 
@@ -79,6 +88,7 @@ export default function BitacoraPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     if (sessionState === 'loading') return
@@ -199,6 +209,24 @@ export default function BitacoraPage() {
   }
 
   const moodStats = getMoodStats()
+
+  const handleExport = async () => {
+    if (!userId || !eoaAddress) return
+    setIsExporting(true)
+    try {
+      const file = await buildBitacoraExportFile(userId, eoaAddress)
+      if (file.entries.length === 0) {
+        alert('No hay entradas cifradas para exportar.')
+        return
+      }
+      downloadSafeNotesExport(file)
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert('No se pudo exportar. Intenta de nuevo.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   if (sessionState === 'loading' || (isSessionReady && isLoading)) {
     return (
@@ -337,7 +365,7 @@ export default function BitacoraPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="mb-6"
+                className="mb-6 flex flex-col sm:flex-row gap-3"
               >
                 <CTAButton
                   onClick={() => setShowForm(true)}
@@ -348,7 +376,22 @@ export default function BitacoraPage() {
                   <Plus className="w-5 h-5 mr-2" />
                   Nueva Entrada
                 </CTAButton>
+                <CTAButton
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  disabled={isExporting || entries.length === 0}
+                  onClick={() => void handleExport()}
+                  className="w-full sm:w-auto"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  {isExporting ? 'Exportando…' : 'Exportar copia cifrada'}
+                </CTAButton>
               </motion.div>
+              <p className="text-xs text-muted-foreground mb-6 -mt-4">
+                La exportación incluye ciphertext e IV; ábrela con la misma wallet y la receta en{' '}
+                <code className="text-mauve-400">docs/architecture/safe-notes-export.md</code>.
+              </p>
 
               {/* Journal Form */}
               {showForm && (
@@ -622,16 +665,11 @@ function PrivacyNotice({ compact }: { compact?: boolean }) {
       }`}
     >
       <p>
-        <strong className="text-foreground font-medium">Bitácora personal.</strong> No sustituye
-        una nota clínica ni un expediente (NOM-004). Tu psicólogo asignado{' '}
-        <strong className="text-foreground font-medium">no puede leer</strong> estas entradas.
+        <strong className="text-foreground font-medium">{BITACORA_DISCLOSURE_TITLE}.</strong>{' '}
+        {BITACORA_DISCLOSURE_LEAD}
       </p>
       {!compact && (
-        <p>
-          Motus guarda texto cifrado; solo tu wallet puede abrirlo. Si pierdes acceso a la wallet o
-          rechazas la firma de desbloqueo, <strong className="text-foreground font-medium">no hay
-          recuperación</strong> del contenido.
-        </p>
+        <p>{BITACORA_DISCLOSURE_RECOVERY}</p>
       )}
     </div>
   )
