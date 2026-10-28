@@ -1,6 +1,6 @@
 # Chat-data slice 1 — Bitácora export + recover UX — Spec
 
-> Status: **SHIPPED** on `main` at `PLACEHOLDER` · Owner: product · 28 Oct 2026
+> Status: **SHIPPED** on `main` at `b0f0b2e` · Owner: product · 28 Oct 2026
 >
 > Purpose: portable **ciphertext** package, user-facing backup flow, and in-app **recover** so deleting entries on Motus does not strand the user with an opaque `.json` file. Motus still cannot read bodies without the wallet unlock key.
 >
