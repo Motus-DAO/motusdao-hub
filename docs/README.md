@@ -9,6 +9,12 @@
 | [data-layer.md](./architecture/data-layer.md) | Supabase Postgres + Prisma + Storage + RAG |
 | [root-agent.md](./architecture/root-agent.md) | Root Agent SDK integration |
 
+## Chat-data track (slices 1–5)
+
+Índice usuario + ingeniería + ingest futuro: **[chat-data/README.md](./chat-data/README.md)**
+
+Guías usuario: `docs/guides/psychat-memoria-contexto-es.md`, etc. · App: `/psychat/memoria-contexto`
+
 ## Runbooks (`docs/runbooks/`)
 
 | Doc | Purpose |

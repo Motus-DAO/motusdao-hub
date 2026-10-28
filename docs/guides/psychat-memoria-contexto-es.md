@@ -1,13 +1,29 @@
 # Psychat — memoria de contexto (RootRouter / enclaves)
 
-> Chat-data **slice 5** · Plan: [SDD-chat-data.md](../../docs/specs/SDD-chat-data.md) §6–7  
-> Arquitectura: [psychat-rootrouter-context.md](../architecture/psychat-rootrouter-context.md)
+> Chat-data **slice 5** · Índice general: [docs/chat-data/README.md](../chat-data/README.md)
 
-Guía para personas que usan Psychat. La configuración rápida está en **Psychat → botón «Memoria: …»** (modal).
+## Lee esto primero
+
+| Pregunta | Respuesta corta |
+|----------|-----------------|
+| ¿Tengo que hacer algo? | **No**, si Psychat te basta. Deja **Memoria: Estándar (Hub)**. |
+| ¿Qué es RootRouter aquí? | Un proxy **opcional** en tu PC que guarda el hilo largo en un archivo local. |
+| ¿Dónde lo configuro? | **`/psychat` → botón «Memoria: …»** (modal). Guía visual: app **`/psychat/memoria-contexto`**. |
+| ¿Es lo mismo que TEE/E2EE? | **No.** Eso es privacidad **por mensaje**. Memoria = **dónde se acumula el contexto**. |
+
+## Quién usa qué
+
+| Perfil | Modo |
+|--------|------|
+| Solo chatear en el Hub | **Estándar (Hub)** — sin terminal |
+| Dueño del contexto en su PC | **Memoria local** — Psychat en el browser + `npx @rootrouter/proxy@beta` |
+| Cliente sin terminal en el futuro | **Enclave** — cuando `NEXT_PUBLIC_PSYCHAT_SESSION_ENCLAVE_URL` esté en prod |
+
+Configuración rápida: **Psychat → Memoria** (modal). No hace falta memorizar rutas.
 
 ---
 
-## Qué es esto (en una frase)
+## Qué es distinto de la memoria
 
 Elige **dónde vive el contexto largo** que el asistente usa para responder. Es **distinto** de:
 
@@ -40,38 +56,33 @@ Elige **dónde vive el contexto largo** que el asistente usa para responder. Es 
 
 Psychat → `http://127.0.0.1:8787/v1/chat/completions` → RootRouter (`store.json` local) → Hub `/v1/chat/completions` (crédito + Venice).
 
-### 1. Arrancar el proxy (npm, sin clonar)
+### 1. Arrancar el proxy (npm @beta)
 
-Desde el modal **Memoria** en `/psychat` copia el bloque, o:
+Desde el modal **Memoria** en `/psychat` copia el bloque — sin comentarios en el paste, compatible con zsh:
 
 ```bash
-export ROOTROUTER_UPSTREAM_ORIGIN="http://localhost:3000"   # o https://tu-hub.vercel.app
+export ROOTROUTER_UPSTREAM_ORIGIN="https://app.motusdao.org"
 export ROOTROUTER_STORE_PATH="$HOME/.rootrouter/psychat-store.json"
 export ROOTROUTER_HOST=127.0.0.1
 export PORT=8787
 npx -p @rootrouter/proxy@beta rootrouter-proxy
 ```
 
+`ROOTROUTER_UPSTREAM_ORIGIN` debe ser la misma URL donde abriste Psychat.
+
 En el repo **motusdao-hub**:
 
 ```bash
-HUB_ORIGIN=http://localhost:3000 ./scripts/psychat-rootrouter-proxy.example.sh
+HUB_ORIGIN=https://app.motusdao.org ./scripts/psychat-rootrouter-proxy.example.sh
 ```
 
 Comprueba: `curl -s http://127.0.0.1:8787/healthz`
 
-### 2. Desde clone RootRouter (tu máquina de dev)
-
-```bash
-cd /path/to/RootRouter   # monorepo MotusDAO
-npm install
-npm run proxy:build
-ROOTROUTER_UPSTREAM_ORIGIN=http://localhost:3000 npm run proxy:start
-```
+**Fallback clone:** monorepo RootRouter + `npm run proxy:start` si npm falla.
 
 Docs upstream: [packages/proxy/README.md](https://github.com/RootRouter/RootRouter/blob/main/packages/proxy/README.md)
 
-### 3. Cursor / store del proyecto (opcional)
+### 2. Cursor / store del proyecto (opcional)
 
 ```bash
 npx rootrouter@beta init cursor --project-store --project-agent-id motusdao-hub
@@ -79,7 +90,7 @@ npx rootrouter@beta init cursor --project-store --project-agent-id motusdao-hub
 
 Eso indexa el repo en `~/.rootrouter/` para Cursor; **Psychat** usa el proxy + `psychat-store.json` aparte.
 
-### 4. Activar en Psychat
+### 3. Activar en Psychat
 
 1. `/psychat` → consentimiento IA.
 2. **Memoria** → **Memoria local (RootRouter)** → **Probar conexión** → casilla → **Guardar**.

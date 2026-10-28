@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { X, ExternalLink, Copy, Check } from 'lucide-react'
+import { X, Copy, Check } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { GradientText } from '@/components/ui/GradientText'
@@ -134,8 +134,9 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
           Memoria de contexto (Psychat)
         </GradientText>
         <p className="mt-2 text-sm text-muted-foreground">
-          Distinto de privacidad Venice (TEE/E2EE por mensaje) y de la copia cifrada en tu cuenta. Elige dónde vive
-          el contexto largo que el asistente usa para responder.
+          <strong className="text-foreground">Estándar (Hub)</strong> para la mayoría.{' '}
+          <strong className="text-foreground">Memoria local</strong>: Psychat en el navegador + un comando en tu
+          terminal; el contexto largo vive en tu PC (<code className="text-xs">store.json</code>).
         </p>
 
         <fieldset className="mt-4 space-y-3">
@@ -180,7 +181,11 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
             </ol>
             {proxyStartScript ? (
               <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground">{proxyStartScript}</pre>
+                <p className="text-[11px] text-muted-foreground">
+                  Pega en terminal y déjalo corriendo. Node 20+. La URL del Hub se ajusta sola según dónde abriste
+                  Psychat. Comprueba con «Probar conexión».
+                </p>
+                <pre className="mt-2 whitespace-pre-wrap text-[11px] text-muted-foreground">{proxyStartScript}</pre>
                 <button
                   type="button"
                   className="mt-2 inline-flex items-center gap-1 text-xs underline"
@@ -192,9 +197,8 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
               </div>
             ) : null}
             <p className="text-[11px] text-muted-foreground">
-              Repo RootRouter:{' '}
-              <code className="text-xs">npx rootrouter@beta init cursor --project-store</code> (Cursor) · paquete{' '}
-              <code className="text-xs">@rootrouter/proxy@beta</code>
+              Desde motusdao-hub también puedes usar{' '}
+              <code className="text-xs">HUB_ORIGIN=… ./scripts/psychat-rootrouter-proxy.example.sh</code>
             </p>
             <div className="flex flex-wrap gap-2">
               <CTAButton variant="secondary" size="sm" onClick={() => void testProxy()} disabled={checking}>
@@ -249,12 +253,9 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
 
         <a
           href="/psychat/memoria-contexto"
-          target="_blank"
-          rel="noreferrer"
           className="mt-4 inline-flex items-center gap-1 text-xs text-mauve-400 underline"
         >
-          Guía completa (Markdown)
-          <ExternalLink className="h-3 w-3" />
+          Guía paso a paso (simple)
         </a>
 
         <div className="mt-6 flex justify-end gap-2">

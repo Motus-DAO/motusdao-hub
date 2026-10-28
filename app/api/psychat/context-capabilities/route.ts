@@ -10,6 +10,6 @@ export async function GET() {
     sessionEnclaveUrl,
     sessionEnclaveEnabled: Boolean(sessionEnclaveUrl),
     alwaysOnEnclaveEnabled: alwaysOnEnabled,
-    docsPath: '/docs/guides/psychat-memoria-contexto-es.md',
+    docsPath: '/psychat/memoria-contexto',
   })
 }
