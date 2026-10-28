@@ -1,6 +1,7 @@
 import { getAddress, isAddress } from 'viem'
 import { getSupabaseAdmin } from './supabase-admin'
 import { resolveProfessionalDocument } from './storage-document'
+import { resolvePsmIntroVideo } from './storage-intro-video'
 
 export const STORAGE_BUCKETS = {
   avatars: 'avatars',
@@ -290,25 +291,59 @@ export async function createSignedAcademyMediaUrl(
   return data.signedUrl
 }
 
-const PSM_INTRO_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const
-const PSM_INTRO_VIDEO_MAX_BYTES = 100 * 1024 * 1024
+export async function createSignedPsmIntroVideoUpload(params: {
+  ownerKey: string
+  file: Pick<File, 'name' | 'type' | 'size'>
+  head: Uint8Array
+}): Promise<{ storagePath: string; signedUrl: string; token: string; contentType: string }> {
+  const resolved = resolvePsmIntroVideo({
+    type: params.file.type,
+    name: params.file.name,
+    size: params.file.size,
+    head: params.head,
+  })
+
+  const ownerKey = normalizeWalletAddress(params.ownerKey)
+  const storagePath = `${ownerKey}/intro-video.${resolved.ext}`
+
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKETS.psmIntroVideos)
+    .createSignedUploadUrl(storagePath, { upsert: true })
+
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message || 'No se pudo preparar la subida del video')
+  }
+
+  return {
+    storagePath,
+    signedUrl: data.signedUrl,
+    token: data.token,
+    contentType: resolved.mime,
+  }
+}
 
 export async function uploadPsmIntroVideo(params: {
   file: File
   ownerKey: string
 }): Promise<{ storagePath: string }> {
-  validateFile(params.file, PSM_INTRO_VIDEO_MIME_TYPES, PSM_INTRO_VIDEO_MAX_BYTES)
+  const head = new Uint8Array(await params.file.slice(0, 16).arrayBuffer())
+  const resolved = resolvePsmIntroVideo({
+    type: params.file.type,
+    name: params.file.name,
+    size: params.file.size,
+    head,
+  })
 
   const ownerKey = normalizeWalletAddress(params.ownerKey)
-  const ext = getExtension(params.file.type)
-  const storagePath = `${ownerKey}/intro-video.${ext}`
+  const storagePath = `${ownerKey}/intro-video.${resolved.ext}`
   const buffer = Buffer.from(await params.file.arrayBuffer())
 
   const supabase = getSupabaseAdmin()
   const { error } = await supabase.storage
     .from(STORAGE_BUCKETS.psmIntroVideos)
     .upload(storagePath, buffer, {
-      contentType: params.file.type,
+      contentType: resolved.mime,
       upsert: true,
     })
 

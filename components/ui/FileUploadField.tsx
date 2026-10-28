@@ -15,6 +15,8 @@ type FileUploadFieldProps = {
   /** Remote URL for uploaded image preview */
   previewUrl?: string
   disabled?: boolean
+  /** Shown while `onUpload` is in progress (e.g. long video uploads). */
+  uploadingHint?: string
   onUpload: (file: File) => Promise<void>
   onClear?: () => void
 }
@@ -57,6 +59,7 @@ export function FileUploadField({
   previewUrl,
   disabled = false,
   validateFile,
+  uploadingHint,
   onUpload,
   onClear,
 }: FileUploadFieldProps) {
@@ -180,7 +183,9 @@ export function FileUploadField({
         />
 
         {isUploading && (
-          <span className="text-sm text-muted-foreground">Subiendo archivo…</span>
+          <span className="text-sm text-muted-foreground">
+            {uploadingHint || 'Subiendo archivo…'}
+          </span>
         )}
       </div>
 

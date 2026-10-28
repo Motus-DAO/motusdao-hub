@@ -21,6 +21,7 @@ import {
   resolveWeeklyTherapyHours,
   buildPsmAvailability,
 } from '@/lib/intake/psm-intake-v1'
+import { getWeeklyTherapyHoursInsight } from '@/lib/psm-weekly-hours'
 import {
   mapClinicalComplexityToUrgencyLevels,
   resolveClinicalComplexityLevels,
@@ -52,7 +53,7 @@ const schema = z.object({
     .min(PSM_MIN_WEEKLY_THERAPY_HOURS, `Indica al menos ${PSM_MIN_WEEKLY_THERAPY_HOURS} hora semanal`)
     .max(
       PSM_MAX_WEEKLY_THERAPY_HOURS,
-      `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas semanales`
+      `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas (total en una semana)`
     ),
   maxActiveUsers: z.coerce.number().int().positive('El cupo máximo debe ser mayor a 0'),
   credentialedCountries: z
@@ -146,6 +147,10 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
 
   const weeklyHours = watch('weeklyTherapyHours')
   const maxUsers = watch('maxActiveUsers')
+  const weeklyHoursInsight =
+    typeof weeklyHours === 'number' && !Number.isNaN(weeklyHours)
+      ? getWeeklyTherapyHoursInsight(weeklyHours)
+      : null
   const capacityHint =
     typeof weeklyHours === 'number' &&
     typeof maxUsers === 'number' &&
@@ -175,7 +180,7 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
           <div className="space-y-2">
             <label className="block text-sm font-medium">Horas semanales para terapia *</label>
             <p className="text-xs text-muted-foreground">
-              Tiempo aproximado que puedes dedicar a sesiones por semana.
+              Tiempo aproximado que puedes dedicar a sesiones por semana (máx. {PSM_MAX_WEEKLY_THERAPY_HOURS} h).
             </p>
             <input
               {...register('weeklyTherapyHours')}
@@ -186,6 +191,11 @@ export function PsmOperationsStep({ onContinue, onBack }: Props) {
             />
             {errors.weeklyTherapyHours && (
               <p className="text-red-400 text-sm">{errors.weeklyTherapyHours.message}</p>
+            )}
+            {weeklyHoursInsight && (
+              <p className="text-sm text-amber-800 dark:text-amber-200/95 rounded-xl border border-amber-400/40 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
+                {weeklyHoursInsight.message}
+              </p>
             )}
           </div>
           <div className="space-y-2">

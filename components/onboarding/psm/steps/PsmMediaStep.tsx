@@ -3,10 +3,16 @@
 import { useState } from 'react'
 import { AlertCircle, Link2 } from 'lucide-react'
 import { useOnboardingStore } from '@/lib/onboarding-store'
-import { authFetch } from '@/lib/auth/client'
 import { isStorageMediaRef, toStorageRef } from '@/lib/academy/media'
+import { uploadPsmIntroVideoDirect } from '@/lib/storage-client'
+import {
+  PSM_INTRO_VIDEO_MAX_BYTES,
+  PSM_INTRO_VIDEO_MAX_LABEL,
+  psmIntroVideoSizeError,
+} from '@/lib/storage-intro-video'
 import { FileUploadField } from '@/components/ui/FileUploadField'
 import { inputFieldClass } from '@/lib/onboarding-form-helpers'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { PsmSectionBlock } from '../PsmSectionBlock'
 
 type Props = {
@@ -36,28 +42,34 @@ function resolveExternalVideoUrl(data: {
   return ''
 }
 
+function validateIntroVideoFile(file: File): string | null {
+  if (file.size <= 0) return 'El archivo está vacío.'
+  if (file.size > PSM_INTRO_VIDEO_MAX_BYTES) {
+    return psmIntroVideoSizeError(file.size)
+  }
+  return null
+}
+
 export function PsmMediaStep({ onContinue, onBack }: Props) {
   const { data, updateData } = useOnboardingStore()
   const [videoUrlInput, setVideoUrlInput] = useState(() => resolveExternalVideoUrl(data))
   const [urlError, setUrlError] = useState<string | null>(null)
 
   const handleUpload = async (file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    if (data.eoaAddress) formData.append('eoaAddress', data.eoaAddress)
+    if (!data.eoaAddress) {
+      throw new Error('Conecta y verifica tu wallet antes de subir el video')
+    }
 
-    const res = await authFetch('/api/profile/upload-intro-video', {
-      method: 'POST',
-      body: formData,
+    const result = await uploadPsmIntroVideoDirect({
+      file,
+      eoaAddress: data.eoaAddress,
     })
-    const body = await res.json()
-    if (!res.ok) throw new Error(body.error || 'Error al subir el video')
 
     setVideoUrlInput('')
     setUrlError(null)
     updateData({
-      introVideoStoragePath: body.storagePath,
-      introVideoUrl: toStorageRef(body.storagePath),
+      introVideoStoragePath: result.storagePath,
+      introVideoUrl: result.introVideoUrl || toStorageRef(result.storagePath),
     })
   }
 
@@ -106,6 +118,8 @@ export function PsmMediaStep({ onContinue, onBack }: Props) {
   return (
     <div className="space-y-8">
       <PsmSectionBlock title="Video de presentación (opcional)">
+        <SiweSessionBanner />
+
         <p className="mb-4 text-sm text-muted-foreground">
           Graba un video de 30 a 90 segundos o comparte un enlace (YouTube, Vimeo, Loom, etc.).
           Preséntate con calidez: a quién ayudas, cómo es trabajar contigo y qué pueden esperar.
@@ -113,8 +127,11 @@ export function PsmMediaStep({ onContinue, onBack }: Props) {
         </p>
 
         <FileUploadField
-          label="Sube tu video (MP4 o WebM, máx. 100 MB)"
-          accept="video/mp4,video/webm"
+          label={`Sube tu video (MP4, WebM o MOV — máx. ${PSM_INTRO_VIDEO_MAX_LABEL})`}
+          accept="video/mp4,video/webm,video/quicktime,video/x-m4v,.mp4,.webm,.mov"
+          hint={`La subida va directo al almacenamiento seguro; en móvil puede tardar unos minutos. Máximo ${PSM_INTRO_VIDEO_MAX_LABEL}.`}
+          validateFile={validateIntroVideoFile}
+          uploadingHint="Subiendo video… no cierres esta pantalla."
           fileName={hasUploadedVideo ? 'intro-video' : undefined}
           onUpload={handleUpload}
           onClear={() => {

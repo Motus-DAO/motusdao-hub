@@ -11,6 +11,7 @@
 import { z } from 'zod'
 import type { OnboardingData, IntakeSource } from '@/lib/onboarding-store'
 import { resolvePsmTimezoneDefault } from '@/lib/intake/psm-timezone-options'
+import { PSM_MAX_WEEKLY_THERAPY_HOURS } from '@/lib/psm-weekly-hours'
 import {
   arePsmLegalDeclarationsComplete,
   mapClinicalComplexityToUrgencyLevels,
@@ -27,7 +28,7 @@ export const PSM_INTAKE_VERSION = 'psm_v1' as const
 export const PSM_MIN_NARRATIVE_LENGTH = 80
 export const PSM_MIN_ESPECIALIDADES = 3
 export const PSM_MIN_WEEKLY_THERAPY_HOURS = 1
-export const PSM_MAX_WEEKLY_THERAPY_HOURS = 80
+export { PSM_MAX_WEEKLY_THERAPY_HOURS } from '@/lib/psm-weekly-hours'
 
 /** First N specialties become the public-profile highlights (max 3). */
 export function deriveTopSpecialties(especialidades: string[]): string[] {
@@ -108,7 +109,7 @@ export const psmOperationsFields = z.object({
     .min(PSM_MIN_WEEKLY_THERAPY_HOURS, `Indica al menos ${PSM_MIN_WEEKLY_THERAPY_HOURS} hora semanal`)
     .max(
       PSM_MAX_WEEKLY_THERAPY_HOURS,
-      `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas semanales`
+      `Indica como máximo ${PSM_MAX_WEEKLY_THERAPY_HOURS} horas (total en una semana)`
     ),
   maxActiveUsers: z.number().int().positive('El cupo máximo debe ser mayor a 0'),
   credentialedCountries: z
