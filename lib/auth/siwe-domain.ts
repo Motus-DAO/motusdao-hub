@@ -44,6 +44,24 @@ export function getSiweIssueDomain(): string {
   return 'localhost:3000'
 }
 
+/**
+ * In local dev, issue SIWE for the host you are actually on (localhost:3000),
+ * not only NEXT_PUBLIC_APP_URL (often prod). Avoids wallet/sign mismatches.
+ */
+export function resolveSiweIssueDomain(requestOrigin?: string): string {
+  if (process.env.NODE_ENV !== 'production' && requestOrigin) {
+    try {
+      const host = normalizeHost(new URL(requestOrigin).host)
+      const allowed = getAllowedSiweDomains()
+      if (allowed.has(host)) return host
+      if (host.startsWith('localhost:') || host.startsWith('127.0.0.1:')) return host
+    } catch {
+      // fall through
+    }
+  }
+  return getSiweIssueDomain()
+}
+
 export function assertAllowedSiweDomain(domain: string): void {
   const normalized = normalizeHost(domain)
   if (!getAllowedSiweDomains().has(normalized)) {

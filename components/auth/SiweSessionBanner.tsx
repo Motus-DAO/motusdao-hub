@@ -96,9 +96,15 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
         <p className="break-all font-mono text-xs opacity-90">{eoaAddress}</p>
       )}
       {signError && (
-        <div className="status-banner-error flex items-start gap-1.5 text-sm">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {signError}
+        <div className="status-banner-error flex flex-col gap-1 text-sm">
+          <div className="flex items-start gap-1.5">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{signError}</span>
+          </div>
+          <p className="text-xs opacity-90 pl-5">
+            Si usas WaaP/Human.tech, busca su ventana de firma (puede quedar detrás del navegador). En MetaMask,
+            abre la extensión y acepta.
+          </p>
         </div>
       )}
 

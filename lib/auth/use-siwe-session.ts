@@ -24,7 +24,7 @@ import {
   SIWE_SESSION_LOADING_TIMEOUT_MS,
   SIWE_SIGN_TIMEOUT_MS,
 } from '@/lib/auth/hub-session'
-import { withSignTimeout } from '@/lib/auth/signing'
+import { withSignTimeout, SignMessageError } from '@/lib/auth/signing'
 import {
   releaseHiddenWaapOverlayInput,
   releaseWaapOverlayInput,
@@ -189,8 +189,13 @@ function useSiweSessionController(): SiweSessionValue {
       // SDK-owned iframe nodes directly; that leaves its request queue stale.
       abortController.abort()
 
-      if (error instanceof Error && error.name === 'SignMessageError') {
-        setSignError(error.message)
+      if (error instanceof SignMessageError) {
+        const hint = error.attempts[0]
+        setSignError(
+          hint && process.env.NODE_ENV === 'development'
+            ? `${error.message} Detalle: ${hint}`
+            : error.message
+        )
       } else if (isUserRejectedSignError(error)) {
         setSignError('Rechazaste la firma. Intenta de nuevo y acepta la solicitud en tu wallet.')
       } else {

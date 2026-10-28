@@ -3,7 +3,7 @@ import { SiweMessage } from 'siwe'
 import { getAddress, isAddress } from 'viem'
 import { createAuthNonce } from '@/lib/auth/nonce'
 import { getRequestOrigin } from '@/lib/auth/session'
-import { getSiweIssueDomain } from '@/lib/auth/siwe-domain'
+import { getSiweIssueDomain, resolveSiweIssueDomain } from '@/lib/auth/siwe-domain'
 import { SIWE_CHAIN_ID, SIWE_STATEMENT } from '@/lib/auth/constants'
 
 export async function GET(request: NextRequest) {
@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
 
     const checksummedAddress = getAddress(address)
     const nonce = await createAuthNonce(checksummedAddress)
-    const domain = getSiweIssueDomain()
     const origin = getRequestOrigin(request)
+    const domain = resolveSiweIssueDomain(origin)
 
     const siweMessage = new SiweMessage({
       domain,

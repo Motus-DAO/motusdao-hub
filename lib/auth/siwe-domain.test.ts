@@ -4,6 +4,7 @@ import {
   assertAllowedSiweDomain,
   getAllowedSiweDomains,
   getSiweIssueDomain,
+  resolveSiweIssueDomain,
 } from './siwe-domain'
 import { AuthError } from './errors'
 
@@ -16,6 +17,23 @@ describe('SIWE domain allowlist', () => {
       assert.ok(getAllowedSiweDomains().has('hub.motusdao.org'))
     } finally {
       process.env.NEXT_PUBLIC_APP_URL = previous
+    }
+  })
+
+  it('resolveSiweIssueDomain uses request host in non-production', () => {
+    const previousUrl = process.env.NEXT_PUBLIC_APP_URL
+    const previousEnv = process.env.NODE_ENV
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.motusdao.org'
+    process.env.NODE_ENV = 'development'
+    try {
+      assert.equal(
+        resolveSiweIssueDomain('http://localhost:3000'),
+        'localhost:3000'
+      )
+      assert.equal(getSiweIssueDomain(), 'app.motusdao.org')
+    } finally {
+      process.env.NEXT_PUBLIC_APP_URL = previousUrl
+      process.env.NODE_ENV = previousEnv
     }
   })
 
