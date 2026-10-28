@@ -71,8 +71,8 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/admin/psm/[psmId]
- * Deletes a PSM user and all related data (admin only, for cleaning test data)
+ * DELETE /api/admin/psm/[psmId]?mode=soft|hard
+ * soft hides the professional. hard removes the row so the wallet can register again.
  */
 export async function DELETE(
   request: NextRequest,
@@ -83,17 +83,16 @@ export async function DELETE(
     if (denied) return denied
 
     const { psmId } = await params
+    const mode = new URL(request.url).searchParams.get('mode')
+    if (mode !== 'soft' && mode !== 'hard') {
+      return NextResponse.json(
+        { error: 'Elige mode=soft o mode=hard' },
+        { status: 400 }
+      )
+    }
 
     const psm = await prisma.user.findUnique({
       where: { id: psmId },
-      include: {
-        psmMatches: {
-          select: { id: true }
-        },
-        sessionsAsPSM: {
-          select: { id: true }
-        }
-      }
     })
 
     if (!psm) {
@@ -103,7 +102,6 @@ export async function DELETE(
       )
     }
 
-    // Verify it's actually a PSM
     if (psm.role !== 'psm') {
       return NextResponse.json(
         { error: 'El usuario especificado no es un profesional (PSM)' },
@@ -111,22 +109,31 @@ export async function DELETE(
       )
     }
 
-    // Note: Since we've already verified the role is 'psm', 
-    // we don't need to check for 'admin' as it's impossible at this point
+    if (psm.isPlatformAdmin) {
+      return NextResponse.json(
+        { error: 'No se puede eliminar una cuenta de administrador' },
+        { status: 403 }
+      )
+    }
 
-    // Delete the PSM user (cascade will handle related data)
-    // Prisma will automatically delete:
-    // - Profile, PSMProfile
-    // - Matches (as PSM)
-    // - Sessions (as PSM)
-    // - PaymentPreferences, PaymentLogs
-    await prisma.user.delete({
-      where: { id: psmId }
+    if (mode === 'hard') {
+      await prisma.user.delete({ where: { id: psmId } })
+      return NextResponse.json({
+        success: true,
+        mode: 'hard',
+        message: 'Profesional borrado. La wallet y el correo quedaron libres.',
+      })
+    }
+
+    await prisma.user.update({
+      where: { id: psmId },
+      data: { deletedAt: new Date() },
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Profesional eliminado exitosamente'
+      mode: 'soft',
+      message: 'Profesional oculto. La wallet y el correo siguen ocupados.',
     })
 
   } catch (error) {

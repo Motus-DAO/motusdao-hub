@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const psms = await prisma.user.findMany({
       where: {
         role: 'psm',
+        deletedAt: null,
         ...(isVerificationStatus(status)
           ? { psm: { is: { verificationStatus: status } } }
           : {})
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
       return {
         id: psm.id,
         email: psm.email,
+        isPlatformAdmin: psm.isPlatformAdmin,
         eoaAddress: psm.eoaAddress,
         smartWalletAddress: psm.smartWalletAddress,
         privyId: psm.privyId,

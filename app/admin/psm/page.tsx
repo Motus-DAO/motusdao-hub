@@ -45,6 +45,7 @@ import { AdminPsmAvailabilityPanel } from '@/components/admin/AdminPsmAvailabili
 interface PSM {
   id: string
   email: string
+  isPlatformAdmin?: boolean
   eoaAddress: string
   smartWalletAddress: string | null
   privyId: string | null
@@ -110,6 +111,7 @@ export default function AdminPSMPage() {
   const [filterVerification, setFilterVerification] = useState<'all' | PSM['verificationStatus']>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [selectedPSM, setSelectedPSM] = useState<PSM | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<PSM | null>(null)
 
   const fetchPSMs = async () => {
     try {
@@ -129,16 +131,10 @@ export default function AdminPSMPage() {
     fetchPSMs()
   }, [])
 
-  const handleDeletePSM = async (psmId: string) => {
-    const confirmed = window.confirm(
-      '¿Estás seguro de que deseas eliminar este profesional? Esta acción eliminará todos los datos asociados (perfil, matches, sesiones, pagos, etc.) y no se puede deshacer.'
-    )
-
-    if (!confirmed) return
-
+  const handleDeletePSM = async (psmId: string, mode: 'soft' | 'hard') => {
     setActionLoading(psmId)
     try {
-      const response = await authFetch(`/api/admin/psm/${psmId}`, {
+      const response = await authFetch(`/api/admin/psm/${psmId}?mode=${mode}`, {
         method: 'DELETE',
       })
 
@@ -152,6 +148,7 @@ export default function AdminPSMPage() {
       if (selectedPSM?.id === psmId) {
         setSelectedPSM(null)
       }
+      setDeleteTarget(null)
     } catch (error) {
       console.error('Error deleting PSM:', error)
       alert(error instanceof Error ? error.message : 'Error al eliminar el profesional. Por favor, intenta de nuevo.')
@@ -649,8 +646,9 @@ export default function AdminPSMPage() {
                       <Eye className="w-4 h-4 mr-2" />
                       Ver Detalle
                     </CTAButton>
+                    {!psm.isPlatformAdmin && (
                     <button
-                      onClick={() => handleDeletePSM(psm.id)}
+                      onClick={() => setDeleteTarget(psm)}
                       disabled={actionLoading === psm.id}
                       className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/50 rounded-lg hover:bg-red-500/30 text-sm disabled:opacity-50"
                       title="Eliminar profesional"
@@ -658,6 +656,7 @@ export default function AdminPSMPage() {
                       <Trash2 className="w-4 h-4" />
                       {actionLoading === psm.id ? 'Eliminando...' : 'Eliminar'}
                     </button>
+                    )}
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   </div>
                 </div>
@@ -712,15 +711,17 @@ export default function AdminPSMPage() {
                       Rechazar
                     </button>
                   )}
+                  {!selectedPSM.isPlatformAdmin && (
                   <button
-                    onClick={() => handleDeletePSM(selectedPSM.id)}
+                    onClick={() => setDeleteTarget(selectedPSM)}
                     disabled={actionLoading === selectedPSM.id}
                     className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/50 rounded-lg hover:bg-red-500/30 text-sm disabled:opacity-50"
-                    title="Eliminar profesional permanentemente"
+                    title="Eliminar profesional"
                   >
                     <Trash2 className="w-4 h-4" />
                     {actionLoading === selectedPSM.id ? 'Eliminando...' : 'Eliminar'}
                   </button>
+                  )}
                   <button
                     onClick={() => setSelectedPSM(null)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10"
@@ -1147,6 +1148,47 @@ export default function AdminPSMPage() {
               </div>
             </GlassCard>
           </motion.div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <GlassCard className="p-6 max-w-lg w-full">
+            <h2 className="text-xl font-semibold mb-2">¿La eliminación es soft o hard?</h2>
+            <p className="text-sm text-muted-foreground mb-6">{deleteTarget.email}</p>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => handleDeletePSM(deleteTarget.id, 'soft')}
+                disabled={actionLoading === deleteTarget.id}
+                className="px-4 py-3 text-left rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50"
+              >
+                <span className="block font-medium">Soft</span>
+                <span className="block text-sm text-muted-foreground">
+                  Oculta la cuenta y se puede restaurar desde Usuarios. La wallet y el correo siguen ocupados.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeletePSM(deleteTarget.id, 'hard')}
+                disabled={actionLoading === deleteTarget.id}
+                className="px-4 py-3 text-left rounded-lg bg-red-500/15 border border-red-500/40 hover:bg-red-500/25 text-red-300 disabled:opacity-50"
+              >
+                <span className="block font-medium">Hard</span>
+                <span className="block text-sm text-red-200/80">
+                  Borra la fila, el perfil y lo ligado a esta cuenta. La wallet y el correo quedan libres. No se puede deshacer.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={actionLoading === deleteTarget.id}
+                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-white/5 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </GlassCard>
         </div>
       )}
     </div>

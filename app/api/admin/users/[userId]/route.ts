@@ -3,9 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { guardAdmin } from '@/lib/auth/admin-route'
 
 /**
- * DELETE /api/admin/users/[userId]
- * Soft deletes a user by setting deletedAt timestamp (admin only)
- * This preserves all data and allows restoration, preventing issues with unique constraints
+ * DELETE /api/admin/users/[userId]?mode=soft|hard
+ * soft hides the row and keeps the wallet. hard removes the row so the wallet can register again.
  */
 export async function DELETE(
   request: NextRequest,
@@ -16,23 +15,16 @@ export async function DELETE(
     if (denied) return denied
 
     const { userId } = await params
+    const mode = new URL(request.url).searchParams.get('mode') ?? 'soft'
+    if (mode !== 'soft' && mode !== 'hard') {
+      return NextResponse.json(
+        { error: 'Elige mode=soft o mode=hard' },
+        { status: 400 }
+      )
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        userMatches: {
-          select: { id: true }
-        },
-        psmMatches: {
-          select: { id: true }
-        },
-        sessionsAsUser: {
-          select: { id: true }
-        },
-        sessionsAsPSM: {
-          select: { id: true }
-        }
-      }
     })
 
     if (!user) {
@@ -42,25 +34,31 @@ export async function DELETE(
       )
     }
 
-    // Prevent deleting admin users
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.isPlatformAdmin) {
       return NextResponse.json(
-        { error: 'No se pueden eliminar usuarios administradores' },
+        { error: 'No se puede eliminar una cuenta de administrador' },
         { status: 403 }
       )
     }
 
-    // Soft delete: Mark user as deleted instead of actually deleting
-    // This preserves the data and allows restoration if needed
-    // Also prevents issues with unique constraints (privyId, email, eoaAddress, etc.)
+    if (mode === 'hard') {
+      await prisma.user.delete({ where: { id: userId } })
+      return NextResponse.json({
+        success: true,
+        mode: 'hard',
+        message: 'Usuario borrado. La wallet y el correo quedaron libres.',
+      })
+    }
+
     await prisma.user.update({
       where: { id: userId },
-      data: { deletedAt: new Date() }
+      data: { deletedAt: new Date() },
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Usuario eliminado exitosamente (soft delete)'
+      mode: 'soft',
+      message: 'Usuario oculto. La wallet y el correo siguen ocupados.',
     })
 
   } catch (error) {

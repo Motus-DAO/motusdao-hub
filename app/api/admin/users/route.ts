@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
           privyId: user.privyId || null,
           authProvider: user.authProvider || null,
           authProviderId: user.authProviderId || null,
+          isPlatformAdmin: user.isPlatformAdmin,
           registrationCompleted: user.registrationCompleted || false,
           deletedAt: user.deletedAt ? user.deletedAt.toISOString() : null,
           createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),

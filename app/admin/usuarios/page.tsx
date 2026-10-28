@@ -25,6 +25,7 @@ interface User {
   id: string
   email: string
   role: 'usuario' | 'psm' | 'admin'
+  isPlatformAdmin?: boolean
   eoaAddress: string
   smartWalletAddress: string | null
   privyId: string | null
@@ -80,6 +81,7 @@ export default function AdminUsuariosPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState<UsersResponse['pagination'] | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
@@ -127,16 +129,10 @@ export default function AdminUsuariosPage() {
     fetchUsers()
   }, [fetchUsers, showDeleted])
 
-  const handleDeleteUser = async (userId: string) => {
-    const confirmed = window.confirm(
-      '¿Estás seguro de que deseas eliminar este usuario? Esta acción ocultará el usuario del sistema (soft delete) pero preservará todos los datos. El usuario puede ser restaurado más tarde si es necesario.'
-    )
-
-    if (!confirmed) return
-
+  const handleDeleteUser = async (userId: string, mode: 'soft' | 'hard') => {
     setActionLoading(userId)
     try {
-      const response = await authFetch(`/api/admin/users/${userId}`, {
+      const response = await authFetch(`/api/admin/users/${userId}?mode=${mode}`, {
         method: 'DELETE',
       })
 
@@ -145,11 +141,11 @@ export default function AdminUsuariosPage() {
         throw new Error(errorData.error || 'Error al eliminar el usuario')
       }
 
-      // Refresh users
       await fetchUsers()
       if (selectedUser?.id === userId) {
         setSelectedUser(null)
       }
+      setDeleteTarget(null)
     } catch (error) {
       console.error('Error deleting user:', error)
       alert(error instanceof Error ? error.message : 'Error al eliminar el usuario. Por favor, intenta de nuevo.')
@@ -464,7 +460,7 @@ export default function AdminUsuariosPage() {
                         <Eye className="w-4 h-4" />
                         Ver detalles
                       </button>
-                      {user.role !== 'admin' && (
+                      {user.role !== 'admin' && !user.isPlatformAdmin && (
                         <>
                           {user.deletedAt ? (
                             <button
@@ -478,10 +474,10 @@ export default function AdminUsuariosPage() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleDeleteUser(user.id)}
+                              onClick={() => setDeleteTarget(user)}
                               disabled={actionLoading === user.id}
                               className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/50 rounded-lg hover:bg-red-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-red-400"
-                              title="Eliminar usuario (soft delete)"
+                              title="Eliminar usuario"
                             >
                               <Trash2 className="w-4 h-4" />
                               {actionLoading === user.id ? 'Eliminando...' : 'Eliminar'}
@@ -526,7 +522,7 @@ export default function AdminUsuariosPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {selectedUser.role !== 'admin' && (
+                  {selectedUser.role !== 'admin' && !selectedUser.isPlatformAdmin && (
                     <>
                       {selectedUser.deletedAt ? (
                         <button
@@ -540,10 +536,10 @@ export default function AdminUsuariosPage() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleDeleteUser(selectedUser.id)}
+                          onClick={() => setDeleteTarget(selectedUser)}
                           disabled={actionLoading === selectedUser.id}
                           className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/50 rounded-lg hover:bg-red-500/30 text-sm disabled:opacity-50"
-                          title="Eliminar usuario (soft delete)"
+                          title="Eliminar usuario"
                         >
                           <Trash2 className="w-4 h-4" />
                           {actionLoading === selectedUser.id ? 'Eliminando...' : 'Eliminar'}
@@ -709,6 +705,49 @@ export default function AdminUsuariosPage() {
               </div>
             </GlassCard>
           </motion.div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <GlassCard className="p-6 max-w-lg w-full">
+            <h2 className="text-xl font-semibold mb-2">¿La eliminación es soft o hard?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              {deleteTarget.email}
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => handleDeleteUser(deleteTarget.id, 'soft')}
+                disabled={actionLoading === deleteTarget.id}
+                className="px-4 py-3 text-left rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50"
+              >
+                <span className="block font-medium">Soft</span>
+                <span className="block text-sm text-muted-foreground">
+                  Oculta la cuenta y se puede restaurar. La wallet y el correo siguen ocupados.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteUser(deleteTarget.id, 'hard')}
+                disabled={actionLoading === deleteTarget.id}
+                className="px-4 py-3 text-left rounded-lg bg-red-500/15 border border-red-500/40 hover:bg-red-500/25 text-red-300 disabled:opacity-50"
+              >
+                <span className="block font-medium">Hard</span>
+                <span className="block text-sm text-red-200/80">
+                  Borra la fila. La wallet y el correo quedan libres para un alta nueva. No se puede deshacer.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={actionLoading === deleteTarget.id}
+                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-white/5 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </GlassCard>
         </div>
       )}
     </div>
