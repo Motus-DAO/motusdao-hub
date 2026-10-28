@@ -94,38 +94,45 @@ async function main() {
 
   const { genesis: genesisCourse } = await seedAcademyRuta(prisma)
 
-  // Create sample journal entries
+  // Sample journal entries (legacy plaintext JSON — re-encrypted on first unlock in app)
   const journalEntries = [
     {
+      id: `entry_${user1.id}_happy`,
       userId: user1.id,
-      content: 'Hoy me sentí muy motivado después de la sesión de meditación. Logré concentrarme mejor en el trabajo y me siento más tranquilo.',
       mood: 'happy',
-      tags: ['meditación', 'trabajo', 'motivación']
+      content:
+        'Hoy me sentí muy motivado después de la sesión de meditación. Logré concentrarme mejor en el trabajo y me siento más tranquilo.',
+      tags: ['meditación', 'trabajo', 'motivación'],
     },
     {
+      id: `entry_${user1.id}_anxious`,
       userId: user1.id,
-      content: 'Tuve una conversación difícil con mi familia. Me siento un poco abrumado pero sé que es importante comunicar mis sentimientos.',
       mood: 'anxious',
-      tags: ['familia', 'comunicación', 'emociones']
+      content:
+        'Tuve una conversación difícil con mi familia. Me siento un poco abrumado pero sé que es importante comunicar mis sentimientos.',
+      tags: ['familia', 'comunicación', 'emociones'],
     },
     {
+      id: `entry_${user1.id}_calm`,
       userId: user1.id,
-      content: 'Día tranquilo en casa. Disfruté leyendo un libro y cocinando. Me siento en paz conmigo mismo.',
       mood: 'calm',
-      tags: ['lectura', 'cocina', 'paz']
-    }
+      content:
+        'Día tranquilo en casa. Disfruté leyendo un libro y cocinando. Me siento en paz conmigo mismo.',
+      tags: ['lectura', 'cocina', 'paz'],
+    },
   ]
 
   for (const entry of journalEntries) {
+    const { mood, content, tags, ...rest } = entry
     await prisma.journalEntry.upsert({
-      where: {
-        id: `entry_${entry.userId}_${entry.mood}`
-      },
+      where: { id: entry.id },
       update: {},
       create: {
-        id: `entry_${entry.userId}_${entry.mood}`,
-        ...entry
-      }
+        ...rest,
+        ciphertext: JSON.stringify({ content, mood, tags }),
+        iv: null,
+        keyVersion: 1,
+      },
     })
   }
 

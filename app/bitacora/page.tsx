@@ -17,15 +17,21 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { fetchAppSession } from '@/lib/auth/client'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import { useWallet } from '@/lib/wallet'
+import { useSafeNotesKey } from '@/lib/safe-notes/use-safe-notes-key'
+import {
+  deleteBitacoraEntry,
+  hydrateBitacoraEntries,
+  saveBitacoraEntry,
+  type BitacoraEntryView,
+} from '@/lib/safe-notes/client-bitacora'
+import { Lock, ShieldAlert } from 'lucide-react'
 
-interface JournalEntry {
-  id: string
-  content: string
-  mood: string
-  tags: string[]
-  createdAt: Date
-}
+type JournalEntry = BitacoraEntryView
 
 const moodIcons = {
   happy: Smile,
@@ -43,10 +49,25 @@ const moodColors = {
   neutral: 'text-gray-500'
 }
 
-// TODO: Replace with real user ID from auth context
-const MOCK_USER_ID = 'cmfdqk2iu0000rx649pnw5kvj'
+// Bitácora uses SIWE user id + wallet-derived encryption key (slice 7).
 
 export default function BitacoraPage() {
+  const { ready, authenticated, login } = useWallet()
+  const {
+    isSessionReady,
+    sessionState,
+  } = useSiweSession()
+  const {
+    eoaAddress,
+    state: keyState,
+    unlockError,
+    unlock,
+    getKey,
+    isUnlocked,
+  } = useSafeNotesKey()
+
+  const [userId, setUserId] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
@@ -57,74 +78,79 @@ export default function BitacoraPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  // Load entries on mount
   useEffect(() => {
-    const loadEntries = async () => {
-      try {
-        const res = await fetch(`/api/bitacora?userId=${MOCK_USER_ID}`)
-        if (res.ok) {
-          const data = await res.json()
-          const formattedEntries = data.entries.map((entry: { id: string; content: string; mood: string; tags: string | null; createdAt: string }) => ({
-            id: entry.id,
-            content: entry.content,
-            mood: entry.mood,
-            tags: entry.tags || [],
-            createdAt: new Date(entry.createdAt)
-          }))
-          setEntries(formattedEntries)
-        }
-      } catch (error) {
-        console.error('Failed to load entries:', error)
-      } finally {
-        setIsLoading(false)
-      }
+    if (sessionState === 'loading') return
+
+    if (sessionState !== 'ready') {
+      setUserId(null)
+      setSessionError(null)
+      setIsLoading(false)
+      return
     }
-    loadEntries()
-  }, [])
+
+    setIsLoading(true)
+    void fetchAppSession().then((session) => {
+      if (!session.authenticated || !session.userId) {
+        setSessionError('Inicia sesión con tu wallet para usar la bitácora.')
+        setUserId(null)
+      } else {
+        setSessionError(null)
+        setUserId(session.userId)
+      }
+      setIsLoading(false)
+    })
+  }, [sessionState])
+
+  const loadEntries = useCallback(async () => {
+    const key = getKey()
+    if (!userId || !eoaAddress || !key) return
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const hydrated = await hydrateBitacoraEntries(userId, eoaAddress, key)
+      setEntries(hydrated)
+    } catch (error) {
+      console.error('Failed to load entries:', error)
+      setLoadError('No se pudieron descifrar las entradas.')
+      setEntries([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userId, eoaAddress, getKey])
+
+  useEffect(() => {
+    if (isUnlocked && userId) {
+      void loadEntries()
+    }
+  }, [isUnlocked, userId, loadEntries])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const key = getKey()
+    if (!userId || !eoaAddress || !key) return
     setIsSubmitting(true)
 
     try {
-      const payload = {
-        userId: MOCK_USER_ID,
+      const tags = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+      const saved = await saveBitacoraEntry(userId, eoaAddress, key, {
+        id: editingEntry?.id,
         content: formData.content,
         mood: formData.mood,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-      }
-
-      const res = await fetch('/api/bitacora', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        tags,
       })
 
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        console.error('Failed to save entry:', error)
-        alert('No se pudo guardar la entrada. Intenta nuevamente.')
-        return
-      }
-
-      const result = await res.json()
       const newEntry: JournalEntry = {
-        id: result.entry.id,
-        content: result.entry.content,
-        mood: result.entry.mood,
-        tags: Array.isArray(result.entry.tags)
-          ? result.entry.tags
-          : typeof result.entry.tags === 'string'
-            ? (() => { try { return JSON.parse(result.entry.tags) } catch { return [] } })()
-            : [],
-        createdAt: new Date(result.entry.createdAt)
+        id: saved.id,
+        content: formData.content,
+        mood: formData.mood,
+        tags,
+        createdAt: editingEntry?.createdAt ?? saved.createdAt,
       }
 
       if (editingEntry) {
-        setEntries(prev => prev.map(entry => 
+        setEntries(prev => prev.map(entry =>
           entry.id === editingEntry.id ? newEntry : entry
         ))
         setEditingEntry(null)
@@ -136,7 +162,7 @@ export default function BitacoraPage() {
       setShowForm(false)
     } catch (error) {
       console.error('Error saving entry:', error)
-      alert('Ocurrió un error inesperado. Intenta nuevamente.')
+      alert('No se pudo guardar la entrada. Intenta nuevamente.')
     } finally {
       setIsSubmitting(false)
     }
@@ -156,16 +182,7 @@ export default function BitacoraPage() {
     if (!confirm('¿Estás seguro de que quieres eliminar esta entrada?')) return
 
     try {
-      const res = await fetch(`/api/bitacora?id=${id}`, {
-        method: 'DELETE'
-      })
-
-      if (!res.ok) {
-        console.error('Failed to delete entry')
-        alert('No se pudo eliminar la entrada. Intenta nuevamente.')
-        return
-      }
-
+      await deleteBitacoraEntry(id)
       setEntries(prev => prev.filter(entry => entry.id !== id))
     } catch (error) {
       console.error('Error deleting entry:', error)
@@ -183,13 +200,104 @@ export default function BitacoraPage() {
 
   const moodStats = getMoodStats()
 
-  if (isLoading) {
+  if (sessionState === 'loading' || (isSessionReady && isLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-mauve-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-muted-foreground">Cargando bitácora...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (sessionState === 'no_wallet' || (!authenticated && ready)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <GlassCard className="p-8 max-w-lg w-full space-y-4">
+          <ShieldAlert className="w-12 h-12 text-mauve-400 mx-auto" />
+          <p className="text-center text-muted-foreground">
+            Conecta tu wallet para abrir tu bitácora personal.
+          </p>
+          <CTAButton className="w-full" size="lg" disabled={!ready} onClick={() => void login()}>
+            Conectar wallet
+          </CTAButton>
+        </GlassCard>
+      </div>
+    )
+  }
+
+  if (sessionState === 'needs_signature') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Section>
+          <div className="container mx-auto px-6 max-w-xl py-16 space-y-6">
+            <GradientText as="h1" className="text-2xl font-bold text-center">
+              Mi Bitácora
+            </GradientText>
+            <p className="text-sm text-muted-foreground text-center">
+              Antes de desbloquear el diario cifrado, verifica tu wallet con SIWE (no cuesta gas).
+            </p>
+            <SiweSessionBanner compact />
+          </div>
+        </Section>
+      </div>
+    )
+  }
+
+  if (sessionError || !userId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <GlassCard className="p-8 max-w-lg text-center">
+          <ShieldAlert className="w-12 h-12 text-mauve-400 mx-auto mb-4" />
+          <p className="text-muted-foreground">{sessionError ?? 'Sesión requerida'}</p>
+        </GlassCard>
+      </div>
+    )
+  }
+
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Section>
+          <div className="container mx-auto px-6 max-w-2xl py-16">
+            <GlassCard className="p-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <Lock className="w-8 h-8 text-mauve-400" />
+                <GradientText as="h1" className="text-2xl font-bold">
+                  Desbloquea tu bitácora
+                </GradientText>
+              </div>
+              <PrivacyNotice />
+              <p className="text-sm text-muted-foreground">
+                Firma un mensaje aparte (no es tu inicio de sesión). La clave queda solo en este
+                dispositivo hasta que cierres la pestaña o cambies de wallet.
+              </p>
+              {unlockError && (
+                <p className="text-sm text-red-400">{unlockError}</p>
+              )}
+              <CTAButton
+                size="lg"
+                glow
+                disabled={keyState === 'unlocking' || !eoaAddress}
+                onClick={() => void unlock()}
+              >
+                {keyState === 'unlocking' ? 'Esperando firma…' : 'Firmar y desbloquear'}
+              </CTAButton>
+            </GlassCard>
+          </div>
+        </Section>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <GlassCard className="p-8 max-w-lg text-center space-y-4">
+          <p className="text-muted-foreground">{loadError}</p>
+          <CTAButton onClick={() => void loadEntries()}>Reintentar</CTAButton>
+        </GlassCard>
       </div>
     )
   }
@@ -213,8 +321,11 @@ export default function BitacoraPage() {
                 <GradientText as="h1" className="text-4xl md:text-5xl font-bold">
                   Mi Bitácora
                 </GradientText>
-                <p className="text-muted-foreground">Reflexiona sobre tu día y tus emociones</p>
+                <p className="text-muted-foreground">Diario personal cifrado — no es tu expediente clínico</p>
               </div>
+            </div>
+            <div className="max-w-3xl mx-auto mb-8">
+              <PrivacyNotice compact />
             </div>
           </motion.div>
 
@@ -499,6 +610,29 @@ export default function BitacoraPage() {
           </div>
         </div>
       </Section>
+    </div>
+  )
+}
+
+function PrivacyNotice({ compact }: { compact?: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border border-white/10 bg-white/5 text-sm text-muted-foreground ${
+        compact ? 'p-4' : 'p-5 space-y-3'
+      }`}
+    >
+      <p>
+        <strong className="text-foreground font-medium">Bitácora personal.</strong> No sustituye
+        una nota clínica ni un expediente (NOM-004). Tu psicólogo asignado{' '}
+        <strong className="text-foreground font-medium">no puede leer</strong> estas entradas.
+      </p>
+      {!compact && (
+        <p>
+          Motus guarda texto cifrado; solo tu wallet puede abrirlo. Si pierdes acceso a la wallet o
+          rechazas la firma de desbloqueo, <strong className="text-foreground font-medium">no hay
+          recuperación</strong> del contenido.
+        </p>
+      )}
     </div>
   )
 }

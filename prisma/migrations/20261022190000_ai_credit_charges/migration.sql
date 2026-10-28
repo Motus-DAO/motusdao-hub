@@ -14,9 +14,15 @@ CREATE TABLE IF NOT EXISTS "ai_credit_charges" (
 CREATE INDEX IF NOT EXISTS "ai_credit_charges_userId_createdAt_idx"
   ON "ai_credit_charges"("userId", "createdAt");
 
-ALTER TABLE "ai_credit_charges"
-  ADD CONSTRAINT "ai_credit_charges_userId_fkey"
-  FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'ai_credit_charges_userId_fkey'
+  ) THEN
+    ALTER TABLE "ai_credit_charges"
+      ADD CONSTRAINT "ai_credit_charges_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 ALTER TABLE "ai_credit_charges" ENABLE ROW LEVEL SECURITY;
 

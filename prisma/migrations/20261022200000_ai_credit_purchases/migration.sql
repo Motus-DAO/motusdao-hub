@@ -9,9 +9,15 @@ CREATE TABLE IF NOT EXISTS "ai_credit_wallets" (
   CONSTRAINT "ai_credit_wallets_pkey" PRIMARY KEY ("userId")
 );
 
-ALTER TABLE "ai_credit_wallets"
-  ADD CONSTRAINT "ai_credit_wallets_userId_fkey"
-  FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'ai_credit_wallets_userId_fkey'
+  ) THEN
+    ALTER TABLE "ai_credit_wallets"
+      ADD CONSTRAINT "ai_credit_wallets_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "ai_credit_purchases" (
   "id" TEXT NOT NULL,
@@ -28,9 +34,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS "ai_credit_purchases_stripeCheckoutSessionId_k
 CREATE INDEX IF NOT EXISTS "ai_credit_purchases_userId_idx"
   ON "ai_credit_purchases"("userId");
 
-ALTER TABLE "ai_credit_purchases"
-  ADD CONSTRAINT "ai_credit_purchases_userId_fkey"
-  FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'ai_credit_purchases_userId_fkey'
+  ) THEN
+    ALTER TABLE "ai_credit_purchases"
+      ADD CONSTRAINT "ai_credit_purchases_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 ALTER TABLE "ai_credit_wallets" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ai_credit_purchases" ENABLE ROW LEVEL SECURITY;

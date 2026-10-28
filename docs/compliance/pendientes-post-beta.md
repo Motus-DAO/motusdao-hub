@@ -7,7 +7,7 @@
 | **Razón social y domicilio fiscal** en aviso | Responsable: “MotusDAO” + contact@motusdao.org | Al constituir persona moral; actualizar `docs/compliance/legal/aviso-de-privacidad-integral.md` y `/privacy` |
 | **DPAs / BAA** (Supabase, Venice/OpenAI, Stripe, etc.) | No firmados en esta etapa | Con ingresos o flujo clínico en EE. UU. que trate ePHI |
 | **Portal ARCO automático** (export / borrado en app) | Solicitudes manuales a contact@motusdao.org | Producto cuando haya volumen de solicitudes ARCO |
-| **Bitácora en claro en servidor** | Descrito en aviso; Motus puede leer el cuerpo | **Safety slice 7** — cifrado cliente (`motus-safe-notes`) |
+| **Bitácora en claro en servidor** | Cifrado cliente (`motus-safe-notes`) en slice 7 | Mantener aviso alineado; export en chat-data |
 | **Entrenamiento de modelos** con copia legible | No activo; aviso §3.3 | Pasos en `docs/specs/SDD-chat-data.md` **después** del aviso (ya publicado) |
 | **Región Supabase / PostHog** | Inventario dice “verificar en consola” | Revisar dashboard de prod y actualizar `/subprocesadores` + inventario |
 
