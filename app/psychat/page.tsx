@@ -10,6 +10,11 @@ import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { aiProcessingConsentCopy, chatModelLabel } from '@/lib/ai-consent-copy'
+import { PsychatArchivePanel } from '@/components/psychat/PsychatArchivePanel'
+import { PsychatArchiveKeyProvider } from '@/components/psychat/PsychatArchiveKeyContext'
+import { PsychatSessionsSidebar } from '@/components/psychat/PsychatSessionsSidebar'
+import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
+import { consumePsychatThreadForOpen } from '@/lib/psychat-archive/chat-session-bridge'
 
 export default function PsychatPage() {
   const { role, theme } = useUIStore()
@@ -36,6 +41,10 @@ export default function PsychatPage() {
   } | null>(null)
   const [buyingPack, setBuyingPack] = useState<5 | 10 | null>(null)
   const [creditShopError, setCreditShopError] = useState<string | null>(null)
+  const [archiveMessages, setArchiveMessages] = useState<PsychatArchiveMessage[]>([])
+  const [chatSessionKey, setChatSessionKey] = useState('initial')
+  const [loadedThread, setLoadedThread] = useState<PsychatArchiveMessage[] | null>(null)
+  const [activeSessionLabel, setActiveSessionLabel] = useState('Nuevo chat')
 
   const refreshCredit = useCallback(() => {
     if (!isSessionReady) {
@@ -68,6 +77,27 @@ export default function PsychatPage() {
   useEffect(() => {
     refreshCredit()
   }, [refreshCredit])
+
+  useEffect(() => {
+    const pending = consumePsychatThreadForOpen()
+    if (pending?.length) {
+      setLoadedThread(pending)
+      setChatSessionKey(`import-${Date.now()}`)
+      setActiveSessionLabel('Copia recuperada')
+    }
+  }, [])
+
+  const handleNewChat = useCallback(() => {
+    setLoadedThread(null)
+    setChatSessionKey(`new-${Date.now()}`)
+    setActiveSessionLabel('Nuevo chat')
+  }, [])
+
+  const handleOpenThread = useCallback((messages: PsychatArchiveMessage[], label: string) => {
+    setLoadedThread(messages)
+    setChatSessionKey(`load-${Date.now()}`)
+    setActiveSessionLabel(label)
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -264,42 +294,55 @@ export default function PsychatPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-5rem)] flex-col bg-background">
-      <div className="flex flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
-        <div className="flex w-full max-w-2xl flex-col gap-3">
-          {role === 'psm' && (
-            <div
-              className={`rounded-xl border px-4 py-2 text-xs ${
-                isLight
-                  ? 'border-amber-400/40 bg-amber-100 text-amber-900'
-                  : 'border-amber-400/20 bg-amber-400/10 text-amber-200'
-              }`}
-            >
-              Esta IA es experimental y de apoyo a la supervisión clínica para profesionales capacitados.
-              Úsala con criterio ético y profesional: no sustituye juicio clínico, diagnóstico ni intervención de
-              emergencia.
-            </div>
-          )}
+    <PsychatArchiveKeyProvider>
+      <div className="flex min-h-[calc(100dvh-5rem)] w-full flex-col bg-background sm:flex-row">
+        <PsychatSessionsSidebar
+          isSessionReady={isSessionReady}
+          activeSessionLabel={activeSessionLabel}
+          onNewChat={handleNewChat}
+          onOpenThread={handleOpenThread}
+        />
 
-          <AnimatedAIChat
-            fullScreen={false}
-            role={role}
-            onRequestHumanSession={role === 'usuario' ? handleRequestHumanSession : undefined}
-            isCreatingSession={isCreatingSession}
-            sessionError={sessionError}
-            sendBlockedReason={sendBlockedReason}
-            providerLabel={providerLabel}
-            aiProvider={aiProvider}
-            modelLabel={modelLabel}
-            modelId={modelId}
-            privacyMode={privacyMode}
-            onPrivacyModeChange={setPrivacyMode}
-            credit={credit}
-            onCreditRefresh={refreshCredit}
-            onBuyCredit={buyCredit}
-            buyingPack={buyingPack}
-            creditShopError={creditShopError}
-            notice={
+        <div className="flex min-w-0 flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
+          <div className="flex w-full max-w-2xl flex-col gap-3">
+            {role === 'psm' && (
+              <div
+                className={`rounded-xl border px-4 py-2 text-xs ${
+                  isLight
+                    ? 'border-amber-400/40 bg-amber-100 text-amber-900'
+                    : 'border-amber-400/20 bg-amber-400/10 text-amber-200'
+                }`}
+              >
+                Esta IA es experimental y de apoyo a la supervisión clínica para profesionales capacitados.
+                Úsala con criterio ético y profesional: no sustituye juicio clínico, diagnóstico ni intervención de
+                emergencia.
+              </div>
+            )}
+
+            <PsychatArchivePanel isSessionReady={isSessionReady} messages={archiveMessages} />
+
+            <AnimatedAIChat
+              fullScreen={false}
+              role={role}
+              chatSessionKey={chatSessionKey}
+              loadedThread={loadedThread}
+              onRequestHumanSession={role === 'usuario' ? handleRequestHumanSession : undefined}
+              isCreatingSession={isCreatingSession}
+              sessionError={sessionError}
+              sendBlockedReason={sendBlockedReason}
+              providerLabel={providerLabel}
+              aiProvider={aiProvider}
+              modelLabel={modelLabel}
+              modelId={modelId}
+              privacyMode={privacyMode}
+              onPrivacyModeChange={setPrivacyMode}
+              credit={credit}
+              onCreditRefresh={refreshCredit}
+              onBuyCredit={buyCredit}
+              buyingPack={buyingPack}
+              creditShopError={creditShopError}
+              onMessagesChange={setArchiveMessages}
+              notice={
               <div
                 className={`mx-auto max-w-xl rounded-xl border px-4 py-3 text-left text-sm ${
                   isLight
@@ -326,8 +369,9 @@ export default function PsychatPage() {
               </div>
             }
           />
+          </div>
         </div>
       </div>
-    </div>
+    </PsychatArchiveKeyProvider>
   )
 }

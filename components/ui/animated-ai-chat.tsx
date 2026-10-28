@@ -162,6 +162,10 @@ export interface AnimatedAIChatProps {
   buyingPack?: 5 | 10 | null
   creditShopError?: string | null
   notice?: React.ReactNode
+  onMessagesChange?: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => void
+  /** When this key changes, the thread resets or loads `loadedThread`. */
+  chatSessionKey?: string
+  loadedThread?: Array<{ role: 'user' | 'assistant'; content: string }> | null
 }
 
 export function AnimatedAIChat({
@@ -183,6 +187,9 @@ export function AnimatedAIChat({
   buyingPack = null,
   creditShopError = null,
   notice = null,
+  onMessagesChange,
+  chatSessionKey = 'default',
+  loadedThread = null,
 }: AnimatedAIChatProps) {
   const containerHeightClass = fullScreen ? 'min-h-screen' : 'min-h-[calc(100dvh-8rem)]'
   const { theme } = useUIStore()
@@ -224,16 +231,35 @@ export function AnimatedAIChat({
   }, [messages, isTyping])
 
   useEffect(() => {
-    setMessages([
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: isPsm ? PSM_GREETING : USUARIO_GREETING,
-      },
-    ])
+    if (!onMessagesChange) return
+    onMessagesChange(
+      messages
+        .filter((m) => m.id !== 'welcome')
+        .map((m) => ({ role: m.role, content: m.content }))
+    )
+  }, [messages, onMessagesChange])
+
+  useEffect(() => {
+    if (loadedThread && loadedThread.length > 0) {
+      setMessages(
+        loadedThread.map((m, i) => ({
+          id: `thread-${chatSessionKey}-${i}`,
+          role: m.role,
+          content: m.content,
+        }))
+      )
+    } else {
+      setMessages([
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: isPsm ? PSM_GREETING : USUARIO_GREETING,
+        },
+      ])
+    }
     setValue('')
     setError(null)
-  }, [isPsm])
+  }, [chatSessionKey, loadedThread, isPsm])
 
   const handleSendMessage = () => {
     const userMessage = value.trim()
