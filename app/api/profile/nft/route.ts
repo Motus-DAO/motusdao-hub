@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { uploadProfileMetadataToIPFS } from '@/lib/profile-nft-metadata'
 import { getCeloClient, getProfileNftContract } from '@/lib/profile-nft-onchain'
 import { prisma } from '@/lib/prisma'
+import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { sessionOwnsSpendAddress } from '@/lib/platform-spend-guard'
 
 export const runtime = 'nodejs'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const session = await requireSession(request)
     const body = await request.json()
     const { wallet, role, registrationDate } = body as {
       wallet?: string
@@ -18,6 +21,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: 'wallet y role son obligatorios' },
         { status: 400 }
+      )
+    }
+
+    if (!sessionOwnsSpendAddress(session, wallet)) {
+      return NextResponse.json(
+        { success: false, error: 'La wallet no coincide con la sesión.' },
+        { status: 403 }
       )
     }
 
@@ -83,6 +93,9 @@ export async function POST(request: Request) {
       throw err
     }
   } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
     console.error('[profile/nft] Error in /api/profile/nft:', error)
     return NextResponse.json(
       {

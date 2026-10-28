@@ -56,7 +56,7 @@
 
 ## 7. Exit conditions
 
-This slice stops here. Next: slice 6 (vendor list + privacy notice, human) and slice 7 (Bitácora ciphertext). See [docs/specs/SDD-safety-plan.md](../docs/specs/SDD-safety-plan.md).
+This slice stops here. Slice 6 (vendor list + privacy notice) shipped; see `specs/safety-slice-6-program-gap.md`. Next coding slice: 7 (Bitácora ciphertext). See [docs/specs/SDD-safety-plan.md](../docs/specs/SDD-safety-plan.md).
 
 ## 8. Decisions — LOCKED
 

@@ -79,7 +79,7 @@ const psmOnboardingSchema = z.object({
   consentToAIProcessing: z.boolean().default(false),
   consentToShareWithPSM: z.boolean().default(false),
   consentToClinicalMatching: z.boolean().default(false),
-  consentPolicyVersion: z.string().default('v1'),
+  consentPolicyVersion: z.string().default('2026-10-27'),
   consentLocale: z.string().default('es'),
 }).superRefine((data, ctx) => {
   const consentError = psmConsentRejection(data)

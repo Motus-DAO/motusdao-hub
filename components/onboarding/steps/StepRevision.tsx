@@ -262,8 +262,9 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
         const res = await fetch('/api/profile/nft', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({
             wallet: data.eoaAddress,
             role,

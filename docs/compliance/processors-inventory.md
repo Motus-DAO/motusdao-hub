@@ -122,7 +122,7 @@ Detalle IPFS: [ipfs-storage-audit.md](./ipfs-storage-audit.md).
 - [ ] ¿`LIGHTHOUSE_API_KEY` en prod? ¿NFT mint activo?
 - [ ] Ripio/Transak: sandbox vs producción.
 - [ ] Si hay usuarios en **EE. UU.:** ¿BAA con encargados que ven HT? ¿Cláusula de transferencia en aviso?
-- [ ] `POST /api/profile/nft` — revisar autenticación y exposición (riesgo operativo).
+- [x] `POST /api/profile/nft` — sesión SIWE + wallet (slice 6, 2026-10-27).
 
 ---
 
