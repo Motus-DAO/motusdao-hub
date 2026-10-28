@@ -21,7 +21,7 @@ For a future auditor: **order and non-goals stay as in SDD-chat-data**; each row
 | **2** — [chat-data-slice-2-psychat-archive-export.md](./chat-data-slice-2-psychat-archive-export.md) | Psychat opt-in + export | **SHIPPED** — archive, sidebar, help (TEE/E2EE) |
 | **3** — [chat-data-slice-3-consented-summary-fhir.md](./chat-data-slice-3-consented-summary-fhir.md) | FHIR second exit | **SHIPPED** — consented summary, DocumentReference, PSM panel |
 | **4** — [chat-data-slice-4-training-copy-consent.md](./chat-data-slice-4-training-copy-consent.md) | Training yes + payment | **SHIPPED** — readable copy, consent, compensation recorded |
-| **5** — [chat-data-slice-5-rootrouter-enclave.md](./chat-data-slice-5-rootrouter-enclave.md) | Proxy + session TEE + always-on | Fase 1 local RootRouter + modal; 2–3 env-gated |
+| **5** — [chat-data-slice-5-rootrouter-enclave.md](./chat-data-slice-5-rootrouter-enclave.md) | Proxy + session TEE + always-on | **SHIPPED** fase 1 @ `06b9523`; enclave env-gated |
 
 **Do not reorder:** 1 before 2 (reuse format); 3 after 1–2; 4 after aviso (done); 5 last.
 

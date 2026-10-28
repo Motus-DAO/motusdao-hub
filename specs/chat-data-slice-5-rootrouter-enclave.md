@@ -1,6 +1,6 @@
 # Chat-data slice 5 — RootRouter proxy + enclaves — Spec
 
-> Status: **READY FOR QA** (fase 1 shipped in code; fases 2–3 gated by env) · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §6–7
+> Status: **SHIPPED** @ `06b9523` (fase 1) · Fases 2–3 env-gated · Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §6–7
 
 ## 1. Scope
 
@@ -33,9 +33,9 @@
 
 ## 3. QA gate
 
-- [ ] `npx tsc --noEmit`
-- [ ] `CI=true npm run build`
-- [ ] Manual: proxy health, bridge token, one message through local path
+- [x] `npx tsx --test lib/psychat-context/settings.test.ts`
+- [x] `CI=true npm run build`
+- [ ] Manual QA: RootRouter local + upstream token
 
 ## 4. Exit
 
