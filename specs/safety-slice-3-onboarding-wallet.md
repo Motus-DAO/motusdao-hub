@@ -80,7 +80,7 @@ Mapped checks:
 
 The loop ends when all acceptance criteria pass and the QA gate is green.
 
-This slice stops here. The next spec is slice 4, inbox and platform keys, in [docs/specs/SDD-safety-plan.md](../docs/specs/SDD-safety-plan.md). Slice 6 (vendor list and privacy notice) can be drafted in parallel; it is not started.
+This slice stops here. Slice 4 (inbox and platform keys) shipped next; see `specs/safety-slice-4-inbox-platform-keys.md`. The next coding slice is 5 (admin session and audit) in [docs/specs/SDD-safety-plan.md](../docs/specs/SDD-safety-plan.md).
 
 ## 9. Decisions — LOCKED
 
