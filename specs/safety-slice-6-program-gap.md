@@ -1,6 +1,6 @@
 # Safety slice 6 — Program gap (vendors + privacy notice) — Spec
 
-> Status: **SHIPPED** on `main` · Owner: product · 27 Oct 2026
+> Status: **SHIPPED** on `main` at `fde8017` · Owner: product · 27 Oct 2026
 >
 > Purpose: published vendor disclosure and a Spanish privacy notice suitable for pre-revenue market entry in Mexico, with US-user disclaimers, without waiting for external legal counsel.
 >
