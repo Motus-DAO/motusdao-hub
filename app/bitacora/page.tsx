@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { fetchAppSession } from '@/lib/auth/client'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
@@ -220,6 +221,9 @@ export default function BitacoraPage() {
         return
       }
       downloadSafeNotesExport(file)
+      alert(
+        'Copia descargada. Guárdala en un lugar seguro. Si borras entradas en Motus, recupera el archivo en Bitácora → Recuperar copia.'
+      )
     } catch (error) {
       console.error('Export failed:', error)
       alert('No se pudo exportar. Intenta de nuevo.')
@@ -388,9 +392,15 @@ export default function BitacoraPage() {
                   {isExporting ? 'Exportando…' : 'Exportar copia cifrada'}
                 </CTAButton>
               </motion.div>
-              <p className="text-xs text-muted-foreground mb-6 -mt-4">
-                La exportación incluye ciphertext e IV; ábrela con la misma wallet y la receta en{' '}
-                <code className="text-mauve-400">docs/architecture/safe-notes-export.md</code>.
+              <p className="text-xs text-muted-foreground mb-6 -mt-4 max-w-xl">
+                El archivo .json es tu respaldo cifrado.{' '}
+                <Link href="/bitacora/como-funciona" className="text-mauve-400 underline">
+                  ¿Para qué sirve?
+                </Link>{' '}
+                ·{' '}
+                <Link href="/bitacora/recuperar" className="text-mauve-400 underline">
+                  Recuperar copia
+                </Link>
               </p>
 
               {/* Journal Form */}
