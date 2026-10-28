@@ -1,6 +1,6 @@
 # Chat-data slice 2 — Psychat archive + export — Spec
 
-> Status: **SHIPPED** on `main` at `dd77100` · 28 Oct 2026
+> Status: **SHIPPED** on `main` at `a5aecb2` · 28 Oct 2026
 >
 > Plan: [SDD-chat-data.md](../docs/specs/SDD-chat-data.md) §2.2 + §4 · Roadmap: [chat-data-roadmap.md](./chat-data-roadmap.md).
 
