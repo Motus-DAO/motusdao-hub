@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { buildVideochatUrl } from '@/lib/jitsi'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import { authFetch } from '@/lib/auth/client'
 import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { aiProcessingConsentCopy, chatModelLabel } from '@/lib/ai-consent-copy'
@@ -29,7 +31,7 @@ export default function PsychatPage() {
   const isLight = theme === 'light'
   const { user, authenticated, ready, providerId } = useWallet()
   const { wallets } = useWallets()
-  const { isSessionReady } = useSiweSession()
+  const { isSessionReady, sessionState } = useSiweSession()
   const sessionEoa = getEOAAddress(wallets)
   const router = useRouter()
   const [isCreatingSession, setIsCreatingSession] = useState(false)
@@ -65,7 +67,7 @@ export default function PsychatPage() {
       setCredit(null)
       return
     }
-    void fetch('/api/ai/credit')
+    void authFetch('/api/ai/credit')
       .then((response) => (response.ok ? response.json() : null))
       .then(
         (
@@ -189,7 +191,7 @@ export default function PsychatPage() {
       return
     }
     let cancelled = false
-    void fetch('/api/consent/ai-processing')
+    void authFetch('/api/consent/ai-processing')
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { consentToAIProcessing?: boolean } | null) => {
         if (cancelled) return
@@ -207,7 +209,7 @@ export default function PsychatPage() {
     setSavingConsent(true)
     setSessionError(null)
     try {
-      const response = await fetch('/api/consent/ai-processing', {
+      const response = await authFetch('/api/consent/ai-processing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accepted: true }),
@@ -226,11 +228,15 @@ export default function PsychatPage() {
 
   const sendBlockedReason = !ready
     ? null
-    : !authenticated || !isSessionReady
-      ? 'Entra con tu wallet y confirma la sesión para usar Psychat.'
-      : !aiConsent
-        ? 'Marca el sí de procesamiento antes de enviar. Sin ese sí no se llama al modelo.'
-        : null
+    : !authenticated
+      ? 'Conecta tu wallet para usar Psychat.'
+      : sessionState === 'loading'
+        ? 'Verificando sesión del Hub…'
+        : sessionState === 'needs_signature' || !isSessionReady
+          ? 'Firma el mensaje de verificación abajo (SIWE). Conectar la wallet no basta.'
+          : !aiConsent
+            ? 'Marca el consentimiento de procesamiento con IA antes de enviar.'
+            : null
 
   const handleRequestHumanSession = async () => {
     try {
@@ -378,8 +384,10 @@ export default function PsychatPage() {
                     : 'border-white/15 bg-white/[0.06] text-white/90'
                 }`}
               >
-                {!ready || !authenticated || !isSessionReady ? (
-                  <p>Entra con tu wallet y confirma la sesión para usar Psychat. Sin eso no se llama al modelo.</p>
+                {!ready || !authenticated ? (
+                  <p>Conecta tu wallet para usar Psychat.</p>
+                ) : !isSessionReady ? (
+                  <SiweSessionBanner compact />
                 ) : (
                   <label className="flex items-start gap-3">
                     <input

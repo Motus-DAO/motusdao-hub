@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { X, Copy, Check } from 'lucide-react'
+import { X, Copy, Check, CheckCircle2, XCircle } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { GradientText } from '@/components/ui/GradientText'
@@ -41,6 +41,7 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
   const [proxyOk, setProxyOk] = useState<boolean | null>(null)
   const [checking, setChecking] = useState(false)
   const [bridgeSnippet, setBridgeSnippet] = useState<string | null>(null)
+  const [bridgePanel, setBridgePanel] = useState<'ok' | 'auth' | 'error' | null>(null)
   const [proxyStartScript, setProxyStartScript] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -76,17 +77,25 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
   }, [draft])
 
   const loadBridgeSnippet = async () => {
+    setBridgeSnippet(null)
+    setBridgePanel(null)
     const res = await authFetch('/api/psychat/proxy-bridge', { method: 'POST' })
     const data = (await res.json().catch(() => ({}))) as {
       upstreamOrigin?: string
       error?: string
     }
-    if (!res.ok) {
-      setBridgeSnippet(data.error || 'Inicia sesión en el Hub.')
+    if (res.status === 401) {
+      setBridgePanel('auth')
       return
     }
+    if (!res.ok) {
+      setBridgePanel('error')
+      setBridgeSnippet(data.error || 'No se pudo leer la URL del Hub.')
+      return
+    }
+    setBridgePanel('ok')
     setBridgeSnippet(
-      `# Solo necesitas esto en el proxy (ver script abajo):\nROOTROUTER_UPSTREAM_ORIGIN=${data.upstreamOrigin ?? window.location.origin}\n\nPsychat envía el token del Hub en cada mensaje; no lo pegues en RootRouter.`
+      `URL del Hub (upstream del proxy):\n${data.upstreamOrigin ?? window.location.origin}\n\nEl proxy reenvía ahí cada mensaje. Psychat pone el token del Hub automáticamente — no lo copies a la terminal; solo ROOTROUTER_UPSTREAM_ORIGIN en el script.`
     )
   }
 
@@ -216,18 +225,27 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
                 {checking ? 'Comprobando…' : 'Probar conexión'}
               </CTAButton>
               <CTAButton variant="secondary" size="sm" onClick={() => void loadBridgeSnippet()}>
-                Ver upstream del Hub
+                URL del Hub para el proxy
               </CTAButton>
             </div>
             {proxyOk === true ? (
-              <p className="text-emerald-400 text-xs">Proxy accesible desde este navegador.</p>
+              <div className="flex items-start gap-2 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                <span>
+                  <strong className="text-emerald-100">Conexión OK.</strong> El proxy responde en{' '}
+                  <code className="text-[11px]">{draft.localProxyUrl.replace(/\/$/, '')}</code>
+                </span>
+              </div>
             ) : null}
             {proxyOk === false ? (
-              <div className="space-y-2 text-xs text-amber-300">
-                <p>
-                  No hubo respuesta en esa URL. ¿Proxy encendido? Usa <code className="text-xs">127.0.0.1</code>, no
-                  localhost remoto.
-                </p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 rounded-lg border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                  <span>
+                    <strong className="text-red-100">Sin conexión.</strong> ¿Proxy encendido y misma URL/puerto que en
+                    la terminal?
+                  </span>
+                </div>
                 <button
                   type="button"
                   className="underline text-mauve-300"
@@ -241,17 +259,30 @@ export function PsychatContextModal({ open, onClose, onSaved }: Props) {
                 </button>
               </div>
             ) : null}
-            {bridgeSnippet ? (
-              <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground">{bridgeSnippet}</pre>
+            {bridgePanel === 'auth' ? (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                <span>
+                  <strong>Falta sesión del Hub.</strong> Cierra este modal, firma el mensaje SIWE en Psychat (recuadro
+                  amarillo) y vuelve a pulsar «URL del Hub para el proxy». No es un error del proxy local.
+                </span>
+              </div>
+            ) : null}
+            {bridgePanel === 'ok' && bridgeSnippet ? (
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-2">
+                <pre className="whitespace-pre-wrap text-[11px] text-emerald-100/90">{bridgeSnippet}</pre>
                 <button
                   type="button"
-                  className="mt-2 inline-flex items-center gap-1 text-xs underline"
+                  className="mt-2 inline-flex items-center gap-1 text-xs underline text-emerald-200"
                   onClick={() => void copySnippet()}
                 >
                   {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  Copiar
+                  Copiar URL
                 </button>
+              </div>
+            ) : null}
+            {bridgePanel === 'error' && bridgeSnippet ? (
+              <div className="rounded-lg border border-red-500/25 bg-red-500/5 p-2">
+                <pre className="whitespace-pre-wrap text-[11px] text-red-200">{bridgeSnippet}</pre>
               </div>
             ) : null}
             <label className="flex items-start gap-2">
