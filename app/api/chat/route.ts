@@ -6,10 +6,13 @@ import { requireAiProcessingConsent } from "@/lib/auth/ai-consent";
 import { handleAuthError } from "@/lib/auth/session";
 import { AiCreditExhaustedError, estimateTokens, formatCreditNote } from "@/lib/ai-credit";
 import { getCreditSnapshot, releaseAiCredit, reserveAiCredit, settleAiCredit } from "@/lib/ai-credit-store";
+import {
+  getPsychatSystemPrompt,
+  normalizePsychatRole,
+  resolvePsychatStructuredMode,
+  type PsychatStructuredMode,
+} from "@/lib/psychat-prompt";
 import type OpenAI from "openai";
-import { PSYCHAT_SYSTEM_PROMPT } from "@/lib/psychat-prompt";
-
-const SYSTEM_PROMPT = PSYCHAT_SYSTEM_PROMPT;
 
 const SUPERVISOR_SCHEMA = {
   type: "json_schema" as const,
@@ -30,15 +33,35 @@ const SUPERVISOR_SCHEMA = {
   }
 };
 
-function wantsSupervisorMode(text: string): boolean {
-  const t = text.toLowerCase();
-  return t.includes("modo supervisor") || t.includes("entra en modo supervisor") || t.includes("activa modo supervisor");
+const EXPLORACION_SCHEMA = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "ExploracionOutput",
+    schema: {
+      type: "object" as const,
+      additionalProperties: false,
+      properties: {
+        eco: { type: "string" as const },
+        pregunta: { type: "string" as const },
+        abierto: { type: "string" as const },
+        limite: { type: "string" as const },
+        puenteHumano: { type: "string" as const },
+      },
+      required: ["eco", "pregunta", "abierto", "limite", "puenteHumano"],
+    },
+  },
+};
+
+type StructuredSchema = typeof SUPERVISOR_SCHEMA | typeof EXPLORACION_SCHEMA;
+
+function responseFormatForMode(mode: PsychatStructuredMode): StructuredSchema {
+  return mode === "supervisor" ? SUPERVISOR_SCHEMA : EXPLORACION_SCHEMA;
 }
 
 async function createReliableChatCompletion(
   client: OpenAI,
   messages: Array<{ role: "system" | "assistant" | "user"; content: string }>,
-  options: { temperature: number; max_tokens: number; response_format?: typeof SUPERVISOR_SCHEMA }
+  options: { temperature: number; max_tokens: number; response_format?: StructuredSchema }
 ): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
   const base = {
     model: getAIModel(),
@@ -70,12 +93,14 @@ async function createReliableChatCompletion(
 
 export async function POST(req: NextRequest) {
   let userId: string
+  let hubRole = normalizePsychatRole(null)
   try {
     const session = await requireAiProcessingConsent(req)
     if (!session.userId) {
       return NextResponse.json({ error: 'Se necesita una cuenta del Hub para usar la IA.' }, { status: 403 })
     }
     userId = session.userId
+    hubRole = normalizePsychatRole(session.role)
   } catch (error) {
     const authResponse = handleAuthError(error)
     if (authResponse) return authResponse
@@ -100,19 +125,18 @@ export async function POST(req: NextRequest) {
       .filter((message) => message.role === "user" || message.role === "assistant");
     const clientSnippets = (body?.contextSnippets || []) as string[];
 
-    // Construir conversación
-    const input: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
-      { role: "system", content: SYSTEM_PROMPT },
-    ];
-
-    // Tomar el último mensaje de usuario para rutear modo
     const lastUser = userMessages.slice().reverse().find(m => m.role === "user");
     const userText = lastUser?.content || "";
+    const structuredMode = resolvePsychatStructuredMode(hubRole, userText);
+
+    const input: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
+      { role: "system", content: getPsychatSystemPrompt(hubRole) },
+    ];
 
     let ragSources: Array<{ sourcePath: string; title: string; namespace: string; similarity: number }> = [];
     let contextSnippets = [...clientSnippets];
 
-    if (isKnowledgeRagEnabled() && userText && !wantsSupervisorMode(userText)) {
+    if (isKnowledgeRagEnabled() && userText && !structuredMode) {
       try {
         const retrieved = await retrieveMotusContext(userText);
         if (retrieved.snippets.length) {
@@ -136,13 +160,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Tomar el último mensaje de usuario para rutear modo — userText already computed above
-    // Agregar mensajes de usuario con tipos correctos
     userMessages.forEach(msg => {
       input.push({ role: msg.role, content: msg.content });
     });
 
-    const requestedMaxTokens = wantsSupervisorMode(userText) ? 1000 : 800
+    const requestedMaxTokens = structuredMode ? 1000 : 800
     const model = getAIModel()
     const hold = await reserveAiCredit({
       userId,
@@ -154,7 +176,7 @@ export async function POST(req: NextRequest) {
     let settled = false
     try {
       const result = await createReliableChatCompletion(client, input, {
-        ...(wantsSupervisorMode(userText) ? { response_format: SUPERVISOR_SCHEMA } : {}),
+        ...(structuredMode ? { response_format: responseFormatForMode(structuredMode) } : {}),
         temperature: 0.7,
         max_tokens: hold.maxTokens,
       })
@@ -166,7 +188,7 @@ export async function POST(req: NextRequest) {
       settled = true
       const credit = await getCreditSnapshot(userId)
 
-      if (wantsSupervisorMode(userText)) {
+      if (structuredMode === "supervisor") {
         let json;
         try {
           json = JSON.parse(result.text);
@@ -182,6 +204,30 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
           mode: "supervisor",
+          ...json,
+          ragSources,
+          credit,
+          creditNote: formatCreditNote(credit),
+        });
+      }
+
+      if (structuredMode === "exploracion") {
+        let json;
+        try {
+          json = JSON.parse(result.text);
+        } catch {
+          json = {
+            eco: "No pude procesar bien lo que compartiste.",
+            pregunta: "¿Quieres contarme un poco más con tus palabras?",
+            abierto: "Queda espacio para seguir explorando.",
+            limite: "No soy terapeuta ni sustituyo atención profesional.",
+            puenteHumano: "Si quieres profundizar con una persona, usa el botón Terapeuta humano en Psychat.",
+          };
+        }
+
+        return NextResponse.json({
+          mode: "exploracion",
+          handoffSuggested: true,
           ...json,
           ragSources,
           credit,

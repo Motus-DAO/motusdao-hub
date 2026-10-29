@@ -3,7 +3,7 @@ import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { hkdf } from '@noble/hashes/hkdf.js'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex, hexToBytes, randomBytes, utf8ToBytes } from '@noble/hashes/utils.js'
-import { PSYCHAT_SYSTEM_PROMPT } from '@/lib/psychat-prompt'
+import { getPsychatSystemPrompt, type PsychatHubRole } from '@/lib/psychat-prompt'
 
 const HKDF_INFO = utf8ToBytes('ecdsa_encryption')
 
@@ -57,13 +57,18 @@ export function decryptChunk(ciphertextHex: string, recipientPrivateKey: Uint8Ar
   return new TextDecoder().decode(plaintext)
 }
 
-export function encryptConversation(turns: ChatTurn[], modelPublicKeyHex: string): RelayMessage[] {
+export function encryptConversation(
+  turns: ChatTurn[],
+  modelPublicKeyHex: string,
+  hubRole: PsychatHubRole = 'usuario'
+): RelayMessage[] {
   const dialogue = turns
     .filter((turn) => (turn.role === 'user' || turn.role === 'assistant') && turn.content.trim())
     .map((turn) => `${turn.role === 'user' ? 'Usuario' : 'Asistente'}: ${turn.content.trim()}`)
     .join('\n\n')
+  const systemPrompt = getPsychatSystemPrompt(hubRole)
   return [
-    { role: 'system', content: encryptMessage(PSYCHAT_SYSTEM_PROMPT, modelPublicKeyHex) },
+    { role: 'system', content: encryptMessage(systemPrompt, modelPublicKeyHex) },
     { role: 'user', content: encryptMessage(dialogue || 'Usuario:', modelPublicKeyHex) },
   ]
 }
@@ -155,7 +160,7 @@ export async function readDecryptedStream(body: ReadableStream<Uint8Array>, priv
   return full
 }
 
-export async function sendEncryptedPsychat(turns: ChatTurn[]) {
+export async function sendEncryptedPsychat(turns: ChatTurn[], hubRole: PsychatHubRole = 'usuario') {
   const session = generateSessionKey()
   try {
     const nonce = bytesToHex(randomBytes(32))
@@ -175,7 +180,7 @@ export async function sendEncryptedPsychat(turns: ChatTurn[]) {
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: encryptConversation(turns, modelKey),
+        messages: encryptConversation(turns, modelKey, hubRole),
         clientPublicKey: session.publicKeyHex,
         modelPublicKey: modelKey,
       }),

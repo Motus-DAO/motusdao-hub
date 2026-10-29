@@ -12,7 +12,8 @@ import {
 import { isUsableChatOutput, sanitizeModelOutput, SHORT_INPUT_FALLBACK } from '@/lib/ai-output'
 import { AiCreditExhaustedError, estimateTokens, formatCreditNote } from '@/lib/ai-credit'
 import { getCreditSnapshot, releaseAiCredit, reserveAiCredit, settleAiCredit } from '@/lib/ai-credit-store'
-import { PSYCHAT_SYSTEM_PROMPT } from '@/lib/psychat-prompt'
+import { getPsychatSystemPrompt, normalizePsychatRole } from '@/lib/psychat-prompt'
+import { prisma } from '@/lib/prisma'
 import type OpenAI from 'openai'
 
 function bearerToken(request: NextRequest): string | null {
@@ -72,8 +73,14 @@ export async function handleRootRouterUpstreamPost(req: NextRequest) {
       (m) => m.role === 'user' || m.role === 'assistant'
     )
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    })
+    const hubRole = normalizePsychatRole(user?.role)
+
     const input: Array<{ role: 'system' | 'assistant' | 'user'; content: string }> = [
-      { role: 'system', content: PSYCHAT_SYSTEM_PROMPT },
+      { role: 'system', content: getPsychatSystemPrompt(hubRole) },
     ]
     userMessages.forEach((msg) => {
       input.push({ role: msg.role as 'user' | 'assistant', content: msg.content })

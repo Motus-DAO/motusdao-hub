@@ -19,6 +19,7 @@ import { useUIStore, type UserRole } from '@/lib/store'
 import { psychatPrivacyTeaser, VENICE_PRIVACY_URL } from '@/lib/ai-consent-copy'
 import { creditUsedPercent } from '@/lib/ai-credit'
 import { sendEncryptedPsychat } from '@/lib/venice-e2ee'
+import { formatExploracionMarkdown, formatSupervisorMarkdown } from '@/lib/psychat-prompt'
 import { sendPsychatViaRootRouterProxy } from '@/lib/psychat-context/send-local-proxy'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -126,10 +127,14 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   ragSources?: RagSource[]
+  handoffSuggested?: boolean
 }
 
 const USUARIO_GREETING =
-  '¡Hola! Soy Psychat, tu asistente especializado en salud mental. ¿En qué puedo ayudarte hoy?'
+  'Hola. Soy Psychat. Puedo orientarte sobre el Hub o acompañarte a explorar lo que sientes — sin diagnóstico ni consejos de qué hacer. Activa **Modo exploración** o, si lo necesitas, **Terapeuta humano**.'
+
+const USUARIO_EXPLORACION_EXAMPLE =
+  'Últimamente me cuesta dormir; cuando pienso en el trabajo me pongo tenso. Quiero explorar lo que siento.'
 
 const PSM_GREETING =
   'Hola. Soy Psychat en modo de apoyo clínico. Comparte tu caso (anónimo) o activa el Modo Supervisor para una reflexión estructurada.'
@@ -295,7 +300,8 @@ export function AnimatedAIChat({
     const request =
       privacyMode === 'e2ee'
         ? sendEncryptedPsychat(
-            apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant')
+            apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant'),
+            isPsm ? 'psm' : 'usuario'
           ).then((text) => ({ mode: 'qa' as const, text }))
         : useProxy
           ? sendPsychatViaRootRouterProxy(
@@ -319,6 +325,12 @@ export function AnimatedAIChat({
               cierre?: string
               recomendacion?: string
               disponibilidad?: string
+              eco?: string
+              pregunta?: string
+              abierto?: string
+              limite?: string
+              puenteHumano?: string
+              handoffSuggested?: boolean
               ragSources?: RagSource[]
             }
             if (!res.ok) {
@@ -337,8 +349,24 @@ export function AnimatedAIChat({
         if (!data) return
         onCreditRefresh?.()
         let content = ''
-        if (data.mode === 'supervisor' && 'apertura' in data) {
-          content = `## Apertura de significantes\n\n${data.apertura}\n\n## Reflexión sobre el discurso\n\n${data.reflexion}\n\n## Cierre analítico\n\n${data.cierre}\n\n## Recomendación final\n\n${data.recomendacion}\n\n## Disponibilidad\n\n${data.disponibilidad}`
+        let handoffSuggested = false
+        if (data.mode === 'supervisor' && 'apertura' in data && data.apertura) {
+          content = formatSupervisorMarkdown({
+            apertura: data.apertura,
+            reflexion: data.reflexion ?? '',
+            cierre: data.cierre ?? '',
+            recomendacion: data.recomendacion ?? '',
+            disponibilidad: data.disponibilidad ?? '',
+          })
+        } else if (data.mode === 'exploracion' && 'eco' in data && data.eco) {
+          content = formatExploracionMarkdown({
+            eco: data.eco,
+            pregunta: data.pregunta ?? '',
+            abierto: data.abierto ?? '',
+            limite: data.limite ?? '',
+            puenteHumano: data.puenteHumano ?? '',
+          })
+          handoffSuggested = Boolean(data.handoffSuggested)
         } else {
           const message = 'message' in data ? data.message : undefined
           content = data.text || message || 'No se pudo generar una respuesta.'
@@ -352,6 +380,7 @@ export function AnimatedAIChat({
             role: 'assistant',
             content,
             ragSources,
+            handoffSuggested,
           },
         ])
       })
@@ -488,6 +517,32 @@ export function AnimatedAIChat({
                   ) : (
                     m.content
                   )}
+                  {m.role === 'assistant' && m.handoffSuggested && onRequestHumanSession && (
+                    <div
+                      className={cn(
+                        'mt-3 rounded-lg border px-3 py-2 text-xs',
+                        isLight
+                          ? 'border-mauve-300/60 bg-mauve-50 text-mauve-950'
+                          : 'border-mauve-400/30 bg-mauve-500/10 text-mauve-100',
+                      )}
+                    >
+                      <p className="mb-2">Si quieres continuar con una persona, puedes agendar videollamada con tu profesional.</p>
+                      <button
+                        type="button"
+                        onClick={() => void onRequestHumanSession()}
+                        disabled={isCreatingSession}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium transition-colors',
+                          isLight
+                            ? 'bg-mauve-700 text-white hover:bg-mauve-800 disabled:opacity-50'
+                            : 'bg-mauve-500/40 text-white hover:bg-mauve-500/55 disabled:opacity-50',
+                        )}
+                      >
+                        <PhoneCall className="h-3.5 w-3.5" />
+                        {isCreatingSession ? 'Conectando…' : 'Terapeuta humano'}
+                      </button>
+                    </div>
+                  )}
                   {m.role === 'assistant' && m.ragSources && m.ragSources.length > 0 && (
                     <details className="mt-2 text-xs opacity-80">
                       <summary className="cursor-pointer">Fuentes RAG ({m.ragSources.length})</summary>
@@ -567,21 +622,21 @@ export function AnimatedAIChat({
                   <>
                     <motion.button
                       type="button"
-                      onClick={() => fillPrompt('¿Cómo puedo manejar la ansiedad?')}
+                      onClick={() => fillPrompt('Activa modo exploración')}
                       whileTap={{ scale: 0.94 }}
                       className={actionButtonClass}
                     >
                       <Brain className="h-4 w-4" />
-                      <span>Manejar ansiedad</span>
+                      <span>Modo exploración</span>
                     </motion.button>
                     <motion.button
                       type="button"
-                      onClick={() => fillPrompt('Necesito técnicas de relajación')}
+                      onClick={() => fillPrompt(USUARIO_EXPLORACION_EXAMPLE)}
                       whileTap={{ scale: 0.94 }}
                       className={actionButtonClass}
                     >
                       <MessageSquare className="h-4 w-4" />
-                      <span>Relajación</span>
+                      <span>Ejemplo exploración</span>
                     </motion.button>
                     {onRequestHumanSession && (
                       <motion.button
