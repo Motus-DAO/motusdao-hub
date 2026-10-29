@@ -78,13 +78,14 @@ export function wantsExploracionMode(text: string): boolean {
   )
 }
 
+/** Default structured mode per Hub role for each user turn (TEE `/api/chat`). */
 export function resolvePsychatStructuredMode(
   hubRole: PsychatHubRole,
   userText: string
 ): PsychatStructuredMode | null {
-  if (hubRole === 'psm' && wantsSupervisorMode(userText)) return 'supervisor'
-  if (hubRole === 'usuario' && wantsExploracionMode(userText)) return 'exploracion'
-  return null
+  if (!userText.trim()) return null
+  if (hubRole === 'psm') return 'supervisor'
+  return 'exploracion'
 }
 
 export function getPsychatSystemPrompt(hubRole: PsychatHubRole): string {

@@ -27,7 +27,7 @@ import {
 } from '@/lib/psychat-context/settings'
 
 export default function PsychatPage() {
-  const { role, theme } = useUIStore()
+  const { role, theme, setRole } = useUIStore()
   const isLight = theme === 'light'
   const { user, authenticated, ready, providerId } = useWallet()
   const { wallets } = useWallets()
@@ -61,6 +61,24 @@ export default function PsychatPage() {
   useEffect(() => {
     setContextSettings(readPsychatContextSettings())
   }, [])
+
+  useEffect(() => {
+    if (!isSessionReady) return
+    let cancelled = false
+    void authFetch('/api/profile')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { user?: { role?: string } } | null) => {
+        if (cancelled || !data?.user?.role) return
+        const dbRole = data.user.role
+        if (dbRole === 'psm' || dbRole === 'usuario' || dbRole === 'admin') {
+          setRole(dbRole === 'psm' ? 'psm' : 'usuario')
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [isSessionReady, setRole])
 
   const refreshCredit = useCallback(() => {
     if (!isSessionReady) {
@@ -233,10 +251,38 @@ export default function PsychatPage() {
       : sessionState === 'loading'
         ? 'Verificando sesión del Hub…'
         : sessionState === 'needs_signature' || !isSessionReady
-          ? 'Firma el mensaje de verificación abajo (SIWE). Conectar la wallet no basta.'
+          ? 'Primero firma el mensaje de verificación en el recuadro de arriba (SIWE). Hasta entonces el chat está bloqueado.'
           : !aiConsent
-            ? 'Marca el consentimiento de procesamiento con IA antes de enviar.'
+            ? 'Marca el consentimiento de procesamiento con IA en el recuadro de arriba para desbloquear el chat.'
             : null
+
+  const psychatChatGate =
+    !ready || !authenticated ? (
+      <div className="px-5 py-6 text-sm">
+        <p className="font-medium">Conecta tu wallet para usar Psychat.</p>
+        <p className="mt-2 text-muted-foreground">Sin wallet no podemos verificar tu sesión ni enviar mensajes.</p>
+      </div>
+    ) : !isSessionReady ? (
+      <div className="p-3 sm:p-4">
+        <SiweSessionBanner compact />
+      </div>
+    ) : !aiConsent ? (
+      <div className="px-5 py-6">
+        <p className="mb-3 text-sm font-medium">Consentimiento para usar IA en Psychat</p>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={aiConsent}
+            disabled={savingConsent || aiConsent}
+            onChange={(event) => {
+              if (event.target.checked) void acceptAiProcessing()
+            }}
+          />
+          <span>{aiProcessingConsentCopy(providerLabel, privacyMode)}</span>
+        </label>
+      </div>
+    ) : null
 
   const handleRequestHumanSession = async () => {
     try {
@@ -376,35 +422,8 @@ export default function PsychatPage() {
               useRootRouterProxy={useRootRouterProxy}
               rootRouterProxyUrl={proxyBase ?? ''}
               onOpenContextSettings={() => setContextModalOpen(true)}
-              notice={
-              <div
-                className={`mx-auto max-w-xl rounded-xl border px-4 py-3 text-left text-sm ${
-                  isLight
-                    ? 'border-border bg-white text-slate-800'
-                    : 'border-white/15 bg-white/[0.06] text-white/90'
-                }`}
-              >
-                {!ready || !authenticated ? (
-                  <p>Conecta tu wallet para usar Psychat.</p>
-                ) : !isSessionReady ? (
-                  <SiweSessionBanner compact />
-                ) : (
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={aiConsent}
-                      disabled={savingConsent || aiConsent}
-                      onChange={(event) => {
-                        if (event.target.checked) void acceptAiProcessing()
-                      }}
-                    />
-                    <span>{aiProcessingConsentCopy(providerLabel, privacyMode)}</span>
-                  </label>
-                )}
-              </div>
-            }
-          />
+              chatGate={psychatChatGate}
+            />
           </div>
         </div>
       </div>

@@ -5,7 +5,6 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import {
-  Brain,
   FileText,
   LoaderIcon,
   MessageSquare,
@@ -131,13 +130,13 @@ interface ChatMessage {
 }
 
 const USUARIO_GREETING =
-  'Hola. Soy Psychat. Puedo orientarte sobre el Hub o acompañarte a explorar lo que sientes — sin diagnóstico ni consejos de qué hacer. Activa **Modo exploración** o, si lo necesitas, **Terapeuta humano**.'
+  'Hola. Soy Psychat. Este espacio es para explorar lo que sientes con calma — sin diagnóstico ni consejos de qué hacer. Si lo necesitas, puedes usar **Terapeuta humano**.'
 
 const USUARIO_EXPLORACION_EXAMPLE =
   'Últimamente me cuesta dormir; cuando pienso en el trabajo me pongo tenso. Quiero explorar lo que siento.'
 
 const PSM_GREETING =
-  'Hola. Soy Psychat en modo de apoyo clínico. Comparte tu caso (anónimo) o activa el Modo Supervisor para una reflexión estructurada.'
+  'Hola. Soy Psychat en apoyo clínico para profesionales. Comparte tu caso (anónimo) y recibirás una reflexión estructurada en cada turno.'
 
 const CLINICAL_EXAMPLE =
   'Tengo un paciente que tiene ansiedad. Comenta que no se siente "el hombre", por lo que he decidido abordar este tema desde la teoría de género y social, dándole herramientas de nuevas masculinidades y enfocándome en trabajar su autoestima.'
@@ -177,6 +176,8 @@ export interface AnimatedAIChatProps {
   useRootRouterProxy?: boolean
   rootRouterProxyUrl?: string
   onOpenContextSettings?: () => void
+  /** Modal sobre historial + compositor (p. ej. firma SIWE). Sustituye el overlay oscuro del input. */
+  chatGate?: React.ReactNode
 }
 
 export function AnimatedAIChat({
@@ -203,6 +204,7 @@ export function AnimatedAIChat({
   useRootRouterProxy = false,
   rootRouterProxyUrl = '',
   onOpenContextSettings,
+  chatGate = null,
 }: AnimatedAIChatProps) {
   const containerHeightClass = fullScreen ? 'min-h-screen' : 'min-h-[calc(100dvh-8rem)]'
   const { theme } = useUIStore()
@@ -273,6 +275,9 @@ export function AnimatedAIChat({
     setValue('')
     setError(null)
   }, [chatSessionKey, loadedThread, isPsm])
+
+  const isComposerLocked = Boolean(sendBlockedReason)
+  const showComposerOverlay = isComposerLocked && !chatGate
 
   const handleSendMessage = () => {
     const userMessage = value.trim()
@@ -387,16 +392,6 @@ export function AnimatedAIChat({
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Error al conectar con Psychat'
         setError(msg)
-        if (privacyMode === 'e2ee') return
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content:
-              'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en unos momentos.',
-          },
-        ])
       })
       .finally(() => {
         setIsTyping(false)
@@ -483,14 +478,17 @@ export function AnimatedAIChat({
             </div>
           )}
 
+          <div className="relative flex min-h-0 flex-1 flex-col">
           <div
             ref={messagesContainerRef}
             className={cn(
               'min-h-[200px] flex-1 space-y-3 overflow-y-auto overscroll-y-contain rounded-2xl border p-4',
               isLight ? 'border-slate-300/70 bg-white/70' : 'border-white/[0.05] bg-black/20',
+              chatGate && 'pointer-events-none select-none opacity-50',
             )}
             aria-live="polite"
             aria-label="Mensajes del chat"
+            aria-hidden={Boolean(chatGate)}
           >
             {messages.map((m) => (
               <div
@@ -564,12 +562,33 @@ export function AnimatedAIChat({
             className={cn(
               'relative shrink-0 rounded-2xl border shadow-2xl backdrop-blur-2xl',
               isLight ? 'border-slate-300/70 bg-white/70' : 'border-white/[0.05] bg-white/[0.02]',
+              (showComposerOverlay || chatGate) && 'overflow-hidden',
+              chatGate && 'pointer-events-none select-none opacity-50',
             )}
             initial={{ scale: 0.98 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.1 }}
           >
-            <div className="p-4">
+            {showComposerOverlay ? (
+              <div
+                className={cn(
+                  'absolute inset-0 z-20 flex cursor-not-allowed items-center justify-center rounded-2xl px-4 py-6',
+                  isLight ? 'bg-white/85' : 'bg-black/70',
+                )}
+                role="status"
+                aria-live="polite"
+              >
+                <p
+                  className={cn(
+                    'max-w-md text-center text-sm font-medium leading-relaxed',
+                    isLight ? 'text-slate-800' : 'text-white/90',
+                  )}
+                >
+                  {sendBlockedReason}
+                </p>
+              </div>
+            ) : null}
+            <div className={cn('p-4', showComposerOverlay && 'pointer-events-none select-none opacity-40')}>
               <Textarea
                 ref={textareaRef}
                 value={value}
@@ -581,17 +600,23 @@ export function AnimatedAIChat({
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 placeholder={
-                  isPsm ? 'Describe tu caso clínico o consulta de supervisión...' : 'Escribe tu mensaje...'
+                  isComposerLocked
+                    ? 'Completa el paso de arriba para escribir…'
+                    : isPsm
+                      ? 'Describe tu caso clínico o consulta de supervisión...'
+                      : 'Escribe tu mensaje...'
                 }
                 containerClassName="w-full"
                 className={cn(
                   'min-h-[60px] w-full resize-none border-none bg-transparent px-4 py-3 text-sm focus:outline-none',
                   isLight ? 'text-slate-900 placeholder:text-slate-500' : 'text-white/90 placeholder:text-white/20',
+                  isComposerLocked && 'cursor-not-allowed',
                 )}
                 style={{ overflow: 'hidden' }}
                 showRing={false}
-                disabled={isTyping}
+                disabled={isTyping || isComposerLocked}
                 aria-label="Escribe tu mensaje"
+                aria-disabled={isComposerLocked}
               />
             </div>
 
@@ -599,6 +624,7 @@ export function AnimatedAIChat({
               className={cn(
                 'flex flex-wrap items-center justify-between gap-3 border-t p-3 sm:p-4',
                 isLight ? 'border-slate-300/70' : 'border-white/[0.05]',
+                isComposerLocked && 'pointer-events-none select-none opacity-40',
               )}
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -608,27 +634,9 @@ export function AnimatedAIChat({
                       <FileText className="h-4 w-4" />
                       <span>Caso clínico ejemplo</span>
                     </motion.button>
-                    <motion.button
-                      type="button"
-                      onClick={() => fillPrompt('Activa Modo Supervisor')}
-                      whileTap={{ scale: 0.94 }}
-                      className={actionButtonClass}
-                    >
-                      <Brain className="h-4 w-4" />
-                      <span>Modo Supervisor</span>
-                    </motion.button>
                   </>
                 ) : (
                   <>
-                    <motion.button
-                      type="button"
-                      onClick={() => fillPrompt('Activa modo exploración')}
-                      whileTap={{ scale: 0.94 }}
-                      className={actionButtonClass}
-                    >
-                      <Brain className="h-4 w-4" />
-                      <span>Modo exploración</span>
-                    </motion.button>
                     <motion.button
                       type="button"
                       onClick={() => fillPrompt(USUARIO_EXPLORACION_EXAMPLE)}
@@ -669,7 +677,7 @@ export function AnimatedAIChat({
                   onClick={handleSendMessage}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={isTyping || !value.trim() || Boolean(sendBlockedReason)}
+                  disabled={isTyping || !value.trim() || isComposerLocked}
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
                     value.trim()
@@ -806,9 +814,30 @@ export function AnimatedAIChat({
               {isPsm ? (
                 <p className="mt-1">No incluyas datos identificables de pacientes. Las emergencias se revisan con humanos.</p>
               ) : null}
-              {sendBlockedReason ? <p className="mt-1">{sendBlockedReason}</p> : null}
             </div>
           </motion.div>
+
+          {chatGate ? (
+            <div
+              className={cn(
+                'absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6',
+                isLight ? 'bg-slate-900/25' : 'bg-black/45',
+              )}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Acción requerida para usar Psychat"
+            >
+              <div
+                className={cn(
+                  'pointer-events-auto w-full max-w-lg rounded-2xl border shadow-2xl',
+                  isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-zinc-950/95',
+                )}
+              >
+                {chatGate}
+              </div>
+            </div>
+          ) : null}
+          </div>
         </motion.div>
       </div>
 

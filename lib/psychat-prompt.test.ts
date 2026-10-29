@@ -26,11 +26,12 @@ describe('psychat-prompt modes', () => {
     assert.equal(wantsSupervisorMode('modo supervisor'), true)
   })
 
-  it('resolves structured mode by role', () => {
-    assert.equal(resolvePsychatStructuredMode('psm', 'modo supervisor'), 'supervisor')
-    assert.equal(resolvePsychatStructuredMode('usuario', 'modo supervisor'), null)
-    assert.equal(resolvePsychatStructuredMode('usuario', 'activa modo exploración'), 'exploracion')
-    assert.equal(resolvePsychatStructuredMode('psm', 'activa modo exploración'), null)
+  it('resolves default structured mode by role for each user turn', () => {
+    assert.equal(resolvePsychatStructuredMode('psm', 'caso clínico anonimizado'), 'supervisor')
+    assert.equal(resolvePsychatStructuredMode('usuario', 'modo supervisor'), 'exploracion')
+    assert.equal(resolvePsychatStructuredMode('usuario', 'hola'), 'exploracion')
+    assert.equal(resolvePsychatStructuredMode('psm', ''), null)
+    assert.equal(resolvePsychatStructuredMode('usuario', '   '), null)
   })
 
   it('scopes prompts by role', () => {

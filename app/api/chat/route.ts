@@ -4,6 +4,7 @@ import { isKnowledgeRagEnabled, retrieveMotusContext } from "@/lib/motus-knowled
 import { isUsableChatOutput, sanitizeModelOutput, SHORT_INPUT_FALLBACK } from "@/lib/ai-output";
 import { requireAiProcessingConsent } from "@/lib/auth/ai-consent";
 import { handleAuthError } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
 import { AiCreditExhaustedError, estimateTokens, formatCreditNote } from "@/lib/ai-credit";
 import { getCreditSnapshot, releaseAiCredit, reserveAiCredit, settleAiCredit } from "@/lib/ai-credit-store";
 import {
@@ -12,6 +13,11 @@ import {
   resolvePsychatStructuredMode,
   type PsychatStructuredMode,
 } from "@/lib/psychat-prompt";
+import {
+  parseStructuredOutput,
+  PSYCHAT_STRUCTURED_OUTPUT_ERROR,
+  validateStructuredPayload,
+} from "@/lib/psychat-structured-output";
 import type OpenAI from "openai";
 
 const SUPERVISOR_SCHEMA = {
@@ -58,6 +64,29 @@ function responseFormatForMode(mode: PsychatStructuredMode): StructuredSchema {
   return mode === "supervisor" ? SUPERVISOR_SCHEMA : EXPLORACION_SCHEMA;
 }
 
+function veniceStructuredJsonReminder(mode: PsychatStructuredMode): string {
+  const keys =
+    mode === "supervisor"
+      ? "apertura, reflexion, cierre, recomendacion, disponibilidad"
+      : "eco, pregunta, abierto, limite, puenteHumano";
+  return `\n\nCRITICAL: Respond with ONLY a raw JSON object with keys: ${keys}. No markdown fences, no text before or after JSON. Do not include a "mode" property.`;
+}
+
+function structuredOutputFailure(
+  hubRole: ReturnType<typeof normalizePsychatRole>,
+  structuredMode: PsychatStructuredMode
+) {
+  return NextResponse.json(
+    {
+      error: PSYCHAT_STRUCTURED_OUTPUT_ERROR,
+      code: "structured_output_failed",
+      psychatHubRole: hubRole,
+      structuredMode,
+    },
+    { status: 502 }
+  );
+}
+
 async function createReliableChatCompletion(
   client: OpenAI,
   messages: Array<{ role: "system" | "assistant" | "user"; content: string }>,
@@ -100,7 +129,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Se necesita una cuenta del Hub para usar la IA.' }, { status: 403 })
     }
     userId = session.userId
-    hubRole = normalizePsychatRole(session.role)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    })
+    hubRole = normalizePsychatRole(user?.role)
   } catch (error) {
     const authResponse = handleAuthError(error)
     if (authResponse) return authResponse
@@ -132,6 +165,11 @@ export async function POST(req: NextRequest) {
     const input: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
       { role: "system", content: getPsychatSystemPrompt(hubRole) },
     ];
+
+    const provider = getAIProvider();
+    if (structuredMode && provider === "venice") {
+      input[0].content += veniceStructuredJsonReminder(structuredMode);
+    }
 
     let ragSources: Array<{ sourcePath: string; title: string; namespace: string; similarity: number }> = [];
     let contextSnippets = [...clientSnippets];
@@ -176,7 +214,9 @@ export async function POST(req: NextRequest) {
     let settled = false
     try {
       const result = await createReliableChatCompletion(client, input, {
-        ...(structuredMode ? { response_format: responseFormatForMode(structuredMode) } : {}),
+        ...(structuredMode && provider === "openai"
+          ? { response_format: responseFormatForMode(structuredMode) }
+          : {}),
         temperature: 0.7,
         max_tokens: hold.maxTokens,
       })
@@ -188,55 +228,37 @@ export async function POST(req: NextRequest) {
       settled = true
       const credit = await getCreditSnapshot(userId)
 
-      if (structuredMode === "supervisor") {
-        let json;
+      if (structuredMode) {
+        if (result.text === SHORT_INPUT_FALLBACK) {
+          return structuredOutputFailure(hubRole, structuredMode)
+        }
+
+        let parsed: Record<string, unknown>
         try {
-          json = JSON.parse(result.text);
+          parsed = parseStructuredOutput(result.text)
         } catch {
-          json = {
-            apertura: "Error en el análisis",
-            reflexion: "No se pudo procesar la respuesta",
-            cierre: "Reintentar el análisis",
-            recomendacion: "Contactar soporte técnico",
-            disponibilidad: "Disponible para nueva consulta"
-          };
+          return structuredOutputFailure(hubRole, structuredMode)
+        }
+
+        const fields = validateStructuredPayload(structuredMode, parsed)
+        if (!fields) {
+          return structuredOutputFailure(hubRole, structuredMode)
         }
 
         return NextResponse.json({
-          mode: "supervisor",
-          ...json,
+          ...fields,
+          mode: structuredMode,
+          psychatHubRole: hubRole,
+          ...(structuredMode === "exploracion" ? { handoffSuggested: true } : {}),
           ragSources,
           credit,
           creditNote: formatCreditNote(credit),
-        });
-      }
-
-      if (structuredMode === "exploracion") {
-        let json;
-        try {
-          json = JSON.parse(result.text);
-        } catch {
-          json = {
-            eco: "No pude procesar bien lo que compartiste.",
-            pregunta: "¿Quieres contarme un poco más con tus palabras?",
-            abierto: "Queda espacio para seguir explorando.",
-            limite: "No soy terapeuta ni sustituyo atención profesional.",
-            puenteHumano: "Si quieres profundizar con una persona, usa el botón Terapeuta humano en Psychat.",
-          };
-        }
-
-        return NextResponse.json({
-          mode: "exploracion",
-          handoffSuggested: true,
-          ...json,
-          ragSources,
-          credit,
-          creditNote: formatCreditNote(credit),
-        });
+        })
       }
 
       return NextResponse.json({
         mode: "qa",
+        psychatHubRole: hubRole,
         text: result.text,
         ragSources,
         ragEnabled: isKnowledgeRagEnabled(),
@@ -261,6 +283,15 @@ export async function POST(req: NextRequest) {
     console.error(`${providerLabel} API Error:`, e);
 
     if (e instanceof Error) {
+      if (/invalid request parameters/i.test(e.message)) {
+        return NextResponse.json(
+          {
+            error:
+              "El proveedor de IA rechazó la solicitud. Si usas Venice, reintenta en un momento; el Hub ya no envía parámetros incompatibles.",
+          },
+          { status: 502 }
+        );
+      }
       if (e.message.includes('API key')) {
         return NextResponse.json(
           {
