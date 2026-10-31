@@ -39,9 +39,31 @@ import {
   BITACORA_DISCLOSURE_TITLE,
 } from '@/lib/safe-notes/bitacora-disclosure'
 import { BitacoraEncryptedCopyBar } from '@/components/bitacora/BitacoraEncryptedCopyBar'
-import { BitacoraEntryContent } from '@/components/bitacora/BitacoraEntryContent'
+import { BitacoraCollapsibleContent } from '@/components/bitacora/BitacoraCollapsibleContent'
+import {
+  BitacoraEntryForm,
+  type BitacoraFormState,
+} from '@/components/bitacora/BitacoraEntryForm'
+import {
+  BitacoraKindFilter,
+  entryKindShowsMood,
+  entryListTitle,
+} from '@/components/bitacora/BitacoraKindFilter'
+import {
+  BITACORA_ENTRY_KINDS,
+  BITACORA_ENTRY_KIND_META,
+  type BitacoraEntryKind,
+} from '@/lib/safe-notes/entry-types'
 
 type JournalEntry = BitacoraEntryView
+
+const DEFAULT_FORM: BitacoraFormState = {
+  kind: 'nota',
+  title: '',
+  content: '',
+  mood: 'neutral',
+  tags: '',
+}
 
 const moodIcons = {
   happy: Smile,
@@ -81,11 +103,8 @@ export default function BitacoraPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
-  const [formData, setFormData] = useState({
-    content: '',
-    mood: 'neutral',
-    tags: ''
-  })
+  const [formData, setFormData] = useState<BitacoraFormState>(DEFAULT_FORM)
+  const [filterKind, setFilterKind] = useState<BitacoraEntryKind | 'all'>('all')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -147,6 +166,8 @@ export default function BitacoraPage() {
       const tags = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       const saved = await saveBitacoraEntry(userId, eoaAddress, key, {
         id: editingEntry?.id,
+        kind: formData.kind,
+        title: formData.title,
         content: formData.content,
         mood: formData.mood,
         tags,
@@ -154,8 +175,10 @@ export default function BitacoraPage() {
 
       const newEntry: JournalEntry = {
         id: saved.id,
+        kind: formData.kind,
+        title: formData.title.trim() || undefined,
         content: formData.content,
-        mood: formData.mood,
+        mood: formData.kind === 'emocional' ? formData.mood : 'neutral',
         tags,
         createdAt: editingEntry?.createdAt ?? saved.createdAt,
       }
@@ -169,7 +192,7 @@ export default function BitacoraPage() {
         setEntries(prev => [newEntry, ...prev])
       }
 
-      setFormData({ content: '', mood: 'neutral', tags: '' })
+      setFormData(DEFAULT_FORM)
       setShowForm(false)
     } catch (error) {
       console.error('Error saving entry:', error)
@@ -182,9 +205,11 @@ export default function BitacoraPage() {
   const handleEdit = (entry: JournalEntry) => {
     setEditingEntry(entry)
     setFormData({
+      kind: entry.kind,
+      title: entry.title ?? '',
       content: entry.content,
       mood: entry.mood,
-      tags: entry.tags.join(', ')
+      tags: entry.tags.join(', '),
     })
     setShowForm(true)
   }
@@ -202,14 +227,27 @@ export default function BitacoraPage() {
   }
 
   const getMoodStats = () => {
-    const stats = entries.reduce((acc, entry) => {
-      acc[entry.mood] = (acc[entry.mood] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
+    const stats = entries
+      .filter((entry) => entry.kind === 'emocional')
+      .reduce((acc, entry) => {
+        acc[entry.mood] = (acc[entry.mood] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
     return stats
   }
 
   const moodStats = getMoodStats()
+  const emotionalCount = entries.filter((e) => e.kind === 'emocional').length
+  const filteredEntries =
+    filterKind === 'all' ? entries : entries.filter((e) => e.kind === filterKind)
+
+  const kindCounts = entries.reduce(
+    (acc, e) => {
+      acc[e.kind] = (acc[e.kind] ?? 0) + 1
+      return acc
+    },
+    {} as Partial<Record<BitacoraEntryKind, number>>
+  )
 
   const handleExport = async () => {
     if (!userId || !eoaAddress) return
@@ -249,7 +287,7 @@ export default function BitacoraPage() {
         <GlassCard className="p-8 max-w-lg w-full space-y-4">
           <ShieldAlert className="w-12 h-12 text-mauve-400 mx-auto" />
           <p className="text-center text-muted-foreground">
-            Conecta tu wallet para abrir tu bitácora personal.
+            Conecta tu wallet para abrir tu espacio cifrado.
           </p>
           <CTAButton className="w-full" size="lg" disabled={!ready} onClick={() => void login()}>
             Conectar wallet
@@ -268,7 +306,7 @@ export default function BitacoraPage() {
               Mi Bitácora
             </GradientText>
             <p className="text-sm text-muted-foreground text-center">
-              Antes de desbloquear el diario cifrado, verifica tu wallet con SIWE (no cuesta gas).
+              Antes de desbloquear, verifica tu wallet con SIWE (no cuesta gas).
             </p>
             <SiweSessionBanner compact />
           </div>
@@ -297,7 +335,7 @@ export default function BitacoraPage() {
               <div className="flex items-center gap-3">
                 <Lock className="w-8 h-8 text-mauve-400" />
                 <GradientText as="h1" className="text-2xl font-bold">
-                  Desbloquea tu bitácora
+                  Desbloquea tu espacio cifrado
                 </GradientText>
               </div>
               <PrivacyNotice />
@@ -353,7 +391,9 @@ export default function BitacoraPage() {
                 <GradientText as="h1" className="text-4xl md:text-5xl font-bold">
                   Mi Bitácora
                 </GradientText>
-                <p className="text-muted-foreground">Diario personal cifrado — no es tu expediente clínico</p>
+                <p className="text-muted-foreground">
+                  Notas, secretos y registros emocionales — cifrado en tu navegador, no expediente clínico
+                </p>
               </div>
             </div>
             <div className="max-w-3xl mx-auto mb-8">
@@ -378,7 +418,7 @@ export default function BitacoraPage() {
                   className="w-full sm:w-auto"
                 >
                   <Plus className="w-5 h-5 mr-2" />
-                  Nueva Entrada
+                  Nueva entrada
                 </CTAButton>
               </motion.div>
 
@@ -394,7 +434,6 @@ export default function BitacoraPage() {
                 />
               )}
 
-              {/* Journal Form */}
               {showForm && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -402,89 +441,27 @@ export default function BitacoraPage() {
                   transition={{ duration: 0.5 }}
                   className="mb-8"
                 >
-                  <GlassCard className="p-6">
-                    <h3 className="text-xl font-semibold mb-4">
-                      {editingEntry ? 'Editar Entrada' : 'Nueva Entrada'}
-                    </h3>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          ¿Cómo te sientes hoy?
-                        </label>
-                        <textarea
-                          value={formData.content}
-                          onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="Escribe sobre tu día… Puedes usar Markdown: **negrita**, listas con -, ## subtítulos"
-                          className="w-full p-3 glass border border-white/15 rounded-xl focus-ring smooth-transition resize-y min-h-[6rem]"
-                          rows={6}
-                          required
-                          disabled={isSubmitting}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Estado de ánimo
-                        </label>
-                        <div className="flex space-x-4">
-                          {Object.entries(moodIcons).map(([mood, Icon]) => (
-                            <button
-                              key={mood}
-                              type="button"
-                              onClick={() => setFormData(prev => ({ ...prev, mood }))}
-                              disabled={isSubmitting}
-                              className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all ${
-                                formData.mood === mood
-                                  ? 'border-mauve-500 bg-mauve-500/20'
-                                  : 'border-white/10 hover:border-white/20'
-                              } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <Icon className={`w-5 h-5 ${moodColors[mood as keyof typeof moodColors]}`} />
-                              <span className="capitalize">{mood}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Etiquetas (separadas por comas)
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.tags}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                          placeholder="trabajo, familia, ejercicio..."
-                          className="w-full p-3 glass border border-white/15 rounded-xl focus-ring smooth-transition"
-                          disabled={isSubmitting}
-                        />
-                      </div>
-
-                      <div className="flex space-x-4">
-                        <CTAButton 
-                          type="submit" 
-                          size="lg"
-                          disabled={isSubmitting}
-                        >
-                          {isSubmitting ? 'Guardando...' : editingEntry ? 'Actualizar' : 'Guardar'} Entrada
-                        </CTAButton>
-                        <CTAButton
-                          type="button"
-                          variant="secondary"
-                          size="lg"
-                          onClick={() => {
-                            setShowForm(false)
-                            setEditingEntry(null)
-                            setFormData({ content: '', mood: 'neutral', tags: '' })
-                          }}
-                          disabled={isSubmitting}
-                        >
-                          Cancelar
-                        </CTAButton>
-                      </div>
-                    </form>
-                  </GlassCard>
+                  <BitacoraEntryForm
+                    editing={Boolean(editingEntry)}
+                    formData={formData}
+                    isSubmitting={isSubmitting}
+                    onChange={setFormData}
+                    onSubmit={handleSubmit}
+                    onCancel={() => {
+                      setShowForm(false)
+                      setEditingEntry(null)
+                      setFormData(DEFAULT_FORM)
+                    }}
+                  />
                 </motion.div>
+              )}
+
+              {entries.length > 0 && (
+                <BitacoraKindFilter
+                  value={filterKind}
+                  onChange={setFilterKind}
+                  entries={entries}
+                />
               )}
 
               {/* Journal Entries */}
@@ -499,7 +476,7 @@ export default function BitacoraPage() {
                       <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-xl font-semibold mb-2">No hay entradas aún</h3>
                       <p className="text-muted-foreground mb-4">
-                        Comienza escribiendo tu primera entrada en la bitácora
+                        Guarda una nota libre, un secreto o un registro emocional — elige la categoría al crear.
                       </p>
                       <CTAButton onClick={() => setShowForm(true)}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -507,8 +484,14 @@ export default function BitacoraPage() {
                       </CTAButton>
                     </GlassCard>
                   </motion.div>
+                ) : filteredEntries.length === 0 ? (
+                  <GlassCard className="p-6 text-center text-muted-foreground">
+                    No hay entradas en esta categoría. Elige otra o crea una nueva.
+                  </GlassCard>
                 ) : (
-                  entries.map((entry, index) => {
+                  filteredEntries.map((entry, index) => {
+                    const kindMeta = BITACORA_ENTRY_KIND_META[entry.kind]
+                    const showMood = entryKindShowsMood(entry.kind)
                     const MoodIcon = moodIcons[entry.mood as keyof typeof moodIcons]
                     return (
                       <motion.div
@@ -519,24 +502,54 @@ export default function BitacoraPage() {
                       >
                         <GlassCard className="p-6 min-w-0 overflow-hidden">
                           <div className="flex items-start justify-between gap-3 mb-4 min-w-0">
-                            <div className="flex items-center space-x-3 min-w-0 flex-1">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                entry.mood === 'happy' ? 'bg-yellow-500/20' :
-                                entry.mood === 'sad' ? 'bg-blue-500/20' :
-                                entry.mood === 'anxious' ? 'bg-red-500/20' :
-                                entry.mood === 'calm' ? 'bg-green-500/20' :
-                                'bg-gray-500/20'
-                              }`}>
-                                <MoodIcon className={`w-5 h-5 ${moodColors[entry.mood as keyof typeof moodColors]}`} />
-                              </div>
-                              <div className="min-w-0">
-                                <h3 className="font-semibold capitalize truncate">{entry.mood}</h3>
-                                <p className="text-sm text-muted-foreground flex items-center">
-                                  <Calendar className="w-4 h-4 mr-1" />
+                            <div className="flex items-start space-x-3 min-w-0 flex-1">
+                              {showMood ? (
+                                <div
+                                  className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${
+                                    entry.mood === 'happy'
+                                      ? 'bg-yellow-500/20'
+                                      : entry.mood === 'sad'
+                                        ? 'bg-blue-500/20'
+                                        : entry.mood === 'anxious'
+                                          ? 'bg-red-500/20'
+                                          : entry.mood === 'calm'
+                                            ? 'bg-green-500/20'
+                                            : 'bg-gray-500/20'
+                                  }`}
+                                >
+                                  <MoodIcon
+                                    className={`w-5 h-5 ${moodColors[entry.mood as keyof typeof moodColors]}`}
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${kindMeta.chipClass}`}
+                                >
+                                  <BookOpen className="w-5 h-5 opacity-80" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <span
+                                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${kindMeta.chipClass}`}
+                                  >
+                                    {kindMeta.label}
+                                  </span>
+                                  {showMood && (
+                                    <span className="text-xs text-muted-foreground capitalize">
+                                      {entry.mood}
+                                    </span>
+                                  )}
+                                </div>
+                                <h3 className="font-semibold text-base break-words">
+                                  {entryListTitle(entry)}
+                                </h3>
+                                <p className="text-sm text-muted-foreground flex items-center mt-1">
+                                  <Calendar className="w-4 h-4 mr-1 shrink-0" />
                                   {entry.createdAt.toLocaleDateString('es-ES', {
                                     year: 'numeric',
                                     month: 'long',
-                                    day: 'numeric'
+                                    day: 'numeric',
                                   })}
                                 </p>
                               </div>
@@ -559,7 +572,7 @@ export default function BitacoraPage() {
                             </div>
                           </div>
 
-                          <BitacoraEntryContent content={entry.content} />
+                          <BitacoraCollapsibleContent content={entry.content} />
 
                           {entry.tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">
@@ -589,16 +602,59 @@ export default function BitacoraPage() {
                 transition={{ duration: 0.8, delay: 0.4 }}
                 className="space-y-6"
               >
-                {/* Mood Stats */}
+                {/* Quick Stats */}
+                <GlassCard className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Resumen</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total de entradas</span>
+                      <span className="font-semibold">{entries.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Este mes</span>
+                      <span className="font-semibold">
+                        {entries.filter(entry => {
+                          const now = new Date()
+                          const entryDate = new Date(entry.createdAt)
+                          return entryDate.getMonth() === now.getMonth() && 
+                                 entryDate.getFullYear() === now.getFullYear()
+                        }).length}
+                      </span>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                {entries.length > 0 && (
+                  <GlassCard className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Por categoría</h3>
+                    <div className="space-y-2">
+                      {BITACORA_ENTRY_KINDS.filter((k) => (kindCounts[k] ?? 0) > 0).map(
+                        (kind) => (
+                          <div key={kind} className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              {BITACORA_ENTRY_KIND_META[kind].label}
+                            </span>
+                            <span className="font-medium">{kindCounts[kind]}</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </GlassCard>
+                )}
+
+                {emotionalCount > 0 && (
                 <GlassCard className="p-6">
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <TrendingUp className="w-5 h-5 mr-2 text-mauve-500" />
-                    Estadísticas de Humor
+                    Registros emocionales
                   </h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Solo entradas categoría «Registro emocional» ({emotionalCount}).
+                  </p>
                   <div className="space-y-3">
                     {Object.entries(moodStats).map(([mood, count]) => {
                       const MoodIcon = moodIcons[mood as keyof typeof moodIcons]
-                      const percentage = (count / entries.length) * 100
+                      const percentage = emotionalCount > 0 ? (count / emotionalCount) * 100 : 0
                       return (
                         <div key={mood} className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -621,34 +677,7 @@ export default function BitacoraPage() {
                     })}
                   </div>
                 </GlassCard>
-
-                {/* Quick Stats */}
-                <GlassCard className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Resumen</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total de entradas</span>
-                      <span className="font-semibold">{entries.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Este mes</span>
-                      <span className="font-semibold">
-                        {entries.filter(entry => {
-                          const now = new Date()
-                          const entryDate = new Date(entry.createdAt)
-                          return entryDate.getMonth() === now.getMonth() && 
-                                 entryDate.getFullYear() === now.getFullYear()
-                        }).length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Promedio por semana</span>
-                      <span className="font-semibold">
-                        {Math.round(entries.length / 4)}
-                      </span>
-                    </div>
-                  </div>
-                </GlassCard>
+                )}
               </motion.div>
             </div>
           </div>

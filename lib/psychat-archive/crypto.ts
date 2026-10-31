@@ -22,6 +22,7 @@ export async function encryptPsychatArchivePayload(
 ): Promise<{ ciphertext: string; iv: string; keyVersion: number }> {
   const wrapped = {
     v: SAFE_NOTES_PAYLOAD_VERSION,
+    kind: 'nota' as const,
     content: serializePsychatArchivePayload(payload),
     mood: 'neutral',
     tags: [] as string[],

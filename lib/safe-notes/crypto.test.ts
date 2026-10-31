@@ -18,6 +18,7 @@ describe('safe-notes crypto', () => {
     const eoa = '0x1111111111111111111111111111111111111111'
     const payload = {
       v: SAFE_NOTES_PAYLOAD_VERSION as 1,
+      kind: 'nota' as const,
       content: 'estable',
       mood: 'neutral',
       tags: [] as string[],
@@ -27,8 +28,8 @@ describe('safe-notes crypto', () => {
     assert.notEqual(a.iv, b.iv)
     const openedA = await decryptSafeNotesPayload(key, eoa, a.ciphertext, a.iv)
     const openedB = await decryptSafeNotesPayload(key, eoa, b.ciphertext, b.iv)
-    assert.deepEqual(openedA, payload)
-    assert.deepEqual(openedB, payload)
+    assert.deepEqual(openedA, { ...payload, title: undefined })
+    assert.deepEqual(openedB, { ...payload, title: undefined })
   })
 
   it('encrypts and decrypts with AAD bound to the wallet', async () => {
@@ -37,6 +38,7 @@ describe('safe-notes crypto', () => {
     const eoa = '0xAbCdEf0123456789012345678901234567890AbCd'
     const payload = {
       v: SAFE_NOTES_PAYLOAD_VERSION as 1,
+      kind: 'emocional' as const,
       content: 'solo yo leo esto',
       mood: 'calm',
       tags: ['prueba'],
@@ -51,7 +53,7 @@ describe('safe-notes crypto', () => {
       stored.ciphertext,
       stored.iv
     )
-    assert.deepEqual(opened, payload)
+    assert.deepEqual(opened, { ...payload, title: undefined })
   })
 
   it('fails decryption when AAD wallet differs', async () => {
@@ -59,6 +61,7 @@ describe('safe-notes crypto', () => {
     const key = await deriveSafeNotesAesKeyFromSignature(sig)
     const stored = await encryptSafeNotesPayload(key, '0x1111111111111111111111111111111111111111', {
       v: SAFE_NOTES_PAYLOAD_VERSION as 1,
+      kind: 'secreto' as const,
       content: 'secreto',
       mood: 'neutral',
       tags: [],

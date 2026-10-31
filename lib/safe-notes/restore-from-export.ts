@@ -36,6 +36,8 @@ export async function previewExportEntries(
     )
     views.push({
       id: row.id,
+      kind: payload.kind,
+      title: payload.title,
       content: payload.content,
       mood: payload.mood,
       tags: payload.tags,

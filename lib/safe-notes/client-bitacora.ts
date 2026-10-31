@@ -8,9 +8,12 @@ import {
   type SafeNotesPayload,
 } from '@/lib/safe-notes/payload'
 import { SAFE_NOTES_PAYLOAD_VERSION } from '@/lib/safe-notes/constants'
+import type { BitacoraEntryKind } from '@/lib/safe-notes/entry-types'
 
 export type BitacoraEntryView = {
   id: string
+  kind: BitacoraEntryKind
+  title?: string
   content: string
   mood: string
   tags: string[]
@@ -56,6 +59,8 @@ export async function hydrateBitacoraEntries(
       })
       views.push({
         id: row.id,
+        kind: legacy.kind,
+        title: legacy.title,
         content: legacy.content,
         mood: legacy.mood,
         tags: legacy.tags,
@@ -72,6 +77,8 @@ export async function hydrateBitacoraEntries(
     )
     views.push({
       id: row.id,
+      kind: payload.kind,
+      title: payload.title,
       content: payload.content,
       mood: payload.mood,
       tags: payload.tags,
@@ -86,12 +93,23 @@ export async function saveBitacoraEntry(
   userId: string,
   eoaAddress: string,
   key: CryptoKey,
-  input: { content: string; mood: string; tags: string[]; id?: string }
+  input: {
+    content: string
+    kind: BitacoraEntryKind
+    title?: string
+    mood: string
+    tags: string[]
+    id?: string
+  }
 ): Promise<{ id: string; createdAt: Date }> {
+  const title = input.title?.trim() || undefined
+  const mood = input.kind === 'emocional' ? input.mood : 'neutral'
   const payload: SafeNotesPayload = {
     v: SAFE_NOTES_PAYLOAD_VERSION,
+    kind: input.kind,
+    title,
     content: input.content,
-    mood: input.mood,
+    mood,
     tags: input.tags,
   }
   const encrypted = await encryptSafeNotesPayload(key, eoaAddress, payload)

@@ -12,6 +12,10 @@ export function BitacoraBackupHelp() {
       </GradientText>
       <ol className="list-decimal list-inside space-y-2">
         <li>
+          Elige una <strong className="text-foreground">categoría</strong> al escribir (nota libre,
+          secreto, registro emocional, notas de sesión, etc.). Todo se cifra igual con tu wallet.
+        </li>
+        <li>
           <strong className="text-foreground">Descargar copia cifrada</strong> guarda un archivo en
           tu computadora. No es un Word legible: es tu diario <em>cerrado</em>. Nadie (ni Motus)
           lee el texto sin tu wallet.

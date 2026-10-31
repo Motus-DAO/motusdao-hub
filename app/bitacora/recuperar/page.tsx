@@ -19,6 +19,10 @@ import {
 } from '@/lib/safe-notes/restore-from-export'
 import type { BitacoraEntryView } from '@/lib/safe-notes/client-bitacora'
 import { BitacoraEntryContent } from '@/components/bitacora/BitacoraEntryContent'
+import {
+  BITACORA_ENTRY_KIND_META,
+  entryListTitle,
+} from '@/lib/safe-notes/entry-types'
 import { BitacoraBackupHelp } from '@/components/bitacora/BitacoraBackupHelp'
 import { ArrowLeft, FileUp, Lock } from 'lucide-react'
 
@@ -168,8 +172,14 @@ export default function BitacoraRecuperarPage() {
                     className="rounded-xl border border-white/10 p-4 text-sm min-w-0 overflow-hidden"
                   >
                     <p className="text-muted-foreground text-xs mb-2">
+                      <span
+                        className={`inline-block mr-2 px-2 py-0.5 rounded-full ${BITACORA_ENTRY_KIND_META[entry.kind].chipClass}`}
+                      >
+                        {BITACORA_ENTRY_KIND_META[entry.kind].label}
+                      </span>
                       {entry.createdAt.toLocaleString('es-MX')}
                     </p>
+                    <p className="font-medium text-sm mb-2 break-words">{entryListTitle(entry)}</p>
                     <BitacoraEntryContent content={entry.content} className="mb-0" />
                   </li>
                 ))}
