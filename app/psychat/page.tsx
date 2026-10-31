@@ -13,7 +13,11 @@ import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { aiProcessingConsentCopy, chatModelLabel } from '@/lib/ai-consent-copy'
 import { PsychatArchivePanel } from '@/components/psychat/PsychatArchivePanel'
-import { PsychatArchiveKeyProvider } from '@/components/psychat/PsychatArchiveKeyContext'
+import {
+  PsychatArchiveKeyProvider,
+  usePsychatArchiveKeyContext,
+} from '@/components/psychat/PsychatArchiveKeyContext'
+import { PsychatArchiveUnlockGate } from '@/components/psychat/PsychatArchiveUnlockGate'
 import { PsychatSessionsSidebar } from '@/components/psychat/PsychatSessionsSidebar'
 import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
 import { consumePsychatThreadForOpen } from '@/lib/psychat-archive/chat-session-bridge'
@@ -25,6 +29,179 @@ import {
   resolveProxyBaseUrl,
   type PsychatContextSettings,
 } from '@/lib/psychat-context/settings'
+
+type PsychatCreditState = {
+  remainingUsd: number
+  allowanceUsd: number
+  dailyUsd: number
+  purchasedUsd: number
+} | null
+
+type PsychatMainColumnProps = {
+  role: 'psm' | 'usuario' | 'admin'
+  isLight: boolean
+  ready: boolean
+  authenticated: boolean
+  isSessionReady: boolean
+  sessionState: ReturnType<typeof useSiweSession>['sessionState']
+  aiConsent: boolean
+  savingConsent: boolean
+  acceptAiProcessing: () => Promise<void>
+  providerLabel: string
+  privacyMode: 'tee' | 'e2ee'
+  archiveMessages: PsychatArchiveMessage[]
+  chatSessionKey: string
+  loadedThread: PsychatArchiveMessage[] | null
+  handleRequestHumanSession?: () => Promise<void>
+  isCreatingSession: boolean
+  sessionError: string | null
+  aiProvider: string | null
+  modelLabel: string | null
+  modelId: string | null
+  setPrivacyMode: (mode: 'tee' | 'e2ee') => void
+  credit: PsychatCreditState
+  refreshCredit: () => void
+  buyCredit: (amountUsd: 5 | 10) => void
+  buyingPack: 5 | 10 | null
+  creditShopError: string | null
+  setArchiveMessages: (messages: PsychatArchiveMessage[]) => void
+  contextModeLabel: string
+  useRootRouterProxy: boolean
+  rootRouterProxyUrl: string
+  onOpenContextSettings: () => void
+}
+
+function PsychatMainColumn({
+  role,
+  isLight,
+  ready,
+  authenticated,
+  isSessionReady,
+  sessionState,
+  aiConsent,
+  savingConsent,
+  acceptAiProcessing,
+  providerLabel,
+  privacyMode,
+  archiveMessages,
+  chatSessionKey,
+  loadedThread,
+  handleRequestHumanSession,
+  isCreatingSession,
+  sessionError,
+  aiProvider,
+  modelLabel,
+  modelId,
+  setPrivacyMode,
+  credit,
+  refreshCredit,
+  buyCredit,
+  buyingPack,
+  creditShopError,
+  setArchiveMessages,
+  contextModeLabel,
+  useRootRouterProxy,
+  rootRouterProxyUrl,
+  onOpenContextSettings,
+}: PsychatMainColumnProps) {
+  const { optIn, isUnlocked } = usePsychatArchiveKeyContext()
+  const archiveUnlockPending = optIn && !isUnlocked
+
+  const sendBlockedReason = !ready
+    ? null
+    : !authenticated
+      ? 'Conecta tu wallet para usar Psychat.'
+      : sessionState === 'loading'
+        ? 'Verificando sesión del Hub…'
+        : sessionState === 'needs_signature' || !isSessionReady
+          ? 'Firma el mensaje de verificación del Hub en el recuadro del chat. Hasta entonces no puedes enviar mensajes.'
+          : !aiConsent
+            ? 'Marca el consentimiento de procesamiento con IA en el recuadro del chat para desbloquear el envío.'
+            : archiveUnlockPending
+              ? 'Firmar la copia cifrada en el recuadro del chat, o desmarca la opción de copia, para poder chatear.'
+              : null
+
+  const psychatChatGate =
+    !ready || !authenticated ? (
+      <div className="px-5 py-6 text-sm">
+        <p className="font-medium">Conecta tu wallet para usar Psychat.</p>
+        <p className="mt-2 text-muted-foreground">Sin wallet no podemos verificar tu sesión ni enviar mensajes.</p>
+      </div>
+    ) : !isSessionReady ? (
+      <div className="p-3 sm:p-4">
+        <SiweSessionBanner compact />
+      </div>
+    ) : !aiConsent ? (
+      <div className="px-5 py-6">
+        <p className="mb-3 text-sm font-medium">Consentimiento para usar IA en Psychat</p>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={aiConsent}
+            disabled={savingConsent || aiConsent}
+            onChange={(event) => {
+              if (event.target.checked) void acceptAiProcessing()
+            }}
+          />
+          <span>{aiProcessingConsentCopy(providerLabel, privacyMode)}</span>
+        </label>
+      </div>
+    ) : archiveUnlockPending ? (
+      <PsychatArchiveUnlockGate />
+    ) : null
+
+  return (
+    <>
+      {role === 'psm' && (
+        <div
+          className={`rounded-xl border px-4 py-2 text-xs ${
+            isLight
+              ? 'border-amber-400/40 bg-amber-100 text-amber-900'
+              : 'border-amber-400/20 bg-amber-400/10 text-amber-200'
+          }`}
+        >
+          Esta IA es experimental y de apoyo a la supervisión clínica para profesionales capacitados. Úsala con criterio
+          ético y profesional: no sustituye juicio clínico, diagnóstico ni intervención de emergencia.
+        </div>
+      )}
+
+      <PsychatArchivePanel
+        isSessionReady={isSessionReady}
+        messages={archiveMessages}
+        hideWhenUnlockGate={archiveUnlockPending}
+      />
+
+      <AnimatedAIChat
+        fullScreen={false}
+        role={role === 'admin' ? 'usuario' : role}
+        chatSessionKey={chatSessionKey}
+        loadedThread={loadedThread}
+        onRequestHumanSession={handleRequestHumanSession}
+        isCreatingSession={isCreatingSession}
+        sessionError={sessionError}
+        sendBlockedReason={sendBlockedReason}
+        providerLabel={providerLabel}
+        aiProvider={aiProvider}
+        modelLabel={modelLabel}
+        modelId={modelId}
+        privacyMode={privacyMode}
+        onPrivacyModeChange={setPrivacyMode}
+        credit={credit}
+        onCreditRefresh={refreshCredit}
+        onBuyCredit={buyCredit}
+        buyingPack={buyingPack}
+        creditShopError={creditShopError}
+        onMessagesChange={setArchiveMessages}
+        contextModeLabel={contextModeLabel}
+        useRootRouterProxy={useRootRouterProxy}
+        rootRouterProxyUrl={rootRouterProxyUrl}
+        onOpenContextSettings={onOpenContextSettings}
+        chatGate={psychatChatGate}
+      />
+    </>
+  )
+}
 
 export default function PsychatPage() {
   const { role, theme, setRole } = useUIStore()
@@ -244,46 +421,6 @@ export default function PsychatPage() {
     }
   }
 
-  const sendBlockedReason = !ready
-    ? null
-    : !authenticated
-      ? 'Conecta tu wallet para usar Psychat.'
-      : sessionState === 'loading'
-        ? 'Verificando sesión del Hub…'
-        : sessionState === 'needs_signature' || !isSessionReady
-          ? 'Primero firma el mensaje de verificación en el recuadro de arriba (SIWE). Hasta entonces el chat está bloqueado.'
-          : !aiConsent
-            ? 'Marca el consentimiento de procesamiento con IA en el recuadro de arriba para desbloquear el chat.'
-            : null
-
-  const psychatChatGate =
-    !ready || !authenticated ? (
-      <div className="px-5 py-6 text-sm">
-        <p className="font-medium">Conecta tu wallet para usar Psychat.</p>
-        <p className="mt-2 text-muted-foreground">Sin wallet no podemos verificar tu sesión ni enviar mensajes.</p>
-      </div>
-    ) : !isSessionReady ? (
-      <div className="p-3 sm:p-4">
-        <SiweSessionBanner compact />
-      </div>
-    ) : !aiConsent ? (
-      <div className="px-5 py-6">
-        <p className="mb-3 text-sm font-medium">Consentimiento para usar IA en Psychat</p>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={aiConsent}
-            disabled={savingConsent || aiConsent}
-            onChange={(event) => {
-              if (event.target.checked) void acceptAiProcessing()
-            }}
-          />
-          <span>{aiProcessingConsentCopy(providerLabel, privacyMode)}</span>
-        </label>
-      </div>
-    ) : null
-
   const handleRequestHumanSession = async () => {
     try {
       setSessionError(null)
@@ -365,7 +502,7 @@ export default function PsychatPage() {
     (contextSettings.mode === 'session_enclave' && Boolean(proxyBase))
 
   return (
-    <PsychatArchiveKeyProvider>
+    <PsychatArchiveKeyProvider isSessionReady={isSessionReady}>
       <PsychatContextModal
         open={contextModalOpen}
         onClose={() => setContextModalOpen(false)}
@@ -381,48 +518,38 @@ export default function PsychatPage() {
 
         <div className="flex min-w-0 flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
           <div className="flex w-full max-w-2xl flex-col gap-3">
-            {role === 'psm' && (
-              <div
-                className={`rounded-xl border px-4 py-2 text-xs ${
-                  isLight
-                    ? 'border-amber-400/40 bg-amber-100 text-amber-900'
-                    : 'border-amber-400/20 bg-amber-400/10 text-amber-200'
-                }`}
-              >
-                Esta IA es experimental y de apoyo a la supervisión clínica para profesionales capacitados.
-                Úsala con criterio ético y profesional: no sustituye juicio clínico, diagnóstico ni intervención de
-                emergencia.
-              </div>
-            )}
-
-            <PsychatArchivePanel isSessionReady={isSessionReady} messages={archiveMessages} />
-
-            <AnimatedAIChat
-              fullScreen={false}
+            <PsychatMainColumn
               role={role}
+              isLight={isLight}
+              ready={ready}
+              authenticated={authenticated}
+              isSessionReady={isSessionReady}
+              sessionState={sessionState}
+              aiConsent={aiConsent}
+              savingConsent={savingConsent}
+              acceptAiProcessing={acceptAiProcessing}
+              providerLabel={providerLabel}
+              privacyMode={privacyMode}
+              archiveMessages={archiveMessages}
               chatSessionKey={chatSessionKey}
               loadedThread={loadedThread}
-              onRequestHumanSession={role === 'usuario' ? handleRequestHumanSession : undefined}
+              handleRequestHumanSession={role === 'usuario' ? handleRequestHumanSession : undefined}
               isCreatingSession={isCreatingSession}
               sessionError={sessionError}
-              sendBlockedReason={sendBlockedReason}
-              providerLabel={providerLabel}
               aiProvider={aiProvider}
               modelLabel={modelLabel}
               modelId={modelId}
-              privacyMode={privacyMode}
-              onPrivacyModeChange={setPrivacyMode}
+              setPrivacyMode={setPrivacyMode}
               credit={credit}
-              onCreditRefresh={refreshCredit}
-              onBuyCredit={buyCredit}
+              refreshCredit={refreshCredit}
+              buyCredit={buyCredit}
               buyingPack={buyingPack}
               creditShopError={creditShopError}
-              onMessagesChange={setArchiveMessages}
+              setArchiveMessages={setArchiveMessages}
               contextModeLabel={psychatContextModeLabels[contextSettings.mode]}
               useRootRouterProxy={useRootRouterProxy}
               rootRouterProxyUrl={proxyBase ?? ''}
               onOpenContextSettings={() => setContextModalOpen(true)}
-              chatGate={psychatChatGate}
             />
           </div>
         </div>

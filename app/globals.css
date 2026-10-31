@@ -1499,6 +1499,14 @@ p[class*="HelpTextContainer"] * {
   @apply bg-mauve-500/5;
 }
 
+.bitacora-entry-prose {
+  @apply text-sm;
+}
+
+.bitacora-entry-prose > :last-child {
+  @apply mb-0;
+}
+
 /* Custom markdown styling for chat messages */
 .prose h2 {
   @apply text-mauve-300 font-semibold text-base mb-2 mt-4 first:mt-0;

@@ -11,6 +11,7 @@ import {
   PhoneCall,
   SendIcon,
   ChevronDown,
+  ClipboardList,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { marked } from 'marked'
@@ -20,6 +21,11 @@ import { creditUsedPercent } from '@/lib/ai-credit'
 import { sendEncryptedPsychat } from '@/lib/venice-e2ee'
 import { formatExploracionMarkdown, formatSupervisorMarkdown } from '@/lib/psychat-prompt'
 import { sendPsychatViaRootRouterProxy } from '@/lib/psychat-context/send-local-proxy'
+import {
+  formatPsychatChatNetworkError,
+  postPsychatHubChat,
+  type PsychatChatApiPayload,
+} from '@/lib/psychat-chat-client'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -136,7 +142,7 @@ const USUARIO_EXPLORACION_EXAMPLE =
   'Últimamente me cuesta dormir; cuando pienso en el trabajo me pongo tenso. Quiero explorar lo que siento.'
 
 const PSM_GREETING =
-  'Hola. Soy Psychat en apoyo clínico para profesionales. Comparte tu caso (anónimo) y recibirás una reflexión estructurada en cada turno.'
+  'Hola. Soy Psychat en apoyo clínico para profesionales. Comparte tu caso (anonimizado) y conversamos desde el dispositivo de supervisión; cuando quieras un informe formal, usa **Reporte estructurado**.'
 
 const CLINICAL_EXAMPLE =
   'Tengo un paciente que tiene ansiedad. Comenta que no se siente "el hombre", por lo que he decidido abordar este tema desde la teoría de género y social, dándole herramientas de nuevas masculinidades y enfocándome en trabajar su autoestima.'
@@ -279,6 +285,107 @@ export function AnimatedAIChat({
   const isComposerLocked = Boolean(sendBlockedReason)
   const showComposerOverlay = isComposerLocked && !chatGate
 
+  const hubApiMessages = useCallback(
+    (thread: ChatMessage[]) =>
+      thread
+        .filter((m) => m.id !== 'welcome')
+        .map((m) => ({ role: m.role, content: m.content })),
+    []
+  )
+
+  const runHubChat = useCallback(
+    (
+      apiMessages: Array<{ role: 'user' | 'assistant'; content: string }>,
+      options?: { requestStructuredReport?: boolean }
+    ) => {
+      const useProxy =
+        useRootRouterProxy && privacyMode === 'tee' && rootRouterProxyUrl.trim().length > 0
+
+      if (privacyMode === 'e2ee') {
+        return sendEncryptedPsychat(apiMessages, isPsm ? 'psm' : 'usuario').then((text) => ({
+          mode: 'qa' as const,
+          text,
+        }))
+      }
+      if (useProxy) {
+        return sendPsychatViaRootRouterProxy(
+          rootRouterProxyUrl,
+          modelId || 'gpt-4o-mini',
+          apiMessages
+        ).then((r) => ({ mode: 'qa' as const, text: r.text }))
+      }
+      return postPsychatHubChat(apiMessages, options).catch((err: unknown) => {
+        const tagged = err as Error & { psychatCode?: string }
+        if (tagged.psychatCode === 'ai_credit_exhausted') {
+          setError(tagged.message || 'Se acabó el crédito de IA de hoy.')
+          onCreditRefresh?.()
+          return null
+        }
+        throw err
+      })
+    },
+    [
+      isPsm,
+      modelId,
+      onCreditRefresh,
+      privacyMode,
+      rootRouterProxyUrl,
+      useRootRouterProxy,
+    ]
+  )
+
+  const applyChatResponse = useCallback(
+    (data: PsychatChatApiPayload | { mode: 'qa'; text: string } | null) => {
+      if (!data) return
+      onCreditRefresh?.()
+      let content = ''
+      let handoffSuggested = false
+      if (
+        (data.mode === 'supervisor' || data.mode === 'supervisor_report') &&
+        'apertura' in data &&
+        data.apertura
+      ) {
+        content = formatSupervisorMarkdown({
+          apertura: data.apertura,
+          reflexion: data.reflexion ?? '',
+          cierre: data.cierre ?? '',
+          recomendacion: data.recomendacion ?? '',
+          disponibilidad: data.disponibilidad ?? '',
+        })
+      } else if (
+        (data.mode === 'supervisor_chat' || data.mode === 'qa') &&
+        data.text
+      ) {
+        content = data.text
+      } else if (data.mode === 'exploracion' && 'eco' in data && data.eco) {
+        content = formatExploracionMarkdown({
+          eco: data.eco,
+          pregunta: data.pregunta ?? '',
+          abierto: data.abierto ?? '',
+          limite: data.limite ?? '',
+          puenteHumano: data.puenteHumano ?? '',
+        })
+        handoffSuggested = Boolean(data.handoffSuggested)
+      } else {
+        const message = 'message' in data ? data.message : undefined
+        content = data.text || message || 'No se pudo generar una respuesta.'
+      }
+
+      const ragSources = 'ragSources' in data && Array.isArray(data.ragSources) ? data.ragSources : undefined
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content,
+          ragSources,
+          handoffSuggested,
+        },
+      ])
+    },
+    [onCreditRefresh]
+  )
+
   const handleSendMessage = () => {
     const userMessage = value.trim()
     if (!userMessage || isTyping || sendBlockedReason) return
@@ -294,104 +401,36 @@ export function AnimatedAIChat({
     ]
     setMessages(nextMessages)
 
-    const apiMessages = nextMessages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }))
-
-    const useProxy =
-      useRootRouterProxy && privacyMode === 'tee' && rootRouterProxyUrl.trim().length > 0
-
-    const request =
-      privacyMode === 'e2ee'
-        ? sendEncryptedPsychat(
-            apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant'),
-            isPsm ? 'psm' : 'usuario'
-          ).then((text) => ({ mode: 'qa' as const, text }))
-        : useProxy
-          ? sendPsychatViaRootRouterProxy(
-              rootRouterProxyUrl,
-              modelId || 'gpt-4o-mini',
-              apiMessages.filter((message) => message.role === 'user' || message.role === 'assistant')
-            ).then((r) => ({ mode: 'qa' as const, text: r.text }))
-          : fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: apiMessages }),
-          }).then(async (res) => {
-            const data = (await res.json().catch(() => ({}))) as {
-              error?: string
-              code?: string
-              mode?: string
-              text?: string
-              message?: string
-              apertura?: string
-              reflexion?: string
-              cierre?: string
-              recomendacion?: string
-              disponibilidad?: string
-              eco?: string
-              pregunta?: string
-              abierto?: string
-              limite?: string
-              puenteHumano?: string
-              handoffSuggested?: boolean
-              ragSources?: RagSource[]
-            }
-            if (!res.ok) {
-              if (data.code === 'ai_credit_exhausted') {
-                setError(data.error || 'Se acabó el crédito de IA de hoy.')
-                onCreditRefresh?.()
-                return null
-              }
-              throw new Error(data.error || 'Error al procesar la solicitud')
-            }
-            return data
-          })
-
-    void request
-      .then((data) => {
-        if (!data) return
-        onCreditRefresh?.()
-        let content = ''
-        let handoffSuggested = false
-        if (data.mode === 'supervisor' && 'apertura' in data && data.apertura) {
-          content = formatSupervisorMarkdown({
-            apertura: data.apertura,
-            reflexion: data.reflexion ?? '',
-            cierre: data.cierre ?? '',
-            recomendacion: data.recomendacion ?? '',
-            disponibilidad: data.disponibilidad ?? '',
-          })
-        } else if (data.mode === 'exploracion' && 'eco' in data && data.eco) {
-          content = formatExploracionMarkdown({
-            eco: data.eco,
-            pregunta: data.pregunta ?? '',
-            abierto: data.abierto ?? '',
-            limite: data.limite ?? '',
-            puenteHumano: data.puenteHumano ?? '',
-          })
-          handoffSuggested = Boolean(data.handoffSuggested)
-        } else {
-          const message = 'message' in data ? data.message : undefined
-          content = data.text || message || 'No se pudo generar una respuesta.'
-        }
-
-        const ragSources = 'ragSources' in data && Array.isArray(data.ragSources) ? data.ragSources : undefined
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content,
-            ragSources,
-            handoffSuggested,
-          },
-        ])
-      })
+    void runHubChat(hubApiMessages(nextMessages))
+      .then(applyChatResponse)
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Error al conectar con Psychat'
-        setError(msg)
+        setError(formatPsychatChatNetworkError(err))
+      })
+      .finally(() => {
+        setIsTyping(false)
+      })
+  }
+
+  const handleStructuredReport = () => {
+    if (!isPsm || isTyping || sendBlockedReason || privacyMode === 'e2ee') {
+      if (privacyMode === 'e2ee') {
+        setError('El reporte estructurado está disponible en modo estándar (TEE), no en cifrado E2EE del navegador.')
+      }
+      return
+    }
+    const apiMessages = hubApiMessages(messages)
+    const hasUserTurn = apiMessages.some((m) => m.role === 'user')
+    if (!hasUserTurn) {
+      setError('Comparte primero tu caso en el chat; después puedes pedir el reporte estructurado.')
+      return
+    }
+
+    setError(null)
+    setIsTyping(true)
+    void runHubChat(apiMessages, { requestStructuredReport: true })
+      .then(applyChatResponse)
+      .catch((err: unknown) => {
+        setError(formatPsychatChatNetworkError(err))
       })
       .finally(() => {
         setIsTyping(false)
@@ -473,8 +512,14 @@ export function AnimatedAIChat({
           </div>
 
           {(error || sessionError) && (
-            <div className="shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              {error || sessionError}
+            <div
+              className="shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+              role="alert"
+            >
+              {error ? <p>{error}</p> : null}
+              {sessionError && sessionError !== error ? (
+                <p className={error ? 'mt-2 opacity-90' : undefined}>{sessionError}</p>
+              ) : null}
             </div>
           )}
 
@@ -633,6 +678,21 @@ export function AnimatedAIChat({
                     <motion.button type="button" onClick={() => fillPrompt(CLINICAL_EXAMPLE)} whileTap={{ scale: 0.94 }} className={actionButtonClass}>
                       <FileText className="h-4 w-4" />
                       <span>Caso clínico ejemplo</span>
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      onClick={() => handleStructuredReport()}
+                      disabled={isTyping || isComposerLocked || privacyMode === 'e2ee'}
+                      whileTap={{ scale: 0.94 }}
+                      className={cn(actionButtonClass, privacyMode === 'e2ee' && 'opacity-50')}
+                      title={
+                        privacyMode === 'e2ee'
+                          ? 'Disponible en modo estándar (TEE)'
+                          : 'Genera las cinco secciones del dispositivo supervisor sobre el hilo actual'
+                      }
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      <span>Reporte estructurado</span>
                     </motion.button>
                   </>
                 ) : (
@@ -860,9 +920,14 @@ export function AnimatedAIChat({
                   ✦
                 </span>
               </div>
-              <div className={cn('flex items-center gap-2 text-sm', isLight ? 'text-slate-600' : 'text-white/70')}>
-                <span>Pensando</span>
-                <TypingDots isLight={isLight} />
+              <div className={cn('flex flex-col gap-0.5 text-sm', isLight ? 'text-slate-600' : 'text-white/70')}>
+                <span className="flex items-center gap-2">
+                  Generando respuesta
+                  <TypingDots isLight={isLight} />
+                </span>
+                <span className={cn('text-xs', isLight ? 'text-slate-500' : 'text-white/45')}>
+                  Puede tardar hasta ~1 min; no cierres la pestaña.
+                </span>
               </div>
             </div>
           </motion.div>

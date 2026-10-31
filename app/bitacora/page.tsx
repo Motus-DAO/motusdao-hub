@@ -17,11 +17,9 @@ import {
   TrendingUp,
   Lock,
   ShieldAlert,
-  Download,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { fetchAppSession } from '@/lib/auth/client'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
@@ -40,6 +38,8 @@ import {
   BITACORA_DISCLOSURE_RECOVERY,
   BITACORA_DISCLOSURE_TITLE,
 } from '@/lib/safe-notes/bitacora-disclosure'
+import { BitacoraEncryptedCopyBar } from '@/components/bitacora/BitacoraEncryptedCopyBar'
+import { BitacoraEntryContent } from '@/components/bitacora/BitacoraEntryContent'
 
 type JournalEntry = BitacoraEntryView
 
@@ -222,7 +222,7 @@ export default function BitacoraPage() {
       }
       downloadSafeNotesExport(file)
       alert(
-        'Copia descargada. Guárdala en un lugar seguro. Si borras entradas en Motus, recupera el archivo en Bitácora → Recuperar copia.'
+        'Copia descargada. Guárdala en un lugar seguro. Si borras entradas en Motus, usa «Subir copia guardada» en esta misma página.'
       )
     } catch (error) {
       console.error('Export failed:', error)
@@ -363,13 +363,13 @@ export default function BitacoraPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 min-w-0">
               {/* Add Entry Button */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="mb-6 flex flex-col sm:flex-row gap-3"
+                className="mb-4 flex flex-col sm:flex-row gap-3"
               >
                 <CTAButton
                   onClick={() => setShowForm(true)}
@@ -380,28 +380,19 @@ export default function BitacoraPage() {
                   <Plus className="w-5 h-5 mr-2" />
                   Nueva Entrada
                 </CTAButton>
-                <CTAButton
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  disabled={isExporting || entries.length === 0}
-                  onClick={() => void handleExport()}
-                  className="w-full sm:w-auto"
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  {isExporting ? 'Exportando…' : 'Exportar copia cifrada'}
-                </CTAButton>
               </motion.div>
-              <p className="text-xs text-muted-foreground mb-6 -mt-4 max-w-xl">
-                El archivo .json es tu respaldo cifrado.{' '}
-                <Link href="/bitacora/como-funciona" className="text-mauve-400 underline">
-                  ¿Para qué sirve?
-                </Link>{' '}
-                ·{' '}
-                <Link href="/bitacora/recuperar" className="text-mauve-400 underline">
-                  Recuperar copia
-                </Link>
-              </p>
+
+              {userId && eoaAddress && (
+                <BitacoraEncryptedCopyBar
+                  userId={userId}
+                  eoaAddress={eoaAddress}
+                  getKey={getKey}
+                  hasEntries={entries.length > 0}
+                  isExporting={isExporting}
+                  onDownload={() => void handleExport()}
+                  onRestored={() => void loadEntries()}
+                />
+              )}
 
               {/* Journal Form */}
               {showForm && (
@@ -423,9 +414,9 @@ export default function BitacoraPage() {
                         <textarea
                           value={formData.content}
                           onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="Escribe sobre tu día, tus pensamientos, emociones..."
-                          className="w-full p-3 glass border border-white/15 rounded-xl focus-ring smooth-transition resize-none"
-                          rows={4}
+                          placeholder="Escribe sobre tu día… Puedes usar Markdown: **negrita**, listas con -, ## subtítulos"
+                          className="w-full p-3 glass border border-white/15 rounded-xl focus-ring smooth-transition resize-y min-h-[6rem]"
+                          rows={6}
                           required
                           disabled={isSubmitting}
                         />
@@ -526,9 +517,9 @@ export default function BitacoraPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.3 + index * 0.1 }}
                       >
-                        <GlassCard className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center space-x-3">
+                        <GlassCard className="p-6 min-w-0 overflow-hidden">
+                          <div className="flex items-start justify-between gap-3 mb-4 min-w-0">
+                            <div className="flex items-center space-x-3 min-w-0 flex-1">
                               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                                 entry.mood === 'happy' ? 'bg-yellow-500/20' :
                                 entry.mood === 'sad' ? 'bg-blue-500/20' :
@@ -538,8 +529,8 @@ export default function BitacoraPage() {
                               }`}>
                                 <MoodIcon className={`w-5 h-5 ${moodColors[entry.mood as keyof typeof moodColors]}`} />
                               </div>
-                              <div>
-                                <h3 className="font-semibold capitalize">{entry.mood}</h3>
+                              <div className="min-w-0">
+                                <h3 className="font-semibold capitalize truncate">{entry.mood}</h3>
                                 <p className="text-sm text-muted-foreground flex items-center">
                                   <Calendar className="w-4 h-4 mr-1" />
                                   {entry.createdAt.toLocaleDateString('es-ES', {
@@ -550,25 +541,25 @@ export default function BitacoraPage() {
                                 </p>
                               </div>
                             </div>
-                            <div className="flex space-x-2">
+                            <div className="flex shrink-0 space-x-2">
                               <button
                                 onClick={() => handleEdit(entry)}
                                 className="p-2 hover:bg-white/15 rounded-xl transition-colors"
+                                type="button"
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(entry.id)}
                                 className="p-2 hover:bg-red-500/20 rounded-xl transition-colors text-red-400"
+                                type="button"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
 
-                          <p className="text-foreground mb-4 leading-relaxed">
-                            {entry.content}
-                          </p>
+                          <BitacoraEntryContent content={entry.content} />
 
                           {entry.tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">

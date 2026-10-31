@@ -16,6 +16,17 @@ describe('ai credit', () => {
     assert.equal(inferenceCostUsd('e2ee-deepseek-v4-flash', 0, 1_000_000), 0.373)
   })
 
+  it('prices Qwen 35B TEE supervisor output at Venice catalog rate', () => {
+    assert.equal(inferenceCostUsd('e2ee-qwen3-6-35b-a3b', 0, 1_000_000), 1.18)
+  })
+
+  it('allows PSM supervisor structured max tokens under daily free credit', () => {
+    const inputTokens = estimateTokens('x'.repeat(6000))
+    const cap = outputTokenCap(0.1, inputTokens, 'e2ee-qwen3-6-35b-a3b', 1200)
+    assert.ok(cap >= 900, `expected cap>=900, got ${cap}`)
+    assert.equal(hasRoomForReply(cap), true)
+  })
+
   it('resets the day at midnight in Mexico City', () => {
     assert.equal(creditDayStart(new Date('2026-10-22T05:30:00.000Z')).toISOString(), '2026-10-21T06:00:00.000Z')
     assert.equal(creditDayStart(new Date('2026-10-22T06:00:00.000Z')).toISOString(), '2026-10-22T06:00:00.000Z')

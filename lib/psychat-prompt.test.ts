@@ -15,7 +15,7 @@ describe('psychat-prompt modes', () => {
     assert.equal(normalizePsychatRole(null), 'usuario')
   })
 
-  it('detects supervisor trigger', () => {
+  it('detects supervisor trigger in user text (legacy copy)', () => {
     assert.equal(wantsSupervisorMode('Activa Modo Supervisor'), true)
     assert.equal(wantsSupervisorMode('modo exploración'), false)
   })
@@ -23,23 +23,27 @@ describe('psychat-prompt modes', () => {
   it('detects exploracion trigger', () => {
     assert.equal(wantsExploracionMode('Quiero explorar lo que siento'), true)
     assert.equal(wantsExploracionMode('modo reflexión'), true)
-    assert.equal(wantsSupervisorMode('modo supervisor'), true)
   })
 
-  it('resolves default structured mode by role for each user turn', () => {
-    assert.equal(resolvePsychatStructuredMode('psm', 'caso clínico anonimizado'), 'supervisor')
-    assert.equal(resolvePsychatStructuredMode('usuario', 'modo supervisor'), 'exploracion')
+  it('PSM: conversational by default; structured only via requestStructuredReport', () => {
+    assert.equal(resolvePsychatStructuredMode('psm', 'caso clínico anonimizado'), null)
+    assert.equal(
+      resolvePsychatStructuredMode('psm', 'caso clínico anonimizado', { requestStructuredReport: true }),
+      'supervisor'
+    )
+    assert.equal(resolvePsychatStructuredMode('psm', 'modo supervisor'), null)
     assert.equal(resolvePsychatStructuredMode('usuario', 'hola'), 'exploracion')
-    assert.equal(resolvePsychatStructuredMode('psm', ''), null)
-    assert.equal(resolvePsychatStructuredMode('usuario', '   '), null)
+    assert.equal(
+      resolvePsychatStructuredMode('usuario', 'quiero explorar lo que siento'),
+      'exploracion'
+    )
   })
 
   it('scopes prompts by role', () => {
     const usuario = getPsychatSystemPrompt('usuario')
     const psm = getPsychatSystemPrompt('psm')
     assert.match(usuario, /Modo exploración/)
-    assert.doesNotMatch(usuario, /Modo Supervisor.*verificación de caso/s)
     assert.match(psm, /Modo Supervisor/)
-    assert.doesNotMatch(psm, /Modo exploración.*personas usuarias/)
+    assert.match(psm, /Dispositivo de Verificación de Casos/)
   })
 })

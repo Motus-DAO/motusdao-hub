@@ -4,6 +4,7 @@ import { normalizePsychatRole, resolvePsychatStructuredMode } from './psychat-pr
 import {
   parseStructuredOutput,
   validateStructuredPayload,
+  extractPsychatStructuredFields,
   PSYCHAT_STRUCTURED_OUTPUT_ERROR,
 } from './psychat-structured-output'
 
@@ -16,8 +17,12 @@ describe('psychat structured output', () => {
     )
   })
 
-  it('psm hub role resolves to supervisor mode', () => {
-    assert.equal(resolvePsychatStructuredMode('psm', 'caso anonimizado'), 'supervisor')
+  it('psm hub role uses structured supervisor only when API requests report', () => {
+    assert.equal(resolvePsychatStructuredMode('psm', 'caso anonimizado'), null)
+    assert.equal(
+      resolvePsychatStructuredMode('psm', 'caso anonimizado', { requestStructuredReport: true }),
+      'supervisor'
+    )
   })
 
   it('parses exploracion JSON from Venice-style fenced output', () => {
@@ -46,5 +51,30 @@ describe('psychat structured output', () => {
 
   it('does not treat error copy as valid structured content', () => {
     assert.match(PSYCHAT_STRUCTURED_OUTPUT_ERROR, /Intenta de nuevo/)
+  })
+
+  it('extracts supervisor fields from markdown sections (Venice-style)', () => {
+    const md = `## Apertura de significantes
+
+El significante "celos" articula la demanda.
+
+## Reflexión sobre el discurso
+
+Tensión entre evitar y exigir garantías.
+
+## Cierre analítico
+
+La falta aparece como límite.
+
+## Recomendación final
+
+Supervisión en el dispositivo de verificación.
+
+## Disponibilidad
+
+Quedo disponible para continuar.`
+    const fields = extractPsychatStructuredFields('supervisor', md)
+    assert.ok(fields)
+    assert.equal(fields && 'apertura' in fields ? fields.apertura.includes('celos') : false, true)
   })
 })

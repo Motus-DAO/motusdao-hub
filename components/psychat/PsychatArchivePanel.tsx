@@ -24,11 +24,12 @@ import {
   upsertPsychatArchive,
 } from '@/lib/psychat-archive/client'
 import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
-import { authFetch } from '@/lib/auth/client'
 
 type Props = {
   isSessionReady: boolean
   messages: PsychatArchiveMessage[]
+  /** Cuando el modal del chat muestra la firma de archivo, no duplicar CTA arriba. */
+  hideWhenUnlockGate?: boolean
 }
 
 type ArchivePhase =
@@ -113,11 +114,13 @@ const phaseMeta: Record<
   },
 }
 
-export function PsychatArchivePanel({ isSessionReady, messages }: Props) {
+export function PsychatArchivePanel({
+  isSessionReady,
+  messages,
+  hideWhenUnlockGate = false,
+}: Props) {
   const { theme } = useUIStore()
   const isLight = theme === 'light'
-  const [optIn, setOptIn] = useState(false)
-  const [loadingOptIn, setLoadingOptIn] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [exporting, setExporting] = useState(false)
   const {
@@ -127,23 +130,13 @@ export function PsychatArchivePanel({ isSessionReady, messages }: Props) {
     state: keyState,
     unlockError,
     getKey,
+    optIn,
+    loadingOptIn,
+    setArchiveOptIn,
   } = usePsychatArchiveKeyContext()
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (!isSessionReady) {
-      setOptIn(false)
-      return
-    }
-    void authFetch('/api/consent/psychat-archive')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { consentToPsychatArchive?: boolean } | null) => {
-        setOptIn(Boolean(d?.consentToPsychatArchive))
-      })
-      .catch(() => setOptIn(false))
-  }, [isSessionReady])
 
   useEffect(() => {
     if (saveState !== 'saved') return
@@ -197,24 +190,8 @@ export function PsychatArchivePanel({ isSessionReady, messages }: Props) {
   const { Icon } = meta
 
   const toggleOptIn = async (enabled: boolean) => {
-    setLoadingOptIn(true)
-    try {
-      const res = await authFetch('/api/consent/psychat-archive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      })
-      if (!res.ok) throw new Error('No se pudo guardar la preferencia')
-      setOptIn(enabled)
-      if (!enabled) {
-        setSaveState('idle')
-        notifyPsychatArchiveChanged()
-      }
-    } catch {
-      alert('No se pudo actualizar la preferencia de archivo.')
-    } finally {
-      setLoadingOptIn(false)
-    }
+    const ok = await setArchiveOptIn(enabled)
+    if (ok && !enabled) setSaveState('idle')
   }
 
   const handleExport = async () => {
@@ -233,6 +210,7 @@ export function PsychatArchivePanel({ isSessionReady, messages }: Props) {
   }
 
   if (!isSessionReady) return null
+  if (hideWhenUnlockGate && optIn && !isUnlocked) return null
 
   return (
     <div

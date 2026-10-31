@@ -78,14 +78,24 @@ export function wantsExploracionMode(text: string): boolean {
   )
 }
 
-/** Default structured mode per Hub role for each user turn (TEE `/api/chat`). */
+export type ResolvePsychatStructuredModeOptions = {
+  /** PSM: UI "Reporte estructurado" — does not change clinical prompt text. */
+  requestStructuredReport?: boolean
+}
+
+/** Structured JSON for `/api/chat` (PSM report on demand, usuario exploración per role rules). */
 export function resolvePsychatStructuredMode(
   hubRole: PsychatHubRole,
-  userText: string
+  userText: string,
+  options: ResolvePsychatStructuredModeOptions = {}
 ): PsychatStructuredMode | null {
+  if (hubRole === 'psm') {
+    if (options.requestStructuredReport && userText.trim()) return 'supervisor'
+    return null
+  }
   if (!userText.trim()) return null
-  if (hubRole === 'psm') return 'supervisor'
-  return 'exploracion'
+  if (hubRole === 'usuario') return 'exploracion'
+  return null
 }
 
 export function getPsychatSystemPrompt(hubRole: PsychatHubRole): string {
@@ -96,7 +106,7 @@ export function getPsychatSystemPrompt(hubRole: PsychatHubRole): string {
 
   const modeBlock =
     hubRole === 'psm'
-      ? `Capacidades:\n${PSYCHAT_QA}\nB) ${PSYCHAT_SUPERVISOR}\n\nSi la persona es usuaria del servicio y pide modo exploración, indica que ese modo es para cuentas de persona usuaria en Psychat.`
+      ? `Capacidades:\nB) ${PSYCHAT_SUPERVISOR}\n\nSi la persona es usuaria del servicio y pide modo exploración, indica que ese modo es para cuentas de persona usuaria en Psychat.`
       : `Capacidades:\n${PSYCHAT_QA}\nB) ${PSYCHAT_EXPLORACION}\n\nSi piden "modo supervisor", indica con respeto que ese modo es para profesionales; ofrece modo exploración o Terapeuta humano.\n\nFuera del modo exploración: orienta sobre el Hub y escucha breve; evita técnicas o listas de consejos; sugiere modo exploración o Terapeuta humano si buscan profundizar.`
 
   return `${intro}\n${modeBlock}\n\n${PSYCHAT_SAFETY}\nEstilo general: claro, sobrio, preciso, en español.`

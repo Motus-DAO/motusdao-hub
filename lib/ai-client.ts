@@ -1,3 +1,4 @@
+import type { PsychatHubRole } from '@/lib/psychat-prompt'
 import OpenAI from 'openai'
 
 type AIProvider = 'openai' | 'venice'
@@ -88,5 +89,32 @@ export function getVeniceChatOptions(): { stop?: string[] } {
       'assistant<|',
     ],
   }
+}
+
+/** PSM Supervisor on Venice TEE `/api/chat` only (browser E2EE keeps `VENICE_MODEL`). */
+export const VENICE_PSM_SUPERVISOR_TEE_MODEL = 'e2ee-qwen3-6-35b-a3b' as const
+
+export const PSM_SUPERVISOR_STRUCTURED_MAX_TOKENS = 1200
+
+export function getVeniceSupervisorTeeParameters() {
+  return {
+    enable_e2ee: false,
+    disable_thinking: true,
+    strip_thinking_response: true,
+    include_venice_system_prompt: false,
+  }
+}
+
+export function resolvePsychatChatModel(
+  hubRole: PsychatHubRole,
+  structuredMode: 'supervisor' | 'exploracion' | null
+): string {
+  if (getAIProvider() === 'venice' && hubRole === 'psm') {
+    return VENICE_PSM_SUPERVISOR_TEE_MODEL
+  }
+  if (structuredMode === 'supervisor' && getAIProvider() === 'venice') {
+    return VENICE_PSM_SUPERVISOR_TEE_MODEL
+  }
+  return getAIModel()
 }
 

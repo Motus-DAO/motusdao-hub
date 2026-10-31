@@ -10,6 +10,7 @@ const USD_PER_MILLION: Record<string, { input: number; output: number }> = {
   'e2ee-deepseek-v4-flash': { input: 0.182, output: 0.373 },
   'deepseek-v4-flash': { input: 0.138, output: 0.275 },
   'e2ee-glm-5-3-flash': { input: 0.16, output: 0.54 },
+  'e2ee-qwen3-6-35b-a3b': { input: 0.182, output: 1.18 },
 }
 
 const DEFAULT_RATES = USD_PER_MILLION['e2ee-deepseek-v4-flash']

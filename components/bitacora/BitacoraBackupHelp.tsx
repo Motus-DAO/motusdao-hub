@@ -12,19 +12,22 @@ export function BitacoraBackupHelp() {
       </GradientText>
       <ol className="list-decimal list-inside space-y-2">
         <li>
-          <strong className="text-foreground">Exportar</strong> descarga un archivo. No es un
-          Word legible: es tu diario <em>cerrado</em>. Nadie (ni Motus) lee el texto sin tu wallet.
+          <strong className="text-foreground">Descargar copia cifrada</strong> guarda un archivo en
+          tu computadora. No es un Word legible: es tu diario <em>cerrado</em>. Nadie (ni Motus)
+          lee el texto sin tu wallet.
         </li>
         <li>
           <strong className="text-foreground">Guárdalo</strong> donde quieras (Drive, USB, correo a
           ti mismo). Si borras entradas en Motus, el Hub ya no las tiene — el archivo es tu respaldo.
         </li>
         <li>
-          <strong className="text-foreground">Recuperar</strong>: sube el mismo `.json` en{' '}
+          <strong className="text-foreground">Subir copia guardada</strong> en Mi Bitácora (misma
+          pantalla que al escribir): elige el `.json`, desbloquea con la <em>misma</em> wallet y
+          vuelve a ver o restaurar en tu cuenta. También puedes usar{' '}
           <Link href="/bitacora/recuperar" className="text-mauve-400 underline">
-            Recuperar copia
+            esta página dedicada
           </Link>
-          , conecta la <em>misma</em> wallet, desbloquea y vuelve a ver o restaurar en tu cuenta.
+          .
         </li>
       </ol>
       <p>

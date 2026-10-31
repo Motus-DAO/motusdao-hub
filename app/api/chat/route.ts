@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAIClient, getAIModel, getAIProvider, getVeniceChatOptions, hasAIKey } from "@/lib/ai-client";
+import {
+  getAIClient,
+  getAIModel,
+  getAIProvider,
+  getVeniceChatOptions,
+  getVeniceSupervisorTeeParameters,
+  hasAIKey,
+  PSM_SUPERVISOR_STRUCTURED_MAX_TOKENS,
+  resolvePsychatChatModel,
+  VENICE_PSM_SUPERVISOR_TEE_MODEL,
+} from "@/lib/ai-client";
 import { isKnowledgeRagEnabled, retrieveMotusContext } from "@/lib/motus-knowledge";
 import { isUsableChatOutput, sanitizeModelOutput, SHORT_INPUT_FALLBACK } from "@/lib/ai-output";
 import { requireAiProcessingConsent } from "@/lib/auth/ai-consent";
@@ -19,6 +29,9 @@ import {
   validateStructuredPayload,
 } from "@/lib/psychat-structured-output";
 import type OpenAI from "openai";
+
+/** Venice Qwen supervisor can exceed 30s on cold start; align with client timeout when raised. */
+export const maxDuration = 60;
 
 const SUPERVISOR_SCHEMA = {
   type: "json_schema" as const,
@@ -90,26 +103,38 @@ function structuredOutputFailure(
 async function createReliableChatCompletion(
   client: OpenAI,
   messages: Array<{ role: "system" | "assistant" | "user"; content: string }>,
-  options: { temperature: number; max_tokens: number; response_format?: StructuredSchema }
+  options: {
+    model: string;
+    temperature: number;
+    max_tokens: number;
+    response_format?: StructuredSchema;
+    venice_parameters?: ReturnType<typeof getVeniceSupervisorTeeParameters>;
+    singleAttempt?: boolean;
+  }
 ): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
   const base = {
-    model: getAIModel(),
+    model: options.model,
     messages,
     ...getVeniceChatOptions(),
-    ...options,
+    temperature: options.temperature,
+    max_tokens: options.max_tokens,
+    ...(options.response_format ? { response_format: options.response_format } : {}),
+    ...(options.venice_parameters ? { venice_parameters: options.venice_parameters } : {}),
   }
 
-  const attempts = [
-    { ...base, temperature: options.temperature },
-    { ...base, temperature: Math.min(options.temperature, 0.3) },
-  ]
+  const attempts = options.singleAttempt
+    ? [{ ...base, temperature: options.temperature }]
+    : [
+        { ...base, temperature: options.temperature },
+        { ...base, temperature: Math.min(options.temperature, 0.3) },
+      ]
 
   let promptTokens = 0
   let completionTokens = 0
   const inputText = messages.map((message) => message.content).join("\n")
 
   for (const params of attempts) {
-    const response = await client.chat.completions.create(params)
+    const response = await client.chat.completions.create(params as OpenAI.ChatCompletionCreateParamsNonStreaming)
     const raw = response.choices[0]?.message?.content ?? ""
     promptTokens += response.usage?.prompt_tokens ?? estimateTokens(inputText)
     completionTokens += response.usage?.completion_tokens ?? estimateTokens(raw)
@@ -118,6 +143,22 @@ async function createReliableChatCompletion(
   }
 
   return { text: SHORT_INPUT_FALLBACK, promptTokens, completionTokens }
+}
+
+function structuredFieldsFromCompletion(
+  structuredMode: PsychatStructuredMode,
+  result: { text: string }
+): Record<string, string> | null {
+  if (result.text === SHORT_INPUT_FALLBACK) return null
+
+  let parsed: Record<string, unknown>
+  try {
+    parsed = parseStructuredOutput(result.text)
+  } catch {
+    return null
+  }
+
+  return validateStructuredPayload(structuredMode, parsed)
 }
 
 export async function POST(req: NextRequest) {
@@ -157,24 +198,34 @@ export async function POST(req: NextRequest) {
     const userMessages = (rawMessages as {role:"user"|"assistant"|"system", content:string}[])
       .filter((message) => message.role === "user" || message.role === "assistant");
     const clientSnippets = (body?.contextSnippets || []) as string[];
+    const requestStructuredReport = body?.requestStructuredReport === true;
 
     const lastUser = userMessages.slice().reverse().find(m => m.role === "user");
     const userText = lastUser?.content || "";
-    const structuredMode = resolvePsychatStructuredMode(hubRole, userText);
+    const structuredMode = resolvePsychatStructuredMode(hubRole, userText, {
+      requestStructuredReport,
+    });
+
+    if (requestStructuredReport && hubRole === "psm" && !userText.trim()) {
+      return NextResponse.json(
+        { error: "Escribe o envía al menos un mensaje de caso antes del reporte estructurado." },
+        { status: 400 }
+      );
+    }
 
     const input: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
       { role: "system", content: getPsychatSystemPrompt(hubRole) },
     ];
 
     const provider = getAIProvider();
-    if (structuredMode && provider === "venice") {
+    if (structuredMode === "supervisor" && provider === "venice") {
       input[0].content += veniceStructuredJsonReminder(structuredMode);
     }
 
     let ragSources: Array<{ sourcePath: string; title: string; namespace: string; similarity: number }> = [];
     let contextSnippets = [...clientSnippets];
 
-    if (isKnowledgeRagEnabled() && userText && !structuredMode) {
+    if (isKnowledgeRagEnabled() && userText && !structuredMode && hubRole !== "psm") {
       try {
         const retrieved = await retrieveMotusContext(userText);
         if (retrieved.snippets.length) {
@@ -202,8 +253,17 @@ export async function POST(req: NextRequest) {
       input.push({ role: msg.role, content: msg.content });
     });
 
-    const requestedMaxTokens = structuredMode ? 1000 : 800
-    const model = getAIModel()
+    const isVenicePsmTee = hubRole === "psm" && provider === "venice";
+    const isVeniceSupervisor =
+      structuredMode === "supervisor" && provider === "venice";
+    const requestedMaxTokens = isVeniceSupervisor
+      ? PSM_SUPERVISOR_STRUCTURED_MAX_TOKENS
+      : isVenicePsmTee
+        ? 900
+        : structuredMode
+          ? 1000
+          : 800;
+    const model = resolvePsychatChatModel(hubRole, structuredMode);
     const hold = await reserveAiCredit({
       userId,
       model,
@@ -213,12 +273,25 @@ export async function POST(req: NextRequest) {
 
     let settled = false
     try {
+      const completionOptions = isVenicePsmTee
+        ? {
+            model: VENICE_PSM_SUPERVISOR_TEE_MODEL,
+            temperature: structuredMode === "supervisor" ? 0.55 : 0.65,
+            max_tokens: hold.maxTokens,
+            venice_parameters: getVeniceSupervisorTeeParameters(),
+          }
+        : {
+            model: getAIModel(),
+            temperature: 0.7,
+            max_tokens: hold.maxTokens,
+            ...(structuredMode && provider === "openai"
+              ? { response_format: responseFormatForMode(structuredMode) }
+              : {}),
+          };
+
       const result = await createReliableChatCompletion(client, input, {
-        ...(structuredMode && provider === "openai"
-          ? { response_format: responseFormatForMode(structuredMode) }
-          : {}),
-        temperature: 0.7,
-        max_tokens: hold.maxTokens,
+        ...completionOptions,
+        singleAttempt: structuredMode === null,
       })
       await settleAiCredit(hold.chargeId, {
         model,
@@ -229,25 +302,14 @@ export async function POST(req: NextRequest) {
       const credit = await getCreditSnapshot(userId)
 
       if (structuredMode) {
-        if (result.text === SHORT_INPUT_FALLBACK) {
-          return structuredOutputFailure(hubRole, structuredMode)
-        }
-
-        let parsed: Record<string, unknown>
-        try {
-          parsed = parseStructuredOutput(result.text)
-        } catch {
-          return structuredOutputFailure(hubRole, structuredMode)
-        }
-
-        const fields = validateStructuredPayload(structuredMode, parsed)
+        const fields = structuredFieldsFromCompletion(structuredMode, result)
         if (!fields) {
           return structuredOutputFailure(hubRole, structuredMode)
         }
 
         return NextResponse.json({
           ...fields,
-          mode: structuredMode,
+          mode: structuredMode === "supervisor" ? "supervisor_report" : "exploracion",
           psychatHubRole: hubRole,
           ...(structuredMode === "exploracion" ? { handoffSuggested: true } : {}),
           ragSources,
@@ -256,12 +318,24 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      if (hubRole === "psm" && result.text === SHORT_INPUT_FALLBACK) {
+        return NextResponse.json(
+          {
+            error:
+              "No se pudo generar una respuesta clínica en este intento. Reintenta en unos segundos; si persiste, avisa al equipo MotusDAO.",
+            code: "psm_completion_unusable",
+            psychatHubRole: hubRole,
+          },
+          { status: 502 }
+        );
+      }
+
       return NextResponse.json({
-        mode: "qa",
+        mode: hubRole === "psm" ? "supervisor_chat" : "qa",
         psychatHubRole: hubRole,
         text: result.text,
         ragSources,
-        ragEnabled: isKnowledgeRagEnabled(),
+        ragEnabled: hubRole !== "psm" && isKnowledgeRagEnabled(),
         credit,
         creditNote: formatCreditNote(credit),
       });

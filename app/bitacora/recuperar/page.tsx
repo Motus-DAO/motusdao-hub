@@ -18,6 +18,7 @@ import {
   restoreExportToAccount,
 } from '@/lib/safe-notes/restore-from-export'
 import type { BitacoraEntryView } from '@/lib/safe-notes/client-bitacora'
+import { BitacoraEntryContent } from '@/components/bitacora/BitacoraEntryContent'
 import { BitacoraBackupHelp } from '@/components/bitacora/BitacoraBackupHelp'
 import { ArrowLeft, FileUp, Lock } from 'lucide-react'
 
@@ -164,12 +165,12 @@ export default function BitacoraRecuperarPage() {
                 {preview.map((entry) => (
                   <li
                     key={entry.id}
-                    className="rounded-xl border border-white/10 p-4 text-sm"
+                    className="rounded-xl border border-white/10 p-4 text-sm min-w-0 overflow-hidden"
                   >
                     <p className="text-muted-foreground text-xs mb-2">
                       {entry.createdAt.toLocaleString('es-MX')}
                     </p>
-                    <p className="whitespace-pre-wrap">{entry.content}</p>
+                    <BitacoraEntryContent content={entry.content} className="mb-0" />
                   </li>
                 ))}
               </ul>
