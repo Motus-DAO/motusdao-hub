@@ -163,4 +163,27 @@ prerender. Ahora el sitemap degrada a rutas estáticas y las listas se renderiza
 
 ---
 
+## 8. Registro de este refresh (2026-11-06)
+
+Se trabajó en slices pequeños, un commit por slice. **No se hizo push**: los commits quedaron
+locales en `main` para que el equipo los revise.
+
+| Commit | Slice | Qué cambió |
+|--------|-------|------------|
+| `153f162` | Build / tipos | `PsychatRagSource` en el payload; helper para `NODE_ENV` en el test SIWE |
+| `706fa6f` | Tests / CI | `scripts/run-tests.mjs` descubre 33 archivos; CI corre `npm test` |
+| `44c1368` | Build / prerender | sitemap resiliente; listings de psicoterapia on-demand |
+| `95d25fc` | Estado | `specs/STATUS.md`; `platform-harmonize` deja de duplicar status |
+| `aeaab19` | Snapshots | SDD-safety §4 histórico; headers de Psychat y compliance corregidos |
+| `cf307b9` | Docs núcleo | AGENTS, README, specs/README, docs/README, HANDOFF, regla Cursor |
+| este commit | Cierre | Registra este log y los resultados del gate |
+
+Gate final (2026-11-06): lint 0 errores / 22 warnings · `tsc` verde · 33 archivos y 123 tests ·
+`prisma validate` verde · `npm run build` verde.
+
+Rollback: cada commit es independiente; `git revert <sha>` revierte un slice sin tocar los demás.
+El tag `harmonize-baseline-2026-07-01` sigue siendo el baseline histórico.
+
+---
+
 *Estado del Hub · actualizado 2026-11-06 · MotusDAO*
