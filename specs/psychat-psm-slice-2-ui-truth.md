@@ -1,6 +1,6 @@
 # Psychat PSM — Slice 2: UI truth table + proxy
 
-> Status: **DRAFT** · Blocked until slice 1 merged
+> Status: **PARTIAL** · Report button + E2EE gating shipped in `4f04131`; pending: block RootRouter proxy for PSM and verify the 502 banner
 
 ---
 

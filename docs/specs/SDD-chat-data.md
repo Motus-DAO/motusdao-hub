@@ -2,6 +2,10 @@
 
 > Status: **LOCKED** · Owner: product · Written: 22 Oct 2026
 >
+> **Implementation status (2026-11-06):** slices 1–5 shipped, including fase 1 of RootRouter.
+> Fases 2–3 of the enclave are locked to Phala but not built (attestation is still a mock).
+> Current state: [STATUS.md](../../specs/STATUS.md).
+>
 > Purpose: the decisions made after [SDD-safety-plan.md](./SDD-safety-plan.md) about Psychat, a saved transcript, training, export, FHIR, RootRouter’s working store, and enclaves. It keeps those details from drifting. It is not a penetration test and not a legal opinion.
 >
 > It does not reopen safety-plan slices 1–7. Slice 2 still ships a visit-only Psychat with session and consent. Slice 7 still ships Bitácora as a wallet-locked journal. Everything in sections 4–8 below starts only after those two slices are done. Feature work still gets its own spec under `specs/` before code.

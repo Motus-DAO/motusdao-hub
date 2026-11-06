@@ -65,11 +65,16 @@ Postgres via Prisma is the database. In production that database is Supabase Pos
 
 ---
 
-## 4. What the repo does today (21 Oct 2026)
+## 4. Snapshot — what the repo did on 21 Oct 2026 (historical)
+
+> **Historical baseline, not current state.** Slices 1–7 shipped after this was written.
+> Current state: [specs/STATUS.md](../../specs/STATUS.md) and the `specs/safety-slice-*.md`
+> files. Keep this table to understand what the plan started from; do not use it to diagnose
+> production.
 
 Anchors, so a later slice does not rediscover them.
 
-| Surface | What is true now | Anchor |
+| Surface | What was true then (superseded) | Anchor |
 |---|---|---|
 | Video default | Domain falls back to public `meet.jit.si`. Office rooms are `motusdao-office-{matchId}`. Public Jitsi does not enforce Hub tokens. | `lib/jitsi.ts` |
 | Guest video | `POST /api/jitsi/guest-token` needs no account. Open PSM rooms get a guest token. Quick rooms, when enabled, get a moderator token. | `app/api/jitsi/token/route.ts`, `app/api/jitsi/guest-token/route.ts` |

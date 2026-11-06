@@ -1,6 +1,6 @@
 # Psychat PSM — Slice 1: Venice routing + modelo
 
-> Status: **READY** · Depends: lock-in [`psychat-psm-supervisor-lockin.md`](./psychat-psm-supervisor-lockin.md)
+> Status: **SHIPPED on `main`** at `4f04131` (checkpoint) · Pending: production verification · Depends: lock-in [`psychat-psm-supervisor-lockin.md`](./psychat-psm-supervisor-lockin.md)
 >
 > Anchors: `app/api/chat/route.ts`, `lib/ai-client.ts`, `lib/psychat-prompt.ts`, `lib/ai-output.ts`
 

@@ -68,11 +68,15 @@ Si la respuesta suena a *“¿en qué puedo ayudarte sobre MotusDAO?”*, el usu
 
 ---
 
-## Estado producción vs working tree (oct-2026)
+## Estado en `main` (nov-2026)
 
-`origin/main` (@ `0f35444` lineage) aún tiene **bug F**: `resolvePsychatStructuredMode` devuelve `'supervisor'` en **cada** turno PSM, reporte JSON forzado, Venice **sin** Qwen ni schema → respuestas inconsistentes (a veces buenas secciones, a veces error o fallback).
+`main` incluye el checkpoint `4f04131`: PSM conversa en prosa por defecto y el reporte
+estructurado se pide con el botón. El spec del slice 1
+(`specs/psychat-psm-slice-1-venice-routing.md`) sigue marcado READY: trátalo como shipped en
+código y **pendiente de verificación en producción**.
 
-**Lock-in SDD:** ver `specs/psychat-psm-supervisor-lockin.md` y slice 1.
+Pendiente: slice 2 (proxy RootRouter apagado para PSM) y slice 3 (usuario solo con trigger).
+Estado vivo: `specs/STATUS.md`.
 
 ---
 

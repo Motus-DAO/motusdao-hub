@@ -2,6 +2,9 @@
 
 > Status: **LOCK for implementation** · Owner: Hub eng · **3 slices máximo**
 >
+> **Progress (2026-11-06):** slice 1 code is in `main` (`4f04131`); slices 2–3 open.
+> See [STATUS.md](./STATUS.md).
+>
 > Objetivo: dejar de mezclar parches (Qwen, routing F, Motty fallback, proxy) y **shippear** un supervisor estable antes del slice de **usuario** digital.
 
 ---

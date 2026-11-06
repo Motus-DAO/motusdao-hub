@@ -1,6 +1,6 @@
 # Psychat PSM — Slice 3: Usuario routing (paridad E)
 
-> Status: **DRAFT** · Blocked until slice 1 merged · Complements [`psychat-usuario-modo-exploracion.md`](./psychat-usuario-modo-exploracion.md)
+> Status: **READY** · Slice 1 is in `main` (`4f04131`); this slice restores trigger-based routing for `usuario` · Complements [`psychat-usuario-modo-exploracion.md`](./psychat-usuario-modo-exploracion.md)
 
 ---
 

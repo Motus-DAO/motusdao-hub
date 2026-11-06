@@ -1,6 +1,6 @@
 # Psychat — Modo exploración (usuario) — Spec
 
-> Status: **SHIPPED** · Complements PSM Modo Supervisor · `safety-slice-2-psychat.md`
+> Status: **PARTIAL** — the trigger-based routing described here regressed at `0f35444`; the code currently forces `exploracion` on every `usuario` turn. Fix tracked in [`psychat-psm-slice-3-usuario-routing-e.md`](./psychat-psm-slice-3-usuario-routing-e.md). · Complements PSM Modo Supervisor · `safety-slice-2-psychat.md`
 
 ## Scope
 

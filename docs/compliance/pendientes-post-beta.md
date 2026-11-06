@@ -7,7 +7,7 @@
 | **Razón social y domicilio fiscal** en aviso | Responsable: “MotusDAO” + contact@motusdao.org | Al constituir persona moral; actualizar `docs/compliance/legal/aviso-de-privacidad-integral.md` y `/privacy` |
 | **DPAs / BAA** (Supabase, Venice/OpenAI, Stripe, etc.) | No firmados en esta etapa | Con ingresos o flujo clínico en EE. UU. que trate ePHI |
 | **Portal ARCO automático** (export / borrado en app) | Solicitudes manuales a contact@motusdao.org | Producto cuando haya volumen de solicitudes ARCO |
-| **Bitácora en claro en servidor** | Cifrado cliente (`motus-safe-notes`) en slice 7 | Mantener aviso alineado; export en chat-data |
+| **Bitácora en claro en servidor** | ✅ Cifrado cliente (`motus-safe-notes`) desde slice 7 (`f7f2615`); el servidor guarda ciphertext | Mantener aviso alineado; export en chat-data |
 | **Entrenamiento de modelos** con copia legible | No activo; aviso §3.3 | Pasos en `docs/specs/SDD-chat-data.md` **después** del aviso (ya publicado) |
 | **Región Supabase / PostHog** | Inventario dice “verificar en consola” | Revisar dashboard de prod y actualizar `/subprocesadores` + inventario |
 
@@ -29,6 +29,8 @@ Actualizar aviso y subprocesadores cuando ocurra cualquiera de:
 
 Ver también: `specs/safety-slice-6-program-gap.md` §5.
 
-## Siguiente slice de código (plan safety)
+## Estado del plan safety
 
-**Slice 7 — Bitácora cifrada** (`docs/specs/SDD-safety-plan.md` §5). Spec hijo: `specs/safety-slice-7-bitacora-ciphertext.md` (por crear).
+Los slices 1–7 están **shipped** (ver `specs/STATUS.md` y `specs/safety-slice-7-bitacora-ciphertext.md`).
+El siguiente trabajo de código no es un slice de safety: es cerrar Psychat PSM (slices 2–3) y
+verificar el deploy de este refresh.
