@@ -57,6 +57,7 @@ Legal sources for `/privacy`, `/terms`, `/cookies`, `/subprocesadores`, plus bet
 | [ADMIN_ACCESS_INSTRUCTIONS.md](./runbooks/ADMIN_ACCESS_INSTRUCTIONS.md) | Admin access |
 | [ADMIN_DASHBOARD_SETUP.md](./runbooks/ADMIN_DASHBOARD_SETUP.md) | Admin dashboard setup |
 | [academy-content-rewrite.md](./runbooks/academy-content-rewrite.md) | Seed ↔ DB ↔ admin: rewrite course blocks |
+| [security-patching.md](./runbooks/security-patching.md) | Oct-2026 Next/React/Node/PostHog patch record + remaining debt |
 
 ## Plans (SDD)
 

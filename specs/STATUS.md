@@ -35,6 +35,7 @@ Si toca la app, además `npm run build`. Si toca el schema, migración + nota de
 | Psychat usuario (exploración) | **Parcial** (regresión de routing) | [spec](./psychat-usuario-modo-exploracion.md) · slice 3 |
 | Video / Jitsi | **Shipped** (servidor privado) | [runbook](../docs/runbooks/VERCEL_VIDEOCHAT_ENV.md) |
 | Compliance beta | **Shipped** | [compliance](../docs/compliance/README.md) · `fde8017` |
+| Seguridad de dependencias | **Parcheado Oct-2026**; deuda transitiva | [runbook](../docs/runbooks/security-patching.md) |
 | On-chain (MNS, faucet, NFT) | **Parcial** | README §On-chain |
 
 ---
@@ -147,6 +148,7 @@ grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 | Stripe Connect en rama local | Bus factor y drift con `main` | Documentado en el spec |
 | Sin e2e | El gate cubre unidades, no flujos completos | `npm test` es node:test |
 | Specs de Academia en DRAFT | El índice subestima lo shipped | Solo documentación |
+| 5 CVEs críticos transitivos | `form-data`, `request`, `tar`, `proxy-addr`, `protobufjs` | Sin ruta de runtime hoy; ver [runbook](../docs/runbooks/security-patching.md) |
 | Ripio / Transak / Mt Pelerin no activos | No hay on/off-ramp fiat real | Ripio en mock; legacy fuera del grid |
 
 ---
@@ -205,6 +207,13 @@ Se documentaron `/pagos`, el QR de envío/recepción, la autocustodia WaaP y el 
 rampas en `README.md`, `env.example` y este dashboard: Ripio está integrado pero en **mock** (no
 activo), Textile FX está **cableado** para `wARS`/`wBRL`, y Transak/Mt Pelerin/Privy quedaron como
 handlers legacy fuera del grid. Commit: este commit. No cambia el gate.
+
+### Addendum — seguridad (2026-11-06)
+
+Se aplicaron los avisos de octubre 2026: Next **15.5.29** (+ `sharp` 0.35.5), React **19.2.9**,
+PostHog **1.447.3** con DOMPurify 3.4.17, PostCSS 8.5.32, y Node **22.23.4+** en CI/engines.
+No hay PHP en este repo. Quedan 5 CVEs críticos transitivos sin ruta de runtime; detalle y
+rollback en [docs/runbooks/security-patching.md](../docs/runbooks/security-patching.md).
 
 ---
 

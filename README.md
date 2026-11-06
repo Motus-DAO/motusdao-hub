@@ -103,7 +103,7 @@ and [`specs/STATUS.md`](specs/STATUS.md). The slice workflow and Definition of D
 
 ## Local setup
 
-**Prereqs:** Node.js 20+, npm, a Supabase project (Postgres + Storage), Stripe test keys for
+**Prereqs:** Node.js 22.23.4+ (CI uses Node 22 with the latest patch), npm, a Supabase project (Postgres + Storage), Stripe test keys for
 Academy checkout.
 
 ```bash
@@ -165,6 +165,7 @@ npm test        # discovers every *.test.ts(x) under lib/components/app/scripts
 
 CI runs lint, typecheck, tests, Prisma schema validation, and a production build. The test
 runner is [`scripts/run-tests.mjs`](scripts/run-tests.mjs); adding a test file is enough.
+CI uses Node 22 (minimum 22.23.4 for the October 2026 Node.js security release).
 
 ## Scripts
 
@@ -203,6 +204,7 @@ runner is [`scripts/run-tests.mjs`](scripts/run-tests.mjs); adding a test file i
 - [`specs/platform-harmonize.md`](specs/platform-harmonize.md) — taxonomy and phased plan
 - [`specs/README.md`](specs/README.md) — loop, QA, Definition of Done
 - [`docs/README.md`](docs/README.md) — architecture, runbooks, compliance index
+- [`docs/runbooks/security-patching.md`](docs/runbooks/security-patching.md) — Oct-2026 Next/React/Node patch record
 
 ## Contributing
 
