@@ -1,5 +1,10 @@
 # MotusAI Chat UI — Agent loop (Investigate → QA → Result)
 
+> **Historical (MotusAI era).** MotusAI is now **Psychat** (`/motusai` redirects to `/psychat`),
+> and RootRouter is an optional local proxy for Psychat context, not the editor MCP this spec
+> assumes. Do not follow the workspace paths or MCP loop below; current state:
+> [STATUS.md](./STATUS.md).
+>
 > Slice: cinematic chat (`AnimatedAIChat`) ported from ChatAlphaMotusDAO into Hub-Psi.
 > Use with **RootRouter MCP** + the existing **QA stop hook** (`.cursor/hooks/qa-loop.mjs`).
 
@@ -8,13 +13,13 @@
 ## Workspace
 
 ```
-/Users/main/MotusDAO-Hub-Psi/motusdao-hub
+$(git rev-parse --show-toplevel)
 ```
 
 Reference UI repo (read-only inspiration):
 
 ```
-/Users/main/ChatAlphaMotusDAO
+<ruta-local-de-ChatAlphaMotusDAO>
 ```
 
 ---
@@ -34,8 +39,8 @@ Reference UI repo (read-only inspiration):
 
 ```text
 MCP rootrouter:
-1. index_repo — path: /Users/main/MotusDAO-Hub-Psi/motusdao-hub
-2. index_repo — path: /Users/main/ChatAlphaMotusDAO, agentId: chat-alpha-motusdao
+1. index_repo — path: $(git rev-parse --show-toplevel)
+2. index_repo — path: <ruta-local-de-ChatAlphaMotusDAO>, agentId: chat-alpha-motusdao
 3. select_context — agentId: chat-alpha-motusdao, tokenBudget: 4000,
    query: "AnimatedAIChat motusai page UI scroll messages container api/chat role usuario psm"
 4. select_context — tokenBudget: 4000,
@@ -133,14 +138,14 @@ Deliver:
 ## Copy-paste — full Cursor Agent prompt
 
 ```text
-Workspace: /Users/main/MotusDAO-Hub-Psi/motusdao-hub
+Workspace: $(git rev-parse --show-toplevel)
 
 ## Loop: Investigate → Implement → QA → Result
 Follow specs/motusai-chat-ui.md
 
 ### 1 Investigate (RootRouter first)
-- index_repo /Users/main/MotusDAO-Hub-Psi/motusdao-hub
-- index_repo /Users/main/ChatAlphaMotusDAO agentId chat-alpha-motusdao
+- index_repo $(git rev-parse --show-toplevel)
+- index_repo <ruta-local-de-ChatAlphaMotusDAO> agentId chat-alpha-motusdao
 - select_context (both repos) per spec queries
 - Read spec + anchor files only
 

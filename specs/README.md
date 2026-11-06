@@ -2,8 +2,9 @@
 
 > One source of truth for how agents (and humans) ship features in this repo:
 > small slices, spec-first, independently verified, looped until the
-> Definition of Done is met. Built to match existing conventions
-> (see `specs/psm-intake-v1.md`).
+> Definition of Done is met. Current state lives in [STATUS.md](./STATUS.md).
+>
+> Built to match existing conventions (see `specs/psm-intake-v1.md`).
 
 This folder is the **control system**. The Cursor hooks in `.cursor/hooks.json`
 are the **engine** that loops the agent until a spec's exit conditions pass.
@@ -12,11 +13,11 @@ are the **engine** that loops the agent until a spec's exit conditions pass.
 
 ## The model in one picture
 
-```
+```text
 SDD (spec)  ──defines──▶  acceptance criteria + exit conditions
    │                                   │
    ▼                                   ▼
-Builder agent ──implements──▶  QA gate (lint, typecheck, tests, criteria)
+Builder agent ──implements──▶  QA gate (lint, typecheck, tests, build, criteria)
    ▲                                   │
    └──────── loop (stop hook) ◀────────┘
         re-prompt with failures until green OR loop_limit hit
@@ -57,7 +58,8 @@ and the checker subagent verify:
 - [ ] Every acceptance criterion in the spec maps to at least one check or test.
 - [ ] `npm run lint` passes (no new errors).
 - [ ] `npx tsc --noEmit` passes (no new type errors).
-- [ ] Tests for the changed paths pass (once a test runner exists in the repo).
+- [ ] `npm test` passes (all discovered `*.test.ts(x)` files; add a test for new logic).
+- [ ] `npm run build` passes when the slice touches the app.
 - [ ] At least one **negative-path** check for new logic (invalid input is rejected).
 - [ ] Prisma schema changes include a migration + a rollback note.
 - [ ] Evidence attached to the PR: changed-file list + gate output (+ screenshot for UI).
@@ -92,12 +94,21 @@ To stop early: `unset MOTUS_QA_LOOP`.
 
 ---
 
+## Tests and CI
+
+- `npm test` runs [`scripts/run-tests.mjs`](../scripts/run-tests.mjs), which discovers every
+  `*.test.ts` / `*.test.tsx` under `lib/`, `components/`, `app/`, and `scripts/`.
+- There is no hard-coded file list: adding a test file wires it into the gate automatically.
+- CI (`.github/workflows/ci.yml`) runs: lint → typecheck → `npm test` → `prisma validate` → build.
+- The build does not need a live database: the sitemap degrades to static routes and the
+  therapist listing pages render on demand.
+
+---
+
 ## Do we need a harness? (decision)
 
-**Not yet.** Native Cursor (stop/subagentStop hooks + subagents) is enough while work is:
-single-repo, PR-centric, with deterministic local checks.
-
-Reach for an external harness (CI orchestrator / eval harness) only when you need:
+**Not yet.** Native Cursor (stop/subagentStop hooks + subagents) plus `node:test` is enough while
+work is single-repo and PR-centric. Reach for an external harness only when you need:
 
 - cross-repo or multi-service orchestration,
 - unattended long-running runs with retries/SLAs,
@@ -108,33 +119,47 @@ Rule of thumb: **if failure impact > cost of setup**, add the harness. Until the
 
 ---
 
+## Specs index
+
+Grouped by track. Status per slice lives in the spec header and in [STATUS.md](./STATUS.md);
+this index only tells you where each spec is.
+
+| Track | Specs |
+|-------|-------|
+| **Platform / workflow** | [platform-harmonize](./platform-harmonize.md) · [STATUS](./STATUS.md) · [auth-provider-agnostic](./auth-provider-agnostic.md) · [_TEMPLATE](./_TEMPLATE.md) |
+| **Academy** | [platform-decision](./academy-platform-decision.md) (LOCKED) · [admin-courses](./academy-admin-courses.md) · [admin-lessons](./academy-admin-lessons.md) · [public-catalog](./academy-public-catalog.md) · [learner-player](./academy-learner-player.md) · [lesson-progress](./academy-lesson-progress.md) · [media-upload](./academy-media-upload.md) · [marketing-funnel-sdd](./academy-marketing-funnel-sdd.md) |
+| **PSM / therapy** | [psm-intake-v1](./psm-intake-v1.md) · [psm-public-profile](./psm-public-profile.md) · [psm-availability-calendar-sync](./psm-availability-calendar-sync.md) · [therapy-payments-clabe-connect](./therapy-payments-clabe-connect.md) |
+| **Safety (Oct 2026)** | [slice 1 — therapy rooms](./safety-slice-1-therapy-rooms.md) · [slice 2 — Psychat session/consent](./safety-slice-2-psychat.md) · [slice 3 — onboarding wallet](./safety-slice-3-onboarding-wallet.md) · [slice 4 — inbox/platform keys](./safety-slice-4-inbox-platform-keys.md) · [slice 5 — admin session/audit](./safety-slice-5-admin-session-audit.md) · [slice 6 — program gap](./safety-slice-6-program-gap.md) · [slice 7 — bitácora ciphertext](./safety-slice-7-bitacora-ciphertext.md) |
+| **Chat data / portability** | [roadmap](./chat-data-roadmap.md) · [slice 1 — bitácora export](./chat-data-slice-1-bitacora-export.md) · [slice 2 — Psychat archive](./chat-data-slice-2-psychat-archive-export.md) · [slice 3 — FHIR summary](./chat-data-slice-3-consented-summary-fhir.md) · [slice 4 — training copy](./chat-data-slice-4-training-copy-consent.md) · [slice 5 — RootRouter/enclave](./chat-data-slice-5-rootrouter-enclave.md) |
+| **Psychat** | [usuario — exploración](./psychat-usuario-modo-exploracion.md) · [PSM lock-in](./psychat-psm-supervisor-lockin.md) · [PSM slice 1](./psychat-psm-slice-1-venice-routing.md) · [PSM slice 2](./psychat-psm-slice-2-ui-truth.md) · [PSM slice 3](./psychat-psm-slice-3-usuario-routing-e.md) |
+| **Ramps / payments** | [Ripio widget](./ripio-ramps-widget.md) · [Ripio wFiat](./ripio-wfiat-pagos.md) |
+| **Legacy** | [motusai-chat-ui](./motusai-chat-ui.md) — MotusAI era; `MotusAI` is now Psychat |
+
+Plans (not slices): [SDD-safety-plan](../docs/specs/SDD-safety-plan.md) ·
+[SDD-chat-data](../docs/specs/SDD-chat-data.md).
+
+---
+
 ## Files in this system
 
 | File | Purpose |
 |------|---------|
-| `specs/platform-harmonize.md` | **ACTIVE** platform SDD: Feng Shui taxonomy, phased harmonize, auth/wallet, data layer. |
-| `AGENTS.md` | Agent entry: Layer 0 + read order + workspace path. |
+| `specs/STATUS.md` | **Only** status dashboard: shipped / in flight / next. |
+| `specs/platform-harmonize.md` | Platform truth: taxonomy, phases, decisions. |
 | `specs/_TEMPLATE.md` | SDD spec template. Copy per feature. |
-| `specs/academy-platform-decision.md` | **LOCKED** platform decision: EduPath-LMS as primary OSS reference. |
-| `specs/academy-admin-courses.md` | Slice 1: admin course CRUD for the Academy. |
-| `specs/academy-admin-lessons.md` | Slice 2: admin module + lesson editor (depends on slice 1). |
-| `specs/academy-public-catalog.md` | Slice 3: wire public `/academia` to DB (depends on slices 1–2). |
-| `specs/academy-learner-player.md` | Slice 4: enrollment + lesson player (depends on slice 3). |
-| `specs/academy-lesson-progress.md` | Slice 5: per-lesson progress in DB (replaces localStorage). |
-| `specs/academy-media-upload.md` | Slice 6: lesson video/PDF upload via Supabase storage. |
-| `specs/academy-marketing-funnel-sdd.md` | **ACTIVE** living SDD: market audit + Génesis/Praxis funnel backlog (MF-01…). |
-| `specs/motusai-chat-ui.md` | MotusAI cinematic chat + RootRouter investigate→QA loop. |
-| `specs/psm-intake-v1.md` | PSM intake wizard polish spec (frozen journey). |
-| `specs/auth-provider-agnostic.md` | Wallet/provider abstraction slice (facade + key migrations). |
-| `.cursor/hooks.json` | Registers the `stop` loop hook + `loop_limit`. |
-| `.cursor/hooks/qa-loop.mjs` | Deterministic QA gate + loop decision (Node, no extra deps). |
-| `.github/workflows/ci.yml` | CI: lint, typecheck, prisma validate, build. |
+| `specs/*.md` | Slice specs (see index above). |
+| `scripts/run-tests.mjs` | Discovers and runs every `*.test.ts(x)`. |
+| `.cursor/hooks.json` + `.cursor/hooks/qa-loop.mjs` | Stop-hook loop + deterministic gate. |
+| `.github/workflows/ci.yml` | CI: lint, typecheck, test, Prisma validate, build. |
+| `AGENTS.md` | Agent entry: read order + gate. |
+| `docs/specs/SDD-safety-plan.md` | Clinical-safety plan (locked). |
+| `docs/specs/SDD-chat-data.md` | Portability/chat-data plan (locked). |
+| `docs/architecture/psychat-supervisor-product.md` | Psychat PSM product contract. |
 
 ---
 
-## Rollout (suggested)
+## Maintaining this index
 
-- **Week 1:** specs + DoD + lint/typecheck gate (this pack).
-- **Week 2:** acceptance-criterion → test mapping; 1 negative test per slice.
-- **Week 3:** read-only checker subagent in the loop + a UI smoke check.
-- **Week 4:** small eval/regression set for the top 5 Academy journeys.
+- When you add or rename a spec, add it to the right track above.
+- When a slice ships, update its header **and** [STATUS.md](./STATUS.md).
+- Do not duplicate status tables here or in `platform-harmonize.md`.

@@ -1,7 +1,7 @@
 # Chat-data — documentación (slices 1–5)
 
 > Índice para humanos, auditoría y futuro **ingest MCP/RAG** (GitBook / docs auto-hosteados).  
-> Specs con AC: [`specs/chat-data-roadmap.md`](../specs/chat-data-roadmap.md) · Plan maestro: [`docs/specs/SDD-chat-data.md`](../specs/SDD-chat-data.md)
+> Specs con AC: [`specs/chat-data-roadmap.md`](../../specs/chat-data-roadmap.md) · Plan maestro: [`docs/specs/SDD-chat-data.md`](../specs/SDD-chat-data.md) · Estado: [`specs/STATUS.md`](../../specs/STATUS.md)
 
 ## Para usuarios (Psychat / datos)
 
@@ -19,11 +19,11 @@ UI corta (sin terminal): ruta de app **`/psychat/memoria-contexto`**.
 
 | # | Spec SHIPPED | Entrega |
 |---|--------------|---------|
-| 1 | [slice-1-bitacora-export](../specs/chat-data-slice-1-bitacora-export.md) | Export wallet bitácora |
-| 2 | [slice-2-psychat-archive](../specs/chat-data-slice-2-psychat-archive-export.md) | Archivo Psychat cifrado |
-| 3 | [slice-3-consented-summary](../specs/chat-data-slice-3-consented-summary-fhir.md) | Resumen FHIR al PSM |
-| 4 | [slice-4-training-copy](../specs/chat-data-slice-4-training-copy-consent.md) | Entrenamiento consentido |
-| 5 | [slice-5-rootrouter](../specs/chat-data-slice-5-rootrouter-enclave.md) | RootRouter + enclaves |
+| 1 | [slice-1-bitacora-export](../../specs/chat-data-slice-1-bitacora-export.md) | Export wallet bitácora |
+| 2 | [slice-2-psychat-archive](../../specs/chat-data-slice-2-psychat-archive-export.md) | Archivo Psychat cifrado |
+| 3 | [slice-3-consented-summary](../../specs/chat-data-slice-3-consented-summary-fhir.md) | Resumen FHIR al PSM |
+| 4 | [slice-4-training-copy](../../specs/chat-data-slice-4-training-copy-consent.md) | Entrenamiento consentido |
+| 5 | [slice-5-rootrouter](../../specs/chat-data-slice-5-rootrouter-enclave.md) | RootRouter + enclaves |
 
 ## Tres ideas que no mezclar
 

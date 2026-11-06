@@ -9,7 +9,7 @@
 
 ### En Next.js (Tu aplicación)
 - **Variable:** `JITSI_APP_SECRET` (en `.env.local`)
-- **Ubicación:** `/Users/main/motusdao-hub/.env.local`
+- **Ubicación:** `.env.local` en la raíz del repo (junto a `next.config.ts`)
 - **Uso:** Para generar tokens JWT que el servidor Jitsi validará
 
 ## ⚠️ IMPORTANTE: Ambos deben tener el MISMO valor

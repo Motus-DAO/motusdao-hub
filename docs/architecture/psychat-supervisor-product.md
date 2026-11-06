@@ -2,7 +2,7 @@
 
 > **No es el dispositivo clínico.** Los textos aprobados viven en `docs/architecture/psychat-clinical-device-canonical/` y `lib/psychat-prompt.ts` (`PSYCHAT_SUPERVISOR`, etc.). Este doc fija **cómo debe comportarse el Hub** para que el dispositivo llegue intacto al modelo y a la UI.
 >
-> **Relacionado:** acompañamiento digital **usuario** → `specs/psychat-usuario-modo-exploracion.md` (otro contrato; no mezclar con PSM).
+> **Estado vivo:** `specs/STATUS.md`. **Relacionado:** acompañamiento digital **usuario** → `specs/psychat-usuario-modo-exploracion.md` (otro contrato; no mezclar con PSM).
 
 ---
 

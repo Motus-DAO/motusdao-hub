@@ -1,105 +1,92 @@
-# Agent Handoff — MotusDAO Hub Academy
+# Agent handoff — MotusDAO Hub
 
-> Works in **Cursor Agents** (recommended) or Codex. Open the correct workspace first.
+> Short, current handoff. Deep detail lives in [AGENTS.md](../AGENTS.md),
+> [specs/platform-harmonize.md](./platform-harmonize.md),
+> [specs/STATUS.md](./STATUS.md) and [specs/README.md](./README.md).
 
-## Correct workspace path
+## Workspace
 
-```
-/Users/main/MotusDAO-Hub-Psi/motusdao-hub
-```
-
-Verify:
+The git root of this checkout. Verify with:
 
 ```bash
-ls specs/academy-learner-player.md package.json prisma/schema.prisma
+pwd
+git rev-parse --show-toplevel
+ls specs/STATUS.md package.json prisma/schema.prisma
 ```
 
-**Not** `/Users/main/Documents/Coding MotusDAO`.
-
----
-
-## Cursor Agents + RootRouter (token savings)
-
-RootRouter MCP is wired in `.cursor/mcp.json`. **Reload Cursor** (or toggle MCP in Settings) after pulling.
-
-Tools: `index_repo`, `record_context`, `select_context`, `stats`.
-
-### Required workflow (every slice)
-
-1. **`index_repo`** — path: `/Users/main/MotusDAO-Hub-Psi/motusdao-hub` (re-index if repo changed a lot).
-2. **`select_context`** — query = active spec title + acceptance criteria; `tokenBudget` 4000.
-3. **Read only** the returned chunks + the active spec file (do not `@` whole folders).
-4. Implement; use `Read`/`Grep` only for files not covered by selection.
-5. **`stats`** — report tokens saved at end of task.
-
-If RootRouter MCP is unavailable: proceed with spec + targeted `Grep`/`Read` only (no full-repo exploration).
-
----
+Do not hardcode another machine's path. UI copy and most user-facing docs are in Spanish; specs
+mix Spanish and English — match the file you are editing.
 
 ## Read order (mandatory)
 
-1. `specs/academy-platform-decision.md` — LOCKED
-2. Active slice spec (e.g. `specs/academy-learner-player.md`)
-3. `specs/README.md` — loop + QA + DoD
+1. `AGENTS.md` — read order, gate, placement rules
+2. `specs/platform-harmonize.md` — taxonomy and phases
+3. `specs/STATUS.md` — shipped / in flight / next
+4. Active slice spec (`$MOTUS_ACTIVE_SPEC` or the one named in the task)
+5. `specs/README.md` — loop, QA, Definition of Done
 
----
+`docs/specs/SDD-safety-plan.md` and `docs/specs/SDD-chat-data.md` are **LOCKED plans**, not status.
+If they disagree with `STATUS.md`, `STATUS.md` wins for current state.
 
-## Slice 4 — Cursor Agents prompt (copy-paste)
+## Where we are (nov-2026)
 
-```
-Workspace: /Users/main/MotusDAO-Hub-Psi/motusdao-hub
-Verify: ls specs/academy-learner-player.md components/academy/PublicCourseDetail.tsx app/api/enrollments/route.ts
+- **Shipped in Oct 2026:** safety slices 1–7, chat-data slices 1–5, Academia with Stripe
+  Checkout, SPEI/CLABE for therapy, beta legal pages, encrypted Bitácora.
+- **Build was red** on `main`: 3 TypeScript errors plus DB-dependent prerender. Both are fixed
+  in the 2026-11-06 refresh; `npm test` now runs every test file and CI runs it too.
+- **In flight:** Psychat PSM slice 2 (block RootRouter proxy for PSM), Psychat slice 3
+  (usuario exploración only on trigger), Stripe Connect (parked on a local branch), Phala
+  enclave fases 2–3 (decision locked, not built).
+- Full table: [specs/STATUS.md](./STATUS.md).
 
-Prerequisite: slices 1–3 complete.
+## Quality gate
 
-## RootRouter (required — do this first)
-Use MCP server `rootrouter`:
-1. index_repo — path: /Users/main/MotusDAO-Hub-Psi/motusdao-hub
-2. select_context — query: "Academy slice 4 learner enrollment lesson player Enrollment progress contentMDX gated API PublicCourseDetail", tokenBudget: 4000
-3. Read ONLY select_context results + specs/academy-learner-player.md (do not @ folders or run broad explore)
-
-## Spec
-Read: specs/academy-platform-decision.md, specs/academy-learner-player.md, specs/README.md
-Implement specs/academy-learner-player.md ONLY.
-
-## Scope
-- Replace "Próximamente" CTA in PublicCourseDetail with enroll flow
-- POST /api/enrollments with session userId (existing route)
-- Paid courses: enroll without payment in v1 (price label only)
-- Player: /academia/[slug]/leccion/[lessonSlug]
-- Gated API: GET /api/academy/courses/[slug]/lessons/[lessonSlug]
-  (content if isFreePreview OR enrolled)
-- Render contentMDX with marked; embed videoUrl
-- "Marcar como completada" → Enrollment.progress %; completed at 100%
-- Free-preview lessons without enrollment; auth required to enroll
-
-## Rules
-- Preserve Academia design system
-- No per-lesson progress table, no payments, no admin changes
-- Non-goals = hard stops
-- EduPath = reference only
-
-## QA
-npm run lint && npx tsc --noEmit
-Verify acceptance criteria 1–8 in the spec.
-DEV_BYPASS_ADMIN_AUTH does NOT fake learner session; for API QA use admin bypass + seed userId.
-
-## Done
-Call rootrouter stats and report tokens saved.
-Evidence: screenshot enrolled course + lesson player with content.
+```bash
+npm run lint
+npx tsc --noEmit
+npm test
+npm run build
 ```
 
----
+CI runs lint → typecheck → `npm test` → `prisma validate` → build. The build must pass with the
+CI placeholder `DATABASE_URL`; do not reintroduce a DB query in the prerender path.
+
+## Current focus
+
+1. **Psychat PSM slice 2:** in `components/ui/animated-ai-chat.tsx`, `runHubChat` still honors
+   `useRootRouterProxy` for `role === 'psm'`. Gate it or warn clearly. Verify the 502 error path.
+2. **Psychat PSM slice 3:** `resolvePsychatStructuredMode` returns `'exploracion'` for every
+   `usuario` turn (`lib/psychat-prompt.ts`). Restore `wantsExploracionMode(userText)` so only a
+   trigger produces JSON.
+3. **Verify the deploy:** confirm production includes `4f04131` (PSM prose + report button) and
+   this docs/build refresh.
+
+## Psychat quick map
+
+| Surface | Behavior |
+|---------|----------|
+| PSM conversation | `mode: supervisor_chat`, prose, Hub `/api/chat` |
+| PSM report | Button sends `requestStructuredReport: true` → `supervisor_report` |
+| Usuario exploration | JSON (`eco`, `pregunta`, `abierto`, `limite`, `puenteHumano`) on trigger — **currently every turn; fix in slice 3** |
+| Providers | `AI_PROVIDER=openai` (default) or `venice` (TEE/E2EE); PSM uses Qwen supervisor TEE |
+| RootRouter | Optional **local proxy** for context memory; **not** an editor MCP in this repo |
 
 ## Dev admin bypass (local only)
 
 `.env.local`: `DEV_BYPASS_ADMIN_AUTH=1` — restart `npm run dev`. Dev only; remove before deploy.
+It does not fake a learner session.
 
 ## Optional QA loop
 
 ```bash
 export MOTUS_QA_LOOP=1
-export MOTUS_ACTIVE_SPEC=specs/academy-learner-player.md
+export MOTUS_ACTIVE_SPEC=specs/psychat-psm-slice-3-usuario-routing-e.md
 ```
 
-Requires `.cursor/hooks.json` in Cursor.
+Requires `.cursor/hooks.json` in Cursor. The hook is a no-op without `MOTUS_QA_LOOP=1`.
+
+## Historical
+
+This file used to carry a copy-paste prompt for Academy slice 4 (paid courses enrolled without
+payment). That shipped with Stripe Checkout on 28-oct-2026 and the prompt is obsolete. Use
+`git log -- specs/HANDOFF.md` and `archive/` for old handoffs; do not treat them as current.
