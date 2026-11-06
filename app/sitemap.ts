@@ -6,15 +6,26 @@ import { PSM_ESPECIALIDADES, PSM_PAISES } from '@/lib/intake/psm-intake-options'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, '')
 
-  const profiles = await prisma.pSMProfile.findMany({
-    where: {
-      slug: { not: null },
-      verificationStatus: 'approved',
-      introVideoApproved: true,
-      isAcceptingPatients: true,
-    },
-    select: { slug: true, updatedAt: true },
-  })
+  // The build must not fail when Postgres is unreachable (CI uses a placeholder
+  // DATABASE_URL, and a bad certificate should not block a deploy). Serving the
+  // static routes is better than failing the whole prerender.
+  let profiles: Array<{ slug: string | null; updatedAt: Date }> = []
+  try {
+    profiles = await prisma.pSMProfile.findMany({
+      where: {
+        slug: { not: null },
+        verificationStatus: 'approved',
+        introVideoApproved: true,
+        isAcceptingPatients: true,
+      },
+      select: { slug: true, updatedAt: true },
+    })
+  } catch (error) {
+    console.warn(
+      '[sitemap] PSM profiles unavailable; serving static routes only:',
+      error instanceof Error ? error.message : error
+    )
+  }
 
   const profileEntries: MetadataRoute.Sitemap = profiles
     .filter((p): p is { slug: string; updatedAt: Date } => Boolean(p.slug))

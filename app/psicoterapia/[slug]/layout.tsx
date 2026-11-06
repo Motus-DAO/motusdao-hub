@@ -15,6 +15,10 @@ type LayoutProps = {
   params: Promise<{ slug: string }>
 }
 
+// Profiles are live data. Rendering on demand keeps the build independent from
+// Postgres (CI runs without a database) and avoids stale metadata/JSON-LD.
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
   const { slug } = await params
 

@@ -13,9 +13,10 @@ import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 
 type PageProps = { params: Promise<{ specialty: string }> }
 
-export function generateStaticParams() {
-  return PSM_ESPECIALIDADES.map((s) => ({ specialty: s.value }))
-}
+// Therapist listings are live data. Rendering on demand keeps the build
+// independent from Postgres (CI runs without a database) and avoids caching a
+// stale list until the next deploy.
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: PageProps) {
   const { specialty } = await params
