@@ -30,7 +30,7 @@ Si toca la app, además `npm run build`. Si toca el schema, migración + nota de
 | Seguridad clínica (safety 1–7) | **Shipped** | [specs](./safety-slice-1-therapy-rooms.md) · Oct 22–27 |
 | Portabilidad de datos (chat-data 1–5) | **Shipped** (fase 1 del enclave) | [roadmap](./chat-data-roadmap.md) · Oct 27–28 |
 | Academia + Stripe | **Shipped** / cobrando | [admin](./academy-admin-courses.md) · `862e2b6` |
-| Pagos de terapia | **CLABE shipped**; Connect parked | [spec](./therapy-payments-clabe-connect.md) · `3e6a1d4` |
+| Pagos (terapia + P2P) | **Stripe/CLABE/P2P live**; Ripio mock; Textile wired | [README §Pagos](../README.md#payments-and-self-custody) · [CLABE](./therapy-payments-clabe-connect.md) · `3e6a1d4` |
 | Psychat PSM (supervisor) | **In flight** | [lock-in](./psychat-psm-supervisor-lockin.md) · `4f04131` |
 | Psychat usuario (exploración) | **Parcial** (regresión de routing) | [spec](./psychat-usuario-modo-exploracion.md) · slice 3 |
 | Video / Jitsi | **Shipped** (servidor privado) | [runbook](../docs/runbooks/VERCEL_VIDEOCHAT_ENV.md) |
@@ -75,11 +75,22 @@ Catálogo público, player, progreso, edición admin y uploads están implementa
 28-oct los cursos pagados usan Stripe Checkout (`862e2b6`). Los headers de los specs
 `academy-admin-*` siguen en **DRAFT** aunque el flujo existe; es deuda de documentación, no de código.
 
-### 2.4 Pagos de terapia
+### 2.4 Pagos: terapia, P2P y rampas
 
-La CLABE/SPEI está en `main` (`3e6a1d4`): el profesional la captura en `/perfil`, el paciente la
-ve solo con cita activa, y cada aviso es una fila en `session_transfer_events`. Stripe Connect
-está **estacionado** en la rama local `feat/stripe-connect-therapy` (`30af159`), fuera de GitHub.
+**Terapia:** la CLABE/SPEI está en `main` (`3e6a1d4`): el profesional la captura en `/perfil`, el
+paciente la ve solo con cita activa, y cada aviso es una fila en `session_transfer_events`. Stripe
+Connect está **estacionado** en la rama local `feat/stripe-connect-therapy` (`30af159`), fuera de
+GitHub.
+
+**P2P (`/pagos`):** el usuario envía y recibe CELO, stablecoins y wFIAT desde su wallet
+**autocustodiada en WaaP (Human.tech)**; hay QR de recepción, escáner de QR, resolución de
+nombres `.motus` y link al explorador. Motus no custodia los fondos ni las llaves.
+
+**Rampas:** Ripio está integrado de punta a punta (widget auth + URL hospedada) pero corre en
+**modo mock** hasta que existan `RIPIO_CLIENT_ID` / `RIPIO_CLIENT_SECRET`; **no está activo**.
+Textile FX v2 está cableado para swaps `wARS`/`wBRL` ↔ `USDT` (RFQ público, sin llave de Motus).
+Los handlers legacy de Transak / Mt Pelerin / Privy siguen en el código pero no se muestran en el
+grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 
 ### 2.5 Psychat
 
@@ -105,6 +116,7 @@ está **estacionado** en la rama local `feat/stripe-connect-therapy` (`30af159`)
 | **Psychat usuario slice 3** | Restaurar exploración **solo con trigger**; hoy cada turno devuelve JSON | Contradice el spec de usuario y empeora la conversación |
 | **Stripe Connect terapia** | Cuenta nueva de Stripe + RFC, rebase y separar llaves | Rama local-only (`30af159`); no fusionar a ciegas |
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
+| **Ripio Ramps** | Credenciales partner + `RIPIO_MOCK=false` para salir de mock | El flujo existe, pero hoy es demo; no prometer on/off-ramp fiat |
 
 ---
 
@@ -120,6 +132,8 @@ está **estacionado** en la rama local `feat/stripe-connect-therapy` (`30af159`)
    nav PSM. Hoy son mock con datos de 2024.
 5. **Política de migraciones:** `db:deploy` usa `prisma db push`; no hay paso `migrate deploy` en
    el deploy. Decidir y documentar antes del próximo cambio de schema.
+6. **Ripio:** activar con credenciales partner o esconder el proveedor con
+   `NEXT_PUBLIC_RIPIO_RAMPS_ENABLED=false`. No dejar un botón de on/off-ramp en mock sin aviso.
 
 ---
 
@@ -133,6 +147,7 @@ está **estacionado** en la rama local `feat/stripe-connect-therapy` (`30af159`)
 | Stripe Connect en rama local | Bus factor y drift con `main` | Documentado en el spec |
 | Sin e2e | El gate cubre unidades, no flujos completos | `npm test` es node:test |
 | Specs de Academia en DRAFT | El índice subestima lo shipped | Solo documentación |
+| Ripio / Transak / Mt Pelerin no activos | No hay on/off-ramp fiat real | Ripio en mock; legacy fuera del grid |
 
 ---
 
@@ -183,6 +198,13 @@ Gate final (2026-11-06): lint 0 errores / 22 warnings · `tsc` verde · 33 archi
 
 Rollback: cada commit es independiente; `git revert <sha>` revierte un slice sin tocar los demás.
 El tag `harmonize-baseline-2026-07-01` sigue siendo el baseline histórico.
+
+### Addendum — pagos (2026-11-06)
+
+Se documentaron `/pagos`, el QR de envío/recepción, la autocustodia WaaP y el estado real de las
+rampas en `README.md`, `env.example` y este dashboard: Ripio está integrado pero en **mock** (no
+activo), Textile FX está **cableado** para `wARS`/`wBRL`, y Transak/Mt Pelerin/Privy quedaron como
+handlers legacy fuera del grid. Commit: este commit. No cambia el gate.
 
 ---
 

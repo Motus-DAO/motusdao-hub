@@ -16,6 +16,7 @@ Supabase Postgres, Stripe billing, private video, and consent/audit trails.
 |------|----------------|
 | **Psychat** | PSM supervisor (prose by default, structured report on demand) and `usuario` exploration; Venice TEE / browser E2EE; encrypted chat archive; optional local RootRouter context |
 | **Psicoterapia** | Public therapist profiles, availability, booking, matching, private Jitsi video, and SPEI/CLABE payment confirmation |
+| **Pagos** | Self-custodial WaaP wallet, QR send/receive of CELO, stablecoins and Ripio wFIAT, `.motus` recipient names, Ripio on/off-ramp (mock until partner keys) and Textile FX swaps |
 | **Academia** | Public catalog, gated lessons, progress tracking, admin course/module/lesson editor with media uploads, Stripe Checkout for one-time or membership access |
 | **Bitácora** | Personal journal encrypted in the browser (`motus-safe-notes`); export and recovery on another device with the same wallet |
 | **Portability** | Consented FHIR summary for a matched professional, and a consented readable copy for training |
@@ -30,9 +31,50 @@ Supabase Postgres, Stripe billing, private video, and consent/audit trails.
 - **Data:** Prisma ORM → **Supabase Postgres** (see [`docs/architecture/data-layer.md`](docs/architecture/data-layer.md))
 - **Storage / RAG:** Supabase Storage + pgvector
 - **AI:** provider selected by `AI_PROVIDER` (OpenAI by default, Venice for TEE/E2EE); optional local RootRouter proxy for Psychat context
-- **Payments:** Stripe Checkout + webhooks; SPEI/CLABE for therapy sessions
+- **Payments:** Stripe Checkout + webhooks (Academia); SPEI/CLABE (therapy); Celo transfers with QR (Pagos); Ripio/Textile ramp integrations (status below)
 - **Video:** private Jitsi (`jitsi.motusdao.org`); the Hub mints tokens
-- **Auth / chain:** SIWE sessions, Viem, Celo
+- **Auth / chain:** WaaP (Human.tech) self-custody + SIWE sessions, Viem, Celo
+
+## Payments and self-custody
+
+`/pagos` is the user's wallet surface. It is **self-custodial**: the user's WaaP
+(Human.tech) wallet signs every transfer, and Motus does not hold wallet funds or private keys.
+WaaP provides the EOA through an EIP-1193 provider and 2PC/Human Keys security; the Hub only
+builds and submits the transaction.
+
+- **Send/receive:** CELO, USDT, USDC, USDm, EURm, BRLm, COPm, CADm, PSY, MOT, and Ripio wFIAT
+  (`wARS`, `wBRL`, `wMXN`, `wCOP`, `wPEN`, `wCLP`) on Celo.
+- **QR:** generate a receive QR for the connected wallet; scan a QR to prefill the recipient
+  (and the amount when the QR includes `?amount=`).
+- **Recipients:** `0x…` address or a `.motus` name (Motus Name Service), with reverse lookup.
+- **Receipts:** every transfer returns a Celo Explorer link. Gas sponsorship is handled by
+  WaaP's Gas Tank when it is configured; otherwise the user pays gas.
+
+### Payment rails and current status
+
+| Rail | Used for | Status |
+|------|----------|--------|
+| **Stripe Checkout** | Academy courses and memberships | Live |
+| **SPEI / CLABE** | Therapy sessions, paid directly to the professional | Live; manual confirmation |
+| **Celo transfer + QR** | P2P and professional payments | Live |
+| **WaaP (Human.tech)** | Self-custodial wallet and signing | Live |
+| **Ripio Ramps Widget** | Fiat on-ramp / off-ramp | **Connected, not active**: runs an in-app mock until partner credentials exist |
+| **Textile FX (RFQ v2)** | `wARS` / `wBRL` ↔ `USDT` swaps | **Wired** to the public RFQ; no Motus API key required |
+| **Transak / Mt Pelerin / Privy** | Legacy on-ramp handlers | Code present; not exposed in the current provider grid |
+
+Ripio is a partner-only API. Without `RIPIO_CLIENT_ID` / `RIPIO_CLIENT_SECRET`, the UI uses a
+demo wizard and never calls the live widget. To activate it:
+
+```env
+RIPIO_CLIENT_ID=your_partner_client_id
+RIPIO_CLIENT_SECRET=your_partner_client_secret   # server only
+RIPIO_ENV=sandbox                                 # or production
+RIPIO_MOCK=false
+# NEXT_PUBLIC_RIPIO_RAMPS_ENABLED=false           # hide the provider entry
+```
+
+Details: [Ripio Ramps spec](specs/ripio-ramps-widget.md) ·
+[wFIAT + Textile spec](specs/ripio-wfiat-pagos.md).
 
 ## Repo layout
 
