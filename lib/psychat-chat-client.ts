@@ -10,6 +10,14 @@ export type PostPsychatHubChatOptions = {
   requestStructuredReport?: boolean
 }
 
+/** RAG citations returned by `POST /api/chat` (non-PSM turns only). */
+export type PsychatRagSource = {
+  sourcePath: string
+  title: string
+  namespace: string
+  similarity: number
+}
+
 export type PsychatChatApiPayload = {
   error?: string
   code?: string
@@ -27,7 +35,7 @@ export type PsychatChatApiPayload = {
   limite?: string
   puenteHumano?: string
   handoffSuggested?: boolean
-  ragSources?: unknown[]
+  ragSources?: PsychatRagSource[]
   structuredFallback?: boolean
 }
 

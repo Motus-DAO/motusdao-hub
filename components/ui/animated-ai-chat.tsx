@@ -25,6 +25,7 @@ import {
   formatPsychatChatNetworkError,
   postPsychatHubChat,
   type PsychatChatApiPayload,
+  type PsychatRagSource,
 } from '@/lib/psychat-chat-client'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -120,12 +121,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 )
 Textarea.displayName = 'Textarea'
 
-interface RagSource {
-  sourcePath: string
-  title: string
-  namespace: string
-  similarity: number
-}
+type RagSource = PsychatRagSource
 
 interface ChatMessage {
   id: string

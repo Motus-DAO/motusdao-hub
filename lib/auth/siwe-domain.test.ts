@@ -8,6 +8,16 @@ import {
 } from './siwe-domain'
 import { AuthError } from './errors'
 
+/** `NODE_ENV` is readonly in `@types/node`; tests need to toggle it at runtime. */
+function setNodeEnv(value: string | undefined) {
+  const env = process.env as Record<string, string | undefined>
+  if (value === undefined) {
+    delete env.NODE_ENV
+  } else {
+    env.NODE_ENV = value
+  }
+}
+
 describe('SIWE domain allowlist', () => {
   it('issues domain from NEXT_PUBLIC_APP_URL when set', () => {
     const previous = process.env.NEXT_PUBLIC_APP_URL
@@ -24,7 +34,7 @@ describe('SIWE domain allowlist', () => {
     const previousUrl = process.env.NEXT_PUBLIC_APP_URL
     const previousEnv = process.env.NODE_ENV
     process.env.NEXT_PUBLIC_APP_URL = 'https://app.motusdao.org'
-    process.env.NODE_ENV = 'development'
+    setNodeEnv('development')
     try {
       assert.equal(
         resolveSiweIssueDomain('http://localhost:3000'),
@@ -33,7 +43,7 @@ describe('SIWE domain allowlist', () => {
       assert.equal(getSiweIssueDomain(), 'app.motusdao.org')
     } finally {
       process.env.NEXT_PUBLIC_APP_URL = previousUrl
-      process.env.NODE_ENV = previousEnv
+      setNodeEnv(previousEnv)
     }
   })
 
