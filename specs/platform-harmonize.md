@@ -5,7 +5,11 @@
 > Purpose: turn a vibe-coded monolith into a production-ready platform **without breaking what works today**.
 > This is the persistent memory for humans and agents across iterations.
 >
-> **Workspace:** `/Users/main/MotusDAO-Hub-Psi/motusdao-hub`  
+> **Current state:** [STATUS.md](./STATUS.md) — shipped / in flight / next. This file is the
+> platform truth (taxonomy, phases, decisions); it does **not** keep a second status table.
+>
+> **Workspace:** the root of this checkout (`git rev-parse --show-toplevel`). Do not hardcode
+> another machine's path.
 > **Remote:** `github.com/Motus-DAO/motusdao-hub`
 
 ---
@@ -14,9 +18,9 @@
 
 ```text
 Layer 0 — Feng Shui (where files live)     → this doc + placement policy below
-Layer 1 — RootRouter (what context loads)  → specs/README.md + HANDOFF.md
+Layer 1 — Current state (what ships)       → STATUS.md
 Layer 2 — SDD slices (what we build)       → specs/<feature>.md
-Layer 3 — QA loop (when it's done)         → .cursor/hooks/qa-loop.mjs
+Layer 3 — Workflow + QA loop (when done)   → specs/README.md + .cursor/hooks/qa-loop.mjs
 ```
 
 **Prime directive:** No durable work outside the taxonomy. Treat `pwd` as evidence, not permission.
@@ -25,9 +29,11 @@ Layer 3 — QA loop (when it's done)         → .cursor/hooks/qa-loop.mjs
 
 ## 0. Restore point — do this before any harmonize phase
 
-You have a **working app** (Academy, PSM intake, MotusAI RAG, onboarding). Every harmonize phase starts from a tagged baseline so you can roll back in one command.
+You have a **working app** (Academy, PSM intake, Psychat, onboarding). Every harmonize phase starts from a tagged baseline so you can roll back in one command.
 
-### 0.1 Current state (as of 2026-07-01)
+### 0.1 Historical snapshot — state at 2026-07-01 (do not use as current)
+
+> Kept for rollback context only. Current state: [STATUS.md](./STATUS.md).
 
 - Branch: `main` @ `4e31fa2` (synced with `origin/main`)
 - **Uncommitted changes:** ~19 files (onboarding UI polish) — commit or stash before tagging
@@ -36,12 +42,12 @@ You have a **working app** (Academy, PSM intake, MotusAI RAG, onboarding). Every
 ### 0.2 Baseline procedure (human runs once)
 
 ```bash
-cd /Users/main/MotusDAO-Hub-Psi/motusdao-hub
+cd "$(git rev-parse --show-toplevel)"
 
 # 1. Save current working state
 git status
 git add -A
-git commit -m "chore: baseline before platform harmonize (working academy + PSM + MotusAI)"
+git commit -m "chore: baseline before platform harmonize (working academy + PSM + Psychat)"
 
 # 2. Tag immutable restore point
 git tag -a harmonize-baseline-2026-07-01 -m "Last known-good before platform harmonize"
@@ -68,7 +74,7 @@ git revert <bad-commit-sha>
 | Rule | Why |
 |------|-----|
 | **One phase = one PR = one merge** | Easy revert |
-| Run `npm run lint && npx tsc --noEmit && npm run build` before merge | Catches breaks early |
+| Run `npm run lint && npx tsc --noEmit && npm test && npm run build` before merge | Catches breaks early |
 | Never bundle identity migration + doc moves + infra split | Too many failure modes |
 | Tag after each successful phase | `harmonize-phase-3a`, etc. |
 
@@ -78,22 +84,26 @@ git revert <bad-commit-sha>
 
 ### 1.1 One-sentence outcome
 
-**MotusDAO Hub** is a mental-health platform where people register with a wallet, take courses (Academy), connect with licensed therapists (PSM), use MotusAI for guided support, and optionally use on-chain identity (Motus Names) — with clinical-grade intake and audit trails.
+**MotusDAO Hub** is a mental-health platform where people register with a wallet, take courses
+(Academia), connect with licensed therapists (PSM), use Psychat for AI guidance and professional
+supervision, and optionally use on-chain identity (Motus Names) — with clinical-grade intake and
+audit trails.
 
-### 1.2 MVP for revenue (sell courses first)
+### 1.2 Capability priorities (scope; current status in STATUS.md)
 
-| Priority | Capability | Status | Blocker for paid courses |
-|----------|------------|--------|--------------------------|
-| P0 | User auth (wallet + email) | Working (WaaP + SIWE) | Agnostic provider cleanup |
-| P0 | Academy catalog + player + progress | Working (slices 1–4) | Stripe/payment flow hardening |
-| P0 | Admin course CRUD | Working | Keep in-repo for now |
-| P1 | PSM public profiles + booking | In progress | Not required to sell courses |
-| P1 | MotusAI chat + RAG | Working | Clinical disclaimers + rate limits |
-| P2 | Video (Jitsi) | VPS + local configs | Separate from course sales |
-| P2 | Smart wallets (ZeroDev) | Disabled / broken with WaaP | **Not required** for course sales |
-| P3 | MNS / on-chain profiles | Partial | Nice-to-have |
+| Priority | Capability | Scope note |
+|----------|------------|------------|
+| P0 | Auth (wallet + email) | WaaP + SIWE; provider-agnostic facade (`specs/auth-provider-agnostic.md`) |
+| P0 | Academy catalog + player + progress | Slices 1–6 + Stripe Checkout for paid courses |
+| P0 | Admin course CRUD | Stays in-repo until there is an ops reason to split |
+| P1 | PSM profiles, availability, booking, matching | Public profile, scheduling, private video, SPEI/CLABE |
+| P1 | Psychat (PSM supervisor + usuario) | TEE/E2EE, archive, local RootRouter context; PSM lock-in in flight |
+| P2 | Video (Jitsi) | Private server; the Hub mints tokens; no public fallback |
+| P2 | Smart wallets (ZeroDev) | Dormant behind `NEXT_PUBLIC_ENABLE_ZERODEV=false` |
+| P3 | MNS / on-chain profiles | Partial; nice-to-have |
 
-**Production gate for course sales:** P0 only. Do not block Academy launch on ZeroDev, Jitsi split, or admin app extraction.
+**Production gate for course sales:** P0 only. Do not block Academy revenue on ZeroDev, the Jitsi
+repo split, or admin app extraction. Current shipped/in-flight state: [STATUS.md](./STATUS.md).
 
 ### 1.3 Non-goals (platform harmonize)
 
@@ -297,7 +307,7 @@ Create `specs/smart-wallet-lazy-load.md` when implementing. Non-goals: fix ZeroD
 | **Solidity / MNS** | `contracts/` in repo | **`infra/contracts/` in-repo** for now; separate repo if another app needs same contracts | Low churn; Hardhat beside app is OK until second consumer |
 | **Admin UI** | `app/admin/` | **Stay in-repo** until team pain | Shared auth, Prisma, components; split when admin ≠ product deploy cadence |
 | **Academy** | In Hub | Stay | Locked in `specs/academy-platform-decision.md` |
-| **MotusAI** | In Hub | Stay | Shares auth + RAG |
+| **Psychat** | In Hub | Stay | Shares auth + RAG |
 
 ### 6.2 Jitsi split playbook (when ready)
 
@@ -346,17 +356,18 @@ Pick spec → export MOTUS_ACTIVE_SPEC → MOTUS_QA_LOOP=1
 
 Each child spec: copy `specs/_TEMPLATE.md`, ≤1 day scope, explicit non-goals.
 
-### 7.3 AGENTS.md (create in phase 3d)
+### 7.3 AGENTS.md (created in phase 3d; keep it aligned)
 
 ```markdown
 Before creating or moving files, read https://rootrouter.motusdao.org/FENG-SHUI.md
 
 Read order:
-1. specs/platform-harmonize.md
-2. Active slice spec (MOTUS_ACTIVE_SPEC)
-3. specs/README.md
+1. specs/platform-harmonize.md   (taxonomy + phases)
+2. specs/STATUS.md               (what is shipped / in flight / next)
+3. Active slice spec (MOTUS_ACTIVE_SPEC)
+4. specs/README.md               (loop + QA + DoD)
 
-Workspace: /Users/main/MotusDAO-Hub-Psi/motusdao-hub
+Workspace: git root (`git rev-parse --show-toplevel`); never hardcode another machine's path.
 ```
 
 ---
@@ -376,7 +387,7 @@ These are **not** production Postgres data (prod uses `DATABASE_URL`), but they 
 ### 8.2 Fix (safe, do in phase 3a)
 
 ```bash
-cd /Users/main/MotusDAO-Hub-Psi/motusdao-hub
+cd "$(git rev-parse --show-toplevel)"
 
 # Stop tracking without deleting local files
 git rm --cached prisma/dev.db prisma/prisma/dev.db
@@ -420,7 +431,7 @@ git log --all --full-history -- '.env' '.env.local'
 |--------|------|----------------|
 | **Prisma → Postgres** | Users, profiles, PSM, academy, sessions, payments, matching, journal | Your `DATABASE_URL` host |
 | **Supabase Storage** | Avatars, academy media, PSM intro videos | Supabase project buckets |
-| **Supabase Postgres (RAG)** | `knowledge_chunks` embeddings for MotusAI | Same or separate Supabase project |
+| **Supabase Postgres (RAG)** | `knowledge_chunks` embeddings for Psychat / Motty | Same or separate Supabase project |
 | **On-chain (Celo)** | MNS names, clinical profile NFTs | Celo network |
 
 ### 9.2 Where does Prisma Postgres live?
@@ -514,9 +525,10 @@ Before selling courses publicly:
 - [ ] Admin course publish flow documented in `docs/runbooks/academy-publish.md`
 - [ ] ZeroDev remains dormant for launch (`NEXT_PUBLIC_ENABLE_ZERODEV=false` + no global smart-account mount)
 - [ ] Terms / privacy pages live
-- [ ] Clinical disclaimer on MotusAI (if linked from Academy)
+- [ ] Clinical disclaimer on Psychat (if linked from Academy)
 - [ ] `NEXT_PUBLIC_ENABLE_ZERODEV=false` in production
 - [ ] Debug API routes disabled in production
+- [ ] `npm test` green in CI (wired 2026-11-06)
 
 **You can sell courses without:** Jitsi repo split, admin app split, smart wallets, MNS, or full doc archive.
 
@@ -542,6 +554,9 @@ Before selling courses publicly:
 | 2026-07-01 | Phase 3a complete — git hygiene, `docs/architecture/data-layer.md` |
 | 2026-07-01 | Phase 3b complete — doc taxonomy (`archive/`, `docs/runbooks/`, `infra/*/docs/`) |
 | 2026-07-01 | Phase 3d complete — GitHub CI, debug API production guard, README stack update |
+| 2026-11-06 | Build green again: typed Psychat RAG sources, writable `NODE_ENV` in tests, DB-independent prerender (sitemap + therapist listings) |
+| 2026-11-06 | `npm test` now discovers all test files; CI runs the test suite |
+| 2026-11-06 | Added [STATUS.md](./STATUS.md) as the only status dashboard; removed duplicated status tables from this doc |
 
 ---
 
