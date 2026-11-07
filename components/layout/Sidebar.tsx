@@ -14,6 +14,7 @@ import {
   User,
   Video,
   Calendar,
+  Wallet,
   X
 } from 'lucide-react'
 import Link from 'next/link'
@@ -35,6 +36,7 @@ const iconMap = {
   User,
   Video,
   Calendar,
+  Wallet,
 }
 
 export function Sidebar() {

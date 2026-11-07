@@ -3,7 +3,7 @@
 > **Único doc de estado.** El detalle vive en los specs; la taxonomía y las fases viven en
 > [platform-harmonize.md](./platform-harmonize.md). No dupliques tablas de estado en otros docs.
 >
-> **Última verificación:** 2026-11-06 · `main` + refresh de documentación · Owner: product + eng.
+> **Última verificación:** 2026-11-07 · `main` + dashboard embebido de Connect · Owner: product + eng.
 >
 > Planes: [SDD-safety-plan](../docs/specs/SDD-safety-plan.md) ·
 > [SDD-chat-data](../docs/specs/SDD-chat-data.md) ·
@@ -82,7 +82,9 @@ Catálogo público, player, progreso, edición admin y uploads están implementa
 paciente la ve solo con cita activa, y cada aviso es una fila en `session_transfer_events`. Stripe
 Connect corre sobre **Accounts v2** en `MotusDAO-Connect` (`acct_1TnbVgBffEqB2M2K`), rama
 `feat/stripe-connect-v2`: onboarding hosted, dashboard `none`, fees y pérdidas de Stripe, 10% de
-comisión y solo México. Detalle: [spec](stripe-connect-therapy-v2.md).
+comisión y solo México. El profesional gestiona su cuenta en `/cobros` con **componentes
+embebidos** (`AccountSession`): avisos, cuenta/banco, pagos, depósitos, saldos y documentos, sin
+entrar al Dashboard de Stripe. Detalle: [spec](stripe-connect-therapy-v2.md).
 
 **P2P (`/pagos`):** el usuario envía y recibe CELO, stablecoins y wFIAT desde su wallet
 **autocustodiada en WaaP (Human.tech)**; hay QR de recepción, escáner de QR, resolución de
@@ -116,7 +118,7 @@ grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 | **Psychat PSM slice 1** | Validar en producción que el deploy incluye `4f04131`; actualizar el header del spec | El spec dice READY; el código ya está en `main` |
 | **Psychat PSM slice 2** | Bloquear el proxy RootRouter para rol PSM; verificar banner de error 502 | El botón de reporte ya existe, pero el proxy sigue disponible para PSM |
 | **Psychat usuario slice 3** | Restaurar exploración **solo con trigger**; hoy cada turno devuelve JSON | Contradice el spec de usuario y empeora la conversación |
-| **Stripe Connect terapia v2** | Deploy live, E2E en test mode y UX de ingresos del PSM | Destinos live apuntan a rutas aún no desplegadas; spec `stripe-connect-therapy-v2.md` |
+| **Stripe Connect terapia v2** | Site links live + `NEXT_PUBLIC_STRIPE_CONNECT_PUBLISHABLE_KEY`, deploy y E2E en test mode | Sin site links Stripe rechaza AccountSessions live; `/cobros` ya implementa los 6 componentes embebidos |
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
 | **Ripio Ramps** | Credenciales partner + `RIPIO_MOCK=false` para salir de mock | El flujo existe, pero hoy es demo; no prometer on/off-ramp fiat |
 

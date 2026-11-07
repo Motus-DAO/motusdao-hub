@@ -130,9 +130,17 @@ STRIPE_SECRET_KEY=sk_test_…
 STRIPE_WEBHOOK_SECRET=whsec_…
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_…
 
+# Terapia con tarjeta (Stripe Connect embedded dashboard en /cobros)
+STRIPE_CONNECT_SECRET_KEY=sk_test_…
+NEXT_PUBLIC_STRIPE_CONNECT_PUBLISHABLE_KEY=pk_test_…   # misma cuenta que la secret key
+
 AI_PROVIDER=openai                      # or venice
 OPENAI_API_KEY=…                        # or VENICE_INFERENCE_KEY
 ```
+
+El panel de cobros de los profesionales usa componentes embebidos de Stripe; Stripe requiere
+configurar los *Site links* antes de emitir AccountSessions live. Ver
+[`docs/runbooks/stripe-accounts.md`](docs/runbooks/stripe-accounts.md).
 
 Auth, AI, video, and optional AA variables are documented in
 [`docs/runbooks/API_KEYS_CHECKLIST.md`](docs/runbooks/API_KEYS_CHECKLIST.md). Storage setup:

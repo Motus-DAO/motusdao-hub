@@ -54,6 +54,51 @@ export function stripeCountryCode(pais: string | null | undefined): string | nul
 
 export const PLATFORM_CONNECT_COUNTRY = 'MX'
 
+/**
+ * Components exposed to a therapist through `POST /api/stripe/connect/account-session`.
+ *
+ * The account has `dashboard: 'none'` with Stripe collecting fees and bearing
+ * losses, so Stripe is also responsible for collecting requirements. That
+ * combination requires account management and the notification banner;
+ * documents are required because Stripe charges its fees to the connected
+ * account directly.
+ */
+export function connectAccountSessionComponents(): Stripe.AccountSessionCreateParams['components'] {
+  return {
+    account_management: {
+      enabled: true,
+      features: { external_account_collection: true },
+    },
+    balances: {
+      enabled: true,
+      features: {
+        edit_payout_schedule: true,
+        external_account_collection: true,
+      },
+    },
+    documents: { enabled: true },
+    notification_banner: {
+      enabled: true,
+      features: { external_account_collection: true },
+    },
+    payments: {
+      enabled: true,
+      features: {
+        capture_payments: true,
+        dispute_management: true,
+        refund_management: true,
+      },
+    },
+    payouts: {
+      enabled: true,
+      features: {
+        edit_payout_schedule: true,
+        external_account_collection: true,
+      },
+    },
+  }
+}
+
 export type ConnectAccountStatus = {
   chargesEnabled: boolean
   payoutsEnabled: boolean

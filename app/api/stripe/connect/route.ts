@@ -13,6 +13,7 @@ import {
   type ConnectAccountStatus,
 } from '@/lib/stripe-connect'
 import { syncConnectedAccount } from '@/lib/stripe-therapy'
+import { CONNECT_PATHS } from '@/lib/stripe-connect-paths'
 
 const ACCOUNT_INCLUDE = ['configuration.merchant', 'requirements'] as const
 
@@ -52,11 +53,13 @@ export async function GET(request: NextRequest) {
     const fresh = await prisma.pSMProfile.findUnique({ where: { userId: user.id } })
     return NextResponse.json({
       connected: Boolean(fresh?.stripeConnectedAccountId),
+      accountId: fresh?.stripeConnectedAccountId ?? null,
       chargesEnabled: live?.chargesEnabled ?? Boolean(fresh?.stripeChargesEnabled),
       payoutsEnabled: live?.payoutsEnabled ?? Boolean(fresh?.stripePayoutsEnabled),
       onboardingComplete: live?.onboardingComplete ?? false,
       requirementsDue: live?.requirementsDue ?? false,
       feeBps: connectFeeBps(),
+      dashboardPath: CONNECT_PATHS.home,
     })
   } catch (error) {
     const authResponse = handleAuthError(error)
@@ -126,40 +129,58 @@ export async function POST(request: NextRequest) {
 
     const account = await loadAccount(stripe, accountId)
     const status = mapV2AccountStatus(account)
+
+    // This account has `dashboard: 'none'` and Stripe collects requirements,
+    // so Stripe does not allow `account_update` links. Once charging is
+    // enabled, requirement and bank-account changes happen in the embedded
+    // Account management component instead.
+    if (status.chargesEnabled) {
+      const destination =
+        status.requirementsDue || !status.payoutsEnabled
+          ? CONNECT_PATHS.account
+          : CONNECT_PATHS.home
+      return NextResponse.json({ url: destination, accountId, embedded: true })
+    }
+
     const origin = browserOrigin(request)
-    const refreshUrl = `${origin}/perfil?stripe_connect=refresh`
-    const returnUrl = `${origin}/perfil?stripe_connect=return`
+    const refreshUrl = `${origin}${CONNECT_PATHS.home}?stripe_connect=refresh`
+    const returnUrl = `${origin}${CONNECT_PATHS.home}?stripe_connect=return`
     const configurations: Array<'merchant'> = ['merchant']
 
-    // An account that already charges needs an update link to fix requirements;
-    // an incomplete one resumes the onboarding flow.
+    // Incomplete accounts keep the hosted onboarding flow.
     const link = await stripe.v2.core.accountLinks.create({
       account: accountId,
-      use_case: status.chargesEnabled
-        ? {
-            type: 'account_update',
-            account_update: {
-              configurations,
-              refresh_url: refreshUrl,
-              return_url: returnUrl,
-            },
-          }
-        : {
-            type: 'account_onboarding',
-            account_onboarding: {
-              configurations,
-              refresh_url: refreshUrl,
-              return_url: returnUrl,
-            },
-          },
+      use_case: {
+        type: 'account_onboarding',
+        account_onboarding: {
+          configurations,
+          refresh_url: refreshUrl,
+          return_url: returnUrl,
+        },
+      },
     })
 
-    return NextResponse.json({ url: link.url })
+    return NextResponse.json({ url: link.url, accountId, embedded: false })
   } catch (error) {
     const authResponse = handleAuthError(error)
     if (authResponse) return authResponse
-    const message = error instanceof Error ? error.message : 'No pudimos abrir Stripe.'
+
     console.error('[stripe-connect] onboarding failed', error)
-    return NextResponse.json({ error: message }, { status: 500 })
+
+    const message = error instanceof Error ? error.message.toLowerCase() : ''
+    if (message.includes('site links') || message.includes('site_links')) {
+      return NextResponse.json(
+        {
+          error:
+            'Stripe todavía no permite enlaces en vivo. Configura los Site links en Dashboard → Settings → Connect → Site links.',
+        },
+        { status: 502 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'No pudimos abrir la verificación de Stripe. Intenta de nuevo.' },
+      { status: 500 }
+    )
   }
 }

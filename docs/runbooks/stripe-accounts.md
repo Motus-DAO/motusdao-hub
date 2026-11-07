@@ -27,3 +27,39 @@ Una cuenta Stripe por propósito. No crear cuentas para probar: usar sandboxes.
 | `STRIPE_CONNECT_PAYMENTS_WEBHOOK_SECRET` | `motusdao-connect-payments` | Connected accounts | Snapshot |
 
 Cada destino genera su propio `whsec`; no son intercambiables.
+
+## Dashboard embebido (componentes de Connect)
+
+La cuenta Connect tiene `dashboard: 'none'`: los profesionales no entran a Stripe. El panel
+vive en el Hub (`/cobros`) y usa **Connect embedded components** con un `AccountSession`
+creado en `POST /api/stripe/connect/account-session`.
+
+`NEXT_PUBLIC_STRIPE_CONNECT_PUBLISHABLE_KEY` debe ser la publishable key de
+`acct_1TnbVgBffEqB2M2K`, la **misma cuenta** que `STRIPE_CONNECT_SECRET_KEY`. La publishable
+key de Academia (`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) no sirve para este panel.
+
+### Site links
+
+Stripe no permite crear AccountSessions en modo live hasta que cada componente tenga su URL.
+Configurar en **Dashboard → Settings → Connect → Site links** (cuenta Connect), marcando
+**Yes** en cada componente:
+
+| Componente | URL | Ruta en el repo |
+|---|---|---|
+| Notification banner | `https://app.motusdao.org/cobros` | `app/cobros/page.tsx` |
+| Account management | `https://app.motusdao.org/cobros/cuenta` | `app/cobros/cuenta/page.tsx` |
+| Payouts | `https://app.motusdao.org/cobros/depositos` | `app/cobros/depositos/page.tsx` |
+| Payments | `https://app.motusdao.org/cobros/pagos` | `app/cobros/pagos/page.tsx` |
+| Balances | `https://app.motusdao.org/cobros/saldos` | `app/cobros/saldos/page.tsx` |
+| Documents | `https://app.motusdao.org/cobros/documentos` | `app/cobros/documentos/page.tsx` |
+
+Los mismos valores están en `CONNECT_SITE_LINKS` (`lib/stripe-connect-paths.ts`). Stripe
+agrega `?stripe_account_id=acct_...` a esos enlaces; la app valida que la cuenta pertenezca al
+PSM con sesión antes de crear el AccountSession y muestra un gate de wallet/SIWE si hace falta.
+
+### Onboarding y requisitos
+
+- Onboarding inicial: hosted (Account Links `account_onboarding`), vuelve a `/cobros`.
+- Cuenta que ya cobra: **no** se pueden crear links `account_update` con `dashboard: 'none'` y
+  Stripe responsable de pérdidas. Los requisitos y la cuenta bancaria se actualizan en
+  `/cobros/cuenta` (Account management) y el aviso aparece en `/cobros` (Notification banner).

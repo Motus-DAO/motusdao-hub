@@ -1,13 +1,17 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { CreditCard, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { authFetch } from '@/lib/auth/client'
+import { startStripeConnect } from '@/lib/stripe-connect-client'
+import { CONNECT_PATHS, connectSectionHref } from '@/lib/stripe-connect-paths'
 
 type ConnectStatus = {
   connected: boolean
+  accountId: string | null
   chargesEnabled: boolean
   payoutsEnabled: boolean
   onboardingComplete: boolean
@@ -44,10 +48,8 @@ export function StripeConnectCard() {
     setOpening(true)
     setError(null)
     try {
-      const response = await authFetch('/api/stripe/connect', { method: 'POST' })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'No pudimos abrir Stripe')
-      window.location.href = data.url
+      const { url } = await startStripeConnect()
+      window.location.href = url
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos abrir Stripe')
       setOpening(false)
@@ -55,6 +57,11 @@ export function StripeConnectCard() {
   }
 
   const feePercent = status ? status.feeBps / 100 : 10
+  const dashboardHref = connectSectionHref('home', status?.accountId)
+  const accountHref = connectSectionHref('account', status?.accountId)
+  const needsAccountUpdate = Boolean(
+    status?.chargesEnabled && (status.requirementsDue || !status.payoutsEnabled)
+  )
 
   return (
     <GlassCard className="p-6">
@@ -63,10 +70,13 @@ export function StripeConnectCard() {
         Cobros con tarjeta
       </h3>
       <p className="text-sm text-muted-foreground">
-        Stripe le cobra al paciente en tu cuenta. Motus se queda {feePercent}% de comisión. La comisión de la tarjeta la descuenta Stripe de tu parte, no de Motus. No necesitas cuenta ni dashboard de Stripe: aquí ves el estado y aquí te avisamos si Stripe pide algo.
+        Stripe le cobra al paciente en tu cuenta. Motus se queda {feePercent}% de comisión. La
+        comisión de la tarjeta la descuenta Stripe de tu parte, no de Motus. No necesitas entrar al
+        Dashboard de Stripe: el panel de cobros vive aquí, en Motus.
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Si cancelas con 48 horas o más de anticipación, Stripe devuelve el pago y la comisión. Dentro de esas 48 horas la cita se cancela y el pago se conserva.
+        Si cancelas con 48 horas o más de anticipación, Stripe devuelve el pago y la comisión.
+        Dentro de esas 48 horas la cita se cancela y el pago se conserva.
       </p>
       {loading ? (
         <div className="mt-4 flex items-center text-sm text-muted-foreground">
@@ -77,23 +87,46 @@ export function StripeConnectCard() {
         <div className="mt-4 space-y-3">
           <p className="text-sm text-green-400">
             Ya puedes cobrar sesiones con tarjeta.
-            {status.payoutsEnabled ? ' Los depósitos a tu banco están activos.' : ' Falta que Stripe active los depósitos a tu banco.'}
+            {status.payoutsEnabled
+              ? ' Los depósitos a tu banco están activos.'
+              : ' Falta que Stripe active los depósitos a tu banco.'}
           </p>
-          {status.requirementsDue && (
-            <>
-              <p className="text-sm text-amber-400">
-                Stripe necesita información adicional. Actualízala para no perder la capacidad de cobrar.
-              </p>
-              <CTAButton onClick={connect} disabled={opening}>
-                {opening ? 'Abriendo Stripe...' : 'Actualizar datos en Stripe'}
-              </CTAButton>
-            </>
+          {needsAccountUpdate && (
+            <p className="text-sm text-amber-400">
+              Stripe necesita información adicional. Revísala en el panel para no perder la
+              capacidad de cobrar o recibir depósitos.
+            </p>
           )}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <CTAButton asChild variant={needsAccountUpdate ? 'secondary' : 'primary'}>
+              <Link href={dashboardHref}>Abrir panel de cobros</Link>
+            </CTAButton>
+            {needsAccountUpdate && (
+              <CTAButton asChild variant="secondary">
+                <Link href={accountHref}>Revisar cuenta y banco</Link>
+              </CTAButton>
+            )}
+          </div>
         </div>
       ) : (
-        <CTAButton className="mt-4" onClick={connect} disabled={opening}>
-          {opening ? 'Abriendo Stripe...' : status?.connected ? 'Terminar verificación en Stripe' : 'Conectar Stripe'}
-        </CTAButton>
+        <div className="mt-4 space-y-3">
+          <CTAButton onClick={connect} disabled={opening}>
+            {opening
+              ? 'Abriendo Stripe...'
+              : status?.connected
+                ? 'Terminar verificación en Stripe'
+                : 'Conectar Stripe'}
+          </CTAButton>
+          {status?.connected && (
+            <p className="text-xs text-muted-foreground">
+              También puedes ver el aviso de Stripe en el{' '}
+              <Link href={CONNECT_PATHS.home} className="text-mauve-300 underline-offset-2 hover:underline">
+                panel de cobros
+              </Link>
+              .
+            </p>
+          )}
+        </div>
       )}
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
     </GlassCard>
