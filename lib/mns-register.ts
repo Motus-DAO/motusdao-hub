@@ -9,6 +9,7 @@ import {
 } from 'viem'
 import { celoMainnet, CELO_STABLE_TOKENS } from './celo'
 import { buildCeloWaaPTransaction, ensureCeloNetwork } from './celo-waap'
+import { appendAttributionData } from './attribution'
 import { MNS_ABI, MNS_CONTRACT_ADDRESS, motusNameService } from './motus-name-service'
 
 export interface FaucetResult {
@@ -234,7 +235,8 @@ async function sendWaaPTransaction(
   data: `0x${string}`
 ): Promise<string> {
   const client = getPublicClient()
-  const { params } = await buildCeloWaaPTransaction(client, from, to, data)
+  const taggedData = appendAttributionData(data) ?? data
+  const { params } = await buildCeloWaaPTransaction(client, from, to, taggedData)
 
   console.log('[MNS] Sending WaaP tx on Celo with explicit gas:', {
     gas: params.gas,

@@ -1,6 +1,7 @@
 import { createWalletClient, createPublicClient, custom, http, parseUnits, encodeFunctionData, maxUint256, type Address, type Hex } from 'viem'
 import { celoMainnet, CELO_STABLE_TOKENS, getCeloTokenDecimals, type PaymentCurrency } from './celo'
 import { getCeloExplorerUrl } from './celo'
+import { getAttributionSuffix } from './attribution'
 import type { WaaPWallet } from './wallet-utils'
 import { getPrimaryWallet } from './wallet-utils'
 
@@ -58,10 +59,15 @@ export async function createPrivyWalletClient(
 
   const waapProvider = (window as unknown as { waap: unknown }).waap
 
+  // ERC-8021: viem appends this suffix to every sendTransaction/writeContract,
+  // so payment and swap calls are tagged without touching each call site.
+  const dataSuffix = getAttributionSuffix()
+
   return createWalletClient({
     account: targetWallet.address,
     chain: celoMainnet,
     transport: custom(waapProvider as Parameters<typeof custom>[0]),
+    ...(dataSuffix ? { dataSuffix } : {}),
   })
 }
 
