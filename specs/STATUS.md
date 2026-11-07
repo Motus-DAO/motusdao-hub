@@ -125,6 +125,7 @@ grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 | **Stripe Connect terapia v2** | Verificación del primer PSM, E2E test mode y primer cobro live | Dashboard embebido + Site links + AccountSession ya en prod (2026-11-07); la cuenta sigue sin `charges`/`payouts` |
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
 | **Ripio Ramps** | Credenciales partner + `RIPIO_MOCK=false` para salir de mock | El flujo existe, pero hoy es demo; no prometer on/off-ramp fiat |
+| **Attribution ERC-8021** | Código listo (`lib/attribution.ts`, `dataSuffix` en pagos); falta el código asignado y la tx de prueba | Sin tag, ninguna tx cuenta para el hackathon |
 
 ---
 
@@ -166,9 +167,11 @@ grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 |---------|-----------|
 | `npm run lint` | ✅ 0 errores, 22 warnings |
 | `npx tsc --noEmit` | ✅ pasa |
-| `npm test` | ✅ 33 archivos, 123 tests |
+| `npm test` | ✅ 48 suites, 144 tests |
 | `npx prisma validate` | ✅ schema válido |
-| `npm run build` | ✅ pasa (tras hacer el sitemap y las listas independientes de DB) |
+| `npm run build` | ✅ pasa |
+
+Última corrida completa: **2026-11-07** (incluye `lib/attribution.test.ts`).
 
 El build fallaba por dos motivos además de los tipos: `/sitemap.xml` y las páginas
 `/psicoterapia/pais/*` y `/psicoterapia/especialidades/*` consultaban Postgres durante el
@@ -222,6 +225,15 @@ PostHog **1.447.3** con DOMPurify 3.4.17, PostCSS 8.5.32, y Node **22.23.4+** en
 No hay PHP en este repo. Quedan 5 CVEs críticos transitivos sin ruta de runtime; detalle y
 rollback en [docs/runbooks/security-patching.md](../docs/runbooks/security-patching.md).
 
+### Addendum — atribución Celo (2026-11-07)
+
+Se añadió el sufijo ERC-8021 a las transacciones de Celo mainnet: `lib/attribution.ts`
+(código validado, sufijo cacheado y helper para calldata manual), `lib/payments.ts`
+(`dataSuffix` de viem en el wallet client de WaaP) y `lib/mns-register.ts` (path que arma
+`eth_sendTransaction` a mano). Verificación: `npm run verify:attribution -- <txHash> [code]`.
+El flujo Ripio → WaaP se probó antes del cambio (10 wMXN recibidos); falta la tx posterior.
+Detalle y rollback: [celo-attribution.md](./celo-attribution.md).
+
 ---
 
-*Estado del Hub · actualizado 2026-11-06 · MotusDAO*
+*Estado del Hub · actualizado 2026-11-07 · MotusDAO*
