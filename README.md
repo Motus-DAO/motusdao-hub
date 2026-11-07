@@ -59,7 +59,7 @@ builds and submits the transaction.
 | **SPEI / CLABE** | Therapy sessions, paid directly to the professional | Live; manual confirmation |
 | **Celo transfer + QR** | P2P and professional payments | Live |
 | **WaaP (Human.tech)** | Self-custodial wallet and signing | Live |
-| **Ripio Ramps Widget** | Fiat on-ramp / off-ramp | **Connected, not active**: runs an in-app mock until partner credentials exist |
+| **Ripio ramp (public + widget)** | Fiat on-ramp / off-ramp in `wMXN` / `wARS` on Celo | **Public ramp live** (`ramp.ripio.com`, no partner keys); the B2B widget needs partner credentials |
 | **Textile FX (RFQ v2)** | `wARS` / `wBRL` ↔ `USDT` swaps | **Wired** to the public RFQ; no Motus API key required |
 | **Transak / Mt Pelerin / Privy** | Legacy on-ramp handlers | Code present; not exposed in the current provider grid |
 
@@ -70,19 +70,24 @@ PSM still has to finish Stripe verification before card charges are enabled. See
 [`docs/runbooks/stripe-accounts.md`](docs/runbooks/stripe-accounts.md) and
 [`specs/stripe-connect-therapy-v2.md`](specs/stripe-connect-therapy-v2.md).
 
-Ripio is a partner-only API. Without `RIPIO_CLIENT_ID` / `RIPIO_CLIENT_SECRET`, the UI uses a
-demo wizard and never calls the live widget. To activate it:
+Ripio has two paths. The **public ramp** (`ramp.ripio.com`) opens from `/pagos` without partner
+keys: it prefills `country`, `chain=42220`, the token (`wMXN` for MX, `wARS` for AR) and the user's
+wallet, and the app verifies the deposit on-chain when the user comes back. The **B2B widget**
+(`b2b-widget-onramp`) needs partner credentials and only runs when they exist:
 
 ```env
-RIPIO_CLIENT_ID=your_partner_client_id
-RIPIO_CLIENT_SECRET=your_partner_client_secret   # server only
+NEXT_PUBLIC_RIPIO_COUNTRY=MX                      # or AR (wARS)
+RIPIO_CLIENT_ID=your_partner_client_id            # optional: B2B widget
+RIPIO_CLIENT_SECRET=your_partner_client_secret    # server only
 RIPIO_ENV=sandbox                                 # or production
 RIPIO_MOCK=false
+# NEXT_PUBLIC_RIPIO_MOCK_PANEL=true               # demo wizard only, never in prod
 # NEXT_PUBLIC_RIPIO_RAMPS_ENABLED=false           # hide the provider entry
 ```
 
-Details: [Ripio Ramps spec](specs/ripio-ramps-widget.md) ·
-[wFIAT + Textile spec](specs/ripio-wfiat-pagos.md).
+Details: [Ripio public ramp](specs/ripio-public-ramp.md) ·
+[Ripio widget](specs/ripio-ramps-widget.md) ·
+[wFIAT + Textile](specs/ripio-wfiat-pagos.md).
 
 ## Repo layout
 
