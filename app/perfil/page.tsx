@@ -35,6 +35,8 @@ import { getEOAAddress } from '@/lib/wallet-utils'
 import { authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
+import { StripeConnectCard } from '@/components/payments/StripeConnectCard'
+import { StripeEarningsCard } from '@/components/payments/StripeEarningsCard'
 import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
 import { SpeiPaymentCard } from '@/components/payments/SpeiPaymentCard'
 import {
@@ -238,8 +240,12 @@ export default function PerfilPage() {
     id: string
     status: string
     externalUrl: string
+    scheduledStart: string | null
+    paidAt: string | null
   } | null>(null)
   const [isLoadingSession, setIsLoadingSession] = useState(false)
+  const [cancelingSession, setCancelingSession] = useState(false)
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null)
 
   type PsmMeetingMode = 'secure' | 'open'
   const [psmMeetingMode, setPsmMeetingMode] = useState<PsmMeetingMode>('secure')
@@ -473,7 +479,9 @@ export default function PerfilPage() {
             setActiveSession({
               id: data.activeSession.id,
               status: data.activeSession.status,
-              externalUrl: data.activeSession.externalUrl
+              externalUrl: data.activeSession.externalUrl,
+              scheduledStart: data.activeSession.scheduledStart,
+              paidAt: data.activeSession.paidAt,
             })
           } else {
             setActiveSession(null)
@@ -490,6 +498,75 @@ export default function PerfilPage() {
       fetchSession()
     }
   }, [userData?.id, userData?.role])
+
+  useEffect(() => {
+    if (!userData?.id || userData.role !== 'usuario') return
+    const checkoutId = new URLSearchParams(window.location.search).get('therapy_checkout')
+    if (!checkoutId) return
+
+    let cancelled = false
+    const confirmPayment = async () => {
+      const res = await authFetch('/api/stripe/therapy/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkoutSessionId: checkoutId }),
+      })
+      const data = await res.json()
+      if (cancelled) return
+      if (!res.ok) {
+        setSessionNotice(data.error || 'No pudimos confirmar el pago.')
+        return
+      }
+      setSessionNotice('Pago recibido. La cita quedó reservada.')
+      const sessionRes = await fetch(`/api/sessions?userId=${userData.id}`)
+      if (!sessionRes.ok || cancelled) return
+      const sessionData = await sessionRes.json()
+      if (sessionData.activeSession) {
+        setActiveSession({
+          id: sessionData.activeSession.id,
+          status: sessionData.activeSession.status,
+          externalUrl: sessionData.activeSession.externalUrl,
+          scheduledStart: sessionData.activeSession.scheduledStart,
+          paidAt: sessionData.activeSession.paidAt,
+        })
+      }
+    }
+
+    void confirmPayment()
+    return () => {
+      cancelled = true
+    }
+  }, [userData?.id, userData?.role])
+
+  const cancelActiveSession = async () => {
+    if (!activeSession) return
+    const startsAt = activeSession.scheduledStart ? new Date(activeSession.scheduledStart).getTime() : null
+    const refundable = Boolean(activeSession.paidAt && startsAt && startsAt - Date.now() >= 48 * 60 * 60 * 1000)
+    const message = !activeSession.paidAt
+      ? 'Se cancela la cita.'
+      : refundable
+        ? 'Se cancela la cita y Stripe devuelve el pago.'
+        : 'Faltan menos de 48 horas. Se cancela la cita y el profesional conserva el pago.'
+    if (!window.confirm(message)) return
+
+    setCancelingSession(true)
+    setSessionNotice(null)
+    try {
+      const res = await authFetch(`/api/sessions/${activeSession.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No se pudo cancelar')
+      setActiveSession(null)
+      setSessionNotice(data.refunded ? 'Cita cancelada. El pago se devolvió.' : 'Cita cancelada. El pago se conserva.')
+    } catch (err) {
+      setSessionNotice(err instanceof Error ? err.message : 'No se pudo cancelar')
+    } finally {
+      setCancelingSession(false)
+    }
+  }
 
   useEffect(() => {
     const fetchEnrollments = async () => {
@@ -1058,6 +1135,13 @@ export default function PerfilPage() {
                 </div>
               )}
 
+              {userData?.role === 'psm' && (
+                <div className="mt-8 space-y-6">
+                  <StripeConnectCard />
+                  <StripeEarningsCard />
+                </div>
+              )}
+
               {/* Match Information */}
               {(userData?.role === 'usuario' || userData?.role === 'psm') && (
                 <motion.div
@@ -1182,9 +1266,20 @@ export default function PerfilPage() {
                                       Cargando información de tu sesión...
                                     </p>
                                   ) : activeSession ? (
-                                    <p className="text-xs text-green-400">
-                                      Tienes una sesión {activeSession.status === 'accepted' ? 'aceptada' : 'solicitada'} programada.
-                                    </p>
+                                    <div className="space-y-2">
+                                      <p className="text-xs text-green-400">
+                                        Tienes una sesión {activeSession.status === 'accepted' ? 'aceptada' : 'solicitada'} programada.
+                                      </p>
+                                      {sessionNotice && <p className="text-xs text-muted-foreground">{sessionNotice}</p>}
+                                      <button
+                                        type="button"
+                                        onClick={cancelActiveSession}
+                                        disabled={cancelingSession}
+                                        className="text-xs text-red-400 underline-offset-2 hover:underline disabled:opacity-50"
+                                      >
+                                        {cancelingSession ? 'Cancelando...' : 'Cancelar cita'}
+                                      </button>
+                                    </div>
                                   ) : (
                                     <p className="text-xs text-muted-foreground">
                                       Puedes solicitar una cita desde Psychat; el consultorio sigue siendo el mismo.

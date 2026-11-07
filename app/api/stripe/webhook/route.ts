@@ -9,13 +9,19 @@ import {
 import { fulfillCourseFromStripeSession } from '@/lib/academy/stripe-session'
 import { fulfillAiCreditPurchase } from '@/lib/ai-credit-purchase'
 import { getInvoiceSubscriptionId } from '@/lib/academy/stripe-api-helpers'
-import { getStripeClient, getStripeWebhookSecret } from '@/lib/stripe'
+import { getStripeClient, getStripeConnectPaymentsWebhookSecret, getStripeWebhookSecret } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
 
+function signingSecrets(): string[] {
+  return [getStripeWebhookSecret(), getStripeConnectPaymentsWebhookSecret()].filter(
+    (secret): secret is string => Boolean(secret)
+  )
+}
+
 export async function POST(request: Request) {
-  const webhookSecret = getStripeWebhookSecret()
-  if (!webhookSecret) {
+  const secrets = signingSecrets()
+  if (secrets.length === 0) {
     console.error('STRIPE_WEBHOOK_SECRET is not configured')
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
   }
@@ -28,19 +34,33 @@ export async function POST(request: Request) {
   const body = await request.text()
   const stripe = getStripeClient()
 
-  let event: Stripe.Event
-  try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid signature'
-    console.error('Stripe webhook signature verification failed:', message)
-    return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 })
+  let event: Stripe.Event | null = null
+  let lastError: Error | null = null
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, secret)
+      break
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Invalid signature')
+    }
+  }
+  if (!event) {
+    console.error('Stripe webhook signature verification failed:', lastError?.message)
+    return NextResponse.json({ error: `Webhook Error: ${lastError?.message || 'Invalid signature'}` }, { status: 400 })
   }
 
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+        if (session.metadata?.kind === 'therapy_booking') {
+          const { fulfillTherapyCheckout } = await import('@/lib/stripe-therapy')
+          const result = await fulfillTherapyCheckout(session)
+          if (!result.ok) {
+            console.error('[therapy-checkout] webhook did not book', result.error)
+          }
+          break
+        }
         if (session.metadata?.kind === 'ai_credit') {
           await fulfillAiCreditPurchase(session)
           break

@@ -42,6 +42,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    if (psmUser.psm.stripeChargesEnabled) {
+      return NextResponse.json(
+        { error: 'Esta cita se paga con tarjeta antes de reservar el horario.' },
+        { status: 409 }
+      )
+    }
+
     const slot = await prisma.providerAvailabilitySlot.findFirst({
       where: {
         id: body.slotId,

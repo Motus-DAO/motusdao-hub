@@ -95,20 +95,24 @@ export function TherapistBookingCard({ slug, profile }: Props) {
         return
       }
 
-      const res = await authFetch(`/api/psm/${slug}/book`, {
+      const res = await authFetch(`/api/psm/${slug}/${profile.cardPaymentsEnabled ? 'checkout' : 'book'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: session.userId, slotId: selectedSlotId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'No se pudo agendar')
+      if (data.url) {
+        window.location.href = data.url
+        return
+      }
       router.push('/perfil?booked=1')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al agendar')
     } finally {
       setBooking(false)
     }
-  }, [selectedSlotId, slug, router])
+  }, [selectedSlotId, slug, router, profile.cardPaymentsEnabled])
 
   // Drives the "not logged in -> WaaP -> sign -> book" flow from the current
   // session state. Logged-in users skip straight to booking.
@@ -153,6 +157,11 @@ export function TherapistBookingCard({ slug, profile }: Props) {
           <span className="ml-1 text-sm font-normal text-muted-foreground">/ sesión</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">Solo teleterapia por videollamada</p>
+        {profile.cardPaymentsEnabled && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            El pago aparta el horario. Si cancelas con más de 48 horas, se devuelve. Después de eso, el profesional conserva el pago.
+          </p>
+        )}
 
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
@@ -217,7 +226,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
               Verificando...
             </>
           ) : canBook ? (
-            'Agendar sesión'
+            profile.cardPaymentsEnabled ? 'Pagar y reservar' : 'Agendar sesión'
           ) : (
             'Sin cupos disponibles'
           )}

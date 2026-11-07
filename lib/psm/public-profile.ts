@@ -56,6 +56,7 @@ export type PublicPsmProfile = {
   verificationBadge: boolean
   isAcceptingPatients: boolean
   capacityAvailable: number
+  cardPaymentsEnabled: boolean
 }
 
 export const PUBLIC_PSM_WHERE = {
@@ -178,6 +179,7 @@ export async function buildPublicPsmProfile(
     verificationBadge: psm.verificationStatus === 'approved',
     isAcceptingPatients: psm.isAcceptingPatients,
     capacityAvailable,
+    cardPaymentsEnabled: psm.stripeChargesEnabled,
   }
 }
 
