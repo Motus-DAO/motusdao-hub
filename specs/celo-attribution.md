@@ -75,7 +75,11 @@ npm run verify:attribution -- 0x<txHash> celo_xxxxxxxx
 | Date | Check | Result |
 |------|-------|--------|
 | 2026-11-07 | Rampa Ripio → wallet WaaP (10 wMXN), flujo previo al cambio | ✅ recibidos |
-| pending | Tx post-cambio con sufijo, `verifyTx` | ⏳ |
+| 2026-11-07 | Tx `0x9d0ad535…74a22` (1 wMXN, WaaP, Celo mainnet) | ✅ `codes: ["celo_0ee3486819c5"]`, `schemaId: 0` |
+
+Código asignado en Loops House: `celo_0ee3486819c5` (confirmado por el organizador, no
+derivado del repo). La tx prueba que WaaP preserva el calldata: no hizo falta cambiar de
+proveedor.
 
 ## 8. QA gate (Definition of Done for this slice)
 
@@ -83,7 +87,7 @@ npm run verify:attribution -- 0x<txHash> celo_xxxxxxxx
 - [x] `npx tsc --noEmit`.
 - [x] `npm test` includes `lib/attribution.test.ts`.
 - [x] Non-goals respected.
-- [ ] Post-change tx verified on Celo mainnet (requires a real send).
+- [x] Post-change tx verified on Celo mainnet (`0x9d0ad535…74a22`).
 
 ## 9. Rollback
 

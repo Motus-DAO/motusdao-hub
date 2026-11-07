@@ -113,6 +113,13 @@ grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 - MNS, faucet y NFT de perfil clínico en Celo; integración **parcial**.
 - Supabase Postgres + Storage + pgvector; [data-layer](../docs/architecture/data-layer.md).
 
+### 2.7 Atribución Celo (ERC-8021)
+
+Toda transacción del Hub en Celo mainnet lleva el código `celo_0ee3486819c5` (emitido en
+Loops House): `lib/attribution.ts` + `dataSuffix` de viem en el wallet client de WaaP, y el
+path manual de MNS. Verificado on-chain con `verifyTx` en `0x9d0ad535…74a22` (1 wMXN).
+Detalle: [spec](./celo-attribution.md).
+
 ---
 
 ## 3. In flight
@@ -125,7 +132,6 @@ grid actual. Detalle: [README §Pagos](../README.md#payments-and-self-custody).
 | **Stripe Connect terapia v2** | Verificación del primer PSM, E2E test mode y primer cobro live | Dashboard embebido + Site links + AccountSession ya en prod (2026-11-07); la cuenta sigue sin `charges`/`payouts` |
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
 | **Ripio Ramps** | Credenciales partner + `RIPIO_MOCK=false` para salir de mock | El flujo existe, pero hoy es demo; no prometer on/off-ramp fiat |
-| **Attribution ERC-8021** | Código listo (`lib/attribution.ts`, `dataSuffix` en pagos); falta el código asignado y la tx de prueba | Sin tag, ninguna tx cuenta para el hackathon |
 
 ---
 
