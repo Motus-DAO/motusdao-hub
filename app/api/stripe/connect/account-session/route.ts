@@ -79,19 +79,58 @@ export async function POST(request: NextRequest) {
 
     console.error('[stripe-connect] account session failed', error)
 
-    const message = error instanceof Error ? error.message.toLowerCase() : ''
-    if (message.includes('site links') || message.includes('site_links')) {
+    const stripeError = error as {
+      message?: unknown
+      code?: unknown
+      type?: unknown
+      requestId?: unknown
+    }
+    const rawMessage =
+      typeof stripeError.message === 'string' ? stripeError.message : ''
+    const lower = rawMessage.toLowerCase()
+    const diagnostics = {
+      detail: rawMessage || undefined,
+      stripeCode:
+        typeof stripeError.code === 'string' ? stripeError.code : undefined,
+      stripeType:
+        typeof stripeError.type === 'string' ? stripeError.type : undefined,
+      requestId:
+        typeof stripeError.requestId === 'string'
+          ? stripeError.requestId
+          : undefined,
+    }
+
+    if (lower.includes('site links') || lower.includes('site_links')) {
       return NextResponse.json(
         {
           error:
             'Stripe todavía no permite abrir sesiones en vivo. Configura los Site links en Dashboard → Settings → Connect → Site links.',
+          ...diagnostics,
+        },
+        { status: 502 }
+      )
+    }
+
+    if (
+      stripeError.type === 'StripePermissionError' ||
+      stripeError.code === 'forbidden' ||
+      lower.includes('permission')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'La llave de Stripe Connect no tiene permiso para crear AccountSessions. Usa la llave live de MotusDAO-Connect o agrega Account Sessions: write a la llave restringida.',
+          ...diagnostics,
         },
         { status: 502 }
       )
     }
 
     return NextResponse.json(
-      { error: 'No pudimos abrir el panel de Stripe. Intenta de nuevo.' },
+      {
+        error: 'No pudimos abrir el panel de Stripe. Intenta de nuevo.',
+        ...diagnostics,
+      },
       { status: 502 }
     )
   }

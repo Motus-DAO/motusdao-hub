@@ -5,6 +5,8 @@ import { authFetch } from '@/lib/auth/client'
 type ConnectActionResponse = {
   url?: unknown
   error?: unknown
+  detail?: unknown
+  requestId?: unknown
   embedded?: unknown
 }
 
@@ -23,9 +25,17 @@ export async function startStripeConnect(): Promise<{
   const data = (await response.json().catch(() => ({}))) as ConnectActionResponse
 
   if (!response.ok) {
-    throw new Error(
+    const message =
       typeof data.error === 'string' ? data.error : 'No pudimos abrir Stripe.'
-    )
+    const detail =
+      typeof data.detail === 'string' && data.detail.length > 0 && data.detail !== message
+        ? ` Detalle de Stripe: ${data.detail}`
+        : ''
+    const requestId =
+      typeof data.requestId === 'string' && data.requestId.length > 0
+        ? ` (${data.requestId})`
+        : ''
+    throw new Error(`${message}${detail}${requestId}`)
   }
 
   if (typeof data.url !== 'string' || data.url.length === 0) {

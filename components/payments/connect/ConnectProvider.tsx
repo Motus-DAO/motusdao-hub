@@ -57,14 +57,24 @@ async function fetchAccountSessionClientSecret(accountId: string): Promise<strin
   const data = (await response.json().catch(() => ({}))) as {
     clientSecret?: unknown
     error?: unknown
+    detail?: unknown
+    requestId?: unknown
   }
 
   if (!response.ok || typeof data.clientSecret !== 'string') {
-    throw new Error(
+    const message =
       typeof data.error === 'string'
         ? data.error
         : 'No pudimos abrir el panel de Stripe.'
-    )
+    const detail =
+      typeof data.detail === 'string' && data.detail.length > 0 && data.detail !== message
+        ? ` Detalle de Stripe: ${data.detail}`
+        : ''
+    const requestId =
+      typeof data.requestId === 'string' && data.requestId.length > 0
+        ? ` (${data.requestId})`
+        : ''
+    throw new Error(`${message}${detail}${requestId}`)
   }
 
   return data.clientSecret
