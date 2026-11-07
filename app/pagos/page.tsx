@@ -27,12 +27,13 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback } from 'react'
 import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { sendCELOPayment, sendStablecoinPayment, type PaymentCurrency, type PaymentParams } from '@/lib/payments'
-import { getCeloExplorerUrl } from '@/lib/celo'
+import { CELO_STABLE_TOKENS, getCeloExplorerUrl, getCeloTokenDecimals } from '@/lib/celo'
 import { RIPIO_WFIAT_CATALOG } from '@/lib/ripio/wfiat'
 import { TextileFxSwapCta } from '@/components/payments/TextileFxSwapCta'
 import { WfiatSwapPanel } from '@/components/payments/WfiatSwapPanel'
-import { getAllTokenBalances, type TokenBalance } from '@/lib/balances'
+import { getTokenBalance, getAllTokenBalances, type TokenBalance } from '@/lib/balances'
 import { motusNameService } from '@/lib/motus-name-service'
+import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 import { getEOAAddress, getPrimaryWallet } from '@/lib/wallet-utils'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -41,6 +42,12 @@ import {
   motusUserToRipioExternalRef,
   type RipioRampFlow,
 } from '@/lib/ripio/ramps-widget'
+import {
+  buildRipioPublicRampUrl,
+  ripioCountryFromEnv,
+  ripioTokenForCountry,
+  type RipioPublicToken,
+} from '@/lib/ripio/public-ramp'
 import { RipioRampsMockPanel } from '@/components/payments/RipioRampsMockPanel'
 
 const paymentSteps = [
@@ -50,7 +57,7 @@ const paymentSteps = [
     description: 'Convierte tu dinero fiat a criptomonedas',
     icon: DollarSign,
     status: 'active',
-    details: 'Ripio Ramps Widget (mock hasta llaves partner)'
+    details: 'Ripio (on-ramp fiat → wFIAT en Celo)'
   },
   {
     step: 2,
@@ -150,6 +157,18 @@ export default function PagosPage() {
   const [mtPelerinUrl, setMtPelerinUrl] = useState<string | null>(null)
   const [ripioMockFlow, setRipioMockFlow] = useState<RipioRampFlow | null>(null)
   const [ripioMockAddress, setRipioMockAddress] = useState<string | null>(null)
+  const [ripioPublicPrompt, setRipioPublicPrompt] = useState<{
+    token: RipioPublicToken
+    before: bigint
+  } | null>(null)
+  const [ripioDepositCheck, setRipioDepositCheck] = useState<{
+    token: RipioPublicToken
+    hasDeposit: boolean
+    delta: string
+    before: string
+    after: string
+  } | null>(null)
+  const [isCheckingRipioDeposit, setIsCheckingRipioDeposit] = useState(false)
   const [wfiatSwapSymbol, setWfiatSwapSymbol] = useState<string | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [transferMode, setTransferMode] = useState<'send' | 'receive'>('send')
@@ -461,7 +480,7 @@ export default function PagosPage() {
       name: 'Ripio Ramps',
       enabled: ripioRampsEnabled && authenticated,
       description:
-        'Compra cripto con fiat (on-ramp) o retira a tu banco (off-ramp). Modo mock hasta llaves partner.'
+        'Compra con fiat o retira a tu banco. Los wFIAT llegan a tu wallet en Celo.'
     },
   ]
 
@@ -517,6 +536,9 @@ export default function PagosPage() {
       return
     }
 
+    const country = ripioCountryFromEnv()
+    const token = ripioTokenForCountry(country)
+
     const userSeed =
       userData?.id ||
       walletIdentity?.authProviderId ||
@@ -526,9 +548,12 @@ export default function PagosPage() {
     const externalRef = motusUserToRipioExternalRef(String(userSeed))
 
     const confirmed = window.confirm(
-      `Vas a abrir Ripio Ramps (${flow === 'onramp' ? 'on-ramp / compra' : 'off-ramp / retiro'}).\n\n` +
-        `Tu wallet: ${destinationAddress}\n\n` +
-        `Sin llaves partner se abrirá el mock/demo. ¿Continuar?`
+      `Vas a abrir Ripio (${flow === 'onramp' ? 'on-ramp / compra' : 'off-ramp / retiro'}).\n\n` +
+        `Wallet: ${destinationAddress}\n` +
+        `Moneda: ${token} en Celo\n\n` +
+        (flow === 'onramp'
+          ? 'Cuando termines la compra, vuelve aquí y verifica el depósito.'
+          : 'Elige tu cuenta bancaria dentro de Ripio.')
     )
 
     if (!confirmed) return
@@ -536,6 +561,8 @@ export default function PagosPage() {
     try {
       setIsStartingOnramp(true)
       setSelectedProvider('ripio')
+      setRipioDepositCheck(null)
+      setRipioPublicPrompt(null)
 
       const response = await fetch('/api/ripio/widget-token', {
         method: 'POST',
@@ -551,8 +578,36 @@ export default function PagosPage() {
       const data = (await response.json()) as RipioWidgetTokenResponse
 
       if (data.mode === 'mock') {
-        setRipioMockAddress(destinationAddress)
-        setRipioMockFlow(flow)
+        // No partner credentials: use Ripio's public ramp, a real mainnet flow.
+        // The in-app wizard stays available only when explicitly forced.
+        if (process.env.NEXT_PUBLIC_RIPIO_MOCK_PANEL === 'true') {
+          setRipioMockAddress(destinationAddress)
+          setRipioMockFlow(flow)
+          return
+        }
+
+        const before =
+          flow === 'onramp'
+            ? (
+                await getTokenBalance(
+                  destinationAddress as Address,
+                  token,
+                  CELO_STABLE_TOKENS[token]
+                )
+              ).rawBalance
+            : BigInt(0)
+
+        const url = buildRipioPublicRampUrl({
+          flow,
+          country,
+          address: destinationAddress,
+        })
+
+        window.open(url, '_blank', 'noopener,noreferrer')
+
+        if (flow === 'onramp') {
+          setRipioPublicPrompt({ token, before })
+        }
         return
       }
 
@@ -565,14 +620,48 @@ export default function PagosPage() {
 
       window.open(data.widgetUrl, '_blank', 'noopener,noreferrer')
     } catch (err) {
-      console.error('Error iniciando Ripio Ramps:', err)
+      console.error('Error iniciando Ripio:', err)
       alert(
-        'Error al iniciar Ripio Ramps.\n\n' +
+        'Error al iniciar Ripio.\n\n' +
           (err instanceof Error ? err.message : 'Error desconocido') +
-          '\n\nSi aún no tienes llaves partner, el mock debería abrirse automáticamente cuando RIPIO_CLIENT_ID no esté configurado.'
+          '\n\nEl flujo público no necesita llaves partner; si el error persiste, revisa tu conexión y vuelve a intentar.'
       )
     } finally {
       setIsStartingOnramp(false)
+    }
+  }
+
+  const handleCheckRipioDeposit = async () => {
+    if (!ripioPublicPrompt || !walletAddress) return
+
+    setIsCheckingRipioDeposit(true)
+    try {
+      const decimals = getCeloTokenDecimals(ripioPublicPrompt.token)
+      const after = await getTokenBalance(
+        walletAddress as Address,
+        ripioPublicPrompt.token,
+        CELO_STABLE_TOKENS[ripioPublicPrompt.token]
+      )
+      const delta = after.rawBalance - ripioPublicPrompt.before
+
+      setRipioDepositCheck({
+        token: ripioPublicPrompt.token,
+        hasDeposit: delta > BigInt(0),
+        delta: formatUnits(delta > BigInt(0) ? delta : BigInt(0), decimals),
+        before: formatUnits(ripioPublicPrompt.before, decimals),
+        after: after.balance,
+      })
+
+      const balances = await getAllTokenBalances(
+        walletAddress as Address,
+        Array.from(enabledTokens)
+      )
+      setTokenBalances(balances)
+    } catch (err) {
+      console.error('Error verificando el depósito de Ripio:', err)
+      alert('No se pudo leer el saldo. Revisa tu conexión y vuelve a intentar.')
+    } finally {
+      setIsCheckingRipioDeposit(false)
     }
   }
 
@@ -1725,7 +1814,7 @@ export default function PagosPage() {
                       Ripio no está disponible todavía.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Inicia sesión y conecta tu wallet para usar el mock de Ripio.
+                      Inicia sesión y conecta tu wallet para usar Ripio.
                     </p>
                   </div>
                 ) : (
@@ -1772,6 +1861,49 @@ export default function PagosPage() {
                             <p className="text-[10px] text-muted-foreground break-all">
                               Wallet: {walletAddress}
                             </p>
+                          )}
+
+                          {ripioPublicPrompt && (
+                            <div className="mt-2 rounded-lg border border-green-500/30 bg-green-500/5 p-3">
+                              <p className="mb-2 text-[11px] text-muted-foreground">
+                                Se abrió Ripio en otra pestaña. Al terminar tu compra, vuelve
+                                y verifica el depósito de {ripioPublicPrompt.token}.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={handleCheckRipioDeposit}
+                                disabled={isCheckingRipioDeposit}
+                                className="w-full rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-[11px] font-semibold text-green-300 hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isCheckingRipioDeposit ? 'Revisando…' : 'Verificar depósito'}
+                              </button>
+                              {ripioDepositCheck && (
+                                <div className="mt-2 space-y-1 text-[11px]">
+                                  {ripioDepositCheck.hasDeposit ? (
+                                    <p className="text-green-400">
+                                      Llegaron {ripioDepositCheck.delta}{' '}
+                                      {ripioDepositCheck.token}.
+                                    </p>
+                                  ) : (
+                                    <p className="text-yellow-500">
+                                      Aún no se detecta el depósito.
+                                    </p>
+                                  )}
+                                  <p className="text-muted-foreground">
+                                    Antes: {ripioDepositCheck.before} · Ahora:{' '}
+                                    {ripioDepositCheck.after} {ripioDepositCheck.token}
+                                  </p>
+                                  <a
+                                    href={`https://celoscan.io/address/${walletAddress}#tokentxns`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-block text-mauve-300 underline"
+                                  >
+                                    Ver movimientos en Celoscan
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
