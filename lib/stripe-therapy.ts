@@ -6,7 +6,7 @@ import { recordClinicalAccess } from '@/lib/clinical-audit'
 import { buildOfficeJitsiUrl } from '@/lib/jitsi'
 import { getStripeConnectClient } from '@/lib/stripe'
 import { slotDurationMinutes } from '@/lib/psm/availability'
-import { THERAPY_CHECKOUT_KIND } from '@/lib/stripe-connect'
+import { THERAPY_CHECKOUT_KIND, type ConnectAccountStatus } from '@/lib/stripe-connect'
 
 function paymentIntentId(session: Stripe.Checkout.Session): string | null {
   if (!session.payment_intent) return null
@@ -179,12 +179,15 @@ export async function fulfillTherapyCheckout(
   }
 }
 
-export async function syncConnectedAccount(account: Stripe.Account) {
+export async function syncConnectedAccount(
+  accountId: string,
+  status: Pick<ConnectAccountStatus, 'chargesEnabled' | 'payoutsEnabled'>
+) {
   await prisma.pSMProfile.updateMany({
-    where: { stripeConnectedAccountId: account.id },
+    where: { stripeConnectedAccountId: accountId },
     data: {
-      stripeChargesEnabled: Boolean(account.charges_enabled),
-      stripePayoutsEnabled: Boolean(account.payouts_enabled),
+      stripeChargesEnabled: status.chargesEnabled,
+      stripePayoutsEnabled: status.payoutsEnabled,
     },
   })
 }

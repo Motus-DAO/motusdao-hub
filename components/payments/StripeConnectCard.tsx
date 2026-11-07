@@ -10,6 +10,8 @@ type ConnectStatus = {
   connected: boolean
   chargesEnabled: boolean
   payoutsEnabled: boolean
+  onboardingComplete: boolean
+  requirementsDue: boolean
   feeBps: number
 }
 
@@ -61,7 +63,7 @@ export function StripeConnectCard() {
         Cobros con tarjeta
       </h3>
       <p className="text-sm text-muted-foreground">
-        Stripe le cobra al paciente en tu cuenta. Motus se queda {feePercent}% de comisión. La comisión de la tarjeta la descuenta Stripe de tu parte, no de Motus.
+        Stripe le cobra al paciente en tu cuenta. Motus se queda {feePercent}% de comisión. La comisión de la tarjeta la descuenta Stripe de tu parte, no de Motus. No necesitas cuenta ni dashboard de Stripe: aquí ves el estado y aquí te avisamos si Stripe pide algo.
       </p>
       {loading ? (
         <div className="mt-4 flex items-center text-sm text-muted-foreground">
@@ -69,10 +71,22 @@ export function StripeConnectCard() {
           Revisando Stripe...
         </div>
       ) : status?.chargesEnabled ? (
-        <p className="mt-4 text-sm text-green-400">
-          Ya puedes cobrar sesiones con tarjeta.
-          {status.payoutsEnabled ? ' Los depósitos a tu banco están activos.' : ' Falta que Stripe active los depósitos a tu banco.'}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="text-sm text-green-400">
+            Ya puedes cobrar sesiones con tarjeta.
+            {status.payoutsEnabled ? ' Los depósitos a tu banco están activos.' : ' Falta que Stripe active los depósitos a tu banco.'}
+          </p>
+          {status.requirementsDue && (
+            <>
+              <p className="text-sm text-amber-400">
+                Stripe necesita información adicional. Actualízala para no perder la capacidad de cobrar.
+              </p>
+              <CTAButton onClick={connect} disabled={opening}>
+                {opening ? 'Abriendo Stripe...' : 'Actualizar datos en Stripe'}
+              </CTAButton>
+            </>
+          )}
+        </div>
       ) : (
         <CTAButton className="mt-4" onClick={connect} disabled={opening}>
           {opening ? 'Abriendo Stripe...' : status?.connected ? 'Terminar verificación en Stripe' : 'Conectar Stripe'}

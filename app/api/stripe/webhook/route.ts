@@ -9,12 +9,12 @@ import {
 import { fulfillCourseFromStripeSession } from '@/lib/academy/stripe-session'
 import { fulfillAiCreditPurchase } from '@/lib/ai-credit-purchase'
 import { getInvoiceSubscriptionId } from '@/lib/academy/stripe-api-helpers'
-import { getStripeClient, getStripeWebhookSecret } from '@/lib/stripe'
+import { getStripeClient, getStripeConnectPaymentsWebhookSecret, getStripeWebhookSecret } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
 
 function signingSecrets(): string[] {
-  return [getStripeWebhookSecret(), process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim()].filter(
+  return [getStripeWebhookSecret(), getStripeConnectPaymentsWebhookSecret()].filter(
     (secret): secret is string => Boolean(secret)
   )
 }
@@ -66,12 +66,6 @@ export async function POST(request: Request) {
           break
         }
         await fulfillCourseFromStripeSession(session)
-        break
-      }
-      case 'account.updated': {
-        const account = event.data.object as Stripe.Account
-        const { syncConnectedAccount } = await import('@/lib/stripe-therapy')
-        await syncConnectedAccount(account)
         break
       }
       case 'invoice.paid': {

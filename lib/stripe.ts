@@ -39,6 +39,16 @@ export function getStripeConnectSecretKey(): string | undefined {
   return process.env.STRIPE_CONNECT_SECRET_KEY?.trim() || undefined
 }
 
+/** Thin events destination (Accounts v2 requirements/capability changes). */
+export function getStripeConnectWebhookSecret(): string | undefined {
+  return process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim() || undefined
+}
+
+/** Snapshot destination for v1 events from connected accounts (Checkout). */
+export function getStripeConnectPaymentsWebhookSecret(): string | undefined {
+  return process.env.STRIPE_CONNECT_PAYMENTS_WEBHOOK_SECRET?.trim() || undefined
+}
+
 export function isStripeConnectConfigured(): boolean {
   return Boolean(getStripeConnectSecretKey())
 }

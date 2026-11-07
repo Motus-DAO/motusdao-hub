@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import type Stripe from 'stripe'
 import {
   applicationFeeCents,
   cancellationRefundAllowed,
+  mapV2AccountStatus,
   stripeCountryCode,
 } from './stripe-connect'
 
@@ -31,5 +33,54 @@ describe('therapy connect pricing', () => {
     assert.equal(stripeCountryCode('mexico'), 'MX')
     assert.equal(stripeCountryCode('España'), 'ES')
     assert.equal(stripeCountryCode('otros'), null)
+  })
+})
+
+describe('accounts v2 status mapping', () => {
+  it('enables charging when card payments and payouts are active', () => {
+    const account = {
+      configuration: {
+        merchant: {
+          capabilities: {
+            card_payments: { status: 'active' },
+            stripe_balance: { payouts: { status: 'active' } },
+          },
+        },
+      },
+      requirements: { summary: { minimum_deadline: { status: 'eventually_due' } } },
+    } as unknown as Stripe.V2.Core.Account
+
+    const status = mapV2AccountStatus(account)
+    assert.equal(status.chargesEnabled, true)
+    assert.equal(status.payoutsEnabled, true)
+    assert.equal(status.requirementsDue, false)
+    assert.equal(status.onboardingComplete, true)
+  })
+
+  it('marks currently due requirements as pending onboarding', () => {
+    const account = {
+      configuration: {
+        merchant: {
+          capabilities: {
+            card_payments: { status: 'restricted' },
+          },
+        },
+      },
+      requirements: { summary: { minimum_deadline: { status: 'currently_due' } } },
+    } as unknown as Stripe.V2.Core.Account
+
+    const status = mapV2AccountStatus(account)
+    assert.equal(status.chargesEnabled, false)
+    assert.equal(status.payoutsEnabled, false)
+    assert.equal(status.requirementsDue, true)
+    assert.equal(status.onboardingComplete, false)
+  })
+
+  it('treats an account without configuration as not enabled', () => {
+    const status = mapV2AccountStatus({} as Stripe.V2.Core.Account)
+    assert.equal(status.chargesEnabled, false)
+    assert.equal(status.payoutsEnabled, false)
+    assert.equal(status.requirementsDue, false)
+    assert.equal(status.onboardingComplete, true)
   })
 })

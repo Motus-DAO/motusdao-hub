@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server'
+import type Stripe from 'stripe'
 import { getRequestOrigin } from '@/lib/auth/session'
 import { SITE_URL } from '@/lib/constants'
 
@@ -49,6 +50,34 @@ export function stripeCountryCode(pais: string | null | undefined): string | nul
   if (!pais) return null
   const key = pais.trim().toLowerCase()
   return PAIS_ISO[key] ?? null
+}
+
+export const PLATFORM_CONNECT_COUNTRY = 'MX'
+
+export type ConnectAccountStatus = {
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  onboardingComplete: boolean
+  requirementsDue: boolean
+}
+
+/**
+ * Accounts v2 only return `configuration` and `requirements` when the call
+ * includes them explicitly: `include: ['configuration.merchant', 'requirements']`.
+ */
+export function mapV2AccountStatus(account: Stripe.V2.Core.Account): ConnectAccountStatus {
+  const merchant = account.configuration?.merchant
+  const cardPayments = merchant?.capabilities?.card_payments?.status
+  const payouts = merchant?.capabilities?.stripe_balance?.payouts?.status
+  const deadline = account.requirements?.summary?.minimum_deadline?.status
+  const requirementsDue = deadline === 'currently_due' || deadline === 'past_due'
+
+  return {
+    chargesEnabled: cardPayments === 'active',
+    payoutsEnabled: payouts === 'active',
+    onboardingComplete: !requirementsDue,
+    requirementsDue,
+  }
 }
 
 export function browserOrigin(request: NextRequest): string {
