@@ -188,7 +188,12 @@ export async function POST(request: NextRequest) {
           : undefined,
     }
 
-    if (lower.includes('site links') || lower.includes('site_links')) {
+    if (
+      lower.includes('site links') ||
+      lower.includes('site_links') ||
+      lower.includes('site-links') ||
+      lower.includes('supplied urls')
+    ) {
       return NextResponse.json(
         {
           error:
