@@ -2,6 +2,7 @@ import { createWalletClient, createPublicClient, custom, http, parseUnits, encod
 import { celoMainnet, CELO_STABLE_TOKENS, getCeloTokenDecimals, type PaymentCurrency } from './celo'
 import { getCeloExplorerUrl } from './celo'
 import { getAttributionSuffix } from './attribution'
+import { ensureCeloNetwork } from './celo-waap'
 import type { WaaPWallet } from './wallet-utils'
 import { getPrimaryWallet } from './wallet-utils'
 
@@ -58,6 +59,11 @@ export async function createPrivyWalletClient(
   }
 
   const waapProvider = (window as unknown as { waap: unknown }).waap
+
+  // WaaP keeps its own chain across sessions (Optimism in the wild). viem
+  // refuses to sign when the wallet chain differs from the target chain, so
+  // switch before building the client — every payment and swap path goes here.
+  await ensureCeloNetwork(waapProvider as Parameters<typeof ensureCeloNetwork>[0])
 
   // ERC-8021: viem appends this suffix to every sendTransaction/writeContract,
   // so payment and swap calls are tagged without touching each call site.
