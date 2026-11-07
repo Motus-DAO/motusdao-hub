@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 
 let stripeClient: Stripe | null = null
+let stripeConnectClient: Stripe | null = null
 
 export function getStripeSecretKey(): string | undefined {
   return process.env.STRIPE_SECRET_KEY?.trim() || undefined
@@ -32,6 +33,30 @@ export function getStripeClient(): Stripe {
   }
 
   return stripeClient
+}
+
+export function getStripeConnectSecretKey(): string | undefined {
+  return process.env.STRIPE_CONNECT_SECRET_KEY?.trim() || undefined
+}
+
+export function isStripeConnectConfigured(): boolean {
+  return Boolean(getStripeConnectSecretKey())
+}
+
+export function getStripeConnectClient(): Stripe {
+  const secretKey = getStripeConnectSecretKey()
+  if (!secretKey) {
+    throw new Error('STRIPE_CONNECT_SECRET_KEY is not configured')
+  }
+
+  if (!stripeConnectClient) {
+    stripeConnectClient = new Stripe(secretKey, {
+      apiVersion: '2026-06-24.dahlia',
+      typescript: true,
+    })
+  }
+
+  return stripeConnectClient
 }
 
 /** Convert a decimal price to Stripe's smallest currency unit (e.g. MXN centavos). */

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { assertAuthenticatedUser, isAdmin } from '@/lib/auth/guards'
-import { getStripeClient, isStripeConfigured } from '@/lib/stripe'
+import { getStripeConnectClient, isStripeConnectConfigured } from '@/lib/stripe'
 import { fulfillTherapyCheckout } from '@/lib/stripe-therapy'
 
 const confirmSchema = z.object({
@@ -12,7 +12,7 @@ const confirmSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isStripeConfigured()) {
+    if (!isStripeConnectConfigured()) {
       return NextResponse.json({ error: 'Stripe no está configurado.' }, { status: 503 })
     }
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ese pago no es tuyo.' }, { status: 403 })
     }
 
-    const checkout = await getStripeClient().checkout.sessions.retrieve(
+    const checkout = await getStripeConnectClient().checkout.sessions.retrieve(
       body.checkoutSessionId,
       {},
       { stripeAccount: hold.stripeConnectedAccountId }

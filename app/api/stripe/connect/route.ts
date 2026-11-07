@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { assertAuthenticatedUser } from '@/lib/auth/guards'
-import { getStripeClient, isStripeConfigured } from '@/lib/stripe'
+import { getStripeConnectClient, isStripeConnectConfigured } from '@/lib/stripe'
 import { browserOrigin, connectFeeBps, stripeCountryCode } from '@/lib/stripe-connect'
 import { syncConnectedAccount } from '@/lib/stripe-therapy'
 
@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Solo un profesional puede conectar Stripe.' }, { status: 403 })
     }
 
-    if (user.psm.stripeConnectedAccountId && isStripeConfigured()) {
-      const account = await getStripeClient().accounts.retrieve(user.psm.stripeConnectedAccountId)
+    if (user.psm.stripeConnectedAccountId && isStripeConnectConfigured()) {
+      const account = await getStripeConnectClient().accounts.retrieve(user.psm.stripeConnectedAccountId)
       await syncConnectedAccount(account)
     }
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isStripeConfigured()) {
+    if (!isStripeConnectConfigured()) {
       return NextResponse.json({ error: 'Stripe no está configurado.' }, { status: 503 })
     }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Solo un profesional puede conectar Stripe.' }, { status: 403 })
     }
 
-    const stripe = getStripeClient()
+    const stripe = getStripeConnectClient()
     let accountId = user.psm.stripeConnectedAccountId
 
     if (!accountId) {

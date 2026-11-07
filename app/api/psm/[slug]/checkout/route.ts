@@ -6,7 +6,7 @@ import { handleAuthError } from '@/lib/auth/session'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 import { findPublicPsmBySlug } from '@/lib/psm/lookup'
 import { isSlotAvailable, slotDurationMinutes } from '@/lib/psm/availability'
-import { getStripeClient, isStripeConfigured, toStripeUnitAmount } from '@/lib/stripe'
+import { getStripeConnectClient, isStripeConnectConfigured, toStripeUnitAmount } from '@/lib/stripe'
 import {
   CHECKOUT_HOLD_MS,
   THERAPY_CHECKOUT_KIND,
@@ -23,7 +23,7 @@ type RouteParams = { params: Promise<{ slug: string }> }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    if (!isStripeConfigured()) {
+    if (!isStripeConnectConfigured()) {
       return NextResponse.json({ error: 'Stripe no está configurado.' }, { status: 503 })
     }
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const feeCents = applicationFeeCents(amountCents)
     const origin = browserOrigin(request)
     const professionalName = `${psmUser.profile?.nombre || ''} ${psmUser.profile?.apellido || ''}`.trim() || 'tu profesional'
-    const stripe = getStripeClient()
+    const stripe = getStripeConnectClient()
     const checkout = await stripe.checkout.sessions.create(
       {
         mode: 'payment',

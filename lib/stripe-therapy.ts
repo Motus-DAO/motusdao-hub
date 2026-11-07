@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
 import { buildOfficeJitsiUrl } from '@/lib/jitsi'
-import { getStripeClient } from '@/lib/stripe'
+import { getStripeConnectClient } from '@/lib/stripe'
 import { slotDurationMinutes } from '@/lib/psm/availability'
 import { THERAPY_CHECKOUT_KIND } from '@/lib/stripe-connect'
 
@@ -14,7 +14,7 @@ function paymentIntentId(session: Stripe.Checkout.Session): string | null {
 }
 
 export async function refundConnectedPayment(accountId: string, paymentIntentIdValue: string) {
-  const stripe = getStripeClient()
+  const stripe = getStripeConnectClient()
   await stripe.refunds.create(
     {
       payment_intent: paymentIntentIdValue,
