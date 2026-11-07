@@ -73,9 +73,14 @@ export async function resolveConnectAccess(
   let payoutsEnabled = user.psm.stripePayoutsEnabled
 
   // The hosted onboarding return can land before the v2 thin webhook updates
-  // the flags. Re-read the account once on that path so the dashboard shows
-  // the real state immediately.
-  if (options?.refresh && isStripeConnectConfigured()) {
+  // the flags, and a missing webhook can leave the panel stale forever. Re-read
+  // the account whenever the stored state is incomplete (and on onboarding
+  // return), so "Verificación pendiente" never hides an account that already
+  // charges and so the onboarding button doesn't silently reload `/cobros`.
+  const shouldRefresh =
+    options?.refresh === true || !chargesEnabled || !payoutsEnabled
+
+  if (shouldRefresh && isStripeConnectConfigured()) {
     try {
       const account = await getStripeConnectClient().v2.core.accounts.retrieve(accountId, {
         include: ['configuration.merchant', 'requirements'],
@@ -85,7 +90,7 @@ export async function resolveConnectAccess(
       payoutsEnabled = status.payoutsEnabled
       await syncConnectedAccount(account.id, status)
     } catch (error) {
-      console.error('[stripe-connect] status refresh on return failed', error)
+      console.error('[stripe-connect] status refresh failed', error)
     }
   }
 

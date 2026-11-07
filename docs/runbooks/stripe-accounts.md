@@ -63,3 +63,11 @@ PSM con sesión antes de crear el AccountSession y muestra un gate de wallet/SIW
 - Cuenta que ya cobra: **no** se pueden crear links `account_update` con `dashboard: 'none'` y
   Stripe responsable de pérdidas. Los requisitos y la cuenta bancaria se actualizan en
   `/cobros/cuenta` (Account management) y el aviso aparece en `/cobros` (Notification banner).
+
+### Probar Connect en local
+
+No apuntes `.env.local` a la `DATABASE_URL` de producción si usas llaves `sk_test`/`pk_test`.
+La fila del PSM apunta a una cuenta live y Stripe responde `No such account`, rompiendo tanto
+el AccountSession como el onboarding. Para probar el flujo local usa un Supabase branch (o
+Postgres local) y crea ahí una cuenta test. **No** cambies `stripeConnectedAccountId` de la
+base de producción para “probar”: eso desvincula al profesional real.
