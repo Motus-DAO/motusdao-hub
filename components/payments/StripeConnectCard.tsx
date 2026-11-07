@@ -65,6 +65,9 @@ export function StripeConnectCard() {
       <p className="text-sm text-muted-foreground">
         Stripe le cobra al paciente en tu cuenta. Motus se queda {feePercent}% de comisión. La comisión de la tarjeta la descuenta Stripe de tu parte, no de Motus. No necesitas cuenta ni dashboard de Stripe: aquí ves el estado y aquí te avisamos si Stripe pide algo.
       </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Si cancelas con 48 horas o más de anticipación, Stripe devuelve el pago y la comisión. Dentro de esas 48 horas la cita se cancela y el pago se conserva.
+      </p>
       {loading ? (
         <div className="mt-4 flex items-center text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

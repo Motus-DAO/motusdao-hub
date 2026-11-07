@@ -36,6 +36,7 @@ import { authFetch } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
 import { StripeConnectCard } from '@/components/payments/StripeConnectCard'
+import { StripeEarningsCard } from '@/components/payments/StripeEarningsCard'
 import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
 import { SpeiPaymentCard } from '@/components/payments/SpeiPaymentCard'
 import {
@@ -1135,8 +1136,9 @@ export default function PerfilPage() {
               )}
 
               {userData?.role === 'psm' && (
-                <div className="mt-8">
+                <div className="mt-8 space-y-6">
                   <StripeConnectCard />
+                  <StripeEarningsCard />
                 </div>
               )}
 

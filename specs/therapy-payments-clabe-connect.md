@@ -1,10 +1,10 @@
 # Pagos de terapia: CLABE en main, Stripe Connect en rama
 
-> Status: **CLABE en `main`**. **Connect estacionado.** · Slice: octubre 2026
+> Status: **HISTÓRICO (v1)**. La implementación vigente es
+> [stripe-connect-therapy-v2.md](./stripe-connect-therapy-v2.md). · Slice: octubre 2026
 >
-> La sesión se puede pagar por SPEI directo al profesional. La tarjeta con comisión de Motus queda escrita, pero no se mezcla a `main` hasta que exista una cuenta de Stripe que sí pueda ser plataforma.
->
-> El próximo agente empieza por este archivo. El código de Connect no está en GitHub: vive en la rama local `feat/stripe-connect-therapy` (`30af159`). No la fusiones. No la borres.
+> Esta rama usaba `type: 'express'` y `account.updated`. No usar en código nuevo; se
+> conserva como referencia de la primera exploración.
 
 ---
 
