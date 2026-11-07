@@ -85,10 +85,11 @@ escribir cuentas de test en la base de producción.
 Los eventos v2 de cuentas creadas por la plataforma **no** llegan a *Connected accounts*.
 Por eso son dos destinos.
 
-## 5.1 Site links (requisito para AccountSessions live)
+## 5.1 Site links (configurados en producción)
 
-Stripe exige una URL por componente antes de crear AccountSessions en live. Se configuran en
-**Dashboard → Settings → Connect → Site links** (cuenta Connect), marcando **Yes**:
+Stripe exige una URL por componente antes de crear AccountSessions o AccountLinks en live.
+Se configuraron el **2026-11-07** en **Dashboard → Settings → Connect → Site links** (cuenta
+Connect), todos con **Yes**:
 
 | Componente | URL | Ruta |
 |---|---|---|
@@ -104,6 +105,29 @@ sesión + rol PSM + que la cuenta esté vinculada al profesional; `ConnectAccess
 wallet/SIWE si no hay sesión. Sin esa validación, cualquier `acct_` en la URL abriría el panel
 de otra persona.
 
+**Error que bloquea si falta alguno** (Stripe lo devuelve al crear la sesión o el link):
+
+> You cannot create livemode account sessions or account links until you have supplied URLs at
+> https://dashboard.stripe.com/settings/connect/site-links for notification banner, account
+> management, payouts, payments, balance, and documents.
+
+`Validate` puede seguir fallando hasta que los seis estén guardados, porque la página intenta
+crear un AccountSession live. Guardar los seis primero y validar después.
+
+## 5.2 Estado en producción (2026-11-07)
+
+| Hecho | Evidencia |
+|---|---|
+| Dashboard embebido desplegado | `3b65e7e`, `9e598f3`, `2e67f16`, `47c462f` en `main`; Vercel success |
+| `/cobros` y sus cinco secciones | Cargan en `https://app.motusdao.org/cobros` |
+| Site links | Los seis guardados con **Yes** |
+| AccountSession live | 200 para `acct_1UZ3khBQoDcLVQeX` |
+| Cuenta del primer PSM | `charges=false`, `payouts=false`; identidad/RFC/banco pendientes en Stripe |
+
+El panel funciona. El siguiente paso del PSM es **Terminar verificación en Stripe**. Hasta que
+Stripe active `charges`/`payouts`, las secciones de pagos, depósitos y saldos muestran estados
+vacíos y el cobro con tarjeta no está disponible para pacientes.
+
 ## 6. Slices
 
 | # | Slice | Estado | Criterio de aceptación |
@@ -113,11 +137,14 @@ de otra persona.
 | S2 | Webhooks thin + pagos | **Código listo** | Thin 200/400 por secreto; checkout confirma cita |
 | S3 | UX del psicólogo: estado | **Hecho** | Card muestra conectado / verificando / activo / requiere datos; payout status |
 | S4 | UX del psicólogo: ingresos | **Hecho** | Bruto, comisión Motus, neto y últimas sesiones cobradas |
-| S4.5 | Dashboard embebido (AccountSession) | **Código listo** | `/cobros` con banner, cuenta, pagos, depósitos, saldos y documentos; ownership por `stripe_account_id` |
-| S5 | Site links live | **Pendiente del usuario** | Las seis URLs de §5.1 guardadas y validadas en Stripe; AccountSession live responde 200 |
+| S4.5 | Dashboard embebido (AccountSession) | **Hecho (prod 2026-11-07)** | `/cobros` con banner, cuenta, pagos, depósitos, saldos y documentos; ownership por `stripe_account_id` |
+| S5 | Site links live | **Hecho (2026-11-07)** | Seis URLs guardadas con Yes; AccountSession live responde 200 |
 | S6 | Checkout E2E test mode | **Pendiente** | Cuenta test, onboarding completo, pago 4242, cita, refund |
-| S7 | Deploy live + primer profesional | **Pendiente** | Destinos live responden; un PSM real cobra 45 USD |
+| S7 | Deploy live + primer profesional | **Pendiente** | Verificación del PSM, `charges`/`payouts` activos y primer cobro real de 45 USD |
 | S8 | Migrar Academia a la cuenta Connect | **Parkeado** | Saldo viejo en cero; keys y webhook movidos; historial exportado |
+
+S6 **no** se puede correr contra la base de producción con llaves test: las cuentas vinculadas
+son live y Stripe responde `No such account`. Usar un Supabase branch o Postgres local.
 
 ## 7. Academia: decisión y salida
 
@@ -130,14 +157,22 @@ de Academia. Ver `docs/runbooks/stripe-accounts.md`.
 ## 8. Rollout y rollback
 
 - Merge a `main` → deploy con env de Production.
-- Hasta que un PSM tenga `stripeChargesEnabled`, la UI no cambia (sigue CLABE).
+- Site links live: configurados el 2026-11-07; sin ellos Stripe bloquea AccountSessions y
+  AccountLinks live.
+- Hasta que un PSM tenga `stripeChargesEnabled`, el paciente sigue pagando por CLABE/SPEI.
+  El panel `/cobros` ya es visible, pero muestra “Verificación pendiente”.
 - Rollback: revertir deploy; schema aditivo. Kill switch:
   `UPDATE psm_profiles SET "stripeChargesEnabled" = false;` y desactivar los destinos.
 - `db push` solo desde la rama mergeada; nunca desde `main` sin los modelos.
 
 ## 9. Abiertos
 
-- **USD en cuenta MX**: validar el primer cobro test en USD; si Stripe lo rechaza, cobrar MXN.
+- **Verificación del primer PSM**: `acct_1UZ3khBQoDcLVQeX` sigue con `charges=false` y
+  `payouts=false`; completar identidad, RFC y cuenta bancaria en Stripe.
+- **E2E test mode**: cuenta test, onboarding completo, pago 4242, cita y refund. Requiere una
+  DB de test separada de producción.
+- **Primer cobro live**: un PSM real cobra 45 USD con tarjeta y se verifica el depósito.
+- **USD en cuenta MX**: validar el primer cobro en USD; si Stripe lo rechaza, cobrar MXN.
 - **Payouts**: el componente embebido ya muestra historial y calendario; validar el primer
   depósito live.
 - **Facturación/tax**: dos cuentas Stripe para la misma entidad; conciliación pendiente.
@@ -146,4 +181,6 @@ de Academia. Ver `docs/runbooks/stripe-accounts.md`.
   flujo 100% embebido para el combo `dashboard: none` + losses Stripe, agregar
   `ConnectAccountOnboarding` en `/cobros/verificacion` y habilitar `account_onboarding` en el
   AccountSession.
+- **Entorno local**: no usar la `DATABASE_URL` de producción con llaves `sk_test`; Stripe
+  responde `No such account`. Usar un Supabase branch o Postgres local.
 - **Si el SDK sube a 23**: `parseEventNotification` sigue siendo el parser de thin events.

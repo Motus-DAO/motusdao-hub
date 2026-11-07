@@ -31,7 +31,7 @@ Supabase Postgres, Stripe billing, private video, and consent/audit trails.
 - **Data:** Prisma ORM → **Supabase Postgres** (see [`docs/architecture/data-layer.md`](docs/architecture/data-layer.md))
 - **Storage / RAG:** Supabase Storage + pgvector
 - **AI:** provider selected by `AI_PROVIDER` (OpenAI by default, Venice for TEE/E2EE); optional local RootRouter proxy for Psychat context
-- **Payments:** Stripe Checkout + webhooks (Academia); SPEI/CLABE (therapy); Celo transfers with QR (Pagos); Ripio/Textile ramp integrations (status below)
+- **Payments:** Stripe Checkout + webhooks (Academia); Stripe Connect embedded dashboard (therapy); SPEI/CLABE (therapy); Celo transfers with QR (Pagos); Ripio/Textile ramp integrations (status below)
 - **Video:** private Jitsi (`jitsi.motusdao.org`); the Hub mints tokens
 - **Auth / chain:** WaaP (Human.tech) self-custody + SIWE sessions, Viem, Celo
 
@@ -55,12 +55,20 @@ builds and submits the transaction.
 | Rail | Used for | Status |
 |------|----------|--------|
 | **Stripe Checkout** | Academy courses and memberships | Live |
+| **Stripe Connect (terapia)** | Card payments for therapy sessions + embedded professional dashboard at `/cobros` | **Dashboard live (2026-11-07)**; first PSM in verification |
 | **SPEI / CLABE** | Therapy sessions, paid directly to the professional | Live; manual confirmation |
 | **Celo transfer + QR** | P2P and professional payments | Live |
 | **WaaP (Human.tech)** | Self-custodial wallet and signing | Live |
 | **Ripio Ramps Widget** | Fiat on-ramp / off-ramp | **Connected, not active**: runs an in-app mock until partner credentials exist |
 | **Textile FX (RFQ v2)** | `wARS` / `wBRL` ↔ `USDT` swaps | **Wired** to the public RFQ; no Motus API key required |
 | **Transak / Mt Pelerin / Privy** | Legacy on-ramp handlers | Code present; not exposed in the current provider grid |
+
+Therapy card payments run on **Stripe Connect Accounts v2** (`MotusDAO-Connect`). Professionals
+manage identity, bank account, payments, payouts, balances and documents from `/cobros` with
+Stripe embedded components (`AccountSession`); Stripe's live Site links are configured. The first
+PSM still has to finish Stripe verification before card charges are enabled. See
+[`docs/runbooks/stripe-accounts.md`](docs/runbooks/stripe-accounts.md) and
+[`specs/stripe-connect-therapy-v2.md`](specs/stripe-connect-therapy-v2.md).
 
 Ripio is a partner-only API. Without `RIPIO_CLIENT_ID` / `RIPIO_CLIENT_SECRET`, the UI uses a
 demo wizard and never calls the live widget. To activate it:

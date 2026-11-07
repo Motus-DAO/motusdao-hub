@@ -38,11 +38,11 @@ creado en `POST /api/stripe/connect/account-session`.
 `acct_1TnbVgBffEqB2M2K`, la **misma cuenta** que `STRIPE_CONNECT_SECRET_KEY`. La publishable
 key de Academia (`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) no sirve para este panel.
 
-### Site links
+### Site links (configurados en producción)
 
-Stripe no permite crear AccountSessions en modo live hasta que cada componente tenga su URL.
-Configurar en **Dashboard → Settings → Connect → Site links** (cuenta Connect), marcando
-**Yes** en cada componente:
+Stripe no permite crear AccountSessions ni AccountLinks en modo live hasta que cada componente
+tenga su URL. Se configuraron el **2026-11-07** en **Dashboard → Settings → Connect → Site
+links** (cuenta Connect), todos con **Yes**:
 
 | Componente | URL | Ruta en el repo |
 |---|---|---|
@@ -56,6 +56,24 @@ Configurar en **Dashboard → Settings → Connect → Site links** (cuenta Conn
 Los mismos valores están en `CONNECT_SITE_LINKS` (`lib/stripe-connect-paths.ts`). Stripe
 agrega `?stripe_account_id=acct_...` a esos enlaces; la app valida que la cuenta pertenezca al
 PSM con sesión antes de crear el AccountSession y muestra un gate de wallet/SIWE si hace falta.
+
+Si Stripe bloquea la sesión o el link con este mensaje, falta guardar alguno de los seis:
+
+> You cannot create livemode account sessions or account links until you have supplied URLs at
+> https://dashboard.stripe.com/settings/connect/site-links for notification banner, account
+> management, payouts, payments, balance, and documents.
+
+`Validate` puede seguir fallando hasta que los seis estén guardados: la página intenta crear un
+AccountSession live. Guardar los seis primero y validar después.
+
+### Verificación en producción
+
+- `https://app.motusdao.org/cobros` carga con los seis componentes embebidos.
+- `POST /api/stripe/connect/account-session` responde 200 para la cuenta del PSM.
+- La cuenta del primer PSM (`acct_1UZ3khBQoDcLVQeX`) sigue con `charges=false` y
+  `payouts=false`: falta que complete identidad, RFC y cuenta bancaria en Stripe.
+- Hasta que `charges`/`payouts` estén activos, pagos/depósitos/saldos muestran estados vacíos y
+  el paciente sigue pagando por CLABE/SPEI.
 
 ### Onboarding y requisitos
 
