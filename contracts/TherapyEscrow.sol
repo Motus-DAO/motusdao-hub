@@ -57,7 +57,11 @@ contract TherapyEscrow is Ownable, ReentrancyGuard {
 
     address public immutable treasury;
     uint16 public immutable feeBps;
-    address public immutable oracle;
+
+    /// @notice Hot worker that creates sessions. Rotatable by the owner.
+    address public operator;
+    /// @notice Hot agent that arbitrates disputes. Rotatable by the owner.
+    address public oracle;
 
     mapping(bytes32 => Session) public sessions;
 
@@ -70,6 +74,8 @@ contract TherapyEscrow is Ownable, ReentrancyGuard {
         uint64 startsAt,
         uint32 challengeWindow
     );
+    event OperatorUpdated(address indexed previous, address indexed next);
+    event OracleUpdated(address indexed previous, address indexed next);
     event Deposited(bytes32 indexed id, uint256 amount);
     event Settled(bytes32 indexed id, uint64 settledAt);
     event Disputed(bytes32 indexed id);
@@ -85,6 +91,7 @@ contract TherapyEscrow is Ownable, ReentrancyGuard {
 
     error NotPatient();
     error NotPayee();
+    error NotOperator();
     error NotOracle();
     error InvalidStatus();
     error InvalidConfig();
@@ -92,20 +99,49 @@ contract TherapyEscrow is Ownable, ReentrancyGuard {
     error TooLate();
     error NotStarted();
 
+    modifier onlyOperator() {
+        if (msg.sender != operator) revert NotOperator();
+        _;
+    }
+
     modifier onlyOracle() {
         if (msg.sender != oracle) revert NotOracle();
         _;
     }
 
-    constructor(address treasury_, uint16 feeBps_, address oracle_) Ownable(msg.sender) {
-        if (treasury_ == address(0) || oracle_ == address(0)) revert InvalidConfig();
+    constructor(
+        address treasury_,
+        uint16 feeBps_,
+        address operator_,
+        address oracle_
+    ) Ownable(msg.sender) {
+        if (
+            treasury_ == address(0) ||
+            operator_ == address(0) ||
+            oracle_ == address(0)
+        ) revert InvalidConfig();
         if (feeBps_ > MAX_FEE_BPS) revert InvalidConfig();
         treasury = treasury_;
         feeBps = feeBps_;
+        operator = operator_;
         oracle = oracle_;
     }
 
-    /// @notice Platform creates the obligation. Only the owner (Motus backend).
+    /// @notice Owner rotates the hot worker without redeploying the escrow.
+    function setOperator(address next) external onlyOwner {
+        if (next == address(0)) revert InvalidConfig();
+        emit OperatorUpdated(operator, next);
+        operator = next;
+    }
+
+    /// @notice Owner rotates the hot oracle without redeploying the escrow.
+    function setOracle(address next) external onlyOwner {
+        if (next == address(0)) revert InvalidConfig();
+        emit OracleUpdated(oracle, next);
+        oracle = next;
+    }
+
+    /// @notice The operator creates the obligation; the owner can rotate it.
     function createSession(
         bytes32 id,
         address token,
@@ -114,7 +150,7 @@ contract TherapyEscrow is Ownable, ReentrancyGuard {
         uint256 amount,
         uint64 startsAt,
         uint32 challengeWindow
-    ) external onlyOwner {
+    ) external onlyOperator {
         if (sessions[id].status != Status.None) revert InvalidStatus();
         if (
             token == address(0) ||
