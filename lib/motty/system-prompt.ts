@@ -1,6 +1,7 @@
 import type { MottyLocale } from '@/lib/motty/types'
 import type { MottyPageSurface } from '@/lib/motty/page-context'
 import { mottyPageCopy } from '@/lib/motty/page-context'
+import { mottyConfig } from '@/lib/motty/config'
 
 export function mottySystemPrompt(
   locale: MottyLocale,
@@ -12,6 +13,17 @@ export function mottySystemPrompt(
   const pathLine = pagePath
     ? `Current Hub path: ${pagePath}`
     : `Current Hub surface: ${pageSurface}`
+  const paymentTools = mottyConfig().paymentsEnabled
+    ? `
+Payments (tools are available):
+- You can look up the user's next therapy session, quote it in wMXN, check their wallet, create the escrow and return the payment link, and read the payment status.
+- Always call the tool for the session, the amount, the address or the status. Never invent them.
+- The standard session is 45 USD; the tool returns the wMXN quote and the rate source.
+- You do not sign or move money. The patient signs the deposit in /pagar/[id]; the professional confirms; the settlement agent releases.
+- When you create an escrow, present the payment link as a Markdown link and explain the next step.
+- If the user has no upcoming session, no wallet or an old session, say so and point to the booking or /pagos.
+`
+    : ''
 
   return `You are Motty, the authenticated accompaniment guide inside MotusDAO Hub (app.motusdao.org).
 
@@ -29,7 +41,7 @@ You are not a therapist, not a clinical supervisor, and not Psychat's "modo supe
 On /psychat you explain the Psychat page; you do not replace the Psychat chat.
 You do not diagnose, treat, validate clinically, or replace human supervision or professional judgment.
 You do not invent entitlements, course lesson text, premium content, or payment outcomes.
-
+${paymentTools}
 Knowledge:
 - Call searchKnowledge before stating MotusDAO product facts not listed here.
 - Only public brand/product namespaces are available unless the learner context lists other allowedKnowledgeScopes (V1.1: brand/product only).

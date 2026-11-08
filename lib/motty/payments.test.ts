@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { mxnPerUsd, quoteTherapy } from './payments'
+import { enabledMottyToolNames } from './tools'
+import { therapyEscrowId } from '@/lib/escrow/create'
+
+function withEnv(name: string, value: string, run: () => void) {
+  const previous = process.env[name]
+  process.env[name] = value
+  try {
+    run()
+  } finally {
+    if (previous === undefined) delete process.env[name]
+    else process.env[name] = previous
+  }
+}
+
+test('quoteTherapy uses the platform price and the configured rate', () => {
+  withEnv('MOTUS_MXN_PER_USD', '18.5', () => {
+    const quote = quoteTherapy()
+    assert.equal(quote.usd, 45)
+    assert.equal(quote.mxn, 832.5)
+    assert.equal(quote.rate, 18.5)
+    assert.equal(quote.source, 'fixed')
+  })
+})
+
+test('mxnPerUsd falls back when the env is invalid', () => {
+  withEnv('MOTUS_MXN_PER_USD', '0', () => assert.equal(mxnPerUsd(), 18.5))
+  withEnv('MOTUS_MXN_PER_USD', 'nope', () => assert.equal(mxnPerUsd(), 18.5))
+})
+
+test('therapyEscrowId is deterministic and session-specific', () => {
+  const a = therapyEscrowId('session-a')
+  const b = therapyEscrowId('session-a')
+  const c = therapyEscrowId('session-b')
+  assert.equal(a, b)
+  assert.notEqual(a, c)
+  assert.match(a, /^0x[0-9a-f]{64}$/)
+})
+
+test('payment tools disappear when MOTTY_PAYMENTS_ENABLED=false', () => {
+  withEnv('MOTTY_PAYMENTS_ENABLED', 'false', () => {
+    assert.deepEqual(enabledMottyToolNames(), ['searchKnowledge'])
+  })
+  withEnv('MOTTY_PAYMENTS_ENABLED', 'true', () => {
+    assert.ok(enabledMottyToolNames().includes('getMyUpcomingSession'))
+    assert.ok(enabledMottyToolNames().includes('createTherapyEscrowForMySession'))
+  })
+})
