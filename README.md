@@ -89,6 +89,11 @@ Details: [Ripio public ramp](specs/ripio-public-ramp.md) ·
 [Ripio widget](specs/ripio-ramps-widget.md) ·
 [wFIAT + Textile](specs/ripio-wfiat-pagos.md).
 
+El historial de enviados/recibidos vive en `/pagos/historial`: lee Celo mainnet vía Blockscout
+(capa 1) y muestra monto, hash y link a Celoscan. La persistencia propia
+(`OnchainTransaction`) queda como capa 2, detrás del mismo contrato.
+Detalle: [onchain history](specs/onchain-history.md).
+
 ## Repo layout
 
 ```text

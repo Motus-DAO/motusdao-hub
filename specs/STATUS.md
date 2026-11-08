@@ -132,6 +132,7 @@ Detalle: [spec](./celo-attribution.md).
 | **Stripe Connect terapia v2** | Verificación del primer PSM, E2E test mode y primer cobro live | Dashboard embebido + Site links + AccountSession ya en prod (2026-11-07); la cuenta sigue sin `charges`/`payouts` |
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
 | **Ripio rampa pública** | Probar el botón en prod (MX/`wMXN`) y decidir el off-ramp automático | El B2B sigue bloqueado por KYB; el mock ya no es el default |
+| **Historial de tx (capa 1)** | Verificar `/pagos/historial` en prod | Lee Blockscout; la persistencia (`OnchainTransaction`) queda como capa 2 |
 
 ---
 
