@@ -12,6 +12,7 @@ export type ActivityKind =
   | 'onchain_received'
   | 'therapy_card'
   | 'therapy_spei'
+  | 'therapy_escrow'
   | 'academy'
 
 export type ActivityStatus = 'confirmed' | 'pending' | 'failed' | 'refunded'
@@ -27,6 +28,7 @@ export type ActivityItem = {
   status: ActivityStatus
   href: string | null
   explorerUrl: string | null
+  direction?: 'in' | 'out'
 }
 
 export type TherapyCardActivity = {
@@ -43,6 +45,15 @@ export type TherapySpeiActivity = {
   amount: string | number | null
   currency: string | null
   createdAt: Date
+}
+
+export type TherapyEscrowActivity = {
+  id: string
+  role: 'patient' | 'payee'
+  amount: string
+  payout: string
+  startsAt: number
+  status: number
 }
 
 export type AcademyActivity = {
@@ -87,6 +98,7 @@ export function mergeActivity(input: {
   onchain?: OnchainHistoryItem[]
   card?: TherapyCardActivity[]
   spei?: TherapySpeiActivity[]
+  escrow?: TherapyEscrowActivity[]
   academy?: AcademyActivity[]
   limit?: number
 }): ActivityItem[] {
@@ -141,6 +153,45 @@ export function mergeActivity(input: {
       status: 'confirmed',
       href: '/psicoterapia',
       explorerUrl: null,
+    })
+  }
+
+  for (const escrow of input.escrow ?? []) {
+    const payee = escrow.role === 'payee'
+    // A refund goes back to the patient; the professional received nothing.
+    if (payee && escrow.status === 6) continue
+    const status: ActivityStatus =
+      escrow.status === 5
+        ? 'confirmed'
+        : escrow.status === 6
+          ? 'refunded'
+          : escrow.status === 4
+            ? 'failed'
+            : 'pending'
+    const title = payee
+      ? escrow.status === 5
+        ? 'Pago de sesión recibido'
+        : escrow.status === 6
+          ? 'Sesión reembolsada'
+          : 'Sesión por cobrar'
+      : escrow.status === 5
+        ? 'Sesión pagada en escrow'
+        : escrow.status === 6
+          ? 'Sesión reembolsada'
+          : 'Sesión en escrow'
+
+    items.push({
+      id: `escrow:${escrow.id}:${escrow.role}`,
+      kind: 'therapy_escrow',
+      title,
+      subtitle: payee ? '90% del escrow en Celo' : 'Escrow en Celo',
+      amount: formatAmount(payee ? escrow.payout : escrow.amount),
+      currency: 'wMXN',
+      timestamp: escrow.startsAt * 1000,
+      status,
+      href: `/pagar/${escrow.id}`,
+      explorerUrl: null,
+      direction: payee ? 'in' : 'out',
     })
   }
 

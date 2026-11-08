@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { formatUnits, type Address } from 'viem'
 import { fetchBlockscoutHistory } from '@/lib/onchain/history'
+import { listEscrowSessionsForAddress } from '@/lib/escrow/list'
 import { mergeActivity } from '@/lib/finance/activity'
 
 export const runtime = 'nodejs'
@@ -21,6 +23,13 @@ export async function GET(request: NextRequest) {
     const onchain = auth.eoaAddress
       ? await fetchBlockscoutHistory(auth.eoaAddress).catch((error) => {
           console.error('[finance/activity] onchain:', error)
+          return []
+        })
+      : []
+
+    const escrowSessions = auth.eoaAddress
+      ? await listEscrowSessionsForAddress(auth.eoaAddress as Address).catch((error) => {
+          console.error('[finance/activity] escrow:', error)
           return []
         })
       : []
@@ -95,6 +104,18 @@ export async function GET(request: NextRequest) {
         currency: transfer.currency,
         createdAt: transfer.createdAt,
       })),
+      escrow: escrowSessions.map((escrow) => {
+        const amount = BigInt(escrow.amount)
+        const payout = (amount * BigInt(9000)) / BigInt(10000)
+        return {
+          id: escrow.id,
+          role: escrow.role,
+          amount: formatUnits(amount, 18),
+          payout: formatUnits(payout, 18),
+          startsAt: escrow.startsAt,
+          status: escrow.status,
+        }
+      }),
       academy: payments.map((payment) => ({
         paymentId: payment.id,
         amount: payment.amount.toString(),
@@ -109,7 +130,10 @@ export async function GET(request: NextRequest) {
       items,
       sources: {
         onchain: onchain.length,
-        therapy: sessions.filter((session) => session.paidAt).length + transfers.length,
+        therapy:
+          sessions.filter((session) => session.paidAt).length +
+          transfers.length +
+          escrowSessions.length,
         academy: payments.length,
       },
     })

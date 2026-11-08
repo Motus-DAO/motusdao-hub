@@ -134,4 +134,36 @@ describe('mergeActivity', () => {
     })
     assert.equal(items[0].amount, '0.09999')
   })
+
+  it('maps escrow sessions for the patient and the professional', () => {
+    const items = mergeActivity({
+      escrow: [
+        {
+          id: 'esc1',
+          role: 'patient',
+          amount: '10',
+          payout: '9',
+          startsAt: 3000,
+          status: 2,
+        },
+        {
+          id: 'esc2',
+          role: 'payee',
+          amount: '10',
+          payout: '9',
+          startsAt: 4000,
+          status: 5,
+        },
+      ],
+    })
+
+    assert.equal(items.length, 2)
+    assert.equal(items[0].kind, 'therapy_escrow')
+    assert.equal(items[0].amount, '9')
+    assert.equal(items[0].direction, 'in')
+    assert.equal(items[0].status, 'confirmed')
+    assert.equal(items[1].amount, '10')
+    assert.equal(items[1].direction, 'out')
+    assert.equal(items[1].status, 'pending')
+  })
 })

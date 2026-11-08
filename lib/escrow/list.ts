@@ -9,20 +9,24 @@ const SESSION_CREATED = parseAbiItem(
   'event SessionCreated(bytes32 indexed id, address indexed patient, address indexed payee, address token, uint256 amount, uint64 startsAt, uint32 challengeWindow)'
 )
 
-export type EscrowSessionListItem = EscrowSnapshot & { id: Hex }
+export type EscrowRole = 'patient' | 'payee'
+export type EscrowSessionListItem = EscrowSnapshot & {
+  id: Hex
+  role: EscrowRole
+}
 
 /**
- * List the escrow sessions where `payee` is the professional. Used by the PSM
- * so they do not depend on the patient sharing the /pagar link.
+ * Sessions where `address` is the patient or the professional. Used by the PSM
+ * sessions page and by the finance activity read model (no Blockscout needed).
  */
-export async function listEscrowSessionsForPayee(
-  payee: Address
+export async function listEscrowSessionsForAddress(
+  address: Address
 ): Promise<EscrowSessionListItem[]> {
   const client = escrowPublicClient()
   const latest = await client.getBlockNumber()
   const configured = BigInt(process.env.ESCROW_SCAN_BLOCKS || '4500')
   const chunk = configured > BigInt(0) ? configured : BigInt(4500)
-  const ids = new Set<Hex>()
+  const ids = new Map<Hex, EscrowRole>()
 
   if (latest >= THERAPY_ESCROW_DEPLOY_BLOCK) {
     for (
@@ -32,25 +36,47 @@ export async function listEscrowSessionsForPayee(
     ) {
       const end = fromBlock + chunk - BigInt(1)
       const toBlock = end > latest ? latest : end
-      const logs = await client.getLogs({
+
+      const asPatient = await client.getLogs({
         address: THERAPY_ESCROW_ADDRESS,
         event: SESSION_CREATED,
-        args: { payee },
+        args: { patient: address },
         fromBlock,
         toBlock,
       })
-      for (const log of logs) ids.add(log.args.id as Hex)
+      for (const log of asPatient) {
+        if (!ids.has(log.args.id as Hex)) ids.set(log.args.id as Hex, 'patient')
+      }
+
+      const asPayee = await client.getLogs({
+        address: THERAPY_ESCROW_ADDRESS,
+        event: SESSION_CREATED,
+        args: { payee: address },
+        fromBlock,
+        toBlock,
+      })
+      for (const log of asPayee) {
+        if (!ids.has(log.args.id as Hex)) ids.set(log.args.id as Hex, 'payee')
+      }
     }
   }
 
   const items = await Promise.all(
-    [...ids].map(async (id) => {
+    [...ids.entries()].map(async ([id, role]) => {
       const escrow = await readEscrow(id)
-      return escrow ? ({ id, ...escrow } as EscrowSessionListItem) : null
+      return escrow ? ({ id, role, ...escrow } as EscrowSessionListItem) : null
     })
   )
 
   return items
     .filter((item): item is EscrowSessionListItem => item !== null)
     .sort((a, b) => b.startsAt - a.startsAt)
+}
+
+/** Sessions where the professional is the payee. */
+export async function listEscrowSessionsForPayee(
+  payee: Address
+): Promise<EscrowSessionListItem[]> {
+  const all = await listEscrowSessionsForAddress(payee)
+  return all.filter((item) => item.role === 'payee')
 }

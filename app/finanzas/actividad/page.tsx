@@ -35,6 +35,7 @@ const KIND_ICON: Record<ActivityKind, LucideIcon> = {
   onchain_received: ArrowDownLeft,
   therapy_card: CreditCard,
   therapy_spei: Building2,
+  therapy_escrow: CreditCard,
   academy: GraduationCap,
 }
 
@@ -55,7 +56,12 @@ const STATUS_CLASS: Record<ActivityStatus, string> = {
 function matchesFilter(item: ActivityItem, filter: Filter): boolean {
   if (filter === 'all') return true
   if (filter === 'wallet') return item.kind === 'onchain_sent' || item.kind === 'onchain_received'
-  if (filter === 'therapy') return item.kind === 'therapy_card' || item.kind === 'therapy_spei'
+  if (filter === 'therapy')
+    return (
+      item.kind === 'therapy_card' ||
+      item.kind === 'therapy_spei' ||
+      item.kind === 'therapy_escrow'
+    )
   return item.kind === 'academy'
 }
 
@@ -213,8 +219,11 @@ export default function ActividadPage() {
                 <ul className="space-y-2">
                   {filtered.map((item) => {
                     const Icon = KIND_ICON[item.kind]
-                    const isIncoming =
-                      item.kind === 'onchain_received' || item.kind === 'therapy_card' || item.kind === 'therapy_spei'
+                    const isIncoming = item.direction
+                      ? item.direction === 'in'
+                      : item.kind === 'onchain_received' ||
+                        item.kind === 'therapy_card' ||
+                        item.kind === 'therapy_spei'
                     return (
                       <li
                         key={item.id}
