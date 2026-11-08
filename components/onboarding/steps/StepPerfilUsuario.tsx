@@ -126,14 +126,6 @@ function languageFormValue(values: string[] | undefined) {
   return custom ? [...known, custom] : known
 }
 
-const riskFlagOptions = [
-  { value: 'none', label: 'Ninguno' },
-  { value: 'self_harm', label: 'Autolesión o ideación suicida' },
-  { value: 'violence', label: 'Riesgo de violencia' },
-  { value: 'abuse', label: 'Abuso o violencia familiar' },
-  { value: 'substance_use', label: 'Uso problemático de sustancias' }
-]
-
 const paises = [
   { value: 'mexico', label: 'México' },
   { value: 'colombia', label: 'Colombia' },
@@ -215,7 +207,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       availabilityNotes: data.availabilityNotes || '',
       priorTherapyExperience: data.priorTherapyExperience ?? false,
       medicationOrDiagnosisContext: data.medicationOrDiagnosisContext || '',
-      riskFlags: data.riskFlags || ['none'],
       consentToAIProcessing: data.consentToAIProcessing ?? false,
       consentToTerms: data.consentToTerms ?? false,
       consentToPrivacy: data.consentToPrivacy ?? false,
@@ -694,21 +685,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   rows={3}
                   className={inputFieldClass(false, 'resize-none')}
                 />
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Señales de riesgo</p>
-                <p className="text-xs text-muted-foreground">
-                  Márcalas solo si alguna está presente. Si no, deja Ninguno.
-                </p>
-                <div className="grid md:grid-cols-2 gap-2">
-                  {riskFlagOptions.map(flag => (
-                    <label key={flag.value} className={cn('flex items-center gap-2', onboardingFormSurfaceClass, 'p-2')}>
-                      <input {...register('riskFlags')} type="checkbox" value={flag.value} />
-                      <span className="text-sm">{flag.label}</span>
-                    </label>
-                  ))}
-                </div>
               </div>
 
               <section className="space-y-4 border-t border-border pt-5">
