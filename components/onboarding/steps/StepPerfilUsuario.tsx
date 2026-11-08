@@ -18,7 +18,6 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore, getStepBlockerKeys } from '@/lib/onboarding-store'
 import { StepAIIntake } from './StepAIIntake'
-import { IntakeLiveForm } from '@/components/onboarding/IntakeLiveForm'
 import { deriveConcernFields } from '@/lib/intake-concerns'
 import { inputFieldClass, onboardingFormSurfaceClass } from '@/lib/onboarding-form-helpers'
 import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
@@ -778,8 +777,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
           )}
 
           {/* Navigation Buttons */}
-          <IntakeLiveForm role="usuario" className="pt-2" />
-
           <div className="flex justify-between items-center pt-6">
             <button
               type="button"
