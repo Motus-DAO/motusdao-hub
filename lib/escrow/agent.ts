@@ -57,27 +57,38 @@ export async function runAgentTick(): Promise<AgentTickResult> {
     ...(suffix ? { dataSuffix: suffix } : {}),
   })
 
-  // Celo RPCs reject eth_getLogs ranges above 5,000 blocks. Scan a rolling
-  // window instead of everything since deploy; a 2-minute cron never misses a
-  // session inside this window (~6 hours of Celo blocks).
+  // Celo RPCs cap eth_getLogs at 5,000 blocks per call. Page from the deploy
+  // block instead of a rolling window, so a session created earlier is never
+  // missed just because the chain moved past the window.
   const latest = await publicClient.getBlockNumber()
-  const scanWindow = BigInt(process.env.ESCROW_SCAN_BLOCKS || '4500')
-  const windowStart = latest > scanWindow ? latest - scanWindow : BigInt(0)
-  const fromBlock =
-    windowStart > THERAPY_ESCROW_DEPLOY_BLOCK ? windowStart : THERAPY_ESCROW_DEPLOY_BLOCK
+  const configuredChunk = BigInt(process.env.ESCROW_SCAN_BLOCKS || '4500')
+  const chunkSize = configuredChunk > BigInt(0) ? configuredChunk : BigInt(4500)
+  const sessionIds = new Set<Hex>()
 
-  if (fromBlock > latest) {
-    return { checked: 0, released: 0, txs: [], errors: [] }
+  if (latest >= THERAPY_ESCROW_DEPLOY_BLOCK) {
+    for (
+      let fromBlock = THERAPY_ESCROW_DEPLOY_BLOCK;
+      fromBlock <= latest;
+      fromBlock += chunkSize
+    ) {
+      const chunkEnd = fromBlock + chunkSize - BigInt(1)
+      const toBlock = chunkEnd > latest ? latest : chunkEnd
+      const chunk = await publicClient.getLogs({
+        address: THERAPY_ESCROW_ADDRESS,
+        event: SESSION_CREATED,
+        fromBlock,
+        toBlock,
+      })
+      for (const log of chunk) sessionIds.add(log.args.id as Hex)
+    }
   }
 
-  const logs = await publicClient.getLogs({
-    address: THERAPY_ESCROW_ADDRESS,
-    event: SESSION_CREATED,
-    fromBlock,
-    toBlock: latest,
+  const ids = [...sessionIds]
+  console.log('[agent/tick] scan', {
+    from: Number(THERAPY_ESCROW_DEPLOY_BLOCK),
+    to: Number(latest),
+    sessions: ids.length,
   })
-
-  const ids = [...new Set(logs.map((log) => log.args.id as Hex))]
   const now = Math.floor(Date.now() / 1000)
   const result: AgentTickResult = { checked: ids.length, released: 0, txs: [], errors: [] }
 

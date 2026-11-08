@@ -79,6 +79,7 @@ El escrow y las sesiones no se tocan: solo se deja de disparar el tick.
 - Si el VPS está caído, no hay ticks; al volver, el siguiente ciclo libera lo pendiente
   (el worker es idempotente).
 - El log crece; para demo está bien. En producción, rota con `logrotate`.
-- El worker escanea los últimos `ESCROW_SCAN_BLOCKS` (4,500 por defecto, ≈6 horas de
-  Celo). Si el VPS está caído más tiempo, las sesiones viejas no se liberan solas: se
-  pueden liberar a mano o subir el valor (el RPC topa en 5,000 bloques por consulta).
+- El worker pagina `eth_getLogs` desde el bloque del deploy en tandas de
+  `ESCROW_SCAN_BLOCKS` (4,500 por defecto; el RPC topa en 5,000 por consulta). No se
+  pierde una sesión por antigüedad; el costo de cada tick crece con la distancia al
+  deploy (hoy son ~2 tandas).
