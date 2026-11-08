@@ -33,6 +33,7 @@ export async function PATCH(
         id: true,
         userId: true,
         psmId: true,
+        matchId: true,
         status: true,
         scheduledStart: true,
         paidAt: true,
@@ -73,6 +74,7 @@ export async function PATCH(
             match: true,
           },
         })
+        await closeMatchIfNoActiveSessions(therapySession.matchId)
         await recordClinicalAccess({
           request,
           actorUserId: actorId,
@@ -126,6 +128,10 @@ export async function PATCH(
       },
     })
 
+    if (body.action === 'cancel') {
+      await closeMatchIfNoActiveSessions(therapySession.matchId)
+    }
+
     if (body.action === 'complete' && therapySession.status !== 'completed') {
       const { incrementPsmSessionStats } = await import('@/lib/psm/session-stats')
       await incrementPsmSessionStats(updatedSession.psmId, updatedSession.userId)
@@ -164,4 +170,25 @@ export async function PATCH(
       { status: 500 }
     )
   }
+}
+
+
+/**
+ * A patient can only have one active professional. When the last live session
+ * of a match is cancelled, close the match so the patient can book another PSM.
+ */
+async function closeMatchIfNoActiveSessions(matchId: string | null) {
+  if (!matchId) return
+  const liveSessions = await prisma.session.count({
+    where: { matchId, status: { in: ['requested', 'accepted'] } },
+  })
+  if (liveSessions > 0) return
+  await prisma.match.update({
+    where: { id: matchId },
+    data: {
+      status: 'ended',
+      endedAt: new Date(),
+      reason: 'no_active_sessions',
+    },
+  })
 }
