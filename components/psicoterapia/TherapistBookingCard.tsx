@@ -106,6 +106,13 @@ export function TherapistBookingCard({ slug, profile }: Props) {
         window.location.href = data.url
         return
       }
+      if (data.paymentError) {
+        throw new Error(
+          data.paymentError === 'session_already_started'
+            ? 'Ese horario ya comenzó. Elige otro.'
+            : `No se pudo preparar el pago (${data.paymentError}).`
+        )
+      }
       router.push('/perfil?booked=1')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al agendar')
