@@ -1,6 +1,6 @@
 'use client'
 
-import { useUIStore, getNavigationItems } from '@/lib/store'
+import { useUIStore, getNavigationGroups } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { 
   Home, 
@@ -15,6 +15,8 @@ import {
   Video,
   Calendar,
   Wallet,
+  History,
+  Landmark,
   X
 } from 'lucide-react'
 import Link from 'next/link'
@@ -37,6 +39,8 @@ const iconMap = {
   Video,
   Calendar,
   Wallet,
+  History,
+  Landmark,
 }
 
 export function Sidebar() {
@@ -45,7 +49,7 @@ export function Sidebar() {
   const { authenticated } = useWallet()
   const [showLoginModal, setShowLoginModal] = useState(false)
 
-  const navigationItems = getNavigationItems(role)
+  const navigationGroups = getNavigationGroups(role)
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     // Allow access to home and docs pages
@@ -107,40 +111,55 @@ export function Sidebar() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
-            {navigationItems.map((item) => {
-              const Icon = iconMap[item.icon as keyof typeof iconMap]
-              const isActive = pathname === item.href
-              const isBlocked = !authenticated && item.href !== '/' && item.href !== '/docs'
+          <nav className="flex-1 overflow-y-auto p-4">
+            {navigationGroups.map((group) => (
+              <div key={group.title ?? 'main'} className="mb-5 last:mb-0">
+                {group.title && (
+                  <p className="px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                    {group.title}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = iconMap[item.icon as keyof typeof iconMap]
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== '/' &&
+                        item.href !== '/finanzas' &&
+                        pathname.startsWith(`${item.href}/`))
+                    const isBlocked = !authenticated && item.href !== '/' && item.href !== '/docs'
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                    isActive
-                      ? "bg-mauve-500/20 text-mauve-700 dark:text-mauve-400 border border-mauve-500/30"
-                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
-                    isBlocked && "opacity-60 cursor-not-allowed"
-                  )}
-                  onClick={(e) => {
-                    handleLinkClick(e, item.href)
-                    if (window.innerWidth < 1024) {
-                      setSidebarOpen(false)
-                    }
-                  }}
-                >
-                  <Icon 
-                    className={cn(
-                      "w-5 h-5 transition-colors",
-                      isActive ? "text-mauve-700 dark:text-mauve-400" : "group-hover:text-foreground"
-                    )} 
-                  />
-                  <span className="font-medium">{item.name}</span>
-                </Link>
-              )
-            })}
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+                          isActive
+                            ? "bg-mauve-500/20 text-mauve-700 dark:text-mauve-400 border border-mauve-500/30"
+                            : "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
+                          isBlocked && "opacity-60 cursor-not-allowed"
+                        )}
+                        onClick={(e) => {
+                          handleLinkClick(e, item.href)
+                          if (window.innerWidth < 1024) {
+                            setSidebarOpen(false)
+                          }
+                        }}
+                      >
+                        <Icon
+                          className={cn(
+                            "w-5 h-5 transition-colors",
+                            isActive ? "text-mauve-700 dark:text-mauve-400" : "group-hover:text-foreground"
+                          )}
+                        />
+                        <span className="font-medium">{item.name}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
           {/* Footer */}
