@@ -228,7 +228,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
           ) : signing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Verificando...
+              Firma en tu wallet…
             </>
           ) : canBook ? (
             'Pagar y reservar'
@@ -236,6 +236,12 @@ export function TherapistBookingCard({ slug, profile }: Props) {
             'Sin cupos disponibles'
           )}
         </CTAButton>
+        {signing && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Acepta la firma en tu wallet. Si no ves el popup, revisa
+            MetaMask/Rabby o la ventana de WaaP.
+          </p>
+        )}
       </GlassCard>
       </div>
 
