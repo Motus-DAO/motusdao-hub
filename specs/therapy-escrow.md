@@ -168,8 +168,8 @@ El `ownerOf(10053)` y el `getAgentWallet(10053)` resuelven a la wallet del agent
 | `release` (agente) | `0x58dc83f6…2853` | ✅ |
 
 Resultado: **0.9 wMXN** al profesional, **0.1 wMXN** a tesorería, escrow en 0, sesión
-`Released`. El tick se corrió manualmente; el workflow de GitHub lo hará cada 5 minutos
-cuando `CRON_SECRET` esté en los secrets del repo.
+`Released`. El tick se corrió manualmente; el **cron del VPS** lo hará cada 2 minutos
+([runbook](../docs/runbooks/agent-tick-vps.md)).
 
 La página `/pagar/[id]` bloquea las acciones mientras la tx se confirma y hace polling
 hasta que el estado esperado llega, para que el botón no reaparezca y se pueda duplicar
