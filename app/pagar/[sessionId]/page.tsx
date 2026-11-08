@@ -94,7 +94,7 @@ export default function PagarSesionPage() {
   const [session, setSession] = useState<EscrowSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [pending, setPending] = useState<'deposit' | 'settle' | 'cancel' | null>(null)
+  const [pending, setPending] = useState<'deposit' | 'settle' | 'cancel' | 'release' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [injected, setInjected] = useState<Address | null>(null)
@@ -317,6 +317,30 @@ export default function PagarSesionPage() {
     }
   }
 
+  const releaseEscrow = async () => {
+    if (!session || !signer || pending) return
+    setBusy(true)
+    setPending('release')
+    setError(null)
+    try {
+      const hash = await send(
+        THERAPY_ESCROW_ADDRESS,
+        encodeFunctionData({
+          abi: THERAPY_ESCROW_ABI,
+          functionName: 'release',
+          args: [sessionId],
+        })
+      )
+      setTxHash(hash)
+      await refreshUntil(5)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo liberar')
+    } finally {
+      setBusy(false)
+      setPending(null)
+    }
+  }
+
   const now = Math.floor(Date.now() / 1000)
   const releaseAt = session ? session.settledAt + session.challengeWindow : 0
   const fee = session
@@ -406,7 +430,9 @@ export default function PagarSesionPage() {
                       ? 'Procesando tu depósito…'
                       : pending === 'cancel'
                         ? 'Cancelando y recuperando…'
-                        : 'Confirmando la sesión…'}
+                        : pending === 'release'
+                          ? 'Liberando el pago…'
+                          : 'Confirmando la sesión…'}
                   </p>
                   <p className="mt-1 text-xs text-mauve-200/80">
                     Firma enviada. Esperando la confirmación en Celo; no cierres esta
@@ -494,9 +520,22 @@ export default function PagarSesionPage() {
                     El profesional confirmó la sesión.
                   </p>
                   <p className="mt-1 text-xs text-blue-200/80">
-                    El agente libera el pago automáticamente; corre cada 5 minutos.
-                    Si ya pasó, actualiza el estado.
+                    El agente libera el pago en el próximo ciclo (≤2 min). Si no
+                    quieres esperar, libera ahora.
                   </p>
+                  {now >= releaseAt ? (
+                    <CTAButton
+                      onClick={() => void releaseEscrow()}
+                      disabled={busy}
+                      className="mt-3 w-full"
+                    >
+                      {busy ? 'Liberando…' : 'Liberar ahora'}
+                    </CTAButton>
+                  ) : (
+                    <p className="mt-2 text-xs text-blue-200/80">
+                      La liberación se habilita el {formatDate(releaseAt)}.
+                    </p>
+                  )}
                   <button
                     type="button"
                     onClick={() => void load()}
