@@ -43,7 +43,9 @@
     "escrow:test": "npx hardhat test test/TherapyEscrow.test.js",
     "escrow:deploy": "npx hardhat run scripts/escrow/deploy.cjs --network celo",
     "escrow:deploy:sepolia": "npx hardhat run scripts/escrow/deploy.cjs --network celoSepolia",
-    "agent:register": "node --env-file=.env.local scripts/agent/register-erc8004.mjs"
+    "agent:register": "node --env-file=.env.local scripts/agent/register-erc8004.mjs",
+    "agent:tick": "tsx --env-file=.env.local scripts/agent/tick.ts",
+    "escrow:create": "tsx --env-file=.env.local scripts/escrow/create-session.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
