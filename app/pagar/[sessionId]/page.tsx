@@ -94,7 +94,7 @@ export default function PagarSesionPage() {
   const [session, setSession] = useState<EscrowSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [pending, setPending] = useState<'deposit' | 'settle' | null>(null)
+  const [pending, setPending] = useState<'deposit' | 'settle' | 'cancel' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [injected, setInjected] = useState<Address | null>(null)
@@ -293,6 +293,30 @@ export default function PagarSesionPage() {
     }
   }
 
+  const cancelEscrow = async () => {
+    if (!session || !signer || pending) return
+    setBusy(true)
+    setPending('cancel')
+    setError(null)
+    try {
+      const hash = await send(
+        THERAPY_ESCROW_ADDRESS,
+        encodeFunctionData({
+          abi: THERAPY_ESCROW_ABI,
+          functionName: 'cancelBeforeStart',
+          args: [sessionId],
+        })
+      )
+      setTxHash(hash)
+      await refreshUntil(6)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cancelar')
+    } finally {
+      setBusy(false)
+      setPending(null)
+    }
+  }
+
   const now = Math.floor(Date.now() / 1000)
   const releaseAt = session ? session.settledAt + session.challengeWindow : 0
   const fee = session
@@ -380,7 +404,9 @@ export default function PagarSesionPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {pending === 'deposit'
                       ? 'Procesando tu depósito…'
-                      : 'Confirmando la sesión…'}
+                      : pending === 'cancel'
+                        ? 'Cancelando y recuperando…'
+                        : 'Confirmando la sesión…'}
                   </p>
                   <p className="mt-1 text-xs text-mauve-200/80">
                     Firma enviada. Esperando la confirmación en Celo; no cierres esta
@@ -443,9 +469,23 @@ export default function PagarSesionPage() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-center text-sm text-muted-foreground">
-                    Depósito recibido. Falta que el profesional confirme la sesión.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-center text-sm text-muted-foreground">
+                      Depósito recibido. Falta que el profesional confirme la sesión.
+                    </p>
+                    {isPatient && now < session.startsAt && (
+                      <CTAButton
+                        variant="secondary"
+                        onClick={() => void cancelEscrow()}
+                        disabled={busy}
+                        className="w-full"
+                      >
+                        {busy
+                          ? 'Cancelando…'
+                          : `Cancelar y recuperar ${formatUnits(session.amount, 18)} wMXN`}
+                      </CTAButton>
+                    )}
+                  </div>
                 )
               ) : session.status === 3 ? (
                 <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 text-sm text-blue-200">
