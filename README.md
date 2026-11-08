@@ -95,6 +95,10 @@ El historial de enviados/recibidos vive en `/pagos/historial`: lee Celo mainnet 
 (`OnchainTransaction`) queda como capa 2, detrás del mismo contrato.
 Detalle: [onchain history](specs/onchain-history.md).
 
+El hub [`/finanzas`](app/finanzas/page.tsx) agrupa wallet, actividad, cobros (PSM) y métodos.
+Es navegación: **no mueve `/cobros/*`**, porque los seis Stripe Site links apuntan a
+`https://app.motusdao.org/cobros/...`. Detalle: [finance hub](specs/finance-hub.md).
+
 ## Repo layout
 
 ```text
