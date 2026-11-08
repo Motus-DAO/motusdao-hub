@@ -43,6 +43,9 @@
 4. **Given** `NEXT_PUBLIC_RIPIO_MOCK_PANEL=true`, **then** se abre el wizard demo (solo demo).
 5. **Negative path:** **given** una wallet o un monto inválidos, **when** se construye la URL,
    **then** se lanza un error claro y no se abre nada.
+6. **Mobile:** **given** un navegador móvil sin sesión SIWE, **when** el usuario pulsa Comprar,
+   **then** la pestaña abre igual: la URL se construye y `window.open` ocurre dentro del gesto,
+   sin llamar a la ruta B2B.
 
 ## 5. Data / schema changes
 
@@ -54,6 +57,7 @@
 |-----|-------|---------|
 | `NEXT_PUBLIC_RIPIO_COUNTRY` | client | `MX` (default, `wMXN`) o `AR` (`wARS`) |
 | `NEXT_PUBLIC_RIPIO_MOCK_PANEL` | client | `true` abre el wizard demo; omitido = rampa pública |
+| `NEXT_PUBLIC_RIPIO_WIDGET_ENABLED` | client | `true` usa el widget B2B (requiere credenciales + sesión SIWE); default = rampa pública |
 | `NEXT_PUBLIC_RIPIO_RAMPS_ENABLED` | client | `false` oculta el proveedor |
 | `RIPIO_CLIENT_ID` / `RIPIO_CLIENT_SECRET` | server | Solo para el widget B2B |
 
@@ -79,3 +83,5 @@ Loop ends when AC pass, QA gate green, and the prod deposit check shows a positi
 2. `chain` va **numérico** (`42220`), que es como lo compara la app de Ripio.
 3. `address` = wallet del usuario, nunca la cuenta bancaria.
 4. El mock es opt-in explícito; un botón real no debe abrir un wizard falso.
+5. La rampa pública se abre **sincrónicamente** y sin sesión: el widget B2B, que sí necesita
+   ambas, queda detrás de `NEXT_PUBLIC_RIPIO_WIDGET_ENABLED`.

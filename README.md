@@ -77,6 +77,7 @@ wallet, and the app verifies the deposit on-chain when the user comes back. The 
 
 ```env
 NEXT_PUBLIC_RIPIO_COUNTRY=MX                      # or AR (wARS)
+# NEXT_PUBLIC_RIPIO_WIDGET_ENABLED=false          # true only with B2B credentials
 RIPIO_CLIENT_ID=your_partner_client_id            # optional: B2B widget
 RIPIO_CLIENT_SECRET=your_partner_client_secret    # server only
 RIPIO_ENV=sandbox                                 # or production

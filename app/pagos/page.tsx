@@ -541,14 +541,6 @@ export default function PagosPage() {
     const country = ripioCountryFromEnv()
     const token = ripioTokenForCountry(country)
 
-    const userSeed =
-      userData?.id ||
-      walletIdentity?.authProviderId ||
-      user?.id ||
-      destinationAddress
-
-    const externalRef = motusUserToRipioExternalRef(String(userSeed))
-
     const confirmed = window.confirm(
       `Vas a abrir Ripio (${flow === 'onramp' ? 'on-ramp / compra' : 'off-ramp / retiro'}).\n\n` +
         `Wallet: ${destinationAddress}\n` +
@@ -560,11 +552,63 @@ export default function PagosPage() {
 
     if (!confirmed) return
 
+    setSelectedProvider('ripio')
+    setRipioDepositCheck(null)
+    setRipioPublicPrompt(null)
+
+    // The public ramp needs no partner keys and no SIWE session. Build the URL
+    // and open it inside the click gesture: on mobile a window.open after an
+    // await is blocked, and the B2B token route answers 401 without a session.
+    const widgetEnabled = process.env.NEXT_PUBLIC_RIPIO_WIDGET_ENABLED === 'true'
+
+    if (!widgetEnabled) {
+      try {
+        const url = buildRipioPublicRampUrl({
+          flow,
+          country,
+          address: destinationAddress,
+        })
+        window.open(url, '_blank', 'noopener,noreferrer')
+      } catch (err) {
+        alert(
+          'No se pudo abrir Ripio.\n\n' +
+            (err instanceof Error ? err.message : 'Error desconocido')
+        )
+        return
+      }
+
+      if (flow === 'onramp') {
+        // Read the baseline right after opening: a Ripio purchase takes minutes.
+        void (async () => {
+          try {
+            const before = (
+              await getTokenBalance(
+                destinationAddress as Address,
+                token,
+                CELO_STABLE_TOKENS[token]
+              )
+            ).rawBalance
+            setRipioPublicPrompt({ token, before })
+          } catch (err) {
+            console.error('No se pudo leer el saldo inicial para Ripio:', err)
+            setRipioPublicPrompt({ token, before: BigInt(0) })
+          }
+        })()
+      }
+      return
+    }
+
+    // B2B widget path: only when partner credentials are wired.
+    const userSeed =
+      userData?.id ||
+      walletIdentity?.authProviderId ||
+      user?.id ||
+      destinationAddress
+
+    const externalRef = motusUserToRipioExternalRef(String(userSeed))
+
     try {
       setIsStartingOnramp(true)
-      setSelectedProvider('ripio')
-      setRipioDepositCheck(null)
-      setRipioPublicPrompt(null)
 
       const response = await fetch('/api/ripio/widget-token', {
         method: 'POST',
@@ -580,36 +624,18 @@ export default function PagosPage() {
       const data = (await response.json()) as RipioWidgetTokenResponse
 
       if (data.mode === 'mock') {
-        // No partner credentials: use Ripio's public ramp, a real mainnet flow.
-        // The in-app wizard stays available only when explicitly forced.
+        // Credentials missing: fall back to the public ramp.
         if (process.env.NEXT_PUBLIC_RIPIO_MOCK_PANEL === 'true') {
           setRipioMockAddress(destinationAddress)
           setRipioMockFlow(flow)
           return
         }
 
-        const before =
-          flow === 'onramp'
-            ? (
-                await getTokenBalance(
-                  destinationAddress as Address,
-                  token,
-                  CELO_STABLE_TOKENS[token]
-                )
-              ).rawBalance
-            : BigInt(0)
-
-        const url = buildRipioPublicRampUrl({
-          flow,
-          country,
-          address: destinationAddress,
-        })
-
-        window.open(url, '_blank', 'noopener,noreferrer')
-
-        if (flow === 'onramp') {
-          setRipioPublicPrompt({ token, before })
-        }
+        window.open(
+          buildRipioPublicRampUrl({ flow, country, address: destinationAddress }),
+          '_blank',
+          'noopener,noreferrer'
+        )
         return
       }
 
@@ -626,7 +652,7 @@ export default function PagosPage() {
       alert(
         'Error al iniciar Ripio.\n\n' +
           (err instanceof Error ? err.message : 'Error desconocido') +
-          '\n\nEl flujo público no necesita llaves partner; si el error persiste, revisa tu conexión y vuelve a intentar.'
+          '\n\nEl flujo público es el default; si lo desactivaste, revisa la configuración del widget.'
       )
     } finally {
       setIsStartingOnramp(false)
