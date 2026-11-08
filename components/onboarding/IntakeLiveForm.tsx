@@ -235,15 +235,6 @@ export function IntakeLiveForm({
             <p className="text-xs text-muted-foreground">
               Las sesiones con profesionales son por video.
             </p>
-            <LiveInput
-              label={fieldLabel('availabilityNotes')}
-              value={data.availabilityNotes || ''}
-              onChange={(v) => {
-                set('availabilityNotes', v)
-                set('availability', { notes: v })
-              }}
-              textarea
-            />
           </PsmSectionBlock>
 
           <PsmSectionBlock title="Consentimientos">

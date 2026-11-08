@@ -715,20 +715,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 {errors.languages && <p className="text-red-400 text-sm">{errors.languages.message}</p>}
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="availabilityNotes" className="block text-sm font-medium">
-                  Disponibilidad general *
-                </label>
-                <textarea
-                  {...register('availabilityNotes')}
-                  id="availabilityNotes"
-                  rows={3}
-                  placeholder="Ej: tardes entre semana, sábados por la mañana..."
-                  className={inputFieldClass(false, 'resize-none')}
-                />
-                {errors.availabilityNotes && <p className="text-red-400 text-sm">{errors.availabilityNotes.message}</p>}
-              </div>
-
               <div className="space-y-3">
                 <p className="text-sm font-medium">Preferencia de pago</p>
                 <p className="text-xs text-muted-foreground">

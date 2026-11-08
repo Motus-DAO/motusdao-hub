@@ -73,7 +73,7 @@ const RESPONSE_SCHEMA = {
 const QUESTION_GUIDE = {
   usuario: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica',
-    q2: 'languages, availabilityNotes, preferredTherapyStyle, therapistGenderPreference',
+    q2: 'languages, preferredTherapyStyle, therapistGenderPreference',
     q3: 'consentToShareWithPSM, consentToClinicalMatching (y campos opcionales restantes). No pidas ni inferas consentToAIProcessing.',
   },
   psm: {
@@ -203,7 +203,6 @@ function computeMissingFields(
     'problematica',
     'preferenciaAsignacion',
     'languages',
-    'availabilityNotes',
     'consentToShareWithPSM',
     'consentToClinicalMatching',
   ]
