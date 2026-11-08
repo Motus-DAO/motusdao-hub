@@ -17,7 +17,7 @@ import { Section } from '@/components/ui/Section'
 import { GradientText } from '@/components/ui/GradientText'
 import { VideoEmbed } from '@/components/ui/VideoEmbed'
 import { LATAM_CRISIS_RESOURCES } from '@/lib/crisis-resources'
-import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
+import { sessionPriceWmxn } from '@/lib/pricing'
 import type { PublicPsmProfile } from '@/lib/psm/public-profile'
 import { TherapistBookingCard } from './TherapistBookingCard'
 import { TherapistReviews } from './TherapistReviews'
@@ -69,6 +69,7 @@ export function TherapistProfileView({ slug }: Props) {
     )
   }
 
+  const price = sessionPriceWmxn()
   const visibleSpecialties = showAllSpecialties
     ? profile.specialtyLabels
     : profile.specialtyLabels.slice(0, 6)
@@ -142,7 +143,7 @@ export function TherapistProfileView({ slug }: Props) {
                         </span>
                       </div>
                       <p className="mt-2 text-lg font-semibold text-mauve-300">
-                        ${PLATFORM_SESSION_PRICE_USD} USD / sesión
+                        {price.test ? `${price.mxn} wMXN (prueba)` : `$${price.usd} USD`} / sesión
                       </p>
                     </div>
                   </div>
@@ -306,7 +307,7 @@ export function TherapistProfileView({ slug }: Props) {
                   <div>
                     <dt className="font-medium">¿Cuánto cuesta?</dt>
                     <dd className="text-muted-foreground">
-                      ${PLATFORM_SESSION_PRICE_USD} USD por sesión de teleterapia.
+                      {price.test ? `${price.mxn} wMXN (prueba)` : `$${price.usd} USD`} por sesión de teleterapia.
                     </dd>
                   </div>
                   <div>

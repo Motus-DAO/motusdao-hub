@@ -16,12 +16,22 @@ function withEnv(name: string, value: string, run: () => void) {
 }
 
 test('quoteTherapy uses the platform price and the configured rate', () => {
-  withEnv('MOTUS_MXN_PER_USD', '18.5', () => {
+  withEnv('NEXT_PUBLIC_THERAPY_TEST_PRICE_WMXN', '', () => {
+    withEnv('MOTUS_MXN_PER_USD', '18.5', () => {
+      const quote = quoteTherapy()
+      assert.equal(quote.usd, 45)
+      assert.equal(quote.mxn, 832.5)
+      assert.equal(quote.rate, 18.5)
+      assert.equal(quote.source, 'fixed')
+    })
+  })
+})
+
+test('quoteTherapy uses the local test price when configured', () => {
+  withEnv('NEXT_PUBLIC_THERAPY_TEST_PRICE_WMXN', '10', () => {
     const quote = quoteTherapy()
-    assert.equal(quote.usd, 45)
-    assert.equal(quote.mxn, 832.5)
-    assert.equal(quote.rate, 18.5)
-    assert.equal(quote.source, 'fixed')
+    assert.equal(quote.mxn, 10)
+    assert.equal(quote.source, 'test')
   })
 })
 

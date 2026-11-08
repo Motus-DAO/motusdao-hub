@@ -9,6 +9,7 @@ import { SessionStatus } from '@prisma/client'
 import { formatUnits, parseUnits, type Address, type Hex } from 'viem'
 import { prisma } from '@/lib/prisma'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
+import { sessionPriceWmxn } from '@/lib/pricing'
 import {
   buildRipioPublicRampUrl,
   ripioCountryFromEnv,
@@ -32,21 +33,18 @@ const STATUS_LABEL: Record<number, string> = {
   6: 'Reembolsada',
 }
 
-export function mxnPerUsd(): number {
-  const raw = Number(process.env.MOTUS_MXN_PER_USD || '18.5')
-  return Number.isFinite(raw) && raw > 0 ? raw : 18.5
-}
+export { mxnPerUsd } from '@/lib/pricing'
 
 export function quoteTherapy() {
-  const rate = mxnPerUsd()
-  const usd = PLATFORM_SESSION_PRICE_USD
-  const mxn = Math.round(usd * rate * 100) / 100
+  const price = sessionPriceWmxn()
   return {
-    usd,
-    mxn,
-    rate,
-    source: 'fixed' as const,
-    note: 'Tipo de cambio estimado; Ripio aplica el suyo al comprar.',
+    usd: price.usd,
+    mxn: price.mxn,
+    rate: price.rate,
+    source: price.test ? ('test' as const) : ('fixed' as const),
+    note: price.test
+      ? 'Precio de prueba local; no usar en producción.'
+      : 'Tipo de cambio estimado; Ripio aplica el suyo al comprar.',
   }
 }
 

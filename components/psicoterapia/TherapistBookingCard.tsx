@@ -8,7 +8,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
+import { sessionPriceWmxn } from '@/lib/pricing'
 import type { PublicPsmProfile } from '@/lib/psm/public-profile'
 
 type Slot = {
@@ -154,13 +154,14 @@ export function TherapistBookingCard({ slug, profile }: Props) {
   const canBook = profile.capacityAvailable > 0
   const busy = booking || signing || sessionState === 'loading'
   const displayError = error ?? signError
+  const price = sessionPriceWmxn()
 
   return (
     <>
       <div id="agendar">
       <GlassCard className="sticky top-24 p-6">
         <p className="text-2xl font-bold text-mauve-300">
-          ${PLATFORM_SESSION_PRICE_USD} USD
+          {price.test ? `${price.mxn} wMXN (prueba)` : `$${price.usd} USD`}
           <span className="ml-1 text-sm font-normal text-muted-foreground">/ sesión</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">Solo teleterapia por videollamada</p>
