@@ -57,11 +57,24 @@ export async function runAgentTick(): Promise<AgentTickResult> {
     ...(suffix ? { dataSuffix: suffix } : {}),
   })
 
+  // Celo RPCs reject eth_getLogs ranges above 5,000 blocks. Scan a rolling
+  // window instead of everything since deploy; a 2-minute cron never misses a
+  // session inside this window (~6 hours of Celo blocks).
+  const latest = await publicClient.getBlockNumber()
+  const scanWindow = BigInt(process.env.ESCROW_SCAN_BLOCKS || '4500')
+  const windowStart = latest > scanWindow ? latest - scanWindow : BigInt(0)
+  const fromBlock =
+    windowStart > THERAPY_ESCROW_DEPLOY_BLOCK ? windowStart : THERAPY_ESCROW_DEPLOY_BLOCK
+
+  if (fromBlock > latest) {
+    return { checked: 0, released: 0, txs: [], errors: [] }
+  }
+
   const logs = await publicClient.getLogs({
     address: THERAPY_ESCROW_ADDRESS,
     event: SESSION_CREATED,
-    fromBlock: THERAPY_ESCROW_DEPLOY_BLOCK,
-    toBlock: 'latest',
+    fromBlock,
+    toBlock: latest,
   })
 
   const ids = [...new Set(logs.map((log) => log.args.id as Hex))]
