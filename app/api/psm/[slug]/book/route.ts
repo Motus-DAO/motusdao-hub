@@ -9,6 +9,7 @@ import { buildOfficeJitsiUrl } from '@/lib/jitsi'
 import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 import { findPublicPsmBySlug } from '@/lib/psm/lookup'
 import { isSlotAvailable, slotDurationMinutes } from '@/lib/psm/availability'
+import { createEscrowForUserSession } from '@/lib/motty/payments'
 
 const bookSchema = z.object({
   userId: z.string().min(1),
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     })
 
     if (pendingSession) {
+      const pendingEscrow = await createEscrowForUserSession(user.id, pendingSession.id)
       return NextResponse.json(
         {
           success: true,
@@ -125,6 +127,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           matchId: match.id,
           paymentRequired: true,
           amountUsd: PLATFORM_SESSION_PRICE_USD,
+          ...(pendingEscrow.ok
+            ? {
+                url: pendingEscrow.payPath,
+                escrowId: pendingEscrow.escrowId,
+                amountWmxn: pendingEscrow.amountWmxn,
+              }
+            : { paymentError: pendingEscrow.error }),
         },
         { status: 200 }
       )
@@ -158,6 +167,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       metadata: { psmId: psmUser.id, slotId: slot.id },
     })
 
+    const escrow = await createEscrowForUserSession(user.id, session.id)
+
     return NextResponse.json(
       {
         success: true,
@@ -168,6 +179,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         durationMinutes,
         paymentRequired: true,
         amountUsd: PLATFORM_SESSION_PRICE_USD,
+        ...(escrow.ok
+          ? {
+              url: escrow.payPath,
+              escrowId: escrow.escrowId,
+              amountWmxn: escrow.amountWmxn,
+            }
+          : { paymentError: escrow.error }),
       },
       { status: 201 }
     )

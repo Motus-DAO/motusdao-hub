@@ -185,7 +185,9 @@ export async function createEscrowForUserSession(userId: string, sessionId: stri
   if (startsAt < now) return { ok: false as const, error: 'session_already_started' }
 
   const quote = quoteTherapy()
-  const challengeWindow = Number(process.env.ESCROW_CHALLENGE_WINDOW_SECONDS || '172800')
+  // Therapy pays the professional at the end of the session, not 48h later.
+  // The 48h rule is the cancellation policy before the session.
+  const challengeWindow = Number(process.env.ESCROW_CHALLENGE_WINDOW_SECONDS || '0')
 
   const created = await createTherapyEscrow({
     sessionId: session.id,
@@ -204,6 +206,7 @@ export async function createEscrowForUserSession(userId: string, sessionId: stri
     amountWmxn: quote.mxn.toFixed(2),
     startsAt,
     challengeWindow,
+    payPath: `/pagar/${created.id}`,
     payUrl: `https://app.motusdao.org/pagar/${created.id}`,
   }
 }
