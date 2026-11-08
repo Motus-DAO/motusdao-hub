@@ -158,6 +158,23 @@ El `ownerOf(10053)` y el `getAgentWallet(10053)` resuelven a la wallet del agent
 - Sin tabla ni cola: la cadena es la fuente de verdad; `release` revierte si ya se ejecutó,
   así que el tick es idempotente.
 
+### E2E en mainnet (2026-11-08)
+
+| Paso | Tx | Tag |
+|---|---|---|
+| `createSession` | `0x742fc9f2…4495` | ✅ |
+| `deposit` 1 wMXN (paciente `0xd7dc…`) | `0x4afe8bfc…28cd` | ✅ |
+| `settle` (PSM `0xd056…`) | `0x1395ee7c…cb07` | ✅ |
+| `release` (agente) | `0x58dc83f6…2853` | ✅ |
+
+Resultado: **0.9 wMXN** al profesional, **0.1 wMXN** a tesorería, escrow en 0, sesión
+`Released`. El tick se corrió manualmente; el workflow de GitHub lo hará cada 5 minutos
+cuando `CRON_SECRET` esté en los secrets del repo.
+
+La página `/pagar/[id]` bloquea las acciones mientras la tx se confirma y hace polling
+hasta que el estado esperado llega, para que el botón no reaparezca y se pueda duplicar
+un depósito.
+
 ## 10. Rollback
 
 - `git revert` del commit del contrato: no hay deploy, no hay fondos, no hay schema.
