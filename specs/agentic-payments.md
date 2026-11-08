@@ -1,6 +1,6 @@
 # Motty as a payments agent — Spec
 
-> Status: **ACTIVE** · Owner: product + eng · Slice: agente de pagos
+> Status: **ACTIVE** — slices 1–2 shipped (2026-11-08) · Owner: product + eng
 >
 > Purpose: que Motty deje de ser un chat de soporte y se vuelva un agente que **hace**
 > cosas por el usuario: encuentra su próxima sesión, cotiza en wMXN, revisa saldo, prepara
@@ -129,3 +129,20 @@ Propuesta:
 - ¿Motty del PSM (settle, cobros) o solo del paciente en v1?
 - ¿El link de Ripio con monto prellenado o el usuario lo escribe?
 - ¿Recibo en PDF/CFDI? Fuera de alcance; link a Celoscan por ahora.
+
+## 11. Estado (2026-11-08)
+
+**Implementado**
+- Tools de lectura: `getMyUpcomingSession`, `quoteTherapyInWmxn`, `getMyWalletBalance`,
+  `getMyPaymentStatus`.
+- `createTherapyEscrowForMySession` con id determinista e idempotente, y
+  `getMyRipioRampLink`.
+- `MOTTY_PAYMENTS_ENABLED` (default true), prompt de pagos y `maxToolRounds=6`.
+- `lib/escrow/create.ts` reutilizable por el CLI y el worker.
+- 4 tests: cotización, fallback de rate, id determinista y flag.
+
+**Falta**
+- UX del widget: `MottyMarkdown` ya renderiza links; falta el botón/acción.
+- `/cobros/sesiones` para el PSM (core, no “si sobra”).
+- Botón de booking → escrow.
+- Video + submission.
