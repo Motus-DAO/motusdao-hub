@@ -4,6 +4,7 @@ import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { formatUnits, type Address } from 'viem'
 import { fetchBlockscoutHistory } from '@/lib/onchain/history'
 import { listEscrowSessionsForAddress } from '@/lib/escrow/list'
+import { THERAPY_ESCROW_ADDRESS } from '@/lib/escrow/abi'
 import { mergeActivity } from '@/lib/finance/activity'
 
 export const runtime = 'nodejs'
@@ -20,12 +21,21 @@ export async function GET(request: NextRequest) {
     const auth = await requireSession(request)
     const userId = auth.userId
 
-    const onchain = auth.eoaAddress
+    const rawOnchain = auth.eoaAddress
       ? await fetchBlockscoutHistory(auth.eoaAddress).catch((error) => {
           console.error('[finance/activity] onchain:', error)
           return []
         })
       : []
+
+    // Escrow deposits/payouts are shown in Terapia; keep the raw transfer out
+    // of Wallet so the same movement is not listed twice.
+    const escrowAddress = THERAPY_ESCROW_ADDRESS.toLowerCase()
+    const onchain = rawOnchain.filter(
+      (item) =>
+        item.to?.toLowerCase() !== escrowAddress &&
+        item.from?.toLowerCase() !== escrowAddress
+    )
 
     const escrowSessions = auth.eoaAddress
       ? await listEscrowSessionsForAddress(auth.eoaAddress as Address).catch((error) => {
