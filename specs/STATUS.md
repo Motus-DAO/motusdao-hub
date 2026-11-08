@@ -133,6 +133,7 @@ Detalle: [spec](./celo-attribution.md).
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
 | **Ripio rampa pública** | Probar el botón en prod (MX/`wMXN`) y decidir el off-ramp automático | El B2B sigue bloqueado por KYB; el mock ya no es el default |
 | **Historial de tx (capa 1)** | Verificar `/pagos/historial` en prod | Lee Blockscout; la persistencia (`OnchainTransaction`) queda como capa 2 |
+| **Escrow terapia (contrato)** | Deploy + worker del agente + ERC-8004 | Contrato con 8 tests; aún no desplegado |
 
 ---
 
