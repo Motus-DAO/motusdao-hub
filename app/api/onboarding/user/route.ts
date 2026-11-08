@@ -44,7 +44,7 @@ const userOnboardingSchema = z
   problematica: z.string().optional(),
   preferenciaAsignacion: z.enum(['automatica', 'explorar']).optional(),
   clinicalConcern: optionalStringArray,
-  urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis', 'unsure']).default('medium'),
+  urgencyLevel: z.enum(['low', 'medium', 'high', 'crisis', 'unsure']).default('unsure'),
   preferredModality: z.enum(['video', 'chat', 'in_person', 'hybrid']).default('video'),
   preferredTherapyStyle: stringArray,
   languages: z.array(z.string()).default(['es']),

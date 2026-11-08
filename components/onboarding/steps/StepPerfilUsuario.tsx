@@ -152,29 +152,6 @@ function normalizePaymentPreference(value?: string) {
     .join(',')
 }
 
-const feelingOptions = [
-  {
-    value: 'low',
-    title: 'He tenido algunas dificultades',
-    detail: 'Pero puedo continuar con mis actividades.',
-  },
-  {
-    value: 'medium',
-    title: 'Me está costando sentirme bien',
-    detail: 'Está afectando algunas partes de mi vida.',
-  },
-  {
-    value: 'high',
-    title: 'Estoy pasando por un momento difícil',
-    detail: 'Me cuesta llevar a cabo mis actividades cotidianas.',
-  },
-  {
-    value: 'unsure',
-    title: 'No estoy seguro/a',
-    detail: 'Prefiero hablarlo directamente con un profesional.',
-  },
-] as const
-
 const riskFlagOptions = [
   { value: 'none', label: 'Ninguno' },
   { value: 'self_harm', label: 'Autolesión o ideación suicida' },
@@ -255,7 +232,10 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       tipoAtencion: data.tipoAtencion || '',
       clinicalConcern: data.clinicalConcern || (data.tipoAtencion ? [data.tipoAtencion] : []),
       problematica: data.problematica || '',
-      urgencyLevel: data.urgencyLevel === 'crisis' ? undefined : data.urgencyLevel || undefined,
+      urgencyLevel:
+        data.urgencyLevel && data.urgencyLevel !== 'crisis'
+          ? data.urgencyLevel
+          : 'unsure',
       preferredTherapyStyle: (data.preferredTherapyStyle || []).filter((value) => value !== 'no_preference'),
       languages: initialLanguages,
       availabilityNotes: data.availabilityNotes || '',
@@ -605,43 +585,9 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium">Encuentra apoyo profesional</p>
-                  <p className="text-sm font-medium mt-2">¿Cómo te has sentido últimamente?</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Esto nos ayuda a entender qué tipo de apoyo estás buscando. No es una evaluación clínica.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {feelingOptions.map((option) => (
-                    <label
-                      key={option.value}
-                      className={cn('flex items-center space-x-3 cursor-pointer transition-colors hover:bg-muted/60', onboardingFormSurfaceClass)}
-                    >
-                      <input
-                        {...register('urgencyLevel')}
-                        type="radio"
-                        value={option.value}
-                        className="w-4 h-4 text-mauve-600 bg-transparent border-white/20 focus:ring-mauve-500"
-                      />
-                      <div>
-                        <p className="font-medium">{option.title}</p>
-                        <p className="text-sm text-muted-foreground">{option.detail}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                {errors.urgencyLevel && (
-                  <p className="text-red-400 text-sm flex items-center space-x-1">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{errors.urgencyLevel.message}</span>
-                  </p>
-                )}
-                <p className={cn('text-xs text-muted-foreground')}>
-                  Las sesiones con profesionales son por video.
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Las sesiones con profesionales son por video.
+              </p>
 
               <div className="space-y-3">
                 <p className="text-sm font-medium">¿Tienes un enfoque terapéutico preferido?</p>

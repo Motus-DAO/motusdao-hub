@@ -174,7 +174,7 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 problematica: data.problematica,
                 preferenciaAsignacion: 'explorar' as const,
                 clinicalConcern: concernFields.clinicalConcern,
-                urgencyLevel: data.urgencyLevel || 'medium',
+                urgencyLevel: data.urgencyLevel || 'unsure',
                 preferredModality: 'video' as const,
                 preferredTherapyStyle: data.preferredTherapyStyle || [],
                 languages: data.languages || ['es'],
