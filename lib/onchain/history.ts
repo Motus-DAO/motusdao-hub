@@ -162,25 +162,66 @@ async function parseList<T>(response: Response): Promise<T[]> {
   return Array.isArray(payload.result) ? payload.result : []
 }
 
+const HISTORY_CACHE_MS = 60_000
+const historyCache = new Map<
+  string,
+  { at: number; items: OnchainHistoryItem[] }
+>()
+
+async function fetchWithRetry(
+  url: string,
+  fetchImpl: typeof fetch
+): Promise<Response> {
+  let last: Response | null = null
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetchImpl(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (response.ok) return response
+    last = response
+    if (response.status === 429 && attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 900))
+      continue
+    }
+    return response
+  }
+  return last as Response
+}
+
 /** Fetches the last 50 token + native transfers for an address. */
 export async function fetchBlockscoutHistory(
   address: string,
   fetchImpl: typeof fetch = fetch
 ): Promise<OnchainHistoryItem[]> {
+  const useCache = fetchImpl === fetch
+  const cacheKey = address.toLowerCase()
+  const cached = useCache ? historyCache.get(cacheKey) : undefined
+  if (cached && Date.now() - cached.at < HISTORY_CACHE_MS) {
+    return cached.items
+  }
+
   const base = process.env.CELO_BLOCKSCOUT_URL?.trim() || CELO_BLOCKSCOUT_API
-  const signal = AbortSignal.timeout(8_000)
   const query = (action: string) =>
     `${base}?module=account&action=${action}&address=${address}&sort=desc&page=1&offset=50`
 
-  const [tokenResponse, txResponse] = await Promise.all([
-    fetchImpl(query('tokentx'), { cache: 'no-store', signal }),
-    fetchImpl(query('txlist'), { cache: 'no-store', signal }),
-  ])
+  try {
+    const [tokenResponse, txResponse] = await Promise.all([
+      fetchWithRetry(query('tokentx'), fetchImpl),
+      fetchWithRetry(query('txlist'), fetchImpl),
+    ])
 
-  const [tokentx, txlist] = await Promise.all([
-    parseList<BlockscoutTokenTx>(tokenResponse),
-    parseList<BlockscoutTx>(txResponse),
-  ])
+    const [tokentx, txlist] = await Promise.all([
+      parseList<BlockscoutTokenTx>(tokenResponse),
+      parseList<BlockscoutTx>(txResponse),
+    ])
 
-  return normalizeBlockscoutHistory({ address, tokentx, txlist })
+    const items = normalizeBlockscoutHistory({ address, tokentx, txlist })
+    if (useCache) historyCache.set(cacheKey, { at: Date.now(), items })
+    return items
+  } catch (error) {
+    // A rate-limited refresh should not wipe a recent successful read.
+    if (cached) return cached.items
+    throw error
+  }
 }
