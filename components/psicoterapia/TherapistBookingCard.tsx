@@ -157,11 +157,9 @@ export function TherapistBookingCard({ slug, profile }: Props) {
           <span className="ml-1 text-sm font-normal text-muted-foreground">/ sesión</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">Solo teleterapia por videollamada</p>
-        {profile.cardPaymentsEnabled && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            El pago aparta el horario. Si cancelas con más de 48 horas, se devuelve. Después de eso, el profesional conserva el pago.
-          </p>
-        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          El pago aparta el horario. Si cancelas con más de 48 horas, se devuelve. Después de eso, el profesional conserva el pago.
+        </p>
 
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
@@ -226,7 +224,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
               Verificando...
             </>
           ) : canBook ? (
-            profile.cardPaymentsEnabled ? 'Pagar y reservar' : 'Agendar sesión'
+            'Pagar y reservar'
           ) : (
             'Sin cupos disponibles'
           )}
