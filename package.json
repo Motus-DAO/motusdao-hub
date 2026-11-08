@@ -40,7 +40,10 @@
     "mns:set-price": "npx hardhat run scripts/mns/set-price.js --network celo",
     "mns:withdraw": "npx hardhat run scripts/mns/withdraw-funds.js --network celo",
     "verify:attribution": "node scripts/verify-attribution.mjs",
-    "escrow:test": "npx hardhat test test/TherapyEscrow.test.js"
+    "escrow:test": "npx hardhat test test/TherapyEscrow.test.js",
+    "escrow:deploy": "npx hardhat run scripts/escrow/deploy.cjs --network celo",
+    "escrow:deploy:sepolia": "npx hardhat run scripts/escrow/deploy.cjs --network celoSepolia",
+    "agent:register": "node --env-file=.env.local scripts/agent/register-erc8004.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

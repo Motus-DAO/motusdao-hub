@@ -1,0 +1,15 @@
+{
+  "type": "Agent",
+  "name": "MotusDAO Settlement Agent",
+  "description": "Settles therapy sessions in Celo wFIAT: escrow release, 90/10 split, reconciliation and off-ramp handoff. Owned by MotusDAO.",
+  "image": "https://app.motusdao.org/icon.svg",
+  "endpoints": [
+    { "type": "https", "url": "https://app.motusdao.org/finanzas" },
+    {
+      "type": "wallet",
+      "address": "0xb3C5EA7E583FBa073006c6C553239daC59e3d47B",
+      "chainId": 42220
+    }
+  ],
+  "supportedTrust": ["reputation"]
+}
