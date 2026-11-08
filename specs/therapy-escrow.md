@@ -146,6 +146,18 @@ puede pagar gas en `wMXN` con `feeCurrency`.
 El deploy usó 1.5M de gas a 262 gwei (base 200 gwei) y dejó al agente con ~0.29 CELO.
 El `ownerOf(10053)` y el `getAgentWallet(10053)` resuelven a la wallet del agente.
 
+### Worker y página de pago (2026-11-08)
+
+- `GET/POST /api/agent/tick` (protegido con `CRON_SECRET`): lee `SessionCreated`,
+  libera las sesiones en `Settled` con la ventana vencida, firma con la wallet del agente
+  y agrega el sufijo ERC-8021 a cada tx.
+- `npm run agent:tick`: la misma lógica en local. `npm run escrow:create`: crea una sesión
+  desde el operator (agente).
+- `/pagar/[sessionId]`: el paciente hace `approve` + `deposit`; el payee hace `settle`.
+  Soporta WaaP y wallet inyectada (Rabby/MetaMask), y hace polling del estado.
+- Sin tabla ni cola: la cadena es la fuente de verdad; `release` revierte si ya se ejecutó,
+  así que el tick es idempotente.
+
 ## 10. Rollback
 
 - `git revert` del commit del contrato: no hay deploy, no hay fondos, no hay schema.
