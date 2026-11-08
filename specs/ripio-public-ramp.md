@@ -66,7 +66,18 @@
 - [x] `lib/ripio/public-ramp.test.ts` (URL, país/token, monto, address).
 - [x] `npm run lint` / `npx tsc --noEmit` / `npm test`.
 - [x] `npm run build`.
-- [ ] Prueba manual en prod: comprar 1 `wMXN` desde `/pagos` y ver el delta al volver.
+- [x] Prueba manual en prod: comprar **50 wMXN** desde `/pagos` en iPhone (fix `afdfc20`).
+- [ ] Payout del off-ramp confirmado (Ripio está validando la cuenta).
+
+### 7.1 Evidence
+
+| Date | Check | Result |
+|------|-------|--------|
+| 2026-11-07 | Compra de **50 wMXN** por el botón en iPhone | ✅ tx `0xf02132ff9a51…b379e2` |
+| 2026-11-07 | Off-ramp de 59 MXN: Ripio envió un **micro-depósito de 0.01 MXN** a la CLABE | ⏳ validación bancaria; payout en revisión |
+
+Ripio valida la CLABE destino con un micro-depósito y la cuenta debe pasar a `enabled` antes
+de que salga el payout. El micro-depósito **no** es el retiro.
 
 ## 8. Exit conditions
 
