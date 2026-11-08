@@ -2,6 +2,16 @@
 
 > Propósito: liberar las sesiones del escrow que ya están `Settled` y cuya ventana de
 > disputa venció. Corre cada **2 minutos** desde el VPS.
+
+## Dónde
+
+En **`vps-motusdao`** (el box de Jitsi privado/clínico), no en `vps-brahma` (Jitsi abierto
+y metaverso). El agente mueve dinero: trátalo como producción y mantenlo en la infra de
+MotusDAO. Si quieres probar sin tocar el box clínico, puedes usar `vps-brahma` y migrar
+después; el comando es el mismo.
+
+El VPS solo necesita salida HTTPS a `app.motusdao.org`; no abre puertos ni guarda la llave
+del agente.
 >
 > La llave del agente (`AGENT_PRIVATE_KEY`) **no** vive en el VPS: se queda en Vercel.
 > El VPS solo guarda `CRON_SECRET`, que autentica la llamada al endpoint.
