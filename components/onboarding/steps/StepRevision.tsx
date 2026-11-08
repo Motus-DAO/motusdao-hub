@@ -180,7 +180,6 @@ export function StepRevision({ onNext, onBack }: StepRevisionProps) {
                 languages: data.languages || ['es'],
                 timezone: data.timezone,
                 availability: data.availability || (data.availabilityNotes ? { notes: data.availabilityNotes } : {}),
-                paymentPreference: data.paymentPreference,
                 priorTherapyExperience: data.priorTherapyExperience,
                 medicationOrDiagnosisContext: data.medicationOrDiagnosisContext,
                 riskFlags: data.riskFlags || [],

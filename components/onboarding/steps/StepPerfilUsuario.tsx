@@ -43,10 +43,6 @@ const usuarioSchema = z.object({
   preferredTherapyStyle: z.array(z.string()).default([]),
   languages: z.array(z.string()).min(1, 'Elige al menos un idioma').default(['es']),
   availabilityNotes: z.string().optional(),
-  paymentPreference: z.string().optional().refine((value) => {
-    if (!value) return true
-    return normalizePaymentPreference(value) === value
-  }, 'Elige una forma de pago de la lista'),
   priorTherapyExperience: z.boolean().default(false),
   medicationOrDiagnosisContext: z.string().optional(),
   riskFlags: z.array(z.string()).default([]),
@@ -128,28 +124,6 @@ function languageFormValue(values: string[] | undefined) {
   const known = source.filter((value) => knownLanguages.has(value))
   const custom = customLanguage(source)
   return custom ? [...known, custom] : known
-}
-
-const paymentOptions = [
-  {
-    value: 'local_mx',
-    label: 'Pagos locales',
-    detail: 'Transferencia directa en moneda local, de persona a persona. Solo si el profesional está en tu país.',
-  },
-  {
-    value: 'international',
-    label: 'Pagos internacionales',
-    detail: 'Cuando el profesional está en otro país.',
-  },
-] as const
-
-function normalizePaymentPreference(value?: string) {
-  const allowed = new Set<string>(paymentOptions.map((option) => option.value))
-  return (value || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter((part) => allowed.has(part))
-    .join(',')
 }
 
 const riskFlagOptions = [
@@ -239,7 +213,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       preferredTherapyStyle: (data.preferredTherapyStyle || []).filter((value) => value !== 'no_preference'),
       languages: initialLanguages,
       availabilityNotes: data.availabilityNotes || '',
-      paymentPreference: normalizePaymentPreference(data.paymentPreference),
       priorTherapyExperience: data.priorTherapyExperience ?? false,
       medicationOrDiagnosisContext: data.medicationOrDiagnosisContext || '',
       riskFlags: data.riskFlags || ['none'],
@@ -306,15 +279,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
       setCustomLanguageText('')
       writeLanguages(selectedLanguages, '', false)
     }
-  }
-
-  const selectedPayments = (watch('paymentPreference') || '').split(',').filter(Boolean)
-
-  const togglePayment = (value: string) => {
-    const next = selectedPayments.includes(value)
-      ? selectedPayments.filter((item) => item !== value)
-      : [...selectedPayments, value]
-    setValue('paymentPreference', next.join(','), { shouldDirty: true, shouldValidate: true })
   }
 
   const setHealthDataConsent = (next: boolean) => {
@@ -713,35 +677,6 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
                   </div>
                 )}
                 {errors.languages && <p className="text-red-400 text-sm">{errors.languages.message}</p>}
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Preferencia de pago</p>
-                <p className="text-xs text-muted-foreground">
-                  Motus todavía no cobra la sesión. Esto solo indica qué vía puedes usar. Si el profesional está en otro país, el pago local no aplica.
-                </p>
-                <div className="space-y-2">
-                  {paymentOptions.map((option) => {
-                    const active = selectedPayments.includes(option.value)
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => togglePayment(option.value)}
-                        className={cn(
-                          'w-full rounded-xl border px-4 py-3 text-left transition-colors',
-                          active
-                            ? 'border-mauve-400 bg-mauve-500/25 text-mauve-800 dark:text-white'
-                            : 'border-white/15 bg-white/[0.03] text-muted-foreground hover:text-foreground dark:hover:text-white'
-                        )}
-                      >
-                        <span className="block text-sm">{option.label}</span>
-                        <span className="mt-1 block text-xs opacity-80">{option.detail}</span>
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
 
               <label className={cn('flex items-center gap-2', onboardingFormSurfaceClass)}>
