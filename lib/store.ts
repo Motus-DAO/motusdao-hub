@@ -120,7 +120,10 @@ export const getNavigationGroups = (role: UserRole): NavGroup[] => {
     { name: 'Actividad', href: '/finanzas/actividad', icon: 'History' },
     ...(role === 'usuario'
       ? ([] as NavItem[])
-      : ([{ name: 'Cobros', href: '/cobros', icon: 'CreditCard' }] as NavItem[])),
+      : ([
+          { name: 'Sesiones', href: '/cobros/sesiones', icon: 'Calendar' },
+          { name: 'Cobros', href: '/cobros', icon: 'CreditCard' },
+        ] as NavItem[])),
     { name: 'Métodos', href: '/finanzas/metodos', icon: 'Landmark' },
   ]
 
