@@ -39,7 +39,8 @@
     "mns:compile": "npx hardhat compile",
     "mns:set-price": "npx hardhat run scripts/mns/set-price.js --network celo",
     "mns:withdraw": "npx hardhat run scripts/mns/withdraw-funds.js --network celo",
-    "verify:attribution": "node scripts/verify-attribution.mjs"
+    "verify:attribution": "node scripts/verify-attribution.mjs",
+    "escrow:test": "npx hardhat test test/TherapyEscrow.test.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

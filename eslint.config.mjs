@@ -22,6 +22,7 @@ const eslintConfig = [
       "cache/**",
       "contracts/**",
       "scripts/**",
+      "test/**",
       "hardhat.config.*",
     ],
   },
