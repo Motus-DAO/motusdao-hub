@@ -198,6 +198,9 @@ const paises = [
   { value: 'otros', label: 'Otros' }
 ]
 
+/** Disabled until the consent/UX issues documented in docs/architecture/onboarding-ai-intake.md are fixed. */
+const AI_INTAKE_ENABLED = process.env.NEXT_PUBLIC_AI_INTAKE_ENABLED === 'true'
+
 export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
   const { data, updateData, profileIntakeMode, setProfileIntakeMode } = useOnboardingStore()
   const [showInfoUse, setShowInfoUse] = useState(false)
@@ -213,7 +216,13 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
   const initialLanguages = languageFormValue(data.languages)
   const [customLanguageText, setCustomLanguageText] = useState(customLanguage(data.languages || []))
   const [wantsOtherLanguage, setWantsOtherLanguage] = useState(customLanguage(data.languages || []).length > 0)
-  const intakeMode = profileIntakeMode ?? 'manual'
+  const intakeMode = AI_INTAKE_ENABLED ? (profileIntakeMode ?? 'manual') : 'manual'
+
+  useEffect(() => {
+    if (!AI_INTAKE_ENABLED && profileIntakeMode === 'ai') {
+      setProfileIntakeMode('manual')
+    }
+  }, [profileIntakeMode, setProfileIntakeMode])
 
   useEffect(() => {
     if (data.preferenciaAsignacion !== 'explorar') {
@@ -375,22 +384,24 @@ export function StepPerfilUsuario({ onNext, onBack }: StepPerfilUsuarioProps) {
           </p>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 rounded-xl border border-white/10 p-1">
-          <button
-            type="button"
-            onClick={() => setProfileIntakeMode('manual')}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'manual' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'}`}
-          >
-            Llenarlo yo
-          </button>
-          <button
-            type="button"
-            onClick={() => setProfileIntakeMode('ai')}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'ai' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'}`}
-          >
-            Hablar con IA
-          </button>
-        </div>
+        {AI_INTAKE_ENABLED && (
+          <div className="mb-6 grid grid-cols-2 rounded-xl border border-white/10 p-1">
+            <button
+              type="button"
+              onClick={() => setProfileIntakeMode('manual')}
+              className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'manual' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'}`}
+            >
+              Llenarlo yo
+            </button>
+            <button
+              type="button"
+              onClick={() => setProfileIntakeMode('ai')}
+              className={`rounded-lg px-4 py-2 text-sm transition-colors ${intakeMode === 'ai' ? 'bg-mauve-500 text-white' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'}`}
+            >
+              Hablar con IA
+            </button>
+          </div>
+        )}
 
         {intakeMode === 'ai' ? (
           <StepAIIntake role="usuario" onNext={onNext} />

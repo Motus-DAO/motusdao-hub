@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getAIClient, getAIModel, getAIProvider, hasAIKey } from '@/lib/ai-client'
-import { requireAiProcessingConsent } from '@/lib/auth/ai-consent'
+import { getAIClient, getAIProvider, getIntakeModel, hasAIKey } from '@/lib/ai-client'
+import { requireOnboardingAiConsent } from '@/lib/auth/ai-consent'
 import { handleAuthError } from '@/lib/auth/session'
 import { AiCreditExhaustedError, estimateTokens } from '@/lib/ai-credit'
 import { releaseAiCredit, reserveAiCredit, settleAiCredit } from '@/lib/ai-credit-store'
 import { getPsmMissingFieldKeys } from '@/lib/intake/psm-intake-v1'
 import { getFieldOrder } from '@/lib/intake-chat-progress'
 import type { OnboardingData } from '@/lib/onboarding-store'
+
+export const maxDuration = 60
 
 const messageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -71,7 +73,7 @@ const RESPONSE_SCHEMA = {
 const QUESTION_GUIDE = {
   usuario: {
     q1: 'nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica',
-    q2: 'clinicalConcern, preferenciaAsignacion, urgencyLevel, languages, availabilityNotes, preferredTherapyStyle',
+    q2: 'languages, availabilityNotes, preferredTherapyStyle, therapistGenderPreference',
     q3: 'consentToShareWithPSM, consentToClinicalMatching (y campos opcionales restantes). No pidas ni inferas consentToAIProcessing.',
   },
   psm: {
@@ -94,19 +96,22 @@ Reglas:
 - Una pregunta enfocada por turno; no hagas multiples preguntas largas.
 - Extrae datos en extractedData con claves exactas. Fusiona con datos actuales; no borres campos ya capturados.
 - No inventes datos. Campos faltantes van en missingFields.
-- No decidas riesgo, diagnostico ni tratamiento. riskAlert siempre es none. Si la persona describe una emergencia, el assistantMessage solo indica servicios locales de emergencia. No cambies urgencyLevel por eso.
-- Valores: urgencyLevel low|medium|high|unsure. low = puede seguir con sus actividades. medium = afecta algunas partes de su vida. high = le cuesta lo cotidiano. unsure = no está seguro y prefiere hablarlo con un profesional. No uses crisis salvo que la persona describa una emergencia. preferredModality siempre es video (no preguntes modalidad). preferenciaAsignacion siempre es explorar. No preguntes asignación automática.
+- No decidas riesgo, diagnostico ni tratamiento. riskAlert siempre es none. Si la persona describe una emergencia, el assistantMessage solo indica servicios locales de emergencia.
+- No preguntes ni infieras como le afecta la vida diaria, severidad, urgencyLevel, diagnostico ni riesgo. Ese triage lo hace el profesional en la sesion. preferredModality siempre es video (no preguntes modalidad). preferenciaAsignacion siempre es explorar. No preguntes asignacion automatica.
+- Si la persona dice que prefiere hablar con un profesional, que no quiere responder o algo similar, no insistas: agradece, pasa a intake_q3 (consentimientos) y ofrece el handoff.
 - No menciones un proveedor fijo. No pongas consentToAIProcessing en extractedData.
 - Arrays: clinicalConcern, preferredTherapyStyle, languages, especialidades, therapyStyles, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes, clinicalComplexityLevels, excludedCases, riskFlags.
 - clinicalComplexityLevels valores: low_complexity, medium_complexity, high_with_support, no_active_crisis.
 - serviceTypes valores: individual_therapy, psychological_guidance, psychoeducation, clinical_supervision, groups_workshops, courses, psychological_assessment, non_clinical_support, research_interviews.
 - excludedCases: slugs preset (self_harm_crisis, active_psychosis, substance_detox, legal_forensic, minors, active_violence_no_support, unstable_medical_psychiatric, case_by_case_intake) o texto libre para casos adicionales.
 - emergencyProtocolStatus: own_protocol, institutional_protocol, not_yet, want_motus_guidance.
-- Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, urgencyLevel, languages, consentToShareWithPSM=true, consentToClinicalMatching=true. preferredModality siempre video (no preguntar). clinicalConcern es recomendado pero opcional; si lo puedes inferir desde problematica, incluyelo como array. consentToAIProcessing no es campo de este chat.
+- Usuario requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, problematica, preferenciaAsignacion, languages, consentToShareWithPSM=true, consentToClinicalMatching=true. preferredModality siempre video (no preguntar). urgencyLevel y clinicalConcern NO se preguntan ni se infieren en este chat. consentToAIProcessing no es campo de este chat.
 - PSM requerido: nombre, apellido, telefono, fechaNacimiento, ciudad, pais, cedulaProfesional, formacionAcademica, experienciaAnios, professionalNarrative (min 80 chars), therapyStyles, especialidades, languages, timezone, weeklyTherapyHours (1-168, valores altos son advertencia no bloqueo), maxActiveUsers, credentialedCountries, countriesWhereCanReceivePatients, serviceTypes (min 1), clinicalComplexityLevels (min 1), emergencyProtocolStatus. excludedCases es opcional. NO autocompletar legalDeclarations.
 - assistantMessage debe ser conversacional y terminar con la siguiente pregunta (excepto en handoff_ready).
 
-Devuelve JSON con: assistantMessage, isComplete, missingFields, confidence, extractedData, riskAlert, phase, questionIndex.`
+Devuelve JSON con: assistantMessage, isComplete, missingFields, confidence, extractedData, riskAlert, phase, questionIndex.
+
+Sé breve: assistantMessage máximo 2 frases más la pregunta. En extractedData incluye solo los campos nuevos de este turno; no repitas el perfil completo.`
 
 function parseAIJson(text: string): Record<string, unknown> {
   const jsonText = text.match(/\{[\s\S]*\}/)?.[0] || text
@@ -159,7 +164,7 @@ function normalizeParsedResponse(
     assistantMessage:
       typeof parsed.assistantMessage === 'string'
         ? parsed.assistantMessage
-        : 'Gracias. ¿Puedes contarme un poco más?',
+        : 'Entendido. Si prefieres hablarlo con un profesional, pasemos a los consentimientos para conectarte.',
     isComplete,
     missingFields:
       Array.isArray(parsed.missingFields) && parsed.missingFields.length > 0
@@ -197,7 +202,6 @@ function computeMissingFields(
     'pais',
     'problematica',
     'preferenciaAsignacion',
-    'urgencyLevel',
     'languages',
     'availabilityNotes',
     'consentToShareWithPSM',
@@ -217,7 +221,7 @@ function computeMissingFields(
 export async function POST(request: NextRequest) {
   let userId: string
   try {
-    const session = await requireAiProcessingConsent(request)
+    const session = await requireOnboardingAiConsent(request)
     if (!session.userId) {
       return NextResponse.json({ error: 'Se necesita una cuenta del Hub para usar la IA.' }, { status: 403 })
     }
@@ -251,7 +255,7 @@ export async function POST(request: NextRequest) {
         ? '\nCRITICAL: Respond with ONLY a raw JSON object. No markdown fences, no text before or after JSON.'
         : ''
 
-    const model = getAIModel()
+    const model = getIntakeModel()
     const messages = [
       { role: 'system' as const, content: SYSTEM_PROMPT },
       {
@@ -273,7 +277,7 @@ Devuelve SOLO JSON valido con assistantMessage, isComplete, missingFields, confi
       userId,
       model,
       inputText: messages.map((message) => message.content).join('\n'),
-      requestedMaxTokens: 1400,
+      requestedMaxTokens: 800,
     })
     let response
     let settled = false

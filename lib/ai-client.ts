@@ -19,6 +19,19 @@ export function getAIModel() {
   return process.env.OPENAI_MODEL || 'gpt-4o'
 }
 
+/**
+ * The onboarding intake runs before the account exists and must feel quick.
+ * Keep the TEE but prefer the faster flash model for the 3-question JSON
+ * extraction; Psychat keeps its own model.
+ */
+export function getIntakeModel() {
+  if (getAIProvider() === 'venice') {
+    return process.env.AI_INTAKE_MODEL || 'e2ee-glm-5-3-flash'
+  }
+
+  return process.env.OPENAI_INTAKE_MODEL || getAIModel()
+}
+
 export function getAIDisclosure() {
   const provider = getAIProvider()
   const model = getAIModel()

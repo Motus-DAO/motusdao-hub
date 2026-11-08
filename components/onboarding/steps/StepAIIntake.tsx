@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import Link from 'next/link'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Bot, Loader, Send, AlertCircle } from 'lucide-react'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { onboardingIntakeConsentCopy } from '@/lib/ai-consent-copy'
 import {
   useOnboardingStore,
   UserRole,
@@ -126,10 +128,40 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
   const [phase, setPhase] = useState<string>(initial.phase)
   const [questionIndex, setQuestionIndex] = useState<number>(initial.questionIndex)
   const [highlightKeys, setHighlightKeys] = useState<string[]>([])
+  const [aiConsent, setAiConsent] = useState(data.consentToAIProcessing === true)
+  const [consentChecked, setConsentChecked] = useState(false)
+  const [savingConsent, setSavingConsent] = useState(false)
+
+  // The AI does not triage severity. Leave the field neutral for the
+  // professional to explore in the first session.
+  useEffect(() => {
+    if (!data.urgencyLevel) updateData({ urgencyLevel: 'unsure' })
+  }, [data.urgencyLevel, updateData])
+
+  const acceptAiConsent = useCallback(async () => {
+    if (!consentChecked || savingConsent) return
+    setSavingConsent(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/onboarding/ai-consent', { method: 'POST' })
+      const body = (await response.json().catch(() => ({}))) as { error?: string }
+      if (!response.ok) {
+        throw new Error(body.error || 'No se pudo guardar el consentimiento.')
+      }
+      updateData({ consentToAIProcessing: true })
+      setAiConsent(true)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'No se pudo guardar el consentimiento.'
+      )
+    } finally {
+      setSavingConsent(false)
+    }
+  }, [consentChecked, savingConsent, updateData])
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim()
-    if (!trimmed || isLoading) return
+    if (!trimmed || isLoading || !aiConsent) return
 
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }]
     setMessages(nextMessages)
@@ -220,7 +252,7 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [input, isLoading, messages, role, data, phase, questionIndex, updateData])
+  }, [input, isLoading, messages, role, data, phase, questionIndex, updateData, aiConsent])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -248,6 +280,57 @@ export function StepAIIntake({ role, onNext }: StepAIIntakeProps) {
   }
 
   const showChatInput = phase !== 'handoff_ready' || messages.some((m) => m.role === 'user')
+
+  if (!aiConsent) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Bot className="h-5 w-5 text-mauve-600 dark:text-mauve-400" />
+          <h3 className="text-lg font-semibold">Intake asistido por IA</h3>
+        </div>
+
+        <section className="space-y-4 rounded-xl border border-border p-5">
+          <h4 className="text-sm font-semibold text-foreground">Antes de hablar con IA</h4>
+          <p className="text-sm text-muted-foreground">{onboardingIntakeConsentCopy()}</p>
+          <p className="text-xs text-muted-foreground">
+            No te preguntaremos cómo te afecta la vida diaria ni tu severidad; eso lo
+            verás con tu profesional.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Consulta el{' '}
+            <Link href="/privacidad" className="underline hover:text-foreground">
+              aviso de privacidad
+            </Link>
+            .
+          </p>
+
+          <label className="flex items-start gap-3 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(event) => setConsentChecked(event.target.checked)}
+              className="mt-1"
+            />
+            <span>Acepto el procesamiento de IA para este intake.</span>
+          </label>
+
+          <CTAButton
+            type="button"
+            onClick={() => void acceptAiConsent()}
+            disabled={!consentChecked || savingConsent}
+          >
+            {savingConsent ? 'Guardando…' : 'Continuar con IA'}
+          </CTAButton>
+
+          {error && (
+            <div className="rounded-xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+              {error}
+            </div>
+          )}
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
