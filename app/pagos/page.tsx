@@ -19,8 +19,10 @@ import {
   ChevronUp,
   RefreshCw,
   AtSign,
-  Search
+  Search,
+  History
 } from 'lucide-react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { QRCodeSVG } from 'qrcode.react'
@@ -895,6 +897,13 @@ export default function PagosPage() {
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
+                    <Link
+                      href="/pagos/historial"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                    >
+                      <History className="w-4 h-4" />
+                      Historial
+                    </Link>
                     <button
                       onClick={async () => {
                         if (!walletAddress) return
