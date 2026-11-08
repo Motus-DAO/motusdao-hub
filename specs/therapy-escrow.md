@@ -132,6 +132,20 @@ npm run agent:register
 El agente necesita **CELO para gas** (deploy + registro). Para las operaciones del worker se
 puede pagar gas en `wMXN` con `feeCurrency`.
 
+### Deployed (2026-11-08)
+
+| Item | Valor |
+|---|---|
+| `TherapyEscrow` | `0xFd9F38AD6143B018e60F86B5304C53223FBf2dBC` |
+| Deploy tx | `0xe8bdf10af4da4d8a4d096e85943841d511572bc1942ab4c5159a9f23c5d8d5b6` |
+| Ownership tx (agent → owner frío) | `0x7b33c1053fb4a61247cde4f8eff1c7c1f045b5f249232da8468ebe6a8b4e332e` |
+| ERC-8004 `agentId` | **10053** |
+| ERC-8004 tx | `0x2d01e5910bbccdb423d3c47c9b3fbbe44101a6ca167378343def72232cc713ac` |
+| Metadata | `https://app.motusdao.org/agent.json` |
+
+El deploy usó 1.5M de gas a 262 gwei (base 200 gwei) y dejó al agente con ~0.29 CELO.
+El `ownerOf(10053)` y el `getAgentWallet(10053)` resuelven a la wallet del agente.
+
 ## 10. Rollback
 
 - `git revert` del commit del contrato: no hay deploy, no hay fondos, no hay schema.

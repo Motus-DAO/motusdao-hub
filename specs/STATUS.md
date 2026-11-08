@@ -135,7 +135,7 @@ Detalle: [spec](./celo-attribution.md).
 | **Historial de tx (capa 1)** | Verificar `/pagos/historial` en prod | Lee Blockscout; la persistencia (`OnchainTransaction`) queda como capa 2 |
 | **Finance hub (IA + actividad)** | Verificar menú, hub y `/finanzas/actividad` en prod | Read model (Blockscout + terapia + Academia); el ledger persistido es fase 3 |
 | **Comisiones SPEI + pago simbólico** | Implementar slices 1–5 del [spec](./spei-commissions.md) | Diseño locked; todavía no hay código |
-| **Escrow terapia (contrato)** | Deploy + worker del agente + ERC-8004 | Contrato con 8 tests; aún no desplegado |
+| **Escrow terapia** | Worker del agente + UI de pago | **Desplegado** en Celo mainnet (`0xFd9F…`) y ERC-8004 `10053`; 11 tests |
 
 ---
 
