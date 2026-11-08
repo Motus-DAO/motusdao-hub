@@ -135,6 +135,8 @@ Detalle: [spec](./celo-attribution.md).
 | **Historial de tx (capa 1)** | Verificar `/pagos/historial` en prod | Lee Blockscout; la persistencia (`OnchainTransaction`) queda como capa 2 |
 | **Finance hub (IA + actividad)** | Verificar menú, hub y `/finanzas/actividad` en prod | Read model (Blockscout + terapia + Academia); el ledger persistido es fase 3 |
 | **Comisiones SPEI + pago simbólico** | Implementar slices 1–5 del [spec](./spei-commissions.md) | Diseño locked; todavía no hay código |
+| **Motty pagos (agéntico)** | Tools de lectura, creación del escrow y UX de links ([spec](./agentic-payments.md)) | Motty hoy solo lee conocimiento; no ejecuta pagos |
+| **Submission hackathon** | Video + formulario en Loops House | Doc canónico [aquí](./hackathon-agents-on-open-rails.md); el E2E ya está en mainnet |
 | **Escrow terapia** | Cron del VPS + pulir UX | **E2E en mainnet**: depósito, settle y release taggeados; escrow `0xFd9F…`, agente ERC-8004 `10053` |
 
 ---
