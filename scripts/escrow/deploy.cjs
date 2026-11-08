@@ -52,8 +52,26 @@ async function main() {
     console.warn('[escrow] warning: deployer is not ESCROW_OPERATOR')
   }
 
+  // Celo's base fee can spike well above the usual 20-50 gwei. Cap the deploy
+  // gas and the fee so a 1.2M-gas creation does not reserve 2.2M at a 240 gwei
+  // max fee (which is what ethers' default estimate did on mainnet).
+  const block = await ethers.provider.getBlock('latest')
+  const baseFee = block?.baseFeePerGas ?? (await ethers.provider.getFeeData()).gasPrice ?? 0n
+  const maxPriorityFeePerGas = ethers.parseUnits('2', 'gwei')
+  const maxFeePerGas = (baseFee * 13n) / 10n + maxPriorityFeePerGas
+  const overrides = {
+    gasLimit: 1_500_000,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
+  }
+  console.log('[escrow] fee', {
+    baseFeeGwei: Number(baseFee) / 1e9,
+    maxFeeGwei: Number(maxFeePerGas) / 1e9,
+    gasLimit: overrides.gasLimit,
+  })
+
   const Escrow = await ethers.getContractFactory('TherapyEscrow', signer)
-  const escrow = await Escrow.deploy(TREASURY, FEE_BPS, OPERATOR, ORACLE)
+  const escrow = await Escrow.deploy(TREASURY, FEE_BPS, OPERATOR, ORACLE, overrides)
   await escrow.waitForDeployment()
 
   const address = await escrow.getAddress()
