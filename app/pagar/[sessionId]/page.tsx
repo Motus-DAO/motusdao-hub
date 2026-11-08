@@ -94,6 +94,7 @@ export default function PagarSesionPage() {
   const [session, setSession] = useState<EscrowSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState<'deposit' | 'settle' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [injected, setInjected] = useState<Address | null>(null)
@@ -107,44 +108,74 @@ export default function PagarSesionPage() {
     []
   )
 
+  const readSession = useCallback(async (): Promise<EscrowSession | null> => {
+    const raw = (await publicClient.readContract({
+      address: THERAPY_ESCROW_ADDRESS,
+      abi: THERAPY_ESCROW_ABI,
+      functionName: 'sessions',
+      args: [sessionId],
+    })) as readonly [Address, Address, Address, bigint, bigint, bigint, number, number]
+
+    if (raw[0] === '0x0000000000000000000000000000000000000000') return null
+
+    return {
+      token: raw[0],
+      patient: raw[1],
+      payee: raw[2],
+      amount: raw[3],
+      startsAt: Number(raw[4]),
+      settledAt: Number(raw[5]),
+      challengeWindow: Number(raw[6]),
+      status: Number(raw[7]),
+    }
+  }, [publicClient, sessionId])
+
   const load = useCallback(async () => {
     try {
-      const raw = (await publicClient.readContract({
-        address: THERAPY_ESCROW_ADDRESS,
-        abi: THERAPY_ESCROW_ABI,
-        functionName: 'sessions',
-        args: [sessionId],
-      })) as readonly [Address, Address, Address, bigint, bigint, bigint, number, number]
-
-      if (raw[0] === '0x0000000000000000000000000000000000000000') {
+      const next = await readSession()
+      if (!next) {
         setError('Sesión no encontrada en el escrow.')
         setSession(null)
         return
       }
-
-      setSession({
-        token: raw[0],
-        patient: raw[1],
-        payee: raw[2],
-        amount: raw[3],
-        startsAt: Number(raw[4]),
-        settledAt: Number(raw[5]),
-        challengeWindow: Number(raw[6]),
-        status: Number(raw[7]),
-      })
+      setSession(next)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo leer la sesión')
     } finally {
       setLoading(false)
     }
-  }, [publicClient, sessionId])
+  }, [readSession])
+
+  /**
+   * The RPC can serve a stale session right after a tx. Poll until the expected
+   * status lands so the action button does not reappear and invite a duplicate.
+   */
+  const refreshUntil = useCallback(
+    async (expected: number) => {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        try {
+          const next = await readSession()
+          if (next && next.status >= expected) {
+            setSession(next)
+            setError(null)
+            return
+          }
+        } catch {
+          // keep polling
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+      }
+      await load()
+    },
+    [readSession, load]
+  )
 
   useEffect(() => {
     void load()
-    const timer = window.setInterval(() => void load(), 10_000)
+    const timer = window.setInterval(() => void load(), pending ? 2500 : 5000)
     return () => window.clearInterval(timer)
-  }, [load])
+  }, [load, pending])
 
   const signer = (waaP?.address as Address | undefined) || injected || null
   const isPatient =
@@ -197,8 +228,9 @@ export default function PagarSesionPage() {
   }
 
   const deposit = async () => {
-    if (!session || !signer) return
+    if (!session || !signer || pending) return
     setBusy(true)
+    setPending('deposit')
     setError(null)
     try {
       const allowance = (await publicClient.readContract({
@@ -228,17 +260,19 @@ export default function PagarSesionPage() {
         })
       )
       setTxHash(hash)
-      await load()
+      await refreshUntil(2)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo depositar')
     } finally {
       setBusy(false)
+      setPending(null)
     }
   }
 
   const settle = async () => {
-    if (!session) return
+    if (!session || pending) return
     setBusy(true)
+    setPending('settle')
     setError(null)
     try {
       const hash = await send(
@@ -250,11 +284,12 @@ export default function PagarSesionPage() {
         })
       )
       setTxHash(hash)
-      await load()
+      await refreshUntil(3)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar')
     } finally {
       setBusy(false)
+      setPending(null)
     }
   }
 
@@ -339,7 +374,20 @@ export default function PagarSesionPage() {
                 )}
               </dl>
 
-              {!signer ? (
+              {pending ? (
+                <div className="rounded-lg border border-mauve-500/30 bg-mauve-500/5 p-4 text-sm text-mauve-200">
+                  <p className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {pending === 'deposit'
+                      ? 'Procesando tu depósito…'
+                      : 'Confirmando la sesión…'}
+                  </p>
+                  <p className="mt-1 text-xs text-mauve-200/80">
+                    Firma enviada. Esperando la confirmación en Celo; no cierres esta
+                    página.
+                  </p>
+                </div>
+              ) : !signer ? (
                 <div className="space-y-2">
                   <CTAButton
                     onClick={() => void (authenticated ? undefined : login())}
@@ -357,42 +405,94 @@ export default function PagarSesionPage() {
                 </div>
               ) : session.status === 1 ? (
                 isPatient ? (
-                  <CTAButton onClick={() => void deposit()} disabled={busy} className="w-full">
-                    {busy ? 'Firmando…' : 'Aprobar y depositar'}
-                  </CTAButton>
+                  <div className="space-y-2">
+                    <CTAButton
+                      onClick={() => void deposit()}
+                      disabled={busy}
+                      className="w-full"
+                    >
+                      {busy ? 'Firmando…' : 'Aprobar y depositar'}
+                    </CTAButton>
+                    <p className="text-center text-xs text-muted-foreground">
+                      Se transferirá {formatUnits(session.amount, 18)} wMXN al escrow.
+                      Puedes cancelar antes del inicio y recuperar todo.
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-center text-sm text-muted-foreground">
-                    Conecta la wallet del paciente para depositar.
+                    Esta sesión todavía no tiene depósito. Conecta la wallet del
+                    paciente para pagarla.
                   </p>
                 )
               ) : session.status === 2 ? (
                 isPayee ? (
-                  <CTAButton
-                    onClick={() => void settle()}
-                    disabled={busy || now < session.startsAt}
-                    className="w-full"
-                  >
-                    {busy
-                      ? 'Firmando…'
-                      : now < session.startsAt
-                        ? `Podrás confirmar el ${formatDate(session.startsAt)}`
-                        : 'Confirmar sesión'}
-                  </CTAButton>
+                  <div className="space-y-2">
+                    <CTAButton
+                      onClick={() => void settle()}
+                      disabled={busy || now < session.startsAt}
+                      className="w-full"
+                    >
+                      {busy
+                        ? 'Firmando…'
+                        : now < session.startsAt
+                          ? `Podrás confirmar el ${formatDate(session.startsAt)}`
+                          : 'Confirmar sesión'}
+                    </CTAButton>
+                    <p className="text-center text-xs text-muted-foreground">
+                      Al confirmar, el agente libera el 90% a tu wallet.
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-center text-sm text-muted-foreground">
-                    Depositaste. Falta que el profesional confirme la sesión.
+                    Depósito recibido. Falta que el profesional confirme la sesión.
                   </p>
                 )
               ) : session.status === 3 ? (
-                <div className="flex items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 text-sm text-blue-200">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  El agente liquida automáticamente
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 text-sm text-blue-200">
+                  <p className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    El profesional confirmó la sesión.
+                  </p>
+                  <p className="mt-1 text-xs text-blue-200/80">
+                    El agente libera el pago automáticamente; corre cada 5 minutos.
+                    Si ya pasó, actualiza el estado.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void load()}
+                    className="mt-3 rounded-lg border border-blue-400/30 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500/10"
+                  >
+                    Actualizar estado
+                  </button>
                 </div>
               ) : session.status === 5 ? (
-                <div className="flex items-center justify-center gap-2 rounded-lg border border-green-500/30 bg-green-500/5 p-3 text-sm text-green-300">
-                  <CheckCircle className="h-4 w-4" />
-                  Liquidada: {formatUnits(payeeAmount, 18)} wMXN al profesional
+                <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 text-sm text-green-300">
+                  <p className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Pago liberado
+                  </p>
+                  <p className="mt-1 text-xs text-green-200/80">
+                    {formatUnits(payeeAmount, 18)} wMXN al profesional ·{' '}
+                    {formatUnits(fee, 18)} wMXN a MotusDAO
+                  </p>
+                  <a
+                    href={`https://celoscan.io/address/${THERAPY_ESCROW_ADDRESS}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-1 text-xs text-green-300 underline"
+                  >
+                    Ver escrow en Celoscan
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
+              ) : session.status === 4 ? (
+                <p className="text-center text-sm text-red-300">
+                  Sesión en disputa. El agente arbitra el reembolso.
+                </p>
+              ) : session.status === 6 ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  Sesión reembolsada al paciente.
+                </p>
               ) : (
                 <p className="text-center text-sm text-muted-foreground">
                   {STATUS_LABEL[session.status] ?? 'Estado desconocido'}
