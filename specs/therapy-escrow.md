@@ -55,7 +55,9 @@ Estados: `None → Created → Funded → Settled → Disputed → Released | Re
 
 | Función | Quién | Precondición | Efecto |
 |---|---|---|---|
-| `createSession` | owner (backend) | id nuevo, `startsAt >= now`, fee ≤ cap | crea la obligación con payee/treasury fijos |
+| `createSession` | operator (worker) | id nuevo, `startsAt >= now`, fee ≤ cap | crea la obligación con payee/treasury fijos |
+| `setOperator` | owner | nueva address ≠ 0 | rota el worker sin redeployar |
+| `setOracle` | owner | nueva address ≠ 0 | rota el agente sin redeployar |
 | `deposit` | paciente | `Created` | `transferFrom` al contrato → `Funded` |
 | `cancelBeforeStart` | paciente | `Funded`, antes de `startsAt` | refund 100% → `Refunded` |
 | `settle` | payee | `Funded`, después de `startsAt` | `settledAt = now` → `Settled` |
@@ -89,6 +91,10 @@ el botón y resolviendo por el oráculo. Si el producto la exige on-chain, se ag
 4. **El paciente siempre puede salir antes del inicio.**
 5. **`challengeWindow` por sesión** (48h prod, 0 demo), con tope de 7 días.
 6. **Fee cap duro 20%**, para que un deploy mal configurado no pueda vaciar la sesión.
+7. **Owner frío, operator y oracle calientes.** El owner (Rabby/multisig) no firma en el
+   servidor; el worker y el agente comparten una wallet caliente dedicada.
+8. **Operator y oracle son rotables** por el owner, con evento. Una llave caliente
+   comprometida se reemplaza sin redeployar el escrow; el owner nunca está en Vercel.
 
 ## 8. Abiertos
 
@@ -100,11 +106,31 @@ el botón y resolviendo por el oráculo. Si el producto la exige on-chain, se ag
 
 ## 9. QA gate (Definition of Done for this slice)
 
-- [x] `npm run escrow:test` → 8 passing.
+- [x] `npm run escrow:test` → 11 passing (incluye rotación de operator/oracle).
 - [x] `npm run lint` (test de contratos ignorado en ESLint).
 - [x] `npx tsc --noEmit`.
 - [x] `npm test` / `npm run build`.
 - [ ] Deploy y E2E con wMXN real (siguiente slice).
+
+## 9.1 Deployment (Celo mainnet)
+
+| Rol | Address |
+|---|---|
+| Owner (frío, Rabby) | `0x052E6A4080293e9B0e2629dC8b43854E758Ecb8f` |
+| Operator / Oracle (agente caliente) | `0xb3C5EA7E583FBa073006c6C553239daC59e3d47B` |
+| Treasury | `0xf229F3Dcea3D7cd3cA5ca41C4C50135D7b37F2b9` |
+| Fee | 1000 bps (10%) |
+
+```bash
+# 1. El deployer es el agente; el script transfiere ownership al owner frío.
+DEPLOYER_PRIVATE_KEY=<agent key> npm run escrow:deploy
+
+# 2. Registro ERC-8004 (misma wallet del agente; metadata en /agent.json)
+npm run agent:register
+```
+
+El agente necesita **CELO para gas** (deploy + registro). Para las operaciones del worker se
+puede pagar gas en `wMXN` con `feeCurrency`.
 
 ## 10. Rollback
 
