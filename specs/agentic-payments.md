@@ -84,7 +84,7 @@ direcciones ni montos desde el modelo** más allá de lo que el servidor ya cono
 Hoy está repartido: `/cobros` (Stripe), `/perfil` (SPEI), `/mis-usuarios` (sesiones).
 Propuesta:
 
-- `/cobros/sesiones` (nuevo): próximas sesiones con método y estado de pago, botón
+- `/pagos/sesiones` (nuevo): próximas sesiones con método y estado de pago, botón
   **Confirmar SPEI**, botón **Confirmar sesión** (escrow settle), monto neto y link al
   recibo. `/cobros` sigue igual (Stripe site links intactos).
 - El PSM también puede preguntarle a Motty: “¿qué sesiones tengo pendientes de cobro?”.
@@ -107,7 +107,7 @@ Propuesta:
 | 1 | Tools de lectura (`getMyUpcomingSession`, `quote`, `balance`, `status`) + prompt | Motty responde con la sesión y el monto reales |
 | 2 | `createTherapyEscrowForMySession` + `getMyRipioRampLink` | crea el escrow una vez y devuelve el link |
 | 3 | UX del widget (links/botones) | el usuario llega a `/pagar` desde el chat |
-| 4 | `/cobros/sesiones` + settle | el PSM confirma y cobra sin salir del panel |
+| 4 | `/pagos/sesiones` + settle | el PSM confirma y cobra sin salir del panel |
 | 5 | E2E demo + recibo | chat → depósito → settle → release → recibo |
 
 ## 8. Non-goals
@@ -143,6 +143,6 @@ Propuesta:
 
 **Falta**
 - UX del widget: `MottyMarkdown` ya renderiza links; falta el botón/acción.
-- `/cobros/sesiones` para el PSM (core, no “si sobra”).
+- `/pagos/sesiones` para el PSM (core, no “si sobra”).
 - Botón de booking → escrow.
 - Video + submission.

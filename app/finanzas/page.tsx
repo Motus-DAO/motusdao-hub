@@ -198,7 +198,7 @@ export default function ResumenPage() {
           </div>
           {isPsm && (
             <Link
-              href="/cobros/sesiones"
+              href="/pagos/sesiones"
               className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold hover:bg-white/5"
             >
               <Calendar className="h-4 w-4" />

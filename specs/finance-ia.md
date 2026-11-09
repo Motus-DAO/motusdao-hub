@@ -17,7 +17,7 @@ interface to act.**
 | **SPEI** | CLABE / bank transfer | Bank; Motus confirms manually | `/finanzas/depositos` (new) |
 
 `Sesiones` is not a method: it is the operational view of escrow sessions
-(`/cobros/sesiones`). It has a shortcut in Resumen and in the sidebar.
+(`/pagos/sesiones`). It has a shortcut in Resumen and in the sidebar.
 
 ## 3. Resumen = "Métodos" + summary + activity
 
@@ -50,7 +50,7 @@ Finanzas
   Wallet        /pagos
   Cobros        /cobros
   Depósitos     /finanzas/depositos
-  Sesiones      /cobros/sesiones
+  Sesiones      /pagos/sesiones
 ```
 
 - "Pagos" becomes "Resumen".
@@ -67,7 +67,7 @@ Finanzas
   `/cobros/depositos`.
 - **Depósitos `/finanzas/depositos`:** CLABE/SPEI; incoming transfers and manual
   confirmation.
-- **Sesiones `/cobros/sesiones`:** escrow sessions; confirm/release; shortcut in
+- **Sesiones `/pagos/sesiones`:** escrow sessions; confirm/release; shortcut in
   Resumen.
 
 ## 6. Filters are the methods
