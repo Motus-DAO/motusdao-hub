@@ -29,6 +29,13 @@ import type {
 
 type Method = 'all' | 'wallet' | 'stripe' | 'spei'
 
+type MethodsState = {
+  wallet: { active: boolean; address: string | null }
+  ripio: { active: boolean; recommended: boolean; country: string; token: string }
+  stripe: { active: boolean }
+  spei: { active: boolean }
+}
+
 const METHOD_TILES: {
   id: Method
   label: string
@@ -102,6 +109,24 @@ export default function ResumenPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [method, setMethod] = useState<Method>('all')
+  const [methods, setMethods] = useState<MethodsState | null>(null)
+
+  useEffect(() => {
+    if (!isSessionReady) return
+    let cancelled = false
+    void fetch('/api/finance/methods')
+      .then(async (response) => {
+        if (!response.ok) return
+        const body = (await response.json().catch(() => null)) as MethodsState | null
+        if (!cancelled && body) setMethods(body)
+      })
+      .catch(() => {
+        // The tiles still work; status is best effort.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isSessionReady])
 
   useEffect(() => {
     if (!isSessionReady) return
@@ -213,8 +238,26 @@ export default function ResumenPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {METHOD_TILES.map((tile) => {
             const Icon = tile.icon
-            const active = method === tile.id
+            const selected = method === tile.id
             const count = counts[tile.id]
+            const configured =
+              tile.id === 'all'
+                ? null
+                : tile.id === 'wallet'
+                  ? true
+                  : methods?.[tile.id]?.active === true
+            const action =
+              tile.id === 'wallet'
+                ? { label: 'Abrir', href: '/pagos' }
+                : tile.id === 'stripe'
+                  ? configured
+                    ? { label: 'Abrir', href: '/cobros' }
+                    : { label: 'Configurar', href: '/cobros/cuenta' }
+                  : tile.id === 'spei'
+                    ? configured
+                      ? { label: 'Abrir', href: '/finanzas/depositos' }
+                      : { label: 'Configurar CLABE', href: '/perfil' }
+                    : null
             return (
               <div
                 key={tile.id}
@@ -231,30 +274,48 @@ export default function ResumenPage() {
               >
                 <GlassCard
                   className={`h-full p-5 transition-colors ${
-                    active ? 'border-mauve-500/60 bg-mauve-500/10' : 'hover:border-mauve-500/30'
+                    selected ? 'border-mauve-500/60 bg-mauve-500/10' : 'hover:border-mauve-500/30'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="rounded-xl bg-mauve-500/10 p-2 text-mauve-300">
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-muted-foreground">
-                      {count} {count === 1 ? 'movimiento' : 'movimientos'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {configured !== null && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            configured
+                              ? 'bg-green-500/10 text-green-300'
+                              : 'bg-amber-500/10 text-amber-300'
+                          }`}
+                        >
+                          {configured ? 'Activo' : 'Configurar'}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-muted-foreground">
+                        {count} {count === 1 ? 'movimiento' : 'movimientos'}
+                      </span>
+                    </div>
                   </div>
                   <h3 className="mt-3 text-lg font-semibold">{tile.label}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{tile.hint}</p>
+                  {tile.id === 'wallet' && methods?.ripio.recommended && (
+                    <p className="mt-1 text-[11px] text-emerald-300">
+                      Ripio: la ruta más sencilla para comprar wMXN
+                    </p>
+                  )}
                   <div className="mt-3 flex items-center justify-between">
-                    <span className={`text-xs ${active ? 'text-mauve-200' : 'text-muted-foreground'}`}>
-                      {active ? 'Filtrando resumen' : 'Ver resumen'}
+                    <span className={`text-xs ${selected ? 'text-mauve-200' : 'text-muted-foreground'}`}>
+                      {selected ? 'Filtrando resumen' : 'Ver resumen'}
                     </span>
-                    {tile.href && (tile.id === 'wallet' || isPsm) && (
+                    {action && (tile.id === 'wallet' || isPsm) && (
                       <Link
-                        href={tile.href}
+                        href={action.href}
                         onClick={(event) => event.stopPropagation()}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-mauve-300 hover:text-mauve-200"
                       >
-                        Abrir
+                        {action.label}
                         <ArrowRight className="h-3 w-3" />
                       </Link>
                     )}
