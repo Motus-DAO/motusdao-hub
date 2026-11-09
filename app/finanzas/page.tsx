@@ -114,17 +114,23 @@ export default function ResumenPage() {
   useEffect(() => {
     if (!isSessionReady) return
     let cancelled = false
-    void fetch('/api/finance/methods')
-      .then(async (response) => {
-        if (!response.ok) return
-        const body = (await response.json().catch(() => null)) as MethodsState | null
-        if (!cancelled && body) setMethods(body)
-      })
-      .catch(() => {
-        // The tiles still work; status is best effort.
-      })
+    const loadMethods = () => {
+      void fetch('/api/finance/methods')
+        .then(async (response) => {
+          if (!response.ok) return
+          const body = (await response.json().catch(() => null)) as MethodsState | null
+          if (!cancelled && body) setMethods(body)
+        })
+        .catch(() => {
+          // The tiles still work; status is best effort.
+        })
+    }
+    loadMethods()
+    const onFocus = () => loadMethods()
+    window.addEventListener('focus', onFocus)
     return () => {
       cancelled = true
+      window.removeEventListener('focus', onFocus)
     }
   }, [isSessionReady])
 
@@ -169,6 +175,39 @@ export default function ResumenPage() {
   const enEscrow = items.filter(
     (item) => item.kind === 'therapy_escrow' && item.status === 'pending'
   ).length
+
+  const emptyState: {
+    title: string
+    action?: { label: string; href: string }
+  } = (() => {
+    if (method === 'spei') {
+      if (methods && !methods.spei.active && isPsm) {
+        return {
+          title:
+            'SPEI aún no está activo. Configura tu CLABE para recibir transferencias.',
+          action: { label: 'Configurar CLABE', href: '/finanzas/depositos' },
+        }
+      }
+      return { title: 'Aún no hay depósitos SPEI.' }
+    }
+    if (method === 'stripe') {
+      if (methods && !methods.stripe.active && isPsm) {
+        return {
+          title:
+            'Stripe aún no está conectado. Actívalo para cobrar con tarjeta.',
+          action: { label: 'Configurar Stripe', href: '/cobros/cuenta' },
+        }
+      }
+      return { title: 'Aún no hay cobros con tarjeta.' }
+    }
+    if (method === 'wallet') {
+      return {
+        title: 'Aún no hay movimientos en tu wallet.',
+        action: { label: 'Abrir wallet', href: '/pagos' },
+      }
+    }
+    return { title: 'Aún no hay movimientos.' }
+  })()
 
   if (!authenticated) {
     return (
@@ -364,18 +403,26 @@ export default function ResumenPage() {
             <p className="py-6 text-center text-sm text-red-300">{error}</p>
           ) : filtered.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                No hay movimientos en {method === 'all' ? 'tu cuenta' : METHOD_TILES.find((t) => t.id === method)?.label}.
-              </p>
-              {method !== 'all' && (
-                <button
-                  type="button"
-                  onClick={() => setMethod('all')}
-                  className="mt-2 text-xs font-semibold text-mauve-300 hover:text-mauve-200"
-                >
-                  Ver todos los métodos
-                </button>
-              )}
+              <p className="text-sm text-muted-foreground">{emptyState.title}</p>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+                {emptyState.action && (
+                  <Link
+                    href={emptyState.action.href}
+                    className="text-xs font-semibold text-mauve-300 hover:text-mauve-200"
+                  >
+                    {emptyState.action.label}
+                  </Link>
+                )}
+                {method !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setMethod('all')}
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    Ver todos los métodos
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <ul className="space-y-2">
