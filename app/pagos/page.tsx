@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Clock,
   DollarSign,
-  Shield,
   Zap,
   Loader,
   QrCode,
@@ -39,6 +38,7 @@ import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 import { getEOAAddress, getPrimaryWallet } from '@/lib/wallet-utils'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { useUIStore } from '@/lib/store'
 import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import {
   motusUserToRipioExternalRef,
@@ -55,46 +55,31 @@ import { RipioRampsMockPanel } from '@/components/payments/RipioRampsMockPanel'
 const paymentSteps = [
   {
     step: 1,
-    title: 'Onramp',
-    description: 'Convierte tu dinero fiat a criptomonedas',
+    title: 'Fondear',
+    description: 'Compra wMXN con fiat y recíbelo en tu wallet.',
+    details: 'Ripio · fiat → wMXN en Celo',
     icon: DollarSign,
-    status: 'active',
-    details: 'Ripio (on-ramp fiat → wFIAT en Celo)'
+    href: '#ripio',
+    action: 'Comprar wMXN',
   },
   {
     step: 2,
     title: 'Wallet',
-    description: 'Almacena tus fondos de forma segura',
+    description: 'Guarda, envía y recibe wMXN o USDT.',
+    details: 'Autocustodia WaaP · sin custodia de Motus',
     icon: Wallet,
-    status: 'active',
-    details: 'Conecta tu wallet con Privy'
+    href: '#wallet',
+    action: 'Ver wallet',
   },
   {
     step: 3,
-    title: 'Split',
-    description: 'Distribución automática de pagos',
+    title: 'Pagar o cobrar',
+    description: 'Paga una sesión o revisa tus cobros.',
+    details: 'Escrow 90/10 por sesión · Motus 10%',
     icon: Zap,
-    status: 'coming-soon',
-    details: 'Sistema de división de pagos en desarrollo'
-  }
-]
-
-const features = [
-  {
-    icon: Shield,
-    title: 'Seguridad Blockchain',
-    description: 'Todas las transacciones están protegidas por la tecnología blockchain'
+    href: '#pagar-o-cobrar',
+    action: 'Pagar / cobrar',
   },
-  {
-    icon: Zap,
-    title: 'Pagos Instantáneos',
-    description: 'Transacciones rápidas y sin intermediarios'
-  },
-  {
-    icon: DollarSign,
-    title: 'Sin comisiones',
-    description: 'Sin comisiones ni cargos ocultos'
-  }
 ]
 
 function formatPagosBalance(raw?: string): string {
@@ -148,6 +133,7 @@ const QRScanner = dynamic(
 )
 
 export default function PagosPage() {
+  const { role } = useUIStore()
   const { authenticated, user, ready, providerId } = useWallet()
   const { isSessionReady } = useSiweSession()
   const { wallets } = useWallets()
@@ -864,48 +850,79 @@ export default function PagosPage() {
               </div>
               <div>
                 <GradientText as="h1" className="text-3xl sm:text-4xl md:text-5xl font-bold">
-                  Sistema de Pagos
+                  Pagos
                 </GradientText>
-                <p className="text-muted-foreground">Pagos descentralizados para servicios de salud mental</p>
+                <p className="text-muted-foreground">Compra wMXN, guárdalo y paga o cobra tus sesiones.</p>
               </div>
             </div>
           </motion.div>
 
-          {/* Features - Updated to focus on wallet payments */}
+          {/* Payment flow: the map of what to click */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mb-12"
           >
-            <GlassCard className="overflow-hidden p-4 sm:p-8">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold mb-4">Pagos Globales con Wallet</h2>
-                <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                  Envía dinero a cualquier parte del mundo de forma <span className="text-mauve-400 font-semibold">gratis</span> e <span className="text-mauve-400 font-semibold">instantánea</span> usando tu smart wallet. 
-                  Sin intermediarios, sin comisiones altas, sin esperas.
+            <GlassCard className="overflow-hidden p-4 sm:p-6">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold">Cómo funciona</h2>
+                <p className="text-sm text-muted-foreground">
+                  Tres pasos: fondear, guardar y pagar o cobrar.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {features.map((feature, index) => {
-                  const Icon = feature.icon
+              <div className="grid gap-3 md:grid-cols-3">
+                {paymentSteps.map((step) => {
+                  const Icon = step.icon
+                  const href =
+                    step.step === 3
+                      ? role !== 'usuario'
+                        ? '/pagos/sesiones'
+                        : '/psicoterapia'
+                      : step.href
                   return (
-                    <div key={index} className="text-center">
-                      <div className="w-12 h-12 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                        <Icon className="w-6 h-6 text-white" />
+                    <Link
+                      key={step.step}
+                      href={href}
+                      className="group rounded-xl border border-white/10 p-3 transition-colors hover:border-mauve-500/40"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-mauve-500/15 text-mauve-200">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Paso {step.step}
+                        </span>
+                        <span className="ml-auto rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-300">
+                          Activo
+                        </span>
                       </div>
-                      <h3 className="font-semibold mb-2">{feature.title}</h3>
-                      <p className="text-sm text-muted-foreground">{feature.description}</p>
-                    </div>
+                      <h3 className="mt-2 font-semibold">{step.title}</h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {step.description}
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {step.details}
+                      </p>
+                      <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-mauve-300 group-hover:text-mauve-200">
+                        {step.action}
+                        <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </Link>
                   )
                 })}
               </div>
+              <p className="mt-4 text-[11px] text-muted-foreground">
+                Motus cobra 10% por sesión de terapia, no por transferencia. Ripio,
+                Stripe y la red de Celo pueden aplicar sus propias comisiones.
+              </p>
             </GlassCard>
           </motion.div>
 
           {/* Wallet Balances Section */}
           {authenticated && walletAddress && (
             <motion.div
+              id="wallet"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.25 }}
@@ -1753,82 +1770,10 @@ export default function PagosPage() {
             />
           )}
 
-          {/* Payment Flow - Moved down, marked as coming soon for onramp */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mb-12"
-          >
-            <GlassCard className="overflow-hidden p-4 sm:p-8">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold mb-2">Flujo Completo de Pagos</h2>
-                <p className="text-sm text-muted-foreground">
-                  El sistema completo incluirá onramp, wallet y split de pagos. Actualmente disponible: wallet.
-                </p>
-              </div>
-              <div className="space-y-6">
-                {paymentSteps.map((step, index) => {
-                  const Icon = step.icon
-                  const isLast = index === paymentSteps.length - 1
-                  
-                  return (
-                    <div key={step.step} className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                          step.status === 'active' 
-                            ? 'bg-gradient-mauve' 
-                            : step.status === 'completed'
-                            ? 'bg-green-500'
-                            : 'bg-white/10'
-                        }`}>
-                          {step.status === 'completed' ? (
-                            <CheckCircle className="w-8 h-8 text-white" />
-                          ) : step.status === 'coming-soon' ? (
-                            <Clock className="w-8 h-8 text-muted-foreground" />
-                          ) : (
-                            <Icon className="w-8 h-8 text-white" />
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="ml-6 flex-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-lg font-semibold">{step.title}</h3>
-                            <p className="text-muted-foreground">{step.description}</p>
-                            <p className="text-sm text-muted-foreground mt-1">{step.details}</p>
-                          </div>
-                          <div className="text-right">
-                            {step.status === 'active' && (
-                              <span className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full">
-                                Activo
-                              </span>
-                            )}
-                            {step.status === 'coming-soon' && (
-                              <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full">
-                                Próximamente
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {!isLast && (
-                        <div className="ml-6">
-                          <ArrowRight className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </GlassCard>
-          </motion.div>
-
           {/* Ripio On-ramp / Off-ramp */}
           {authenticated && (
             <motion.div
+              id="ripio"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.45 }}
