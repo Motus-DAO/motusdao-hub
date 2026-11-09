@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { getActivePsmContext } from '@/lib/auth/role-guards'
 import { handleAuthError } from '@/lib/auth/session'
 
 type RouteParams = { params: Promise<{ slotId: string }> }
@@ -11,6 +12,10 @@ type RouteParams = { params: Promise<{ slotId: string }> }
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const context = await getActivePsmContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Solo profesionales' }, { status: 403 })
+    }
     const { slotId } = await params
 
     const slot = await prisma.providerAvailabilitySlot.findUnique({

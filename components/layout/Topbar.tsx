@@ -1,6 +1,6 @@
 'use client'
 
-import { useUIStore } from '@/lib/store'
+import { useUIStore, type UserRole } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { 
   Menu, 
@@ -17,20 +17,18 @@ import {
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
+import { useWallet, useWallets } from '@/lib/wallet'
 import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 import { trackCta } from '@/lib/track-cta'
 import { logoutAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 
 export function Topbar() {
   const { 
     role, 
     setRole,
-    isPlatformAdmin,
     setIsPlatformAdmin,
     sidebarOpen, 
     toggleSidebar, 
@@ -41,7 +39,7 @@ export function Topbar() {
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
-  const { ready, authenticated, user, login, logout, providerId } = useWallet()
+  const { ready, authenticated, user, login, logout } = useWallet()
   const { isSessionReady } = useSiweSession()
   const { wallets } = useWallets()
   
@@ -59,23 +57,43 @@ export function Topbar() {
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [showThemeDropdown, setShowThemeDropdown] = useState(false)
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
+  const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(['usuario'])
+  const [roleError, setRoleError] = useState<string | null>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
   const roleButtonRef = useRef<HTMLButtonElement>(null)
-  // Admin/dual accounts can switch roles in production. The env flag is for
-  // local testing only; it never grants server permissions.
-  const canSwitchRoles =
-    isPlatformAdmin || process.env.NEXT_PUBLIC_ROLE_SWITCHER === 'true'
+  // The server decides which roles the account may hold. The public flag only
+  // enables the local test switch; in production it is ignored.
+  const devRoleSwitcher =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ROLE_SWITCHER === 'true'
+  const canSwitchRoles = allowedRoles.length > 1 || devRoleSwitcher
 
-  const handleRoleChange = (newRole: 'usuario' | 'psm' | 'admin') => {
-    setRole(newRole)
-    setShowRoleDropdown(false)
-    if (newRole === 'admin') {
-      router.push('/admin')
-      return
-    }
-    // Leaving admin shell — land on a non-admin page so the menu can switch
-    if (pathname?.startsWith('/admin')) {
-      router.push(newRole === 'psm' ? '/disponibilidad' : '/')
+  const handleRoleChange = async (newRole: UserRole) => {
+    setRoleError(null)
+    try {
+      const response = await fetch('/api/auth/active-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string
+      }
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo cambiar el rol')
+      }
+      setRole(newRole)
+      setShowRoleDropdown(false)
+      if (newRole === 'admin') {
+        router.push('/admin')
+        return
+      }
+      // Leaving admin shell — land on a non-admin page so the menu can switch
+      if (pathname?.startsWith('/admin')) {
+        router.push(newRole === 'psm' ? '/disponibilidad' : '/')
+      }
+    } catch (err) {
+      setRoleError(err instanceof Error ? err.message : 'No se pudo cambiar el rol')
     }
   }
 
@@ -103,65 +121,29 @@ export function Topbar() {
     }
   }, [pathname, role, setRole])
 
-  // Sync platform-admin flag from database when user is authenticated.
-  // Do NOT overwrite an intentional admin/psm UI choice for dual-role users.
+  // The active role is a signed server cookie. The client only mirrors what
+  // /api/auth/active-role returns; it cannot grant a role by itself.
   useEffect(() => {
-    const syncUserRole = async () => {
-      if (!ready || !authenticated || !user || !isSessionReady) return
-
-      const userEmail = user?.email?.address || user?.google?.email
-      const walletIdentity = getWalletIdentity(user, providerId)
-
-      if (!userEmail && !walletIdentity) return
-
+    const syncActiveRole = async () => {
+      if (!ready || !authenticated || !user?.id || !isSessionReady) return
       try {
-        const params = new URLSearchParams()
-        appendWalletIdentityParams(params, walletIdentity)
-        if (userEmail) params.append('email', userEmail)
-
-        const response = await fetch(`/api/profile?${params.toString()}`)
-        
-        if (response.ok) {
-          const data = await response.json()
-          if (
-            data.user?.eoaAddress &&
-            eoaAddress &&
-            !sessionBelongsToWallet(data.user.eoaAddress, eoaAddress)
-          ) {
-            return
-          }
-
-          if (data.user?.role) {
-            const dbRole = data.user.role as 'usuario' | 'psm' | 'admin'
-            const platformAdmin =
-              data.user.isPlatformAdmin === true || dbRole === 'admin'
-            setIsPlatformAdmin(platformAdmin)
-
-            if (platformAdmin) {
-              // Dual role: UI toggle is the source of truth (plus /admin URL).
-              return
-            }
-
-            if (dbRole !== role) {
-              console.log('🔄 Syncing user role from database:', {
-                currentRole: role,
-                databaseRole: dbRole,
-                updating: true
-              })
-              setRole(dbRole)
-            }
-          }
-        } else if (response.status === 404) {
-          console.log('ℹ️ User not registered yet, keeping current role')
+        const response = await fetch('/api/auth/active-role')
+        if (!response.ok) return
+        const data = (await response.json()) as {
+          activeRole: UserRole
+          allowedRoles: UserRole[]
+          isPlatformAdmin: boolean
         }
+        setAllowedRoles(data.allowedRoles)
+        setIsPlatformAdmin(data.isPlatformAdmin === true)
+        setRole(data.activeRole)
       } catch (err) {
-        console.error('Error syncing user role:', err)
+        console.error('Error syncing active role:', err)
       }
     }
 
-    syncUserRole()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated, user?.id, isSessionReady, eoaAddress])
+    void syncActiveRole()
+  }, [ready, authenticated, user?.id, isSessionReady, setRole, setIsPlatformAdmin])
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'matrix') => {
     setTheme(newTheme)
@@ -251,41 +233,48 @@ export function Topbar() {
                      }}
                      onKeyDown={handleRoleKeyDown}>
                   <div className="space-y-1">
-                    <button
-                      onClick={() => handleRoleChange('usuario')}
-                      className={cn(
-                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors",
-                        role === 'usuario' 
-                          ? "bg-foreground/10 text-foreground" 
-                          : "text-foreground/90"
-                      )}
-                    >
-                      Usuario
-                    </button>
-                    <button
-                      onClick={() => handleRoleChange('psm')}
-                      className={cn(
-                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors",
-                        role === 'psm' 
-                          ? "bg-foreground/10 text-foreground" 
-                          : "text-foreground/90"
-                      )}
-                    >
-                      PSM
-                    </button>
-                    {isPlatformAdmin && (
-                    <button
-                      onClick={() => handleRoleChange('admin')}
-                      className={cn(
-                        "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors flex items-center space-x-2",
-                        role === 'admin' 
-                          ? "bg-foreground/10 text-foreground" 
-                          : "text-foreground/90"
-                      )}
-                    >
-                      <Shield className="w-3 h-3" />
-                      <span>Admin</span>
-                    </button>
+                    {allowedRoles.includes('usuario') && (
+                      <button
+                        onClick={() => void handleRoleChange('usuario')}
+                        className={cn(
+                          "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors",
+                          role === 'usuario'
+                            ? "bg-foreground/10 text-foreground"
+                            : "text-foreground/90"
+                        )}
+                      >
+                        Usuario
+                      </button>
+                    )}
+                    {allowedRoles.includes('psm') && (
+                      <button
+                        onClick={() => void handleRoleChange('psm')}
+                        className={cn(
+                          "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors",
+                          role === 'psm'
+                            ? "bg-foreground/10 text-foreground"
+                            : "text-foreground/90"
+                        )}
+                      >
+                        PSM
+                      </button>
+                    )}
+                    {allowedRoles.includes('admin') && (
+                      <button
+                        onClick={() => void handleRoleChange('admin')}
+                        className={cn(
+                          "w-full rounded-xl px-3 py-2 text-sm text-foreground/90 hover:bg-foreground/5 hover:text-foreground cursor-pointer focus:bg-foreground/10 focus:outline-none transition-colors flex items-center space-x-2",
+                          role === 'admin'
+                            ? "bg-foreground/10 text-foreground"
+                            : "text-foreground/90"
+                        )}
+                      >
+                        <Shield className="w-3 h-3" />
+                        <span>Admin</span>
+                      </button>
+                    )}
+                    {roleError && (
+                      <p className="px-3 py-1 text-xs text-red-400">{roleError}</p>
                     )}
                   </div>
                 </div>

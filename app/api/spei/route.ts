@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAuthenticatedUser } from '@/lib/auth/guards'
-import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { handleAuthError } from '@/lib/auth/session'
+import { getActivePsmContext, getSessionRoleContext } from '@/lib/auth/role-guards'
 import { recordClinicalAccess } from '@/lib/clinical-audit'
 import { loadSpeiHome, saveSpeiAccount } from '@/lib/spei-transfer'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const actor = await requireSession(request)
-    const userId = assertAuthenticatedUser(actor)
-    const home = await loadSpeiHome(userId)
+    const context = await getSessionRoleContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    const home = await loadSpeiHome(context.userId, context.role)
     if (!home) {
       return NextResponse.json({ error: 'Usuario no encontrado.' }, { status: 404 })
     }
@@ -23,17 +25,22 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const actor = await requireSession(request)
-    const userId = assertAuthenticatedUser(actor)
-    const result = await saveSpeiAccount(userId, await request.json())
+    const context = await getActivePsmContext()
+    if (!context) {
+      return NextResponse.json(
+        { error: 'Solo un profesional puede editar su CLABE.' },
+        { status: 403 }
+      )
+    }
+    const result = await saveSpeiAccount(context.userId, await request.json(), context.role)
     if ('error' in result) {
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
     await recordClinicalAccess({
       request,
-      actorUserId: userId,
-      targetUserId: userId,
+      actorUserId: context.userId,
+      targetUserId: context.userId,
       action: 'update',
       resource: 'payment',
       reason: 'spei_account_saved',

@@ -1,4 +1,5 @@
 import { SessionStatus } from '@prisma/client'
+import type { Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   parseMxnAmount,
@@ -72,14 +73,15 @@ export function readSpeiAccount(
   return parsed.ok ? parsed.account : null
 }
 
-export async function loadSpeiHome(userId: string) {
+export async function loadSpeiHome(userId: string, activeRole?: Role) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { profile: true, psm: true },
   })
   if (!user) return null
 
-  if (user.role === 'psm') {
+  const role = activeRole ?? user.role
+  if (role === 'psm' || role === 'admin') {
     const sessions = user.psm
       ? await prisma.session.findMany({
           where: {
@@ -136,12 +138,22 @@ export async function loadSpeiHome(userId: string) {
   }
 }
 
-export async function saveSpeiAccount(userId: string, body: unknown) {
+export async function saveSpeiAccount(
+  userId: string,
+  body: unknown,
+  activeRole?: Role
+) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { psm: true },
   })
-  if (!user || user.role !== 'psm' || !user.psm) {
+  const role = activeRole ?? user?.role
+  if (
+    !user ||
+    user.role !== 'psm' ||
+    !user.psm ||
+    (role !== 'psm' && role !== 'admin')
+  ) {
     return { status: 403 as const, error: 'Solo un profesional con perfil puede registrar su CLABE.' }
   }
   const parsed = parseSpeiAccount(body)

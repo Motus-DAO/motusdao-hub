@@ -12,7 +12,9 @@ const MOBILE_BREAKPOINT = 1024
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { sidebarOpen, setSidebarOpen } = useUIStore()
-  const roleSwitcherEnabled = process.env.NEXT_PUBLIC_ROLE_SWITCHER === 'true'
+  const roleSwitcherEnabled =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ROLE_SWITCHER === 'true'
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)

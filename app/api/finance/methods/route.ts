@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { getSessionRoleContext } from '@/lib/auth/role-guards'
 import { ripioCountryFromEnv, ripioTokenForCountry } from '@/lib/ripio/public-ramp'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,8 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession(request)
-    if (!session.userId) {
+    const context = await getSessionRoleContext()
+    if (!context || !session.userId) {
       return NextResponse.json({ error: 'Se necesita una cuenta del Hub.' }, { status: 403 })
     }
 
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     const country = ripioCountryFromEnv()
-    const isPsm = user.role === 'psm' || user.role === 'admin'
+    const isPsm = context.role === 'psm' || context.role === 'admin'
 
     // A patient does not configure a Stripe account or a CLABE: Wallet, card
     // and SPEI are ways to pay a professional. The checkout decides what the

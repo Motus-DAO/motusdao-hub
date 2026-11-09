@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { getSessionRoleContext } from '@/lib/auth/role-guards'
 import { formatUnits, type Address } from 'viem'
 import { fetchBlockscoutHistory } from '@/lib/onchain/history'
 import { listEscrowSessionsForAddress } from '@/lib/escrow/list'
@@ -29,7 +30,12 @@ function personName(input: {
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireSession(request)
-    const userId = auth.userId
+    const context = await getSessionRoleContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    const userId = context.userId
+    const activeIsPsm = context.role === 'psm' || context.role === 'admin'
 
     const rawOnchain = auth.eoaAddress
       ? await fetchBlockscoutHistory(auth.eoaAddress).catch((error) => {
@@ -48,10 +54,12 @@ export async function GET(request: NextRequest) {
     )
 
     const escrowSessions = auth.eoaAddress
-      ? await listEscrowSessionsForAddress(auth.eoaAddress as Address).catch((error) => {
+      ? (await listEscrowSessionsForAddress(auth.eoaAddress as Address).catch((error) => {
           console.error('[finance/activity] escrow:', error)
           return []
-        })
+        })).filter((escrow) =>
+          activeIsPsm ? escrow.role === 'payee' : escrow.role === 'patient'
+        )
       : []
 
     // Sessions where the user is the patient (money out).
@@ -70,7 +78,7 @@ export async function GET(request: NextRequest) {
       : []
 
     // Sessions where the user is the professional (money in).
-    const psmSessions = userId
+    const psmSessions = activeIsPsm && userId
       ? await prisma.session.findMany({
           where: { psmId: userId, paidAt: { not: null } },
           orderBy: { createdAt: 'desc' },

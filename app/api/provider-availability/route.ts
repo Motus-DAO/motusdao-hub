@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
+import { getActivePsmContext } from '@/lib/auth/role-guards'
 import { handleAuthError } from '@/lib/auth/session'
 
 const slotSchema = z.object({
@@ -17,6 +18,10 @@ const slotSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const context = await getActivePsmContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Solo profesionales' }, { status: 403 })
+    }
     const body = slotSchema.parse(await request.json())
     await requireSelfOrAdmin(request, body.psmId)
 
@@ -67,6 +72,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const context = await getActivePsmContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Solo profesionales' }, { status: 403 })
+    }
     const { searchParams } = new URL(request.url)
     const psmId = searchParams.get('psmId')
 

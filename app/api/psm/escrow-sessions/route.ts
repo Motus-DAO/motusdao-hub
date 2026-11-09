@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { Address } from 'viem'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { getActivePsmContext } from '@/lib/auth/role-guards'
 import { listEscrowSessionsForPayee } from '@/lib/escrow/list'
 
 /**
@@ -10,6 +11,10 @@ import { listEscrowSessionsForPayee } from '@/lib/escrow/list'
  */
 export async function GET(request: NextRequest) {
   try {
+    const context = await getActivePsmContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Solo profesionales' }, { status: 403 })
+    }
     const session = await requireSession(request)
     if (!session.userId) {
       return NextResponse.json({ error: 'Se necesita una cuenta del Hub.' }, { status: 403 })

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { SessionStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
+import { getActivePsmContext } from '@/lib/auth/role-guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,10 @@ const BOOKED: SessionStatus[] = ['requested', 'accepted', 'completed']
  */
 export async function POST(request: NextRequest) {
   try {
+    const context = await getActivePsmContext()
+    if (!context) {
+      return NextResponse.json({ error: 'Solo profesionales' }, { status: 403 })
+    }
     const session = await requireSession(request)
     if (!session.userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
