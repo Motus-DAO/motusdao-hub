@@ -392,7 +392,7 @@ export default function ResumenPage() {
                   : tile.id === 'spei'
                     ? configured
                       ? { label: 'Abrir', href: '/finanzas/depositos' }
-                      : { label: 'Configurar CLABE', href: '/perfil' }
+                      : { label: 'Configurar CLABE', href: '/finanzas/depositos' }
                     : null
             const displayLabel =
               !isPsm && tile.id === 'stripe' ? 'Tarjeta' : tile.label
