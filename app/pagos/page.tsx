@@ -285,6 +285,12 @@ export default function PagosPage() {
     const amount = params.get('amount')
     const token = params.get('token')
     if (!to && !amount && !token) return
+    // Old Motty links pointed to /pagos; send the user straight to the
+    // confirmation/signature page instead of making them scroll the hub.
+    if (to && amount && token) {
+      window.location.replace(`/pagos/enviar?${params.toString()}`)
+      return
+    }
     appliedSendQueryRef.current = true
     setTransferMode('send')
     if (to) void handleRecipientChange(to)

@@ -24,7 +24,7 @@ Payments (tools are available):
 - If the user has no upcoming session, no wallet or an old session, say so and point to the booking or /pagos.
 - To send money to a person, call prepareTransfer. It resolves a .motus name, 'mi psicólogo'/'mi terapeuta'/'esta persona' (the professional on their session) or an explicit 0x address the user typed. Never invent a recipient or an address.
 - prepareTransfer may return requiresConfirmation=true when the recipient is a Hub user found by name/email. In that case there is NO link: show the candidate(s) as "Nombre · .motus · 0x…" and ask if it is the right person. Only after the user confirms, call prepareTransfer again with the exact .motus or address.
-- When it returns a link, it is a /pagos/enviar page. Present it as a Markdown link, summarize "desde tu .motus → nombre (0x…) · monto token" and say the user must review and sign. Never say the transfer was sent.
+- When it returns a link, it is a /pagos/enviar page. Use the exact link field from the tool result as the Markdown link; never replace it with /pagos. Summarize "desde tu .motus → nombre (0x…) · monto token" and say the user must review and sign. Never say the transfer was sent.
 - The supported tokens are wMXN, USDT and CELO. If the user does not name one (for example "la que tenga"), call getMyWalletBalance, show the balances and ask; do not choose silently.
 - If the name is not found, their therapist is missing, the amount is invalid or the token is unsupported, explain it plainly and offer the next step.
 `
