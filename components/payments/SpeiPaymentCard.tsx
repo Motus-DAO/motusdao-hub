@@ -6,7 +6,7 @@ import { Copy, Landmark, Loader } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { authFetch } from '@/lib/auth/client'
-import { formatClabe } from '@/lib/spei'
+import { formatClabe, isValidClabe } from '@/lib/spei'
 
 type TransferView = {
   state: 'none' | 'reported' | 'confirmed' | 'rejected'
@@ -236,6 +236,13 @@ function PsmAccountForm(props: {
     return <p className="text-sm text-muted-foreground">Completa tu perfil profesional para registrar la CLABE.</p>
   }
 
+  const clabeInvalid = props.clabe.trim().length > 0 && !isValidClabe(props.clabe)
+  const canSave =
+    props.beneficiaryName.trim().length >= 2 &&
+    props.bankName.trim().length >= 2 &&
+    isValidClabe(props.clabe) &&
+    !props.saving
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
@@ -258,8 +265,29 @@ function PsmAccountForm(props: {
           value={props.clabe}
           onChange={(event) => props.onClabe(event.target.value)}
         />
+        <span className="mt-1 block text-xs text-muted-foreground">
+          18 dígitos; el último es el dígito verificador.
+        </span>
+        {clabeInvalid && (
+          <span className="mt-1 block text-xs text-red-400">
+            Esa CLABE no es válida. Revisa los 18 dígitos y el dígito verificador.
+          </span>
+        )}
       </label>
-      <CTAButton type="button" size="sm" onClick={props.onSave} disabled={props.saving}>
+      {process.env.NODE_ENV !== 'production' && (
+        <button
+          type="button"
+          onClick={() => {
+            props.onBeneficiaryName('Profesional de prueba')
+            props.onBankName('Banco de prueba')
+            props.onClabe('032180000118359719')
+          }}
+          className="text-xs font-semibold text-mauve-300 underline"
+        >
+          Usar CLABE de prueba (solo local)
+        </button>
+      )}
+      <CTAButton type="button" size="sm" onClick={props.onSave} disabled={!canSave}>
         {props.saving ? 'Guardando...' : 'Guardar cuenta'}
       </CTAButton>
     </div>
