@@ -78,7 +78,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
       if (!map.has(day)) map.set(day, [])
       map.get(day)!.push(slot)
     }
-    return [...map.entries()].slice(0, 14)
+    return [...map.entries()].slice(0, 56)
   }, [slots])
 
   const submitBooking = useCallback(async () => {

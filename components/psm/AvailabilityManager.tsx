@@ -8,6 +8,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { WeeklyAvailabilityCalendar } from './WeeklyAvailabilityCalendar'
 
 type Slot = {
   id: string
@@ -180,14 +181,20 @@ export function AvailabilityManager() {
 
   return (
     <div className="space-y-6">
+      <WeeklyAvailabilityCalendar
+        onPublished={() => {
+          if (psmId) void loadSlots(psmId)
+        }}
+      />
+
       <GlassCard className="p-6">
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-5 w-5 text-mauve-400" />
-          <h2 className="text-lg font-semibold">Agregar horario</h2>
+          <h2 className="text-lg font-semibold">Agregar un horario extra</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Los pacientes verán estos bloques en tu perfil de Psicoterapia. Próximamente podrás
-          sincronizar con Google Calendar; por ahora gestión manual aquí.
+          Para un cambio puntual que no sigue tu horario semanal. El calendario de
+          arriba es la forma normal de publicar.
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block text-sm">

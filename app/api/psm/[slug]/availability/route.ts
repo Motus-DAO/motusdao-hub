@@ -6,7 +6,7 @@ type RouteParams = { params: Promise<{ slug: string }> }
 
 /**
  * GET /api/psm/[slug]/availability
- * Public read of open booking slots (next 14 days).
+ * Public read of open booking slots (next 60 days).
  */
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
@@ -17,7 +17,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profesional no encontrado' }, { status: 404 })
     }
 
-    const slots = await getAvailableSlotsForPsm(psmId)
+    const slots = await getAvailableSlotsForPsm(psmId, 60)
 
     return NextResponse.json({
       success: true,
