@@ -24,7 +24,6 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
     setCurrentStep, 
     role,
     setRole, 
-    isStepValid, 
     canProceed
     // reset // TODO: Add reset functionality when needed
   } = useOnboardingStore()
@@ -71,21 +70,15 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
   }
 
   const handleStepClick = (stepIndex: number) => {
-    // Back/current always work. Forward requires every previous step to be
-    // valid; checking the target alone allowed jumping over empty steps.
-    const previousStepsValid = steps
-      .slice(0, stepIndex)
-      .every((_, index) => isStepValid(index))
-    const canNavigate = stepIndex <= currentStep || previousStepsValid
-
-    if (canNavigate) {
+    // Only completed steps and the current one are navigable. Forward is the
+    // Continue button, which validates the current step. A future step is never
+    // clickable, otherwise the path check still lets users skip work.
+    if (stepIndex <= currentStep) {
       setNavigationError(null)
       setCurrentStep(stepIndex)
-    } else {
-      setNavigationError(
-        'Completa los pasos anteriores antes de saltar a este.'
-      )
+      return
     }
+    setNavigationError('Completa este paso y usa Continuar para avanzar.')
   }
 
   const handleBack = () => {
@@ -142,7 +135,6 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
             currentStep={currentStep} 
             role={role || 'usuario'}
             onStepClick={handleStepClick}
-            isStepValid={isStepValid}
           />
         </div>
       </div>

@@ -17,10 +17,9 @@ interface WizardStepperProps {
   currentStep: number
   role: UserRole
   onStepClick?: (stepIndex: number) => void
-  isStepValid?: (stepIndex: number) => boolean
 }
 
-export function WizardStepper({ steps, currentStep, role, onStepClick, isStepValid }: WizardStepperProps) {
+export function WizardStepper({ steps, currentStep, role, onStepClick }: WizardStepperProps) {
   // Use state to prevent hydration mismatch
   const [isMounted, setIsMounted] = useState(false)
 
@@ -37,12 +36,9 @@ export function WizardStepper({ steps, currentStep, role, onStepClick, isStepVal
             const isCompleted = index < currentStep
             const isCurrent = index === currentStep
             const isUpcoming = index > currentStep
-            // Forward navigation requires every previous step to be valid.
-            const previousStepsValid = isStepValid
-              ? steps.slice(0, index).every((_, stepIndex) => isStepValid(stepIndex))
-              : false
+            // Only completed steps and the current one are navigable.
             const canNavigate = isMounted
-              ? isCompleted || isCurrent || previousStepsValid
+              ? isCompleted || isCurrent
               : isCompleted || isCurrent
             const isClickable = onStepClick && canNavigate
 
@@ -164,12 +160,9 @@ export function WizardStepper({ steps, currentStep, role, onStepClick, isStepVal
           {steps.map((_, index) => {
             const isCompleted = index < currentStep
             const isCurrent = index === currentStep
-            // Forward navigation requires every previous step to be valid.
-            const previousStepsValid = isStepValid
-              ? steps.slice(0, index).every((_, stepIndex) => isStepValid(stepIndex))
-              : false
+            // Only completed steps and the current one are navigable.
             const canNavigate = isMounted
-              ? index <= currentStep || previousStepsValid
+              ? index <= currentStep
               : index <= currentStep
             const isClickable = onStepClick && canNavigate
 
