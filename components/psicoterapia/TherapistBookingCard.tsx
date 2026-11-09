@@ -172,7 +172,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
 
         <div className="mt-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Métodos de pago
+            Métodos de pago activados
           </p>
           <PaymentMethodTags methods={profile.paymentMethods} className="mt-1" />
         </div>

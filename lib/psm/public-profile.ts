@@ -183,7 +183,6 @@ export async function buildPublicPsmProfile(
     capacityAvailable,
     cardPaymentsEnabled: psm.stripeChargesEnabled,
     paymentMethods: paymentMethodsFromPsm({
-      eoaAddress: user.eoaAddress,
       stripeChargesEnabled: psm.stripeChargesEnabled,
       speiClabe: psm.speiClabe,
     }),

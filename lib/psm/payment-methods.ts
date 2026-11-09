@@ -6,12 +6,12 @@ export type PaymentMethods = {
 }
 
 export function paymentMethodsFromPsm(input: {
-  eoaAddress?: string | null
   stripeChargesEnabled?: boolean | null
   speiClabe?: string | null
 }): PaymentMethods {
   return {
-    wallet: Boolean(input.eoaAddress),
+    // Every listed professional must have a wallet; card and SPEI are extras.
+    wallet: true,
     card: input.stripeChargesEnabled === true,
     spei: Boolean(input.speiClabe),
   }

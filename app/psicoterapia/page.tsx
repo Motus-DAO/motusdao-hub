@@ -270,7 +270,7 @@ export default function PsicoterapiaPage() {
 
                     <div className="mb-4">
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Métodos de pago
+                        Métodos de pago activados
                       </p>
                       <PaymentMethodTags methods={therapist.paymentMethods} />
                     </div>

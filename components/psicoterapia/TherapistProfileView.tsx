@@ -119,7 +119,12 @@ export function TherapistProfileView({ slug }: Props) {
                           <CheckCircle className="mr-1 h-3 w-3" />
                           Terapeuta verificado
                         </span>
-                        <PaymentMethodTags methods={profile.paymentMethods} />
+                        <div className="w-full">
+                          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Métodos de pago activados
+                          </p>
+                          <PaymentMethodTags methods={profile.paymentMethods} />
+                        </div>
                         <span className="inline-flex items-center rounded-full border border-white/10 px-2 py-0.5 text-xs">
                           <Video className="mr-1 h-3 w-3" />
                           Teleterapia
