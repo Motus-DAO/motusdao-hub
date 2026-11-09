@@ -204,10 +204,69 @@ export async function prepareTransferForUser(
     recipientType = 'therapist'
   } else {
     const resolved = await motusNameService.resolve(recipient)
-    if (!resolved) return { ok: false as const, error: 'name_not_found' }
-    toAddress = resolved
-    toName = /\.motus$/i.test(recipient) ? recipient : `${recipient}.motus`
-    recipientType = 'motus'
+    if (resolved) {
+      toAddress = resolved
+      toName = /\.motus$/i.test(recipient) ? recipient : `${recipient}.motus`
+      recipientType = 'motus'
+    } else {
+      // Not a .motus: try a Hub user by handle, email or display name. We do
+      // not send yet: the agent must confirm the human match first.
+      const terms = recipient.split(/\s+/).filter(Boolean).slice(0, 3)
+      const profileFilters = terms.flatMap((term) => [
+        { profile: { is: { nombre: { contains: term, mode: 'insensitive' as const } } } },
+        { profile: { is: { apellido: { contains: term, mode: 'insensitive' as const } } } },
+      ])
+      const hubUsers = await prisma.user.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { motusName: { equals: recipient, mode: 'insensitive' } },
+            { email: { equals: recipient, mode: 'insensitive' } },
+            ...profileFilters,
+          ],
+        },
+        take: 5,
+        select: {
+          eoaAddress: true,
+          motusName: true,
+          email: true,
+          profile: { select: { nombre: true, apellido: true } },
+        },
+      })
+
+      const candidates = hubUsers
+        .filter((candidate) => candidate.eoaAddress)
+        .filter(
+          (candidate) =>
+            candidate.eoaAddress!.toLowerCase() !== user.eoaAddress!.toLowerCase()
+        )
+        .map((candidate) => ({
+          name:
+            `${candidate.profile?.nombre ?? ''} ${candidate.profile?.apellido ?? ''}`.trim() ||
+            candidate.motusName ||
+            candidate.email ||
+            'Usuario',
+          motusName: candidate.motusName,
+          address: candidate.eoaAddress,
+          email: candidate.email,
+        }))
+
+      if (candidates.length === 0) {
+        return { ok: false as const, error: 'name_not_found' }
+      }
+
+      const amount = input.amount.replace(',', '.')
+      return {
+        ok: true as const,
+        requiresConfirmation: true,
+        fromName: user.motusName ?? null,
+        amount,
+        token,
+        candidates,
+        note:
+          'No hay link todavía. Muestra nombre, .motus y dirección; pregunta si es la persona correcta. Si confirma, vuelve a llamar con el motusName o la dirección exactos.',
+      }
+    }
   }
 
   if (toAddress.toLowerCase() === user.eoaAddress.toLowerCase()) {
@@ -215,7 +274,7 @@ export async function prepareTransferForUser(
   }
 
   const amount = input.amount.replace(',', '.')
-  const link = `/pagos?to=${encodeURIComponent(toAddress)}&toName=${encodeURIComponent(
+  const link = `/pagos/enviar?to=${encodeURIComponent(toAddress)}&toName=${encodeURIComponent(
     toName
   )}&amount=${encodeURIComponent(amount)}&token=${token}`
 
@@ -228,7 +287,7 @@ export async function prepareTransferForUser(
     token,
     recipientType,
     link,
-    note: 'El usuario revisa y firma en /pagos. No muevas fondos ni digas que ya enviaste.',
+    note: 'El usuario revisa y firma en /pagos/enviar. No muevas fondos ni digas que ya enviaste.',
   }
 }
 
