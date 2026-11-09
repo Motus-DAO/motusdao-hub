@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Loader2, Send, X } from 'lucide-react'
+import { Loader2, Send, Trash2, X } from 'lucide-react'
 import { MottyAvatar } from '@/components/motty/MottyAvatar'
 import { MottyMarkdown } from '@/components/motty/MottyMarkdown'
 import { MottyActionCard } from '@/components/motty/MottyActionCard'
@@ -103,6 +103,19 @@ export function MottyWidget() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
+
+  const reset = useCallback(async () => {
+    if (pending) return
+    setLines([{ role: 'assistant', content: copy.greeting }])
+    try {
+      await fetch('/api/motty/chat', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      })
+    } catch {
+      // the local reset already happened; server cleanup can wait
+    }
+  }, [pending, copy.greeting])
 
   const send = useCallback(async () => {
     const message = input.trim()
@@ -210,6 +223,16 @@ export function MottyWidget() {
                 {copy.subtitle}
               </p>
             </div>
+            <button
+              type="button"
+              className="rounded-full p-1.5 transition-opacity hover:opacity-80"
+              style={{ color: chrome.muted }}
+              onClick={() => void reset()}
+              aria-label="Borrar conversación"
+              title="Borrar conversación"
+            >
+              <Trash2 size={16} />
+            </button>
             <button
               type="button"
               className="rounded-full p-1.5 transition-opacity hover:opacity-80"

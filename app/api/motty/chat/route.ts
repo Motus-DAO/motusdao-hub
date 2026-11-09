@@ -8,7 +8,12 @@ import {
   resolveMottyPageSurface,
   sanitizeMottyPagePath,
 } from '@/lib/motty/page-context'
-import { appendTurn, readMottySession, writeMottySession } from '@/lib/motty/session'
+import {
+  appendTurn,
+  createEmptySession,
+  readMottySession,
+  writeMottySession,
+} from '@/lib/motty/session'
 import type { MottyLocale } from '@/lib/motty/types'
 
 export const runtime = 'nodejs'
@@ -75,6 +80,23 @@ export async function POST(request: NextRequest) {
     const fallback =
       'No pude responder ahora. Intenta de nuevo en un momento.'
     return NextResponse.json({ reply: fallback, degraded: true })
+  }
+}
+
+/** Wipe the stored conversation and start a fresh Motty session. */
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireSession(request)
+    const userId = assertAuthenticatedUser(auth)
+
+    await writeMottySession(createEmptySession(userId, 'es'))
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    const authResponse = handleAuthError(error)
+    if (authResponse) return authResponse
+
+    return NextResponse.json({ error: 'reset_failed' }, { status: 500 })
   }
 }
 
