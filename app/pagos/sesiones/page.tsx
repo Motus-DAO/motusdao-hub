@@ -6,6 +6,8 @@ import { formatUnits } from 'viem'
 import { ArrowLeft, Calendar, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { useWallet } from '@/lib/wallet'
 
 type EscrowSession = {
   id: string
@@ -50,11 +52,14 @@ function formatDate(seconds: number) {
 }
 
 export default function SesionesPage() {
+  const { authenticated, login } = useWallet()
+  const { isSessionReady, sessionState, signing, signIn } = useSiweSession()
   const [sessions, setSessions] = useState<EscrowSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async (showSpinner = false) => {
+    if (!isSessionReady) return
     if (showSpinner) setLoading(true)
     try {
       const response = await fetch('/api/psm/escrow-sessions')
@@ -70,7 +75,7 @@ export default function SesionesPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isSessionReady])
 
   useEffect(() => {
     void load(true)
@@ -88,7 +93,55 @@ export default function SesionesPage() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.clearInterval(timer)
     }
-  }, [load])
+  }, [load, isSessionReady])
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="mx-auto max-w-xl px-4">
+          <GlassCard className="p-8 text-center">
+            <h1 className="text-2xl font-bold">Sesiones</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Conecta tu wallet para ver las sesiones en escrow.
+            </p>
+            <CTAButton className="mt-5 w-full" onClick={() => void login()}>
+              Conectar WaaP
+            </CTAButton>
+          </GlassCard>
+        </div>
+      </div>
+    )
+  }
+
+  if (sessionState === 'needs_signature') {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="mx-auto max-w-xl px-4">
+          <GlassCard className="p-8 text-center">
+            <h1 className="text-2xl font-bold">Sesiones</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Firma el mensaje para cargar tus sesiones en escrow.
+            </p>
+            <CTAButton
+              className="mt-5 w-full"
+              disabled={signing}
+              onClick={() => void signIn()}
+            >
+              {signing ? 'Firmando…' : 'Firmar sesión'}
+            </CTAButton>
+          </GlassCard>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isSessionReady) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-mauve-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen py-12">
