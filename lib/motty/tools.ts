@@ -8,6 +8,8 @@ import {
   createEscrowForUserSession,
   getPaymentStatusForSession,
   prepareTransferForUser,
+  getMyTherapistAvailabilityForUser,
+  bookTherapySessionForUser,
   getRampLinkForUser,
   getUpcomingSessionForUser,
   getWalletSnapshotForUser,
@@ -24,6 +26,8 @@ export const ALL_MOTTY_TOOL_NAMES = [
   "createTherapyEscrowForMySession",
   "getMyRipioRampLink",
   "prepareTransfer",
+  "getMyTherapistAvailability",
+  "bookTherapySession",
 ] as const;
 
 export type MottyToolName = (typeof ALL_MOTTY_TOOL_NAMES)[number];
@@ -37,6 +41,8 @@ export const MOTTY_PAYMENT_TOOL_NAMES: readonly MottyToolName[] = [
   "createTherapyEscrowForMySession",
   "getMyRipioRampLink",
   "prepareTransfer",
+  "getMyTherapistAvailability",
+  "bookTherapySession",
 ];
 
 type JsonSchema = Record<string, unknown>;
@@ -178,6 +184,33 @@ const TOOL_SCHEMAS: Record<MottyToolName, OpenAiTool> = {
       },
     },
   },
+  getMyTherapistAvailability: {
+    type: "function",
+    function: {
+      name: "getMyTherapistAvailability",
+      description:
+        "Return the available appointment slots for the user's current therapist (next 14 days). Call this first when the user wants to book; show 3-5 options (date, time, duration) and ask which one. Do not book yet.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  bookTherapySession: {
+    type: "function",
+    function: {
+      name: "bookTherapySession",
+      description:
+        "Book the chosen slot with the user's current therapist and create its therapy escrow. Only call after the user explicitly picked a slotId returned by getMyTherapistAvailability. Returns the deposit pay link; the user signs it. Never invent a slotId.",
+      parameters: {
+        type: "object",
+        properties: {
+          slotId: {
+            type: "string",
+            description: "The slotId from getMyTherapistAvailability that the user chose.",
+          },
+        },
+        required: ["slotId"],
+      },
+    },
+  },
 };
 
 export function mottyPaymentsEnabled(): boolean {
@@ -260,6 +293,29 @@ export async function executeMottyTool(
       return {
         session,
         result: await runHelper(name, () => getRampLinkForUser(session.userId, amount)),
+      };
+    }
+    case "getMyTherapistAvailability": {
+      return {
+        session,
+        result: await runHelper(name, () =>
+          getMyTherapistAvailabilityForUser(session.userId)
+        ),
+      };
+    }
+    case "bookTherapySession": {
+      const slotId = getString(args, "slotId");
+      if (!slotId) {
+        return {
+          session,
+          result: { ok: false, tool: name, error: "slot_id_required" },
+        };
+      }
+      return {
+        session,
+        result: await runHelper(name, () =>
+          bookTherapySessionForUser(session.userId, slotId)
+        ),
       };
     }
     case "prepareTransfer": {

@@ -82,3 +82,12 @@ test('prepareTransfer is enabled with the payment tools', () => {
     assert.ok(enabledMottyToolNames().includes('prepareTransfer'))
   })
 })
+
+
+test('availability and booking tools are enabled with payments', () => {
+  withEnv('MOTTY_PAYMENTS_ENABLED', 'true', () => {
+    const names = enabledMottyToolNames()
+    assert.ok(names.includes('getMyTherapistAvailability'))
+    assert.ok(names.includes('bookTherapySession'))
+  })
+})

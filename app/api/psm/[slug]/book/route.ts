@@ -109,36 +109,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const scheduledStart = slot.startsAt
     const scheduledEnd = new Date(scheduledStart.getTime() + durationMinutes * 60 * 1000)
 
-    const pendingSession = await prisma.session.findFirst({
-      where: {
-        userId: user.id,
-        psmId: psmUser.id,
-        status: { in: ['requested', 'accepted'] },
-      },
-    })
-
-    if (pendingSession) {
-      const pendingEscrow = await createEscrowForUserSession(user.id, pendingSession.id)
-      return NextResponse.json(
-        {
-          success: true,
-          message: 'Ya tienes una sesión pendiente',
-          sessionId: pendingSession.id,
-          matchId: match.id,
-          paymentRequired: true,
-          amountUsd: PLATFORM_SESSION_PRICE_USD,
-          ...(pendingEscrow.ok
-            ? {
-                url: pendingEscrow.payPath,
-                escrowId: pendingEscrow.escrowId,
-                amountWmxn: pendingEscrow.amountWmxn,
-              }
-            : { paymentError: pendingEscrow.error }),
-        },
-        { status: 200 }
-      )
-    }
-
     const sessionId = randomUUID()
     const session = await prisma.session.create({
       data: {

@@ -5,6 +5,7 @@
  * model only chooses which session to pay; it never supplies an address or an
  * amount.
  */
+import { randomUUID } from 'crypto'
 import { SessionStatus } from '@prisma/client'
 import { formatUnits, parseUnits, type Address, type Hex } from 'viem'
 import { prisma } from '@/lib/prisma'
@@ -23,6 +24,12 @@ import {
 } from '@/lib/escrow/create'
 import { ERC20_APPROVE_ABI, WMXN_ADDRESS } from '@/lib/escrow/abi'
 import { motusNameService } from '@/lib/motus-name-service'
+import { buildOfficeJitsiUrl } from '@/lib/jitsi'
+import {
+  getAvailableSlotsForPsm,
+  isSlotAvailable,
+  slotDurationMinutes,
+} from '@/lib/psm/availability'
 
 const STATUS_LABEL: Record<number, string> = {
   0: 'Sin crear',
@@ -332,6 +339,134 @@ export async function getPaymentStatusForSession(userId: string, sessionId: stri
     startsAt: escrow.startsAt,
     settledAt: escrow.settledAt,
     challengeWindow: escrow.challengeWindow,
+  }
+}
+
+export async function getMyTherapistAvailabilityForUser(userId: string) {
+  const match = await prisma.match.findFirst({
+    where: { userId, status: 'active' },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      psmId: true,
+      psm: {
+        select: {
+          motusName: true,
+          email: true,
+          profile: { select: { nombre: true, apellido: true } },
+        },
+      },
+    },
+  })
+  if (!match) return { ok: false as const, error: 'no_therapist' }
+
+  const psmName =
+    `${match.psm?.profile?.nombre ?? ''} ${match.psm?.profile?.apellido ?? ''}`.trim() ||
+    match.psm?.motusName ||
+    match.psm?.email ||
+    'tu profesional'
+
+  const slots = await getAvailableSlotsForPsm(match.psmId, 14)
+  return {
+    ok: true as const,
+    psmName,
+    slots: slots.slice(0, 8).map((slot) => ({
+      slotId: slot.id,
+      startsAt: slot.startsAt.toISOString(),
+      endsAt: slot.endsAt.toISOString(),
+      durationMinutes: slotDurationMinutes(slot),
+      timezone: slot.timezone,
+    })),
+    note: 'Pregunta al usuario cuál horario quiere; no reserves hasta que elija un slotId.',
+  }
+}
+
+export async function bookTherapySessionForUser(userId: string, slotId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      userMatches: {
+        where: { status: 'active' },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          psmId: true,
+          psm: {
+            select: {
+              motusName: true,
+              email: true,
+              profile: { select: { nombre: true, apellido: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+  if (!user || user.role !== 'usuario') {
+    return { ok: false as const, error: 'user_not_eligible' }
+  }
+  const match = user.userMatches[0]
+  if (!match) return { ok: false as const, error: 'no_therapist' }
+
+  const slot = await prisma.providerAvailabilitySlot.findFirst({
+    where: {
+      id: slotId,
+      psmId: match.psmId,
+      isAvailable: true,
+      startsAt: { gt: new Date() },
+    },
+  })
+  if (!slot) return { ok: false as const, error: 'slot_not_found' }
+  if (!(await isSlotAvailable(slot.id, match.psmId))) {
+    return { ok: false as const, error: 'slot_taken' }
+  }
+
+  const durationMinutes = slotDurationMinutes(slot)
+  const scheduledEnd = new Date(
+    slot.startsAt.getTime() + durationMinutes * 60 * 1000
+  )
+  const session = await prisma.session.create({
+    data: {
+      id: randomUUID(),
+      userId,
+      psmId: match.psmId,
+      matchId: match.id,
+      status: 'requested',
+      mode: 'video_external',
+      externalUrl: buildOfficeJitsiUrl(match.id),
+      scheduledStart: slot.startsAt,
+      scheduledEnd,
+      timezone: slot.timezone,
+      durationMinutes,
+    },
+  })
+
+  const escrow = await createEscrowForUserSession(userId, session.id)
+  if (!escrow.ok) {
+    return {
+      ok: false as const,
+      error: 'escrow_failed',
+      sessionId: session.id,
+      detail: escrow.error,
+    }
+  }
+
+  const psmName =
+    `${match.psm?.profile?.nombre ?? ''} ${match.psm?.profile?.apellido ?? ''}`.trim() ||
+    match.psm?.motusName ||
+    match.psm?.email ||
+    'tu profesional'
+
+  return {
+    ok: true as const,
+    sessionId: session.id,
+    psmName,
+    startsAt: slot.startsAt.toISOString(),
+    durationMinutes,
+    amountWmxn: escrow.amountWmxn,
+    escrowId: escrow.escrowId,
+    payPath: escrow.payPath,
+    note: 'La cita y el escrow están creados. Comparte el link; el usuario firma el depósito.',
   }
 }
 

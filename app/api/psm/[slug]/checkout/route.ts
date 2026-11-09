@@ -72,20 +72,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const pendingSession = await prisma.session.findFirst({
-      where: {
-        userId: user.id,
-        psmId: psmUser.id,
-        status: { in: ['requested', 'accepted'] },
-      },
-    })
-    if (pendingSession) {
-      return NextResponse.json(
-        { error: 'Ya tienes una sesión pendiente con este profesional.', sessionId: pendingSession.id },
-        { status: 409 }
-      )
-    }
-
     const now = new Date()
     const currentHold = await prisma.therapyCheckoutHold.findUnique({ where: { slotId: slot.id } })
     if (
