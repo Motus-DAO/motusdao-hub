@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Copy, Landmark, Loader } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -74,6 +75,7 @@ export function SpeiPaymentCard() {
   const [amount, setAmount] = useState('')
   const [reference, setReference] = useState('')
   const [copied, setCopied] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -209,6 +211,8 @@ export function SpeiPaymentCard() {
                 })
               }}
               onReport={(sessionId) => void postAction(sessionId, { action: 'report', amount, reference })}
+              acknowledged={acknowledged}
+              onAcknowledgedChange={setAcknowledged}
             />
           )}
         </div>
@@ -305,6 +309,8 @@ function PatientTransfer(props: {
   onReference: (value: string) => void
   onCopy: (value: string) => void
   onReport: (sessionId: string) => void
+  acknowledged: boolean
+  onAcknowledgedChange: (value: boolean) => void
 }) {
   if (!props.session) {
     return (
@@ -328,6 +334,20 @@ function PatientTransfer(props: {
           Honorario en el perfil: {formatMoney(props.session.listedPrice, props.session.listedCurrency)}
         </p>
       )}
+      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
+        <p className="font-semibold text-amber-200">Paga solo por Motus</p>
+        <p className="mt-1 text-muted-foreground">
+          Usa la CLABE de esta pantalla. Si te piden otra cuenta o pagar por fuera,
+          no pagues y repórtalo. Fuera de Motus no hay protección, reembolso ni
+          disputa.
+        </p>
+        <Link
+          href="/politicas-de-pago#reportar"
+          className="mt-1 inline-flex font-semibold text-amber-200 underline"
+        >
+          Cómo reportar
+        </Link>
+      </div>
       {!account ? (
         <p className="text-sm text-muted-foreground">
           Tu profesional todavía no registra su CLABE.
@@ -354,7 +374,24 @@ function PatientTransfer(props: {
             Clave de rastreo
             <input className={`${fieldClass} mt-1 font-mono`} value={props.reference} onChange={(event) => props.onReference(event.target.value)} />
           </label>
-          <CTAButton type="button" size="sm" disabled={props.saving} onClick={() => props.onReport(props.session!.id)}>
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={props.acknowledged}
+              onChange={(event) => props.onAcknowledgedChange(event.target.checked)}
+            />
+            <span>
+              Confirmo que el nombre y la CLABE coinciden con el profesional y que
+              este pago es por esta sesión.
+            </span>
+          </label>
+          <CTAButton
+            type="button"
+            size="sm"
+            disabled={props.saving || !props.acknowledged}
+            onClick={() => props.onReport(props.session!.id)}
+          >
             {props.saving ? 'Enviando...' : 'Ya transferí'}
           </CTAButton>
         </div>

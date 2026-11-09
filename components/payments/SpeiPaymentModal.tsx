@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, Landmark, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Landmark, ShieldCheck, X } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 
@@ -114,7 +114,30 @@ export function SpeiPaymentModal({ open, onClose }: Props) {
               ))}
             </ol>
 
-            <div className="mt-5 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="mt-5 rounded-xl border border-mauve-500/25 bg-mauve-500/5 p-3">
+              <p className="flex items-center gap-1.5 text-sm font-semibold">
+                <ShieldCheck className="h-4 w-4 text-mauve-300" />
+                Paga seguro en Motus
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <li>Paga solo la sesión que ves aquí.</li>
+                <li>
+                  Usa la CLABE de esta pantalla; no la que te manden por WhatsApp.
+                </li>
+                <li>Verifica que el nombre del beneficiario coincida.</li>
+                <li>Sube el comprobante en Motus; el profesional confirma.</li>
+                <li>Si te piden pagar por fuera, repórtalo.</li>
+              </ul>
+              <Link
+                href="/politicas-de-pago"
+                onClick={onClose}
+                className="mt-2 inline-flex text-xs font-semibold text-mauve-300 underline"
+              >
+                Política de pagos
+              </Link>
+            </div>
+
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
               <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
               <p className="text-xs text-muted-foreground">
                 <span className="font-semibold text-amber-200">Importante:</span>{' '}
