@@ -82,7 +82,12 @@ export async function loadSpeiHome(userId: string) {
   if (user.role === 'psm') {
     const sessions = user.psm
       ? await prisma.session.findMany({
-          where: { psmId: userId, status: { in: ACTIVE_SESSION } },
+          where: {
+            psmId: userId,
+            status: { in: ACTIVE_SESSION },
+            // Only sessions with an SPEI event belong in the SPEI panel.
+            transferEvents: { some: {} },
+          },
           orderBy: [{ scheduledStart: 'asc' }, { createdAt: 'desc' }],
           include: {
             user: { include: { profile: true } },

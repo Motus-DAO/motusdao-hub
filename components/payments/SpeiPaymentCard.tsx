@@ -300,13 +300,22 @@ function PsmSessionList(props: {
   onConfirm: (sessionId: string) => void
   onReject: (sessionId: string) => void
 }) {
-  if (props.sessions.length === 0) {
-    return <p className="text-sm text-muted-foreground">Cuando un paciente avise una transferencia, aparece aquí.</p>
+  const sessions = props.sessions.filter(
+    (session) => session.transfer.state !== 'none'
+  )
+
+  if (sessions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Cuando un paciente avise una transferencia SPEI, aparece aquí.
+      </p>
+    )
   }
 
   return (
     <div className="space-y-3">
-      {props.sessions.map((session) => (
+      <h3 className="text-sm font-semibold">Transferencias SPEI</h3>
+      {sessions.map((session) => (
         <div key={session.id} className="rounded-lg border border-white/10 p-4 space-y-2">
           <p className="font-medium">{session.counterpartName}</p>
           <p className="text-xs text-muted-foreground">{formatWhen(session.scheduledStart)}</p>
