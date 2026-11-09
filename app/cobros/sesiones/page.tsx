@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
 import { ArrowLeft, Calendar, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -54,27 +54,41 @@ export default function SesionesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    void fetch('/api/psm/escrow-sessions')
-      .then(async (response) => {
-        const body = (await response.json().catch(() => ({}))) as {
-          sessions?: EscrowSession[]
-          error?: string
-        }
-        if (!response.ok) throw new Error(body.error || 'No se pudieron cargar las sesiones.')
-        if (!cancelled) setSessions(body.sessions || [])
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Error al cargar')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
+  const load = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
+    try {
+      const response = await fetch('/api/psm/escrow-sessions')
+      const body = (await response.json().catch(() => ({}))) as {
+        sessions?: EscrowSession[]
+        error?: string
+      }
+      if (!response.ok) throw new Error(body.error || 'No se pudieron cargar las sesiones.')
+      setSessions(body.sessions || [])
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar')
+    } finally {
+      setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    void load(true)
+
+    const onFocus = () => void load()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void load()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    const timer = window.setInterval(() => void load(), 20_000)
+
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.clearInterval(timer)
+    }
+  }, [load])
 
   return (
     <div className="min-h-screen py-12">
@@ -87,12 +101,21 @@ export default function SesionesPage() {
           Cobros
         </Link>
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Sesiones</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sesiones pagadas por tus pacientes. Ábrelas para confirmar la sesión y
-            liberar el pago.
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Sesiones</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sesiones pagadas por tus pacientes. Ábrelas para confirmar la sesión y
+              liberar el pago.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void load(true)}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/5"
+          >
+            Actualizar
+          </button>
         </div>
 
         {loading ? (
@@ -131,8 +154,22 @@ export default function SesionesPage() {
                   </span>
                 </div>
                 <div className="mt-4 flex justify-end">
-                  <CTAButton asChild size="sm">
-                    <Link href={`/pagar/${session.id}`}>Ver y confirmar</Link>
+                  <CTAButton
+                    asChild
+                    size="sm"
+                    variant={
+                      session.status === 2 || session.status === 3
+                        ? 'primary'
+                        : 'secondary'
+                    }
+                  >
+                    <Link href={`/pagar/${session.id}`}>
+                      {session.status === 2
+                        ? 'Ver y confirmar'
+                        : session.status === 3
+                          ? 'Liberar ahora'
+                          : 'Ver detalle'}
+                    </Link>
                   </CTAButton>
                 </div>
               </GlassCard>
