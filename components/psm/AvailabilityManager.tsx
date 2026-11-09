@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Calendar, Loader2, Plus, X } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
@@ -24,23 +24,21 @@ const DEFAULT_TIMEZONE =
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : 'America/Mexico_City'
 
-function formatSlotRange(startsAt: string, endsAt: string) {
-  const start = new Date(startsAt)
-  const end = new Date(endsAt)
-  const dateFmt = new Intl.DateTimeFormat('es', {
-    weekday: 'short',
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function dayLabel(startsAt: string) {
+  return new Intl.DateTimeFormat('es', {
+    weekday: 'long',
     day: 'numeric',
-    month: 'short',
-  })
-  const timeFmt = new Intl.DateTimeFormat('es', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return `${dateFmt.format(start)} · ${timeFmt.format(start)} – ${timeFmt.format(end)}`
+    month: 'long',
+  }).format(new Date(startsAt))
 }
 
-function durationMinutes(startsAt: string, endsAt: string) {
-  return Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000)
+function hourLabel(startsAt: string) {
+  return new Intl.DateTimeFormat('es', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(startsAt))
 }
 
 export function AvailabilityManager() {
@@ -54,6 +52,33 @@ export function AvailabilityManager() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('10:00')
   const [duration, setDuration] = useState(50)
+  const [horizonDays, setHorizonDays] = useState(7)
+
+  /**
+   * Calendly-style: group published slots per day and only render a rolling
+   * window, so 8 weeks of availability is not 800 rows in one scroll.
+   */
+  const days = useMemo(() => {
+    const limit = Date.now() + horizonDays * DAY_MS
+    const grouped = new Map<string, { key: string; label: string; slots: Slot[] }>()
+
+    for (const slot of slots) {
+      const startsAt = new Date(slot.startsAt)
+      if (startsAt.getTime() > limit) continue
+      const key = slot.startsAt.slice(0, 10)
+      const entry = grouped.get(key) ?? {
+        key,
+        label: dayLabel(slot.startsAt),
+        slots: [],
+      }
+      entry.slots.push(slot)
+      grouped.set(key, entry)
+    }
+
+    return [...grouped.values()].sort((a, b) => a.key.localeCompare(b.key))
+  }, [slots, horizonDays])
+
+  const shown = days.reduce((total, day) => total + day.slots.length, 0)
 
   const loadSession = useCallback(async () => {
     const session = await fetchAppSession()
@@ -251,34 +276,64 @@ export function AvailabilityManager() {
             No tienes horarios futuros. Agrega al menos uno para que los pacientes puedan agendar.
           </p>
         ) : (
-          <ul className="space-y-3">
-            {slots.map((slot) => (
-              <li
-                key={slot.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 px-4 py-3"
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {shown} horarios en los próximos {horizonDays} días
+                {slots.length > shown ? ` · ${slots.length - shown} más adelante` : ''}
+              </p>
+              <div className="flex gap-1 text-xs">
+                {[7, 30].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setHorizonDays(value)}
+                    className={`rounded-full px-3 py-1 transition-colors ${
+                      horizonDays === value
+                        ? 'bg-mauve-500/20 text-mauve-300'
+                        : 'text-muted-foreground hover:bg-white/5'
+                    }`}
+                  >
+                    {value} días
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {days.map((day) => (
+              <details
+                key={day.key}
+                open={horizonDays === 7}
+                className="rounded-lg border border-white/10"
               >
-                <div className="flex items-start gap-2 text-sm">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-mauve-400" />
-                  <div>
-                    <p className="font-medium">{formatSlotRange(slot.startsAt, slot.endsAt)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {durationMinutes(slot.startsAt, slot.endsAt)} min
-                      {slot.timezone ? ` · ${slot.timezone}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void removeSlot(slot.id)}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar
-                </button>
-              </li>
+                <summary className="cursor-pointer px-4 py-2 text-sm font-medium capitalize">
+                  {day.label}{' '}
+                  <span className="font-normal text-muted-foreground">
+                    · {day.slots.length}
+                  </span>
+                </summary>
+                <ul className="flex flex-wrap gap-2 px-4 pb-3 pt-1">
+                  {day.slots.map((slot) => (
+                    <li key={slot.id}>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void removeSlot(slot.id)}
+                        title="Eliminar este horario"
+                        className="group inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1 text-xs transition-colors hover:border-red-400/40 hover:text-red-400 disabled:opacity-50"
+                      >
+                        {hourLabel(slot.startsAt)}
+                        <X
+                          size={12}
+                          className="opacity-0 transition-opacity group-hover:opacity-100"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             ))}
-          </ul>
+          </div>
         )}
       </GlassCard>
     </div>
