@@ -9,6 +9,7 @@ import { fetchAppSession } from '@/lib/auth/client'
 import { MOTTY_DEFAULT_LOCALE, mottyCopyForPath } from '@/lib/motty/copy'
 import { resolveMottyPageSurface } from '@/lib/motty/page-context'
 import { useUIStore } from '@/lib/store'
+import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import type { MottyMessage } from '@/lib/motty/types'
 
 /** Same candy accent as Landing Motty FAB/bubbles. */
@@ -30,6 +31,7 @@ export function MottyWidget() {
   const surface = resolveMottyPageSurface(pathname)
   const copy = mottyCopyForPath(locale, pathname)
   const { theme } = useUIStore()
+  const { signing, signIn } = useSiweSession()
   const dark = theme !== 'light'
   const [ready, setReady] = useState(false)
   const [open, setOpen] = useState(false)
@@ -139,8 +141,6 @@ export function MottyWidget() {
     }
   }, [input, pending, locale, pathname, copy.error, copy.rateLimit])
 
-  if (!ready) return null
-
   const chrome = dark
     ? {
         panel:
@@ -220,6 +220,26 @@ export function MottyWidget() {
             {copy.disclaimer}
           </p>
 
+          {!ready ? (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm" style={{ color: chrome.text }}>
+                Motty usa tu sesión del Hub. Firma una vez para continuar.
+              </p>
+              <button
+                type="button"
+                onClick={() => void signIn()}
+                disabled={signing}
+                className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                style={{ backgroundImage: ACCENT_GRAD }}
+              >
+                {signing ? 'Firmando…' : 'Firmar sesión'}
+              </button>
+              <p className="mt-3 text-[11px]" style={{ color: chrome.muted }}>
+                Si no ves el popup, revisa WaaP o MetaMask/Rabby.
+              </p>
+            </div>
+          ) : (
+          <>
           <div
             ref={listRef}
             className="flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-4 py-3"
@@ -299,6 +319,8 @@ export function MottyWidget() {
               <Send size={16} />
             </button>
           </form>
+          </>
+          )}
         </section>
       ) : null}
 
