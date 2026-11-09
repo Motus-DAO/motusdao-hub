@@ -37,10 +37,13 @@ export function WizardStepper({ steps, currentStep, role, onStepClick, isStepVal
             const isCompleted = index < currentStep
             const isCurrent = index === currentStep
             const isUpcoming = index > currentStep
-            // Only check step validity on client to prevent hydration mismatch
-            const canNavigate = isMounted 
-              ? (isCompleted || isCurrent || (isStepValid && isStepValid(index)))
-              : (isCompleted || isCurrent) // Default to false for upcoming steps on server
+            // Forward navigation requires every previous step to be valid.
+            const previousStepsValid = isStepValid
+              ? steps.slice(0, index).every((_, stepIndex) => isStepValid(stepIndex))
+              : false
+            const canNavigate = isMounted
+              ? isCompleted || isCurrent || previousStepsValid
+              : isCompleted || isCurrent
             const isClickable = onStepClick && canNavigate
 
             return (
@@ -161,10 +164,13 @@ export function WizardStepper({ steps, currentStep, role, onStepClick, isStepVal
           {steps.map((_, index) => {
             const isCompleted = index < currentStep
             const isCurrent = index === currentStep
-            // Only check step validity on client to prevent hydration mismatch
-            const canNavigate = isMounted 
-              ? (index <= currentStep || (isStepValid && isStepValid(index)))
-              : (index <= currentStep) // Default to false for upcoming steps on server
+            // Forward navigation requires every previous step to be valid.
+            const previousStepsValid = isStepValid
+              ? steps.slice(0, index).every((_, stepIndex) => isStepValid(stepIndex))
+              : false
+            const canNavigate = isMounted
+              ? index <= currentStep || previousStepsValid
+              : index <= currentStep
             const isClickable = onStepClick && canNavigate
 
             return (

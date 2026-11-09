@@ -71,14 +71,20 @@ export function OnboardingWizard({ role: initialRole }: OnboardingWizardProps) {
   }
 
   const handleStepClick = (stepIndex: number) => {
-    // Allow navigation to completed steps, current step, or valid upcoming steps
-    const canNavigate = stepIndex <= currentStep || isStepValid(stepIndex)
-    
+    // Back/current always work. Forward requires every previous step to be
+    // valid; checking the target alone allowed jumping over empty steps.
+    const previousStepsValid = steps
+      .slice(0, stepIndex)
+      .every((_, index) => isStepValid(index))
+    const canNavigate = stepIndex <= currentStep || previousStepsValid
+
     if (canNavigate) {
+      setNavigationError(null)
       setCurrentStep(stepIndex)
     } else {
-      // Show a message or prevent navigation
-      console.log(`Cannot navigate to step ${stepIndex} - not yet available`)
+      setNavigationError(
+        'Completa los pasos anteriores antes de saltar a este.'
+      )
     }
   }
 

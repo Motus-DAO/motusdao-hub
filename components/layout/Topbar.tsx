@@ -1,6 +1,7 @@
 'use client'
 
 import { useUIStore, type UserRole } from '@/lib/store'
+import { useOnboardingStore } from '@/lib/onboarding-store'
 import { cn } from '@/lib/utils'
 import { 
   Menu, 
@@ -83,6 +84,11 @@ export function Topbar() {
         throw new Error(data.error || 'No se pudo cambiar el rol')
       }
       setRole(newRole)
+      if (newRole !== 'admin') {
+        const onboarding = useOnboardingStore.getState()
+        onboarding.setRole(newRole)
+        if (newRole === 'usuario') onboarding.setUsuarioIntakeTrack('therapy')
+      }
       setShowRoleDropdown(false)
       if (newRole === 'admin') {
         router.push('/admin')

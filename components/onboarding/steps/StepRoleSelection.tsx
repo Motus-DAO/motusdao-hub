@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   User,
@@ -15,6 +15,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { useOnboardingStore } from '@/lib/onboarding-store'
+import { useUIStore } from '@/lib/store'
 import { onboardingBackButtonClass } from '@/lib/onboarding-ui'
 
 interface StepRoleSelectionProps {
@@ -26,14 +27,22 @@ type RoleChoice = 'usuario' | 'psm'
 
 export function StepRoleSelection({ onNext, onBack }: StepRoleSelectionProps) {
   const { role, setRole, setUsuarioIntakeTrack } = useOnboardingStore()
+  const setUiRole = useUIStore((state) => state.setRole)
 
   const initialChoice: RoleChoice | null =
     role === 'psm' ? 'psm' : role === 'usuario' ? 'usuario' : null
 
   const [selectedChoice, setSelectedChoice] = useState<RoleChoice | null>(initialChoice)
 
+  // While the wizard is open, the role step is the one place that can change
+  // the sidebar menu. After onboarding the active role is server-enforced.
+  useEffect(() => {
+    if (initialChoice) setUiRole(initialChoice)
+  }, [initialChoice, setUiRole])
+
   const handleChoiceSelect = (choice: RoleChoice) => {
     setSelectedChoice(choice)
+    setUiRole(choice)
 
     if (choice === 'psm') {
       setRole('psm')

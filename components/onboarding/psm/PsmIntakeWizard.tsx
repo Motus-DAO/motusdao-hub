@@ -20,10 +20,13 @@ interface PsmIntakeWizardProps {
   onBack: () => void
 }
 
+const AI_INTAKE_ENABLED = process.env.NEXT_PUBLIC_AI_INTAKE_ENABLED === 'true'
+
 export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
   const { data, profileIntakeMode, setProfileIntakeMode, psmWizardStep, setPsmWizardStep } =
     useOnboardingStore()
-  const intakeMode = profileIntakeMode ?? 'manual'
+  // The AI intake is hidden for professionals too while the flag is off.
+  const intakeMode = AI_INTAKE_ENABLED ? (profileIntakeMode ?? 'manual') : 'manual'
   const wizardStep = psmWizardStep
   const setWizardStep = setPsmWizardStep
   const [exitBlockers, setExitBlockers] = useState(false)
@@ -65,32 +68,34 @@ export function PsmIntakeWizard({ onNext, onBack }: PsmIntakeWizardProps) {
           </p>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1">
-          <button
-            type="button"
-            onClick={() => setProfileIntakeMode('manual')}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${
-              intakeMode === 'manual'
-                ? 'bg-mauve-500 text-white'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Completar registro
-          </button>
-          <button
-            type="button"
-            onClick={() => setProfileIntakeMode('ai')}
-            className={`rounded-lg px-4 py-2 text-sm transition-colors ${
-              intakeMode === 'ai'
-                ? 'bg-mauve-500 text-white'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Guiarme con conversación
-          </button>
-        </div>
+        {AI_INTAKE_ENABLED && (
+          <div className="mb-6 grid grid-cols-2 rounded-xl border border-border bg-muted/30 p-1">
+            <button
+              type="button"
+              onClick={() => setProfileIntakeMode('manual')}
+              className={`rounded-lg px-4 py-2 text-sm transition-colors ${
+                intakeMode === 'manual'
+                  ? 'bg-mauve-500 text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Completar registro
+            </button>
+            <button
+              type="button"
+              onClick={() => setProfileIntakeMode('ai')}
+              className={`rounded-lg px-4 py-2 text-sm transition-colors ${
+                intakeMode === 'ai'
+                  ? 'bg-mauve-500 text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Guiarme con conversación
+            </button>
+          </div>
+        )}
 
-        {intakeMode === 'ai' ? (
+        {AI_INTAKE_ENABLED && intakeMode === 'ai' ? (
           <StepAIIntake role="psm" onNext={goToDocumentsFromChat} />
         ) : (
           <>
