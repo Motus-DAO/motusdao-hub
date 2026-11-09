@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       where: { id: session.userId },
       select: {
         eoaAddress: true,
+        role: true,
         psm: {
           select: {
             stripeChargesEnabled: true,
@@ -34,8 +35,28 @@ export async function GET(request: NextRequest) {
     }
 
     const country = ripioCountryFromEnv()
+    const isPsm = user.role === 'psm' || user.role === 'admin'
+
+    // A patient does not configure a Stripe account or a CLABE: Wallet, card
+    // and SPEI are ways to pay a professional. The checkout decides what the
+    // chosen professional accepts.
+    if (!isPsm || !user.psm) {
+      return NextResponse.json({
+        mode: 'pay',
+        wallet: { active: true, address: user.eoaAddress },
+        ripio: {
+          active: true,
+          recommended: true,
+          country,
+          token: ripioTokenForCountry(country),
+        },
+        stripe: { active: true },
+        spei: { active: true },
+      })
+    }
 
     return NextResponse.json({
+      mode: 'collect',
       wallet: { active: true, address: user.eoaAddress },
       ripio: {
         active: true,
@@ -43,8 +64,8 @@ export async function GET(request: NextRequest) {
         country,
         token: ripioTokenForCountry(country),
       },
-      stripe: { active: user.psm?.stripeChargesEnabled === true },
-      spei: { active: Boolean(user.psm?.speiClabe) },
+      stripe: { active: user.psm.stripeChargesEnabled === true },
+      spei: { active: Boolean(user.psm.speiClabe) },
     })
   } catch (error) {
     const authResponse = handleAuthError(error)

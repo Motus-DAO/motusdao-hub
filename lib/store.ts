@@ -116,7 +116,7 @@ export const getNavigationGroups = (role: UserRole): NavGroup[] => {
   ]
 
   const finance: NavItem[] = [
-    { name: 'Resumen', href: '/finanzas', icon: 'Wallet' },
+    { name: role === 'usuario' ? 'Pagos' : 'Resumen', href: '/finanzas', icon: 'Wallet' },
     { name: 'Wallet', href: '/pagos', icon: 'Landmark' },
     ...(role === 'usuario'
       ? ([] as NavItem[])

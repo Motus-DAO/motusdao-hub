@@ -31,6 +31,7 @@ type Method = 'all' | 'wallet' | 'stripe' | 'spei'
 type Direction = 'all' | 'in' | 'out'
 
 type MethodsState = {
+  mode?: 'pay' | 'collect'
   wallet: { active: boolean; address: string | null }
   ripio: { active: boolean; recommended: boolean; country: string; token: string }
   stripe: { active: boolean }
@@ -132,6 +133,10 @@ export default function ResumenPage() {
   const [methods, setMethods] = useState<MethodsState | null>(null)
 
   useEffect(() => {
+    if (!isPsm && direction === 'in') setDirection('all')
+  }, [isPsm, direction])
+
+  useEffect(() => {
     if (!isSessionReady) return
     let cancelled = false
     const loadMethods = () => {
@@ -206,6 +211,36 @@ export default function ResumenPage() {
     action?: { label: string; href: string }
   } = (() => {
     const money = direction === 'in' ? 'ingresos' : 'egresos'
+    if (!isPsm) {
+      if (method === 'stripe') {
+        return {
+          title:
+            direction === 'all'
+              ? 'Aún no has pagado con tarjeta.'
+              : 'No hay egresos con tarjeta.',
+          action: { label: 'Pagar sesión', href: '/psicoterapia' },
+        }
+      }
+      if (method === 'spei') {
+        return {
+          title:
+            direction === 'all'
+              ? 'Aún no has pagado por SPEI.'
+              : 'No hay egresos por SPEI.',
+          action: { label: 'Cómo pagar', href: '/psicoterapia' },
+        }
+      }
+      if (method === 'wallet') {
+        return {
+          title: 'Aún no hay movimientos en tu wallet.',
+          action: { label: 'Abrir wallet', href: '/pagos' },
+        }
+      }
+      return {
+        title: 'Aún no hay pagos.',
+        action: { label: 'Pagar sesión', href: '/psicoterapia' },
+      }
+    }
     if (method === 'spei') {
       if (methods && !methods.spei.active && isPsm) {
         return {
@@ -298,9 +333,11 @@ export default function ResumenPage() {
       <div className="mx-auto max-w-4xl px-4">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Resumen</h1>
+            <h1 className="text-3xl font-bold">{isPsm ? 'Resumen' : 'Pagos'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Todo tu dinero y los tres métodos, en un solo lugar.
+              {isPsm
+                ? 'Todo tu dinero y los tres métodos, en un solo lugar.'
+                : 'Tus formas de pago y lo que has pagado.'}
               {address ? ` · ${shortAddress(address)}` : ''}
             </p>
           </div>
@@ -316,21 +353,31 @@ export default function ResumenPage() {
         </div>
 
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Métodos
+          {isPsm ? 'Métodos' : 'Formas de pago'}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {METHOD_TILES.map((tile) => {
             const Icon = tile.icon
             const selected = method === tile.id
             const count = counts[tile.id]
-            const configured =
-              tile.id === 'all'
+            const configured = !isPsm
+              ? tile.id === 'all'
+                ? null
+                : true
+              : tile.id === 'all'
                 ? null
                 : tile.id === 'wallet'
                   ? true
                   : methods?.[tile.id]?.active === true
-            const action =
-              tile.id === 'wallet'
+            const action = !isPsm
+              ? tile.id === 'wallet'
+                ? { label: 'Abrir', href: '/pagos' }
+                : tile.id === 'stripe'
+                  ? { label: 'Pagar sesión', href: '/psicoterapia' }
+                  : tile.id === 'spei'
+                    ? { label: 'Cómo pagar', href: '/psicoterapia' }
+                    : null
+              : tile.id === 'wallet'
                 ? { label: 'Abrir', href: '/pagos' }
                 : tile.id === 'stripe'
                   ? configured
@@ -341,6 +388,17 @@ export default function ResumenPage() {
                       ? { label: 'Abrir', href: '/finanzas/depositos' }
                       : { label: 'Configurar CLABE', href: '/perfil' }
                     : null
+            const displayLabel =
+              !isPsm && tile.id === 'stripe' ? 'Tarjeta' : tile.label
+            const displayHint = !isPsm
+              ? tile.id === 'all'
+                ? 'Todo lo que has pagado'
+                : tile.id === 'wallet'
+                  ? 'Tu saldo on-chain · compra wMXN con Ripio'
+                  : tile.id === 'stripe'
+                    ? 'Paga en el checkout de tu sesión'
+                    : 'Transferencia al CLABE del profesional'
+              : tile.hint
             return (
               <div
                 key={tile.id}
@@ -373,7 +431,7 @@ export default function ResumenPage() {
                               : 'bg-amber-500/10 text-amber-300'
                           }`}
                         >
-                          {configured ? 'Activo' : 'Configurar'}
+                          {!isPsm ? 'Disponible' : configured ? 'Activo' : 'Configurar'}
                         </span>
                       )}
                       <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-muted-foreground">
@@ -381,8 +439,8 @@ export default function ResumenPage() {
                       </span>
                     </div>
                   </div>
-                  <h3 className="mt-3 text-lg font-semibold">{tile.label}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{tile.hint}</p>
+                  <h3 className="mt-3 text-lg font-semibold">{displayLabel}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{displayHint}</p>
                   {tile.id === 'wallet' && methods?.ripio.recommended && (
                     <p className="mt-1 text-[11px] text-emerald-300">
                       Ripio: la ruta más sencilla para comprar wMXN
@@ -390,9 +448,9 @@ export default function ResumenPage() {
                   )}
                   <div className="mt-3 flex items-center justify-between">
                     <span className={`text-xs ${selected ? 'text-mauve-200' : 'text-muted-foreground'}`}>
-                      {selected ? 'Filtrando resumen' : 'Ver resumen'}
+                      {selected ? 'Filtrando' : isPsm ? 'Ver resumen' : 'Ver pagos'}
                     </span>
-                    {action && (tile.id === 'wallet' || isPsm) && (
+                    {action && (isPsm || tile.id !== 'all') && (
                       <Link
                         href={action.href}
                         onClick={(event) => event.stopPropagation()}
@@ -411,7 +469,7 @@ export default function ResumenPage() {
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <GlassCard className="p-4">
-            <p className="text-xs text-muted-foreground">Movimientos</p>
+            <p className="text-xs text-muted-foreground">{isPsm ? 'Movimientos' : 'Pagos'}</p>
             <p className="mt-1 text-2xl font-bold">{filtered.length}</p>
           </GlassCard>
           <GlassCard className="p-4">
@@ -423,7 +481,7 @@ export default function ResumenPage() {
             <p className="mt-1 text-2xl font-bold">{counts.wallet}</p>
           </GlassCard>
           <GlassCard className="p-4">
-            <p className="text-xs text-muted-foreground">Stripe</p>
+            <p className="text-xs text-muted-foreground">{isPsm ? 'Stripe' : 'Tarjeta'}</p>
             <p className="mt-1 text-2xl font-bold">{counts.stripe}</p>
           </GlassCard>
         </div>
@@ -434,7 +492,7 @@ export default function ResumenPage() {
               Dirección
             </span>
             <div className="flex rounded-xl border border-white/10 p-1">
-              {DIRECTIONS.map((item) => (
+              {(isPsm ? DIRECTIONS : DIRECTIONS.filter((item) => item.id !== 'in')).map((item) => (
                 <button
                   key={item.id}
                   type="button"
