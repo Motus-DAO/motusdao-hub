@@ -1,14 +1,11 @@
-import {
-  PLATFORM_SESSION_PRICE_USD,
-  PLATFORM_SESSION_PRICE_WMXN,
-} from '@/lib/constants'
+import { PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 
 /**
  * Session price shown to the patient and used by the escrow.
  *
- * Default price is `PLATFORM_SESSION_PRICE_WMXN` (45 wMXN, 1:1 with USDT while
- * the mainnet demo runs). `NEXT_PUBLIC_THERAPY_TEST_PRICE_WMXN` is a local
- * override for the full booking → escrow → payout flow.
+ * `NEXT_PUBLIC_THERAPY_TEST_PRICE_WMXN` is a local/demo override so the full
+ * booking → escrow → payout flow can be tested with 10 wMXN instead of
+ * 45 USD × FX. Do not set it in production.
  */
 export function mxnPerUsd(): number {
   const raw = Number(process.env.MOTUS_MXN_PER_USD || '18.5')
@@ -29,7 +26,7 @@ export function sessionPriceWmxn(): {
   }
 
   return {
-    mxn: PLATFORM_SESSION_PRICE_WMXN,
+    mxn: Math.round(PLATFORM_SESSION_PRICE_USD * rate * 100) / 100,
     usd: PLATFORM_SESSION_PRICE_USD,
     rate,
     test: false,
