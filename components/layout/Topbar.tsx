@@ -30,6 +30,7 @@ export function Topbar() {
   const { 
     role, 
     setRole,
+    isPlatformAdmin,
     setIsPlatformAdmin,
     sidebarOpen, 
     toggleSidebar, 
@@ -60,6 +61,10 @@ export function Topbar() {
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
   const roleButtonRef = useRef<HTMLButtonElement>(null)
+  // Admin/dual accounts can switch roles in production. The env flag is for
+  // local testing only; it never grants server permissions.
+  const canSwitchRoles =
+    isPlatformAdmin || process.env.NEXT_PUBLIC_ROLE_SWITCHER === 'true'
 
   const handleRoleChange = (newRole: 'usuario' | 'psm' | 'admin') => {
     setRole(newRole)
@@ -219,6 +224,7 @@ export function Topbar() {
           </button>
 
           {/* Role Selector */}
+          {canSwitchRoles ? (
           <div className="relative">
             <button
               ref={roleButtonRef}
@@ -267,6 +273,7 @@ export function Topbar() {
                     >
                       PSM
                     </button>
+                    {isPlatformAdmin && (
                     <button
                       onClick={() => handleRoleChange('admin')}
                       className={cn(
@@ -279,12 +286,20 @@ export function Topbar() {
                       <Shield className="w-3 h-3" />
                       <span>Admin</span>
                     </button>
+                    )}
                   </div>
                 </div>
               </>,
               document.body
             )}
           </div>
+          ) : (
+            <div className="flex h-10 min-w-[100px] items-center rounded-2xl border border-border bg-foreground/5 px-4">
+              <span className="text-xs font-medium sm:text-sm">
+                {role === 'psm' ? 'PSM' : role === 'admin' ? 'Admin' : 'Usuario'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Right side */}
