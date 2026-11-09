@@ -1,7 +1,7 @@
 {
   "type": "Agent",
-  "name": "MotusDAO Settlement Agent",
-  "description": "Settles therapy sessions in Celo wFIAT: escrow release, 90/10 split, reconciliation and off-ramp handoff. Owned by MotusDAO.",
+  "name": "Motty Pay",
+  "description": "Motty Pay — installable payment agent for MotusDAO. Settles therapy sessions in Celo wFIAT: booking, escrow deposit, 90/10 release, reconciliation and off-ramp handoff. Owned by MotusDAO.",
   "image": "https://app.motusdao.org/icon.svg",
   "endpoints": [
     { "type": "https", "url": "https://app.motusdao.org/finanzas" },
