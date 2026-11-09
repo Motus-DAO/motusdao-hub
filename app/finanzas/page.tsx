@@ -218,7 +218,7 @@ export default function ResumenPage() {
             direction === 'all'
               ? 'Aún no has pagado con tarjeta.'
               : 'No hay egresos con tarjeta.',
-          action: { label: 'Pagar sesión', href: '/psicoterapia' },
+          action: { label: 'Elegir profesional', href: '/psicoterapia' },
         }
       }
       if (method === 'spei') {
@@ -227,7 +227,7 @@ export default function ResumenPage() {
             direction === 'all'
               ? 'Aún no has pagado por SPEI.'
               : 'No hay egresos por SPEI.',
-          action: { label: 'Cómo pagar', href: '/psicoterapia' },
+          action: { label: 'Elegir profesional', href: '/psicoterapia' },
         }
       }
       if (method === 'wallet') {
@@ -238,7 +238,7 @@ export default function ResumenPage() {
       }
       return {
         title: 'Aún no hay pagos.',
-        action: { label: 'Pagar sesión', href: '/psicoterapia' },
+        action: { label: 'Elegir profesional', href: '/psicoterapia' },
       }
     }
     if (method === 'spei') {
@@ -466,6 +466,23 @@ export default function ResumenPage() {
             )
           })}
         </div>
+
+        {!isPsm && (
+          <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm">
+            <summary className="cursor-pointer text-xs font-semibold text-mauve-300">
+              ¿Cómo se paga con SPEI?
+            </summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+              <li>Elige un profesional que acepte SPEI.</li>
+              <li>Reserva tu sesión.</li>
+              <li>
+                En la página de pago verás su CLABE, monto y referencia; transfiere y
+                registra el comprobante.
+              </li>
+              <li>El profesional confirma y la sesión queda pagada.</li>
+            </ol>
+          </details>
+        )}
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <GlassCard className="p-4">
