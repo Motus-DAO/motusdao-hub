@@ -22,6 +22,7 @@ import {
   therapyEscrowId,
 } from '@/lib/escrow/create'
 import { ERC20_APPROVE_ABI, WMXN_ADDRESS } from '@/lib/escrow/abi'
+import { motusNameService } from '@/lib/motus-name-service'
 
 const STATUS_LABEL: Record<number, string> = {
   0: 'Sin crear',
@@ -96,9 +97,16 @@ export async function getWalletSnapshotForUser(userId: string) {
 
   const address = user.eoaAddress as Address
   const client = escrowPublicClient()
-  const [wmxn, celo] = await Promise.all([
+  const usdtAddress = '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e' as Address
+  const [wmxn, usdt, celo] = await Promise.all([
     client.readContract({
       address: WMXN_ADDRESS,
+      abi: ERC20_APPROVE_ABI,
+      functionName: 'balanceOf',
+      args: [address],
+    }),
+    client.readContract({
+      address: usdtAddress,
       abi: ERC20_APPROVE_ABI,
       functionName: 'balanceOf',
       args: [address],
@@ -110,7 +118,117 @@ export async function getWalletSnapshotForUser(userId: string) {
     ok: true as const,
     address,
     wmxn: formatUnits(wmxn as bigint, 18),
+    usdt: formatUnits(usdt as bigint, 6),
     celo: formatUnits(celo, 18),
+  }
+}
+
+export type TransferToken = 'wMXN' | 'USDT' | 'CELO'
+
+export function normalizeTransferToken(value: unknown): TransferToken | null {
+  const token = typeof value === 'string' ? value.trim().toUpperCase() : ''
+  if (token === 'WMXN' || token === 'MXN') return 'wMXN'
+  if (token === 'USDT') return 'USDT'
+  if (token === 'CELO') return 'CELO'
+  return null
+}
+
+export function isValidTransferAmount(value: string): boolean {
+  const amount = Number(value.replace(',', '.'))
+  return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000
+}
+
+const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/
+const THERAPIST_RE =
+  /(mi|my)\s+(psic[oó]log[oa]|terapeuta|profesional|therapist)|esta persona|this person/i
+
+/**
+ * Resolves a human recipient to an address and returns a /pagos link. It never
+ * signs or moves funds: the user reviews and signs on the page.
+ */
+export async function prepareTransferForUser(
+  userId: string,
+  input: { recipient: string; amount: string; token: string }
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { eoaAddress: true, motusName: true },
+  })
+  if (!user?.eoaAddress) return { ok: false as const, error: 'wallet_not_found' }
+
+  const token = normalizeTransferToken(input.token)
+  if (!token) {
+    return {
+      ok: false as const,
+      error: 'token_required',
+      message: 'Pregunta al usuario si quiere wMXN, USDT o CELO.',
+    }
+  }
+  if (!isValidTransferAmount(input.amount)) {
+    return { ok: false as const, error: 'amount_invalid' }
+  }
+
+  const recipient = input.recipient.trim()
+  let toAddress: Address
+  let toName: string
+  let recipientType: 'motus' | 'therapist' | 'address'
+
+  if (ADDRESS_RE.test(recipient)) {
+    toAddress = recipient as Address
+    toName = recipient
+    recipientType = 'address'
+  } else if (THERAPIST_RE.test(recipient)) {
+    const session = await prisma.session.findFirst({
+      where: { userId },
+      orderBy: { scheduledStart: 'desc' },
+      select: {
+        psm: {
+          select: {
+            eoaAddress: true,
+            motusName: true,
+            email: true,
+            profile: { select: { nombre: true, apellido: true } },
+          },
+        },
+      },
+    })
+    if (!session?.psm?.eoaAddress) {
+      return { ok: false as const, error: 'no_therapist' }
+    }
+    toAddress = session.psm.eoaAddress as Address
+    toName =
+      session.psm.motusName ||
+      `${session.psm.profile?.nombre ?? ''} ${session.psm.profile?.apellido ?? ''}`.trim() ||
+      session.psm.email ||
+      'tu profesional'
+    recipientType = 'therapist'
+  } else {
+    const resolved = await motusNameService.resolve(recipient)
+    if (!resolved) return { ok: false as const, error: 'name_not_found' }
+    toAddress = resolved
+    toName = /\.motus$/i.test(recipient) ? recipient : `${recipient}.motus`
+    recipientType = 'motus'
+  }
+
+  if (toAddress.toLowerCase() === user.eoaAddress.toLowerCase()) {
+    return { ok: false as const, error: 'self_transfer' }
+  }
+
+  const amount = input.amount.replace(',', '.')
+  const link = `/pagos?to=${encodeURIComponent(toAddress)}&toName=${encodeURIComponent(
+    toName
+  )}&amount=${encodeURIComponent(amount)}&token=${token}`
+
+  return {
+    ok: true as const,
+    fromName: user.motusName ?? null,
+    toName,
+    toAddress,
+    amount,
+    token,
+    recipientType,
+    link,
+    note: 'El usuario revisa y firma en /pagos. No muevas fondos ni digas que ya enviaste.',
   }
 }
 

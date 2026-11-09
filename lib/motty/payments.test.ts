@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mxnPerUsd, quoteTherapy } from './payments'
+import {
+  isValidTransferAmount,
+  mxnPerUsd,
+  normalizeTransferToken,
+  quoteTherapy,
+} from './payments'
 import { enabledMottyToolNames } from './tools'
 import { therapyEscrowId } from '@/lib/escrow/create'
 
@@ -56,5 +61,24 @@ test('payment tools disappear when MOTTY_PAYMENTS_ENABLED=false', () => {
   withEnv('MOTTY_PAYMENTS_ENABLED', 'true', () => {
     assert.ok(enabledMottyToolNames().includes('getMyUpcomingSession'))
     assert.ok(enabledMottyToolNames().includes('createTherapyEscrowForMySession'))
+  })
+})
+
+
+test('transfer token and amount validation', () => {
+  assert.equal(normalizeTransferToken('WMXN'), 'wMXN')
+  assert.equal(normalizeTransferToken('mxn'), 'wMXN')
+  assert.equal(normalizeTransferToken('usdt'), 'USDT')
+  assert.equal(normalizeTransferToken('celo'), 'CELO')
+  assert.equal(normalizeTransferToken('btc'), null)
+  assert.equal(isValidTransferAmount('5'), true)
+  assert.equal(isValidTransferAmount('12.50'), true)
+  assert.equal(isValidTransferAmount('0'), false)
+  assert.equal(isValidTransferAmount('nope'), false)
+})
+
+test('prepareTransfer is enabled with the payment tools', () => {
+  withEnv('MOTTY_PAYMENTS_ENABLED', 'true', () => {
+    assert.ok(enabledMottyToolNames().includes('prepareTransfer'))
   })
 })

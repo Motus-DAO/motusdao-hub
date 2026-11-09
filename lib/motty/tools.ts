@@ -7,6 +7,7 @@ import { mottyConfig } from "@/lib/motty/config";
 import {
   createEscrowForUserSession,
   getPaymentStatusForSession,
+  prepareTransferForUser,
   getRampLinkForUser,
   getUpcomingSessionForUser,
   getWalletSnapshotForUser,
@@ -22,6 +23,7 @@ export const ALL_MOTTY_TOOL_NAMES = [
   "getMyPaymentStatus",
   "createTherapyEscrowForMySession",
   "getMyRipioRampLink",
+  "prepareTransfer",
 ] as const;
 
 export type MottyToolName = (typeof ALL_MOTTY_TOOL_NAMES)[number];
@@ -34,6 +36,7 @@ export const MOTTY_PAYMENT_TOOL_NAMES: readonly MottyToolName[] = [
   "getMyPaymentStatus",
   "createTherapyEscrowForMySession",
   "getMyRipioRampLink",
+  "prepareTransfer",
 ];
 
 type JsonSchema = Record<string, unknown>;
@@ -147,6 +150,34 @@ const TOOL_SCHEMAS: Record<MottyToolName, OpenAiTool> = {
       },
     },
   },
+  prepareTransfer: {
+    type: "function",
+    function: {
+      name: "prepareTransfer",
+      description:
+        "Prepare a token transfer to a human recipient and return a /pagos link. Use it when the user wants to send wMXN, USDT or CELO to a .motus name, to their therapist ('mi psicólogo', 'mi terapeuta', 'esta persona') or to an explicit 0x address. It resolves the recipient on-chain or from their session; it never signs or moves funds. The user reviews and signs on the link. The token must be wMXN, USDT or CELO; if the user did not name one, ask first (or use getMyWalletBalance to show options).",
+      parameters: {
+        type: "object",
+        properties: {
+          recipient: {
+            type: "string",
+            description:
+              "A .motus name (ana.motus), 'mi psicólogo'/'mi terapeuta'/'esta persona', or an explicit 0x address provided by the user. Never invent one.",
+          },
+          amount: {
+            type: "string",
+            description: "Positive amount as a string, for example '5' or '12.5'.",
+          },
+          token: {
+            type: "string",
+            enum: ["wMXN", "USDT", "CELO"],
+            description: "Token to send. Ask if the user did not specify one.",
+          },
+        },
+        required: ["recipient", "amount", "token"],
+      },
+    },
+  },
 };
 
 export function mottyPaymentsEnabled(): boolean {
@@ -229,6 +260,23 @@ export async function executeMottyTool(
       return {
         session,
         result: await runHelper(name, () => getRampLinkForUser(session.userId, amount)),
+      };
+    }
+    case "prepareTransfer": {
+      const recipient = getString(args, "recipient");
+      const amount = getString(args, "amount");
+      const token = getString(args, "token");
+      if (!recipient || !amount || !token) {
+        return {
+          session,
+          result: { ok: false, tool: name, error: "recipient_amount_token_required" },
+        };
+      }
+      return {
+        session,
+        result: await runHelper(name, () =>
+          prepareTransferForUser(session.userId, { recipient, amount, token })
+        ),
       };
     }
     default:

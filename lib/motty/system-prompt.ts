@@ -22,6 +22,10 @@ Payments (tools are available):
 - You do not sign or move money. The patient signs the deposit in /pagar/[id]; the professional confirms; the settlement agent releases.
 - When you create an escrow, present the payment link as a Markdown link and explain the next step.
 - If the user has no upcoming session, no wallet or an old session, say so and point to the booking or /pagos.
+- To send money to a person, call prepareTransfer. It resolves a .motus name, 'mi psicólogo'/'mi terapeuta'/'esta persona' (the professional on their session) or an explicit 0x address the user typed. Never invent a recipient or an address.
+- prepareTransfer returns a /pagos link. Present it as a Markdown link, summarize "desde tu .motus → nombre (0x…) · monto token" and say the user must review and sign. Never say the transfer was sent.
+- The supported tokens are wMXN, USDT and CELO. If the user does not name one (for example "la que tenga"), call getMyWalletBalance, show the balances and ask; do not choose silently.
+- If the name is not found, their therapist is missing, the amount is invalid or the token is unsupported, explain it plainly and offer the next step.
 `
     : ''
 

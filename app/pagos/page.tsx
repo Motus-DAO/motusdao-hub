@@ -25,7 +25,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { QRCodeSVG } from 'qrcode.react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
 import { sendCELOPayment, sendStablecoinPayment, type PaymentCurrency, type PaymentParams } from '@/lib/payments'
 import { CELO_STABLE_TOKENS, getCeloExplorerUrl, getCeloTokenDecimals } from '@/lib/celo'
@@ -273,6 +273,26 @@ export default function PagosPage() {
       setNameResolutionError('Dirección inválida. Debe empezar con 0x y tener 42 caracteres.')
     }
   }, [])
+
+  // Motty prepares a transfer as /pagos?to=...&amount=...&token=...; prefill
+  // the send form once so the user only reviews and signs.
+  const appliedSendQueryRef = useRef(false)
+  useEffect(() => {
+    if (appliedSendQueryRef.current) return
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const to = params.get('to')
+    const amount = params.get('amount')
+    const token = params.get('token')
+    if (!to && !amount && !token) return
+    appliedSendQueryRef.current = true
+    setTransferMode('send')
+    if (to) void handleRecipientChange(to)
+    if (amount) setSendAmount(amount)
+    if (token && enabledTokens.has(token)) {
+      setSelectedToken(token as PaymentCurrency)
+    }
+  }, [enabledTokens, handleRecipientChange])
 
   // Load user's .motus name for receive section
   useEffect(() => {
