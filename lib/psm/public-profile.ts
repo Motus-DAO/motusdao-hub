@@ -13,6 +13,7 @@ import {
 } from '@/lib/intake/psm-intake-options'
 import { asStringArray } from '@/lib/prisma-json'
 import { computeReputationSummary } from '@/lib/psm/reputation'
+import { paymentMethodsFromPsm, type PaymentMethods } from '@/lib/psm/payment-methods'
 
 export type PsmWithProfile = User & {
   profile: Profile | null
@@ -57,6 +58,7 @@ export type PublicPsmProfile = {
   isAcceptingPatients: boolean
   capacityAvailable: number
   cardPaymentsEnabled: boolean
+  paymentMethods: PaymentMethods
 }
 
 export const PUBLIC_PSM_WHERE = {
@@ -180,6 +182,11 @@ export async function buildPublicPsmProfile(
     isAcceptingPatients: psm.isAcceptingPatients,
     capacityAvailable,
     cardPaymentsEnabled: psm.stripeChargesEnabled,
+    paymentMethods: paymentMethodsFromPsm({
+      eoaAddress: user.eoaAddress,
+      stripeChargesEnabled: psm.stripeChargesEnabled,
+      speiClabe: psm.speiClabe,
+    }),
   }
 }
 

@@ -55,6 +55,7 @@ export async function GET() {
             currency: PLATFORM_SESSION_CURRENCY,
           },
           reputation: publicProfile.reputation,
+          paymentMethods: publicProfile.paymentMethods,
           introVideoApproved: Boolean(psm.psm?.introVideoApproved),
           capacity: {
             current: psm.psmMatches.length,

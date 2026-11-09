@@ -6,6 +6,7 @@ import { Calendar, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
+import { PaymentMethodTags } from './PaymentMethodTags'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { sessionPriceWmxn } from '@/lib/pricing'
@@ -168,6 +169,13 @@ export function TherapistBookingCard({ slug, profile }: Props) {
         <p className="mt-2 text-xs text-muted-foreground">
           El pago aparta el horario. Si cancelas con más de 48 horas, se devuelve. Después de eso, el profesional conserva el pago.
         </p>
+
+        <div className="mt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Métodos de pago
+          </p>
+          <PaymentMethodTags methods={profile.paymentMethods} className="mt-1" />
+        </div>
 
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />

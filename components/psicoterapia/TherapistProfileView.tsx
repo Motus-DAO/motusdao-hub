@@ -20,6 +20,7 @@ import { LATAM_CRISIS_RESOURCES } from '@/lib/crisis-resources'
 import { sessionPriceWmxn } from '@/lib/pricing'
 import type { PublicPsmProfile } from '@/lib/psm/public-profile'
 import { TherapistBookingCard } from './TherapistBookingCard'
+import { PaymentMethodTags } from './PaymentMethodTags'
 import { TherapistReviews } from './TherapistReviews'
 
 type Props = {
@@ -118,6 +119,7 @@ export function TherapistProfileView({ slug }: Props) {
                           <CheckCircle className="mr-1 h-3 w-3" />
                           Terapeuta verificado
                         </span>
+                        <PaymentMethodTags methods={profile.paymentMethods} />
                         <span className="inline-flex items-center rounded-full border border-white/10 px-2 py-0.5 text-xs">
                           <Video className="mr-1 h-3 w-3" />
                           Teleterapia

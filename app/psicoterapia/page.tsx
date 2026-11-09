@@ -22,6 +22,8 @@ import {
 import { motion } from 'framer-motion'
 import { PLATFORM_SESSION_CURRENCY, PLATFORM_SESSION_PRICE_USD } from '@/lib/constants'
 import type { ReputationSummary } from '@/lib/psm/reputation'
+import type { PaymentMethods } from '@/lib/psm/payment-methods'
+import { PaymentMethodTags } from '@/components/psicoterapia/PaymentMethodTags'
 
 interface PSMListItem {
   id: string
@@ -36,6 +38,7 @@ interface PSMListItem {
   languages: string[]
   price: { amount: number; currency: string }
   reputation: ReputationSummary
+  paymentMethods: PaymentMethods
   isAvailable: boolean
 }
 
@@ -51,6 +54,7 @@ interface TherapistDisplay {
   price: string
   image: string | null
   bio: string
+  paymentMethods: PaymentMethods
   isAvailable: boolean
 }
 
@@ -123,6 +127,7 @@ export default function PsicoterapiaPage() {
             bio:
               psm.bio ||
               `${fullName} es un profesional de la salud mental con ${psm.experienciaAnios} ${psm.experienciaAnios === 1 ? 'año' : 'años'} de experiencia.`,
+            paymentMethods: psm.paymentMethods,
             isAvailable: psm.isAvailable,
           }
         })
@@ -262,6 +267,13 @@ export default function PsicoterapiaPage() {
                     </div>
 
                     <p className="mb-4 text-sm text-muted-foreground">{therapist.bio}</p>
+
+                    <div className="mb-4">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Métodos de pago
+                      </p>
+                      <PaymentMethodTags methods={therapist.paymentMethods} />
+                    </div>
 
                     <div className="mb-4 space-y-2">
                       <div className="flex items-center justify-between text-sm">
