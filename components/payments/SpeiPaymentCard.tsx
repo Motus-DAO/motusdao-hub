@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Copy, Landmark, Loader } from 'lucide-react'
+import { CheckCircle2, Copy, Landmark, Loader } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { authFetch } from '@/lib/auth/client'
@@ -76,6 +76,7 @@ export function SpeiPaymentCard() {
   const [reference, setReference] = useState('')
   const [copied, setCopied] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
+  const [accountSaved, setAccountSaved] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,6 +109,7 @@ export function SpeiPaymentCard() {
     setSaving(true)
     setError('')
     setNotice('')
+    setAccountSaved(false)
     try {
       const response = await authFetch('/api/spei', {
         method: 'PUT',
@@ -116,10 +118,11 @@ export function SpeiPaymentCard() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'No se pudo guardar')
-      setNotice('Cuenta guardada. Tu paciente la verá en su cita.')
       await load()
+      setAccountSaved(true)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'No se pudo guardar')
+      setAccountSaved(false)
     } finally {
       setSaving(false)
     }
@@ -183,6 +186,7 @@ export function SpeiPaymentCard() {
               onBankName={setBankName}
               onClabe={setClabe}
               onSave={() => void saveAccount()}
+              saved={accountSaved}
             />
           )}
 
@@ -231,6 +235,7 @@ function PsmAccountForm(props: {
   onBankName: (value: string) => void
   onClabe: (value: string) => void
   onSave: () => void
+  saved: boolean
 }) {
   if (props.profileMissing) {
     return <p className="text-sm text-muted-foreground">Completa tu perfil profesional para registrar la CLABE.</p>
@@ -290,6 +295,23 @@ function PsmAccountForm(props: {
       <CTAButton type="button" size="sm" onClick={props.onSave} disabled={!canSave}>
         {props.saving ? 'Guardando...' : 'Guardar cuenta'}
       </CTAButton>
+      {props.saved && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/15 p-3 shadow-[0_0_24px_rgba(16,185,129,0.18)]"
+        >
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+          <div>
+            <p className="text-sm font-semibold text-emerald-100">
+              Cuenta SPEI guardada
+            </p>
+            <p className="text-xs text-emerald-200/80">
+              Tu paciente la verá en su cita.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
