@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { SpeiPaymentModal } from '@/components/payments/SpeiPaymentModal'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { useUIStore } from '@/lib/store'
 import { useWallet, useWallets } from '@/lib/wallet'
@@ -29,6 +30,10 @@ import type {
 
 type Method = 'all' | 'wallet' | 'stripe' | 'spei'
 type Direction = 'all' | 'in' | 'out'
+
+type TileAction = { label: string; href?: string; onClick?: () => void }
+
+type EmptyAction = { label: string; href?: string; onClick?: () => void }
 
 type MethodsState = {
   mode?: 'pay' | 'collect'
@@ -131,6 +136,7 @@ export default function ResumenPage() {
   const [method, setMethod] = useState<Method>('all')
   const [direction, setDirection] = useState<Direction>('all')
   const [methods, setMethods] = useState<MethodsState | null>(null)
+  const [speiModalOpen, setSpeiModalOpen] = useState(false)
 
   useEffect(() => {
     if (!isPsm && direction === 'in') setDirection('all')
@@ -208,7 +214,7 @@ export default function ResumenPage() {
 
   const emptyState: {
     title: string
-    action?: { label: string; href: string }
+    action?: EmptyAction
   } = (() => {
     const money = direction === 'in' ? 'ingresos' : 'egresos'
     if (!isPsm) {
@@ -227,7 +233,7 @@ export default function ResumenPage() {
             direction === 'all'
               ? 'Aún no has pagado por SPEI.'
               : 'No hay egresos por SPEI.',
-          action: { label: 'Elegir profesional', href: '/psicoterapia' },
+          action: { label: 'Cómo pagar', onClick: () => setSpeiModalOpen(true) },
         }
       }
       if (method === 'wallet') {
@@ -369,13 +375,13 @@ export default function ResumenPage() {
                 : tile.id === 'wallet'
                   ? true
                   : methods?.[tile.id]?.active === true
-            const action = !isPsm
+            const action: TileAction | null = !isPsm
               ? tile.id === 'wallet'
                 ? { label: 'Abrir', href: '/pagos' }
                 : tile.id === 'stripe'
-                  ? { label: 'Pagar sesión', href: '/psicoterapia' }
+                  ? { label: 'Elegir profesional', href: '/psicoterapia' }
                   : tile.id === 'spei'
-                    ? { label: 'Cómo pagar', href: '/psicoterapia' }
+                    ? { label: 'Cómo pagar', onClick: () => setSpeiModalOpen(true) }
                     : null
               : tile.id === 'wallet'
                 ? { label: 'Abrir', href: '/pagos' }
@@ -450,39 +456,35 @@ export default function ResumenPage() {
                     <span className={`text-xs ${selected ? 'text-mauve-200' : 'text-muted-foreground'}`}>
                       {selected ? 'Filtrando' : isPsm ? 'Ver resumen' : 'Ver pagos'}
                     </span>
-                    {action && (isPsm || tile.id !== 'all') && (
-                      <Link
-                        href={action.href}
-                        onClick={(event) => event.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-mauve-300 hover:text-mauve-200"
-                      >
-                        {action.label}
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    )}
+                    {action && (isPsm || tile.id !== 'all') &&
+                      (action.href ? (
+                        <Link
+                          href={action.href}
+                          onClick={(event) => event.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-mauve-300 hover:text-mauve-200"
+                        >
+                          {action.label}
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            action.onClick?.()
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-mauve-300 hover:text-mauve-200"
+                        >
+                          {action.label}
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      ))}
                   </div>
                 </GlassCard>
               </div>
             )
           })}
         </div>
-
-        {!isPsm && (
-          <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm">
-            <summary className="cursor-pointer text-xs font-semibold text-mauve-300">
-              ¿Cómo se paga con SPEI?
-            </summary>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
-              <li>Elige un profesional que acepte SPEI.</li>
-              <li>Reserva tu sesión.</li>
-              <li>
-                En la página de pago verás su CLABE, monto y referencia; transfiere y
-                registra el comprobante.
-              </li>
-              <li>El profesional confirma y la sesión queda pagada.</li>
-            </ol>
-          </details>
-        )}
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <GlassCard className="p-4">
@@ -555,14 +557,23 @@ export default function ResumenPage() {
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">{emptyState.title}</p>
               <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-                {emptyState.action && (
-                  <Link
-                    href={emptyState.action.href}
-                    className="text-xs font-semibold text-mauve-300 hover:text-mauve-200"
-                  >
-                    {emptyState.action.label}
-                  </Link>
-                )}
+                {emptyState.action &&
+                  (emptyState.action.href ? (
+                    <Link
+                      href={emptyState.action.href}
+                      className="text-xs font-semibold text-mauve-300 hover:text-mauve-200"
+                    >
+                      {emptyState.action.label}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={emptyState.action.onClick}
+                      className="text-xs font-semibold text-mauve-300 hover:text-mauve-200"
+                    >
+                      {emptyState.action.label}
+                    </button>
+                  ))}
                 {method !== 'all' && (
                   <button
                     type="button"
@@ -631,6 +642,11 @@ export default function ResumenPage() {
           )}
         </GlassCard>
       </div>
+
+      <SpeiPaymentModal
+        open={speiModalOpen}
+        onClose={() => setSpeiModalOpen(false)}
+      />
     </div>
   )
 }
