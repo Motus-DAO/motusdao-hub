@@ -4,6 +4,7 @@ import {
   searchPublicKnowledge,
 } from "@/lib/motty/mcp";
 import { mottyConfig } from "@/lib/motty/config";
+import { createProductPayment } from "@/lib/motty/products";
 import {
   createEscrowForUserSession,
   getPaymentStatusForSession,
@@ -28,6 +29,7 @@ export const ALL_MOTTY_TOOL_NAMES = [
   "prepareTransfer",
   "getMyTherapistAvailability",
   "bookTherapySession",
+  "createProductPayment",
 ] as const;
 
 export type MottyToolName = (typeof ALL_MOTTY_TOOL_NAMES)[number];
@@ -43,6 +45,7 @@ export const MOTTY_PAYMENT_TOOL_NAMES: readonly MottyToolName[] = [
   "prepareTransfer",
   "getMyTherapistAvailability",
   "bookTherapySession",
+  "createProductPayment",
 ];
 
 type JsonSchema = Record<string, unknown>;
@@ -211,6 +214,34 @@ const TOOL_SCHEMAS: Record<MottyToolName, OpenAiTool> = {
       },
     },
   },
+  createProductPayment: {
+    type: "function",
+    function: {
+      name: "createProductPayment",
+      description:
+        "Prepare a membership or Academy course payment. Ask the user first whether they want Stripe or crypto, then call this with their choice. Stripe returns a checkout link; crypto returns a wMXN amount payable directly to the MotusDAO treasury. Never invent a price or choose the method for the user.",
+      parameters: {
+        type: "object",
+        properties: {
+          product: {
+            type: "string",
+            enum: ["membership", "course"],
+            description: "membership or course.",
+          },
+          courseSlug: {
+            type: "string",
+            description: "Course slug or id when product=course.",
+          },
+          method: {
+            type: "string",
+            enum: ["stripe", "crypto"],
+            description: "Ask the user first; do not guess.",
+          },
+        },
+        required: ["product", "method"],
+      },
+    },
+  },
 };
 
 export function mottyPaymentsEnabled(): boolean {
@@ -293,6 +324,31 @@ export async function executeMottyTool(
       return {
         session,
         result: await runHelper(name, () => getRampLinkForUser(session.userId, amount)),
+      };
+    }
+    case "createProductPayment": {
+      const product = getString(args, "product")
+      const method = getString(args, "method")
+      const courseSlug = getString(args, "courseSlug");
+      if (
+        (product !== "membership" && product !== "course") ||
+        (method !== "stripe" && method !== "crypto")
+      ) {
+        return {
+          session,
+          result: { ok: false, tool: name, error: "product_or_method_invalid" },
+        };
+      }
+      return {
+        session,
+        result: await runHelper(name, () =>
+          createProductPayment({
+            userId: session.userId,
+            product,
+            courseSlug,
+            method,
+          })
+        ),
       };
     }
     case "getMyTherapistAvailability": {

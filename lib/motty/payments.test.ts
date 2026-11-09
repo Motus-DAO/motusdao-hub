@@ -91,3 +91,10 @@ test('availability and booking tools are enabled with payments', () => {
     assert.ok(names.includes('bookTherapySession'))
   })
 })
+
+
+test('product payment tool is enabled with payments', () => {
+  withEnv('MOTTY_PAYMENTS_ENABLED', 'true', () => {
+    assert.ok(enabledMottyToolNames().includes('createProductPayment'))
+  })
+})
