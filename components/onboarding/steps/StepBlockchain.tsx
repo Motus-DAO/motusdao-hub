@@ -775,7 +775,7 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
               </div>
             )}
 
-            <div className="flex justify-center space-x-4">
+            <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={onBack}
                 className={onboardingBackButtonClass}
@@ -783,13 +783,23 @@ export function StepBlockchain({ onNext, onBack }: StepBlockchainProps) {
                 Atrás
               </button>
               <CTAButton
-                onClick={handleCompleteStep}
+                onClick={() => setStatus('idle')}
                 className="flex items-center space-x-2"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Intentar de nuevo</span>
               </CTAButton>
+              <CTAButton
+                variant="secondary"
+                onClick={handleConfirmSkipMns}
+              >
+                Continuar sin dominio
+              </CTAButton>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Si el faucet o la compra del NFT fallan, puedes seguir con tu registro y
+              registrar tu dominio después en Motus Names.
+            </p>
           </div>
         )
 
