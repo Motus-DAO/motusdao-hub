@@ -116,15 +116,15 @@ export const getNavigationGroups = (role: UserRole): NavGroup[] => {
   ]
 
   const finance: NavItem[] = [
-    { name: 'Pagos', href: '/finanzas', icon: 'Wallet' },
-    { name: 'Actividad', href: '/finanzas/actividad', icon: 'History' },
+    { name: 'Resumen', href: '/finanzas', icon: 'Wallet' },
+    { name: 'Wallet', href: '/pagos', icon: 'Landmark' },
     ...(role === 'usuario'
       ? ([] as NavItem[])
       : ([
-          { name: 'Sesiones', href: '/cobros/sesiones', icon: 'Calendar' },
           { name: 'Cobros', href: '/cobros', icon: 'CreditCard' },
+          { name: 'Depósitos', href: '/finanzas/depositos', icon: 'Landmark' },
+          { name: 'Sesiones', href: '/cobros/sesiones', icon: 'Calendar' },
         ] as NavItem[])),
-    { name: 'Métodos', href: '/finanzas/metodos', icon: 'Landmark' },
   ]
 
   return [
