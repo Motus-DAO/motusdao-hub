@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Loader2 } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
@@ -32,12 +32,13 @@ function formatSlotTime(iso: string) {
   }).format(new Date(iso))
 }
 
-function formatSlotDate(iso: string) {
-  return new Intl.DateTimeFormat('es', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(iso))
+function pad2(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function localDateKey(iso: string) {
+  const date = new Date(iso)
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
 }
 
 export function TherapistBookingCard({ slug, profile }: Props) {
@@ -47,6 +48,11 @@ export function TherapistBookingCard({ slug, profile }: Props) {
   const [slots, setSlots] = useState<Slot[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
@@ -71,15 +77,64 @@ export function TherapistBookingCard({ slug, profile }: Props) {
     load()
   }, [slug])
 
-  const slotsByDay = useMemo(() => {
+  const slotsByDate = useMemo(() => {
     const map = new Map<string, Slot[]>()
     for (const slot of slots) {
-      const day = slot.startsAt.slice(0, 10)
-      if (!map.has(day)) map.set(day, [])
-      map.get(day)!.push(slot)
+      const key = localDateKey(slot.startsAt)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(slot)
     }
-    return [...map.entries()].slice(0, 56)
+    for (const daySlots of map.values()) {
+      daySlots.sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    }
+    return map
   }, [slots])
+
+  useEffect(() => {
+    if (slots.length === 0) return
+    const first = new Date(slots[0].startsAt)
+    setVisibleMonth(new Date(first.getFullYear(), first.getMonth(), 1))
+    setSelectedDate(localDateKey(slots[0].startsAt))
+    setSelectedSlotId(null)
+  }, [slots])
+
+  const today = new Date()
+  const todayKey = localDateKey(today.toISOString())
+  const selectedDaySlots = selectedDate
+    ? (slotsByDate.get(selectedDate) ?? [])
+    : []
+  const calendarCells = useMemo(() => {
+    const first = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1)
+    const offset = (first.getDay() + 6) % 7
+    const daysInMonth = new Date(
+      visibleMonth.getFullYear(),
+      visibleMonth.getMonth() + 1,
+      0
+    ).getDate()
+    return [
+      ...Array<null>(offset).fill(null),
+      ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+    ]
+  }, [visibleMonth])
+  const monthLabel = new Intl.DateTimeFormat('es', {
+    month: 'long',
+    year: 'numeric',
+  }).format(visibleMonth)
+  const lastSlotDate =
+    slots.length > 0 ? new Date(slots[slots.length - 1].startsAt) : null
+  const canPrev =
+    visibleMonth > new Date(today.getFullYear(), today.getMonth(), 1)
+  const canNext = lastSlotDate
+    ? visibleMonth <
+      new Date(lastSlotDate.getFullYear(), lastSlotDate.getMonth(), 1)
+    : false
+  const selectedDayLabel = selectedDate
+    ? new Intl.DateTimeFormat('es', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }).format(new Date(`${selectedDate}T12:00:00`))
+    : ''
 
   const submitBooking = useCallback(async () => {
     if (!selectedSlotId) return
@@ -179,7 +234,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
 
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
-          <span>Elige el horario de la sesión</span>
+          <span>Elige día y hora</span>
         </div>
         <p className="text-xs text-muted-foreground">(En tu zona horaria)</p>
 
@@ -187,39 +242,112 @@ export function TherapistBookingCard({ slug, profile }: Props) {
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-mauve-400" />
           </div>
-        ) : slotsByDay.length === 0 ? (
+        ) : slotsByDate.size === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             No hay horarios disponibles pronto. Vuelve a revisar más tarde.
           </p>
         ) : (
-          <div className="mt-4 max-h-72 space-y-4 overflow-y-auto pr-1">
-            {slotsByDay.map(([day, daySlots]) => (
-              <div key={day}>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {formatSlotDate(daySlots[0].startsAt)}
+          <>
+            <div className="mt-4 rounded-xl border border-white/10 p-3">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  aria-label="Mes anterior"
+                  disabled={!canPrev}
+                  onClick={() =>
+                    setVisibleMonth(
+                      new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1)
+                    )
+                  }
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/5 hover:text-foreground disabled:opacity-30"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <p className="text-sm font-semibold capitalize">{monthLabel}</p>
+                <button
+                  type="button"
+                  aria-label="Mes siguiente"
+                  disabled={!canNext}
+                  onClick={() =>
+                    setVisibleMonth(
+                      new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1)
+                    )
+                  }
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/5 hover:text-foreground disabled:opacity-30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((day) => (
+                  <span key={day}>{day}</span>
+                ))}
+              </div>
+
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {calendarCells.map((day, index) => {
+                  if (day === null) return <span key={`empty-${index}`} />
+                  const key = `${visibleMonth.getFullYear()}-${pad2(
+                    visibleMonth.getMonth() + 1
+                  )}-${pad2(day)}`
+                  const hasSlots = slotsByDate.has(key)
+                  const isPast = key < todayKey
+                  const isSelected = key === selectedDate
+                  const isToday = key === todayKey
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={!hasSlots || isPast}
+                      onClick={() => {
+                        setSelectedDate(key)
+                        setSelectedSlotId(null)
+                      }}
+                      aria-label={`Elegir ${key}`}
+                      className={`flex h-8 w-full items-center justify-center rounded-lg text-xs transition-colors ${
+                        isSelected
+                          ? 'bg-mauve-500 font-semibold text-white'
+                          : hasSlots && !isPast
+                            ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400'
+                            : 'text-muted-foreground/30'
+                      } ${isToday && !isSelected ? 'ring-1 ring-mauve-400/40' : ''}`}
+                    >
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs font-medium capitalize text-muted-foreground">
+                {selectedDayLabel || 'Elige un día'}
+              </p>
+              {selectedDaySlots.length === 0 ? (
+                <p className="py-3 text-xs text-muted-foreground">
+                  No hay horarios este día.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {daySlots.map((slot) => (
+              ) : (
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                  {selectedDaySlots.map((slot) => (
                     <button
                       key={slot.id}
                       type="button"
                       onClick={() => setSelectedSlotId(slot.id)}
-                      className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      className={`rounded-lg border px-2 py-1.5 text-xs transition-colors ${
                         selectedSlotId === slot.id
-                          ? 'border-mauve-400 bg-mauve-500/20 text-mauve-800 dark:text-white'
+                          ? 'border-mauve-400 bg-mauve-500/20 font-semibold text-white'
                           : 'border-white/10 hover:border-mauve-400/50'
                       }`}
                     >
                       {formatSlotTime(slot.startsAt)}
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({slot.durationMinutes} min)
-                      </span>
                     </button>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          </>
         )}
 
         {displayError && <p className="mt-3 text-sm text-red-400">{displayError}</p>}
