@@ -10,11 +10,21 @@ import { mergeActivity } from '@/lib/finance/activity'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+function personName(input: {
+  motusName?: string | null
+  email?: string | null
+  profile?: { nombre: string | null; apellido: string | null } | null
+}) {
+  const full = `${input.profile?.nombre ?? ''} ${input.profile?.apellido ?? ''}`.trim()
+  return full || input.motusName || input.email || null
+}
+
 /**
  * GET /api/finance/activity
  *
  * Read model for the finance hub: on-chain movements (Blockscout) + therapy
- * payments (card/SPEI) + Academy purchases. No writes, no schema.
+ * payments (card/SPEI, patient and professional sides) + Academy purchases.
+ * No writes, no schema.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +54,7 @@ export async function GET(request: NextRequest) {
         })
       : []
 
+    // Sessions where the user is the patient (money out).
     const sessions = userId
       ? await prisma.session.findMany({
           where: { userId },
@@ -58,7 +69,28 @@ export async function GET(request: NextRequest) {
         })
       : []
 
-    const sessionIds = sessions.map((session) => session.id)
+    // Sessions where the user is the professional (money in).
+    const psmSessions = userId
+      ? await prisma.session.findMany({
+          where: { psmId: userId, paidAt: { not: null } },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+          select: {
+            id: true,
+            paidAt: true,
+            refundedAt: true,
+            user: {
+              select: {
+                motusName: true,
+                email: true,
+                profile: { select: { nombre: true, apellido: true } },
+              },
+            },
+          },
+        })
+      : []
+
+    const sessionIds = [...new Set([...sessions, ...psmSessions].map((s) => s.id))]
 
     const holds =
       sessionIds.length > 0
@@ -97,22 +129,51 @@ export async function GET(request: NextRequest) {
       if (hold.sessionId) holdBySession.set(hold.sessionId, hold.amountCents)
     }
 
+    const directionBySession = new Map<string, 'in' | 'out'>()
+    const counterpartBySession = new Map<string, string>()
+    for (const session of sessions) {
+      directionBySession.set(session.id, 'out')
+      const name = personName(session.psm ?? {})
+      if (name) counterpartBySession.set(session.id, name)
+    }
+    for (const session of psmSessions) {
+      directionBySession.set(session.id, 'in')
+      const name = personName(session.user ?? {})
+      if (name) counterpartBySession.set(session.id, name)
+    }
+
     const items = mergeActivity({
       onchain,
-      card: sessions
-        .filter((session) => session.paidAt)
-        .map((session) => ({
-          sessionId: session.id,
-          paidAt: session.paidAt,
-          refundedAt: session.refundedAt,
-          amountCents: holdBySession.get(session.id) ?? null,
-          psmLabel: session.psm?.motusName || session.psm?.email || null,
-        })),
+      card: [
+        ...sessions
+          .filter((session) => session.paidAt)
+          .map((session) => ({
+            sessionId: session.id,
+            paidAt: session.paidAt,
+            refundedAt: session.refundedAt,
+            amountCents: holdBySession.get(session.id) ?? null,
+            psmLabel: session.psm?.motusName || session.psm?.email || null,
+            counterpartLabel: counterpartBySession.get(session.id) ?? null,
+            direction: 'out' as const,
+          })),
+        ...psmSessions
+          .filter((session) => session.paidAt)
+          .map((session) => ({
+            sessionId: session.id,
+            paidAt: session.paidAt,
+            refundedAt: session.refundedAt,
+            amountCents: holdBySession.get(session.id) ?? null,
+            counterpartLabel: counterpartBySession.get(session.id) ?? null,
+            direction: 'in' as const,
+          })),
+      ],
       spei: transfers.map((transfer) => ({
         sessionId: transfer.sessionId,
         amount: transfer.amount ? transfer.amount.toString() : null,
         currency: transfer.currency,
         createdAt: transfer.createdAt,
+        counterpartLabel: counterpartBySession.get(transfer.sessionId) ?? null,
+        direction: directionBySession.get(transfer.sessionId) ?? 'out',
       })),
       escrow: escrowSessions.map((escrow) => {
         const amount = BigInt(escrow.amount)
@@ -142,6 +203,7 @@ export async function GET(request: NextRequest) {
         onchain: onchain.length,
         therapy:
           sessions.filter((session) => session.paidAt).length +
+          psmSessions.filter((session) => session.paidAt).length +
           transfers.length +
           escrowSessions.length,
         academy: payments.length,

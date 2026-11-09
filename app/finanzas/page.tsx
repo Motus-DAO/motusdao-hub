@@ -28,6 +28,7 @@ import type {
 } from '@/lib/finance/activity'
 
 type Method = 'all' | 'wallet' | 'stripe' | 'spei'
+type Direction = 'all' | 'in' | 'out'
 
 type MethodsState = {
   wallet: { active: boolean; address: string | null }
@@ -47,6 +48,12 @@ const METHOD_TILES: {
   { id: 'wallet', label: 'Wallet', hint: 'wMXN · USDT · autocustodia', icon: Wallet, href: '/pagos' },
   { id: 'stripe', label: 'Stripe', hint: 'Tarjeta · Stripe Connect', icon: CreditCard, href: '/cobros' },
   { id: 'spei', label: 'SPEI', hint: 'CLABE · transferencia bancaria', icon: Building2, href: '/finanzas/depositos' },
+]
+
+const DIRECTIONS: { id: Direction; label: string }[] = [
+  { id: 'all', label: 'Todo' },
+  { id: 'in', label: 'Ingresos' },
+  { id: 'out', label: 'Egresos' },
 ]
 
 const KIND_ICON: Record<ActivityKind, LucideIcon> = {
@@ -76,6 +83,18 @@ function railOf(kind: ActivityKind): Exclude<Method, 'all'> {
   if (kind === 'therapy_card' || kind === 'academy') return 'stripe'
   if (kind === 'therapy_spei') return 'spei'
   return 'wallet'
+}
+
+function itemDirection(item: ActivityItem): 'in' | 'out' {
+  if (item.direction) return item.direction
+  if (
+    item.kind === 'onchain_received' ||
+    item.kind === 'therapy_card' ||
+    item.kind === 'therapy_spei'
+  ) {
+    return 'in'
+  }
+  return 'out'
 }
 
 function railLabel(kind: ActivityKind): string {
@@ -109,6 +128,7 @@ export default function ResumenPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [method, setMethod] = useState<Method>('all')
+  const [direction, setDirection] = useState<Direction>('all')
   const [methods, setMethods] = useState<MethodsState | null>(null)
 
   useEffect(() => {
@@ -168,8 +188,13 @@ export default function ResumenPage() {
   }, [items])
 
   const filtered = useMemo(
-    () => (method === 'all' ? items : items.filter((item) => railOf(item.kind) === method)),
-    [items, method]
+    () =>
+      items.filter((item) => {
+        if (method !== 'all' && railOf(item.kind) !== method) return false
+        if (direction !== 'all' && itemDirection(item) !== direction) return false
+        return true
+      }),
+    [items, method, direction]
   )
 
   const enEscrow = items.filter(
@@ -180,6 +205,7 @@ export default function ResumenPage() {
     title: string
     action?: { label: string; href: string }
   } = (() => {
+    const money = direction === 'in' ? 'ingresos' : 'egresos'
     if (method === 'spei') {
       if (methods && !methods.spei.active && isPsm) {
         return {
@@ -188,7 +214,12 @@ export default function ResumenPage() {
           action: { label: 'Configurar CLABE', href: '/finanzas/depositos' },
         }
       }
-      return { title: 'Aún no hay depósitos SPEI.' }
+      return {
+        title:
+          direction === 'all'
+            ? 'Aún no hay depósitos SPEI.'
+            : `No hay ${money} en SPEI.`,
+      }
     }
     if (method === 'stripe') {
       if (methods && !methods.stripe.active && isPsm) {
@@ -198,15 +229,28 @@ export default function ResumenPage() {
           action: { label: 'Configurar Stripe', href: '/cobros/cuenta' },
         }
       }
-      return { title: 'Aún no hay cobros con tarjeta.' }
+      return {
+        title:
+          direction === 'all'
+            ? 'Aún no hay cobros con tarjeta.'
+            : `No hay ${money} con tarjeta.`,
+      }
     }
     if (method === 'wallet') {
       return {
-        title: 'Aún no hay movimientos en tu wallet.',
+        title:
+          direction === 'all'
+            ? 'Aún no hay movimientos en tu wallet.'
+            : `No hay ${money} en tu wallet.`,
         action: { label: 'Abrir wallet', href: '/pagos' },
       }
     }
-    return { title: 'Aún no hay movimientos.' }
+    return {
+      title:
+        direction === 'all'
+          ? 'Aún no hay movimientos.'
+          : `No hay ${money} en tu cuenta.`,
+    }
   })()
 
   if (!authenticated) {
@@ -382,6 +426,37 @@ export default function ResumenPage() {
             <p className="text-xs text-muted-foreground">Stripe</p>
             <p className="mt-1 text-2xl font-bold">{counts.stripe}</p>
           </GlassCard>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Dirección
+            </span>
+            <div className="flex rounded-xl border border-white/10 p-1">
+              {DIRECTIONS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setDirection(item.id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    direction === item.id
+                      ? 'bg-mauve-500/20 text-mauve-200'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {direction === 'all'
+              ? 'Ingresos y egresos'
+              : direction === 'in'
+                ? 'Solo ingresos'
+                : 'Solo egresos'}
+          </p>
         </div>
 
         <GlassCard className="mt-6 p-5">

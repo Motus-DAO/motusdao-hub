@@ -167,3 +167,63 @@ describe('mergeActivity', () => {
     assert.equal(items[1].status, 'pending')
   })
 })
+
+describe('activity direction', () => {
+  it('marks card income/expense, academy expense and on-chain direction', () => {
+    const items = mergeActivity({
+      onchain: [
+        onchain({ txHash: '0x1', direction: 'sent', timestamp: 1000 }),
+        onchain({ txHash: '0x2', direction: 'received', timestamp: 2000 }),
+      ],
+      card: [
+        {
+          sessionId: 's1',
+          paidAt: new Date(3000),
+          refundedAt: null,
+          amountCents: 4500,
+          direction: 'in',
+          counterpartLabel: 'Ana',
+        },
+        {
+          sessionId: 's2',
+          paidAt: new Date(4000),
+          refundedAt: null,
+          amountCents: 4500,
+          direction: 'out',
+          counterpartLabel: 'Luis',
+        },
+      ],
+      spei: [
+        {
+          sessionId: 's3',
+          amount: '500',
+          currency: 'MXN',
+          createdAt: new Date(5000),
+          direction: 'in',
+          counterpartLabel: 'Paciente',
+        },
+      ],
+      academy: [
+        {
+          paymentId: 'p1',
+          amount: '15',
+          currency: 'USD',
+          status: 'confirmed',
+          createdAt: new Date(6000),
+          orderId: null,
+        },
+      ],
+    })
+
+    const byId = new Map(items.map((item) => [item.id, item]))
+    assert.equal(byId.get('onchain:0x1:0x337e7456b420bd3481e7fa61fa9850343d610d34')?.direction, 'out')
+    assert.equal(byId.get('onchain:0x2:0x337e7456b420bd3481e7fa61fa9850343d610d34')?.direction, 'in')
+    assert.equal(byId.get('card:s1')?.direction, 'in')
+    assert.equal(byId.get('card:s1')?.title, 'Cobro de sesión con tarjeta')
+    assert.equal(byId.get('card:s2')?.direction, 'out')
+    assert.equal(byId.get('card:s2')?.title, 'Sesión pagada con tarjeta')
+    assert.equal(byId.get('spei:s3:5000')?.direction, 'in')
+    assert.equal(byId.get('spei:s3:5000')?.title, 'Sesión cobrada por SPEI')
+    assert.equal(byId.get('academy:p1')?.direction, 'out')
+  })
+})

@@ -38,6 +38,8 @@ export type TherapyCardActivity = {
   /** Therapy holds are stored in USD cents. */
   amountCents: number | null
   psmLabel?: string | null
+  counterpartLabel?: string | null
+  direction?: 'in' | 'out'
 }
 
 export type TherapySpeiActivity = {
@@ -45,6 +47,8 @@ export type TherapySpeiActivity = {
   amount: string | number | null
   currency: string | null
   createdAt: Date
+  counterpartLabel?: string | null
+  direction?: 'in' | 'out'
 }
 
 export type TherapyEscrowActivity = {
@@ -110,6 +114,7 @@ export function mergeActivity(input: {
     items.push({
       id: `onchain:${item.txHash}:${item.tokenAddress ?? 'native'}`,
       kind: sent ? 'onchain_sent' : 'onchain_received',
+      direction: sent ? 'out' : 'in',
       title: sent
         ? `Enviaste ${formatAmount(item.amount)} ${item.symbol}`
         : `Recibiste ${formatAmount(item.amount)} ${item.symbol}`,
@@ -125,34 +130,51 @@ export function mergeActivity(input: {
 
   for (const card of input.card ?? []) {
     if (!card.paidAt) continue
+    const incoming = card.direction === 'in'
     cardSessions.add(card.sessionId)
+    const counterpart = card.counterpartLabel || card.psmLabel
     items.push({
       id: `card:${card.sessionId}`,
       kind: 'therapy_card',
-      title: card.refundedAt ? 'Sesión reembolsada (tarjeta)' : 'Sesión pagada con tarjeta',
-      subtitle: card.psmLabel ? `Con ${card.psmLabel}` : 'Terapia',
+      title: card.refundedAt
+        ? 'Sesión reembolsada (tarjeta)'
+        : incoming
+          ? 'Cobro de sesión con tarjeta'
+          : 'Sesión pagada con tarjeta',
+      subtitle: counterpart
+        ? `${incoming ? 'De' : 'Con'} ${counterpart}`
+        : incoming
+          ? 'Ingreso con tarjeta'
+          : 'Terapia',
       amount: card.amountCents != null ? amountFromCents(card.amountCents) : null,
       currency: card.amountCents != null ? 'USD' : null,
       timestamp: card.paidAt.getTime(),
       status: card.refundedAt ? 'refunded' : 'confirmed',
-      href: '/psicoterapia',
+      href: incoming ? '/cobros' : '/psicoterapia',
       explorerUrl: null,
+      direction: incoming ? 'in' : 'out',
     })
   }
 
   for (const spei of input.spei ?? []) {
     if (cardSessions.has(spei.sessionId)) continue
+    const incoming = spei.direction === 'in'
     items.push({
       id: `spei:${spei.sessionId}:${spei.createdAt.getTime()}`,
       kind: 'therapy_spei',
-      title: 'Sesión pagada por SPEI',
-      subtitle: 'Transferencia bancaria',
+      title: incoming ? 'Sesión cobrada por SPEI' : 'Sesión pagada por SPEI',
+      subtitle: incoming
+        ? 'Transferencia recibida'
+        : spei.counterpartLabel
+          ? `A ${spei.counterpartLabel}`
+          : 'Transferencia bancaria',
       amount: spei.amount != null ? formatAmount(String(spei.amount)) : null,
       currency: spei.currency,
       timestamp: spei.createdAt.getTime(),
       status: 'confirmed',
-      href: '/psicoterapia',
+      href: incoming ? '/cobros' : '/psicoterapia',
       explorerUrl: null,
+      direction: incoming ? 'in' : 'out',
     })
   }
 
@@ -207,6 +229,7 @@ export function mergeActivity(input: {
       status: academyStatus(payment.status),
       href: '/academia',
       explorerUrl: null,
+      direction: 'out',
     })
   }
 
