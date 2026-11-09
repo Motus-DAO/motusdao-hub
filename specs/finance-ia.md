@@ -1,113 +1,118 @@
-# Finance IA — Resumen, rails and doors
+# Finance IA — Resumen as the map
 
-> Status: proposal (2026-11-08). This supersedes the flat "Pagos/Actividad/
-> Cobros/Métodos" map. Do not implement until the Deposits question below is
-> answered.
+> Status: proposal (2026-11-08). Supersedes the flat "Pagos/Actividad/Cobros/
+> Métodos" map and the idea of a separate Métodos page.
 
-## 1. Mental model
+## 1. One sentence
 
-Three payment rails, each with its own KYC and interface:
+**Resumen shows all the money and the three methods; each method opens its own
+interface to act.**
 
-| Rail | Money | KYC / account | Surface |
+## 2. The three methods
+
+| Method | Money | KYC / account | Interface |
 |---|---|---|---|
-| **On-chain wallet** | wMXN, USDT, wFIAT | Self-custody (WaaP); Ripio does fiat KYC on the ramp | `/pagos` |
-| **Stripe** | Card charges and Stripe payouts | Stripe Connect | `/cobros` (+ `/cobros/depositos` payouts) |
-| **SPEI** | Bank transfer / CLABE | Bank; Motus confirms manually | `/finanzas/depositos` (new) |
+| **Wallet + Ripio** | wMXN, USDT, wFIAT | Self-custody (WaaP); Ripio does fiat KYC on the ramp | `/pagos` |
+| **Stripe** | Card charges and payouts | Stripe Connect | `/cobros` |
+| **SPEI** | CLABE / bank transfer | Bank; Motus confirms manually | `/finanzas/depositos` (new) |
 
-`Sesiones` is not a rail: it is the operational view of escrow sessions
-(`/cobros/sesiones`). `Métodos` is not a rail either: it is the **doors**.
+`Sesiones` is not a method: it is the operational view of escrow sessions
+(`/cobros/sesiones`). It has a shortcut in Resumen and in the sidebar.
 
-## 2. Routes
+## 3. Resumen = "Métodos" + summary + activity
 
-| Route | Role |
-|---|---|
-| `/finanzas` | **Resumen**: money in/out/net, en escrow, unified activity, smart filters, shortcuts |
-| `/pagos` | **Wallet**: on-chain self-custody; send/receive/history; Ripio ramp door |
-| `/cobros` | **Cobros**: Stripe Connect; charges and embedded panel |
-| `/cobros/depositos` | Stripe payouts (keep inside Cobros; not the third rail) |
-| `/finanzas/depositos` | **Depósitos SPEI**: CLABE, incoming transfers, manual confirmation |
-| `/cobros/sesiones` | **Sesiones**: escrow sessions for the PSM, confirm/release |
-| `/finanzas/metodos` | **Métodos**: the doors (Wallet, Ripio, Stripe, SPEI) with status and CTA |
+`/finanzas` is the map:
 
-## 3. Resumen: smart filters
+1. **Métodos (selector).** Four tiles: **Todo · Wallet · Stripe · SPEI**.
+   - Each tile shows the method name, its KYC owner, a mini summary and an
+     **Abrir** link to its interface.
+   - Clicking the tile **filters the page** (summary + activity); it does not
+     navigate. "Abrir" is the explicit link to the method page.
+   - This is the mental map: three methods, one place to see them together or
+     split.
+2. **Summary for the selected method.**
+   - Todo: money in / out / net, en escrow, per currency.
+   - Wallet: wMXN + USDT + CELO, Ripio ramp status.
+   - Stripe: charged, pending, payouts.
+   - SPEI: deposits, pending confirmations.
+3. **Activity** filtered by the selected method, with rail badges, direction
+   and status filters, date groups and a detail drawer.
+4. **Shortcuts:** Sesiones (and the method pages).
 
-The feed can be seen as one list or split by rail. Filters are the mental map:
+No separate `/finanzas/metodos` page. That route redirects to `/finanzas`; the
+Métodos cards are the first block of Resumen.
+
+## 4. Sidebar
 
 ```
-Método:   Todo · Wallet · Stripe · SPEI · Escrow · Academia
+Finanzas
+  Resumen       /finanzas
+  Wallet        /pagos
+  Cobros        /cobros
+  Depósitos     /finanzas/depositos
+  Sesiones      /cobros/sesiones
+```
+
+- "Pagos" becomes "Resumen".
+- "Actividad" disappears from the nav; `/finanzas/actividad` can stay as a
+  detail view or redirect to `/finanzas#actividad`.
+- "Métodos" disappears from the nav; it lives inside Resumen.
+- Stripe payouts remain at `/cobros/depositos`, inside Cobros.
+
+## 5. What each method page does
+
+- **Wallet `/pagos`:** on-chain self-custody; send/receive/history; Ripio buy/sell
+  door. This is where wFIAT/USDT live.
+- **Cobros `/cobros`:** Stripe Connect; charges and embedded panel; payouts under
+  `/cobros/depositos`.
+- **Depósitos `/finanzas/depositos`:** CLABE/SPEI; incoming transfers and manual
+  confirmation.
+- **Sesiones `/cobros/sesiones`:** escrow sessions; confirm/release; shortcut in
+  Resumen.
+
+## 6. Filters are the methods
+
+The primary filter is the method tile. Secondary filters refine within it:
+
+```
+Método:   Todo · Wallet · Stripe · SPEI
+Categoría: Todo · Terapia · Academia
 Dirección: Todo · Entradas · Salidas
 Estado:   Todo · Pendiente · Confirmado · Reembolsado
 [Buscar]  [Fecha]
 ```
 
-- **Wallet** includes on-chain transfers and Ripio on-ramps (the app only sees
-  the resulting wMXN/USDT transfer; the Ripio door explains the KYC).
-- **Stripe** = card charges (Academy and therapy card).
-- **SPEI** = bank transfers/CLABE.
-- **Escrow** = therapy sessions in the escrow (deposit, refund, payout).
-- **Academia** = course/membership purchases on Stripe.
-- `Todo` merges them with rail badges.
-- Selecting a rail shows its own summary and a "Abrir [rail]" CTA.
-
-## 4. Resumen layout
-
-1. **Header**: money in / out / net for the filter (per currency; never sum
-   USD + MXN + wMXN), and "En escrow" for therapy.
-2. **Shortcuts**: Sesiones, Wallet, Cobros, Depósitos, Métodos. Sesiones also
-   lives in the sidebar.
-3. **Activity** grouped by date, each row with a rail badge (Escrow, Tarjeta,
-   SPEI, Academia, Wallet), signed amount, status.
-4. **Detail drawer** (phase 2): timeline + tx hash/receipt + link to the rail.
-
-## 5. Sidebar
-
-Under **Finanzas**:
-
-```
-Resumen        /finanzas
-Wallet         /pagos
-Cobros         /cobros
-Depósitos      /finanzas/depositos
-Sesiones       /cobros/sesiones
-Métodos        /finanzas/metodos
-```
-
-Remove "Actividad" from the nav; `/finanzas/actividad` can remain as a detail
-or redirect to `/finanzas#actividad`. "Pagos" is renamed "Resumen".
-
-## 6. Métodos = doors
-
-Each card shows: rail, what it is, KYC owner, status, and a CTA:
-
-- **Wallet (WaaP)** → `/pagos` (self-custody; wFIAT/USDT).
-- **Ripio · MX · wMXN** → `/pagos` (fiat on/off ramp; KYC inside Ripio).
-- **Tarjeta (Stripe Connect)** → `/cobros` (KYC inside Stripe).
-- **CLABE / SPEI** → `/finanzas/depositos` (bank transfer; manual confirmation).
-
-The Resumen filters point to the same rails; Métodos is the door picker.
+- Wallet includes on-chain transfers and the resulting Ripio on-ramps; the app
+  cannot always know the fiat source, so the Ripio tile explains the KYC.
+- Stripe includes card charges (therapy and Academy).
+- SPEI includes bank transfers.
+- Escrow is the therapy flow inside Wallet (wMXN); Sesiones is its operational
+  view.
 
 ## 7. Open question — what is "Depósitos"?
 
-- **A. SPEI deposits** (recommended): new `/finanzas/depositos` for CLABE
-  transfers; Stripe payouts stay at `/cobros/depositos`.
-- **B. Stripe payouts**: reuse `/cobros/depositos` and add it to the nav; then
-  the third rail in the model is Wallet, not SPEI.
+The three-method model implies **SPEI**:
 
-The three-rail model (Wallet/Ripio, Stripe, SPEI) implies **A**.
+- **A (assumed):** `/finanzas/depositos` for CLABE/SPEI; Stripe payouts stay at
+  `/cobros/depositos`.
+- **B:** "Depósitos" means Stripe payouts; then reuse `/cobros/depositos` and
+  the third method would be Wallet instead of SPEI.
+
+Implement A unless confirmed otherwise.
 
 ## 8. Phases
 
 | Phase | Scope |
 |---|---|
-| 1 | Nav + labels; Resumen with summary, filters, Sesiones shortcut; Métodos doors aligned |
+| 1 | Nav + labels; Resumen with the 3 method tiles, per-method summary, activity filter, Sesiones shortcut; `/finanzas/metodos` redirect |
 | 2 | Rail badges, date groups, detail drawer |
 | 3 | SPEI deposits page; saved views/export |
 
 ## 9. Acceptance
 
-- A user can explain the map in one sentence: "Resumen shows everything; Wallet,
-  Cobros and Depósitos are the three doors; Métodos explains them."
-- Every activity row shows its rail.
-- Resumen filters by rail and shows the matching summary.
+- A user can say: "Resumen shows everything; the three methods are there; I
+  open one to act."
+- Clicking a method tile filters the summary and activity; "Abrir" goes to its
+  page.
 - Sesiones is reachable from Resumen and the sidebar.
 - No `/cobros/*` Stripe Site link is moved.
