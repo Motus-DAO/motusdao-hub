@@ -26,6 +26,9 @@ type CachedSession = { id: string; ready: boolean };
 
 let cached: CachedSession | null = null;
 
+const SEARCH_CACHE_MS = 10 * 60 * 1000;
+const searchCache = new Map<string, { hits: KnowledgeHit[]; expiresAt: number }>();
+
 export type KnowledgeHit = {
   namespace: PublicKnowledgeNamespace;
   text: string;
@@ -41,11 +44,23 @@ export async function searchPublicKnowledge(input: {
   }
 
   const namespaces = resolveNamespaces(input.namespace);
+  const cacheKey = `${namespaces.join(',')}:${query.toLowerCase()}`;
+  const cachedSearch = searchCache.get(cacheKey);
+  if (cachedSearch && cachedSearch.expiresAt > Date.now()) {
+    return cachedSearch.hits;
+  }
+
   const hits: KnowledgeHit[] = [];
 
   for (const namespace of namespaces) {
     const text = await callSearchKnowledge(query, namespace);
     if (text) hits.push({ namespace, text });
+  }
+
+  searchCache.set(cacheKey, { hits, expiresAt: Date.now() + SEARCH_CACHE_MS });
+  if (searchCache.size > 200) {
+    const oldest = searchCache.keys().next().value;
+    if (oldest) searchCache.delete(oldest);
   }
 
   return hits;
