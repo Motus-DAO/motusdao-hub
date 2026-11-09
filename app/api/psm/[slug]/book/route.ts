@@ -82,14 +82,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const existingWithOtherPsm = user.userMatches.find((m) => m.psmId !== psmUser.id)
-    if (existingWithOtherPsm) {
-      return NextResponse.json(
-        { error: 'Ya tienes un profesional activo. Finaliza ese proceso antes de agendar con otro.' },
-        { status: 409 }
-      )
-    }
-
     let match = user.userMatches.find((m) => m.psmId === psmUser.id)
 
     if (!match) {

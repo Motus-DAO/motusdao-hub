@@ -65,13 +65,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!user || user.role !== 'usuario') {
       return NextResponse.json({ error: 'Solo los usuarios pueden agendar sesiones' }, { status: 400 })
     }
-    if (user.userMatches.some((match) => match.psmId !== psmUser.id)) {
-      return NextResponse.json(
-        { error: 'Ya tienes un profesional activo. Finaliza ese proceso antes de agendar con otro.' },
-        { status: 409 }
-      )
-    }
-
     const now = new Date()
     const currentHold = await prisma.therapyCheckoutHold.findUnique({ where: { slotId: slot.id } })
     if (

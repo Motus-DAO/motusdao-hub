@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Video,
   Calendar,
+  ArrowRight,
   Shield,
   CheckCircle,
   AlertCircle,
@@ -24,6 +25,7 @@ import { PLATFORM_SESSION_CURRENCY, PLATFORM_SESSION_PRICE_USD } from '@/lib/con
 import type { ReputationSummary } from '@/lib/psm/reputation'
 import type { PaymentMethods } from '@/lib/psm/payment-methods'
 import { PaymentMethodTags } from '@/components/psicoterapia/PaymentMethodTags'
+import { fetchAppSession } from '@/lib/auth/client'
 
 interface PSMListItem {
   id: string
@@ -91,7 +93,20 @@ const languageMap: Record<string, string> = {
 export default function PsicoterapiaPage() {
   const [therapists, setTherapists] = useState<TherapistDisplay[]>([])
   const [loading, setLoading] = useState(true)
+  const [appRole, setAppRole] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchAppSession()
+      .then((session) => {
+        if (!cancelled) setAppRole(session.role)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     async function fetchPSMs() {
@@ -146,6 +161,23 @@ export default function PsicoterapiaPage() {
   }, [])
 
   return (
+    <>
+    <div className="mx-auto max-w-6xl px-4 pt-6">
+      {appRole ? (
+        <Link
+          href={appRole === 'psm' ? '/pagos/sesiones' : '/pagos'}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-mauve-500/30 bg-mauve-500/10 px-4 py-3 text-sm transition-colors hover:bg-mauve-500/15"
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <Calendar className="h-4 w-4 text-mauve-300" />
+            {appRole === 'psm'
+              ? 'Mi agenda y reservaciones'
+              : 'Mis reservaciones y pagos'}
+          </span>
+          <ArrowRight className="h-4 w-4 text-mauve-300" />
+        </Link>
+      ) : null}
+    </div>
     <div className="min-h-screen bg-background">
       <Section>
         <div className="container mx-auto px-6">
@@ -333,5 +365,6 @@ export default function PsicoterapiaPage() {
         </div>
       </Section>
     </div>
+    </>
   )
 }

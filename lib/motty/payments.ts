@@ -57,6 +57,53 @@ export function quoteTherapy() {
 }
 
 export async function getUpcomingSessionForUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  })
+
+  if (user?.role === 'psm') {
+    const sessions = await prisma.session.findMany({
+      where: {
+        psmId: userId,
+        status: { in: [SessionStatus.requested, SessionStatus.accepted] },
+        scheduledStart: { gte: new Date() },
+      },
+      orderBy: { scheduledStart: 'asc' },
+      take: 8,
+      select: {
+        id: true,
+        status: true,
+        scheduledStart: true,
+        user: {
+          select: {
+            motusName: true,
+            email: true,
+            profile: { select: { nombre: true, apellido: true } },
+          },
+        },
+      },
+    })
+
+    const named = sessions.map((session) => ({
+      sessionId: session.id,
+      status: session.status,
+      startsAt: session.scheduledStart?.toISOString() ?? null,
+      patientName:
+        `${session.user?.profile?.nombre ?? ''} ${session.user?.profile?.apellido ?? ''}`.trim() ||
+        session.user?.motusName ||
+        session.user?.email ||
+        'tu paciente',
+    }))
+
+    return {
+      ok: true as const,
+      role: 'psm' as const,
+      session: named[0] ?? null,
+      sessions: named,
+    }
+  }
+
   const session = await prisma.session.findFirst({
     where: {
       userId,
@@ -79,10 +126,13 @@ export async function getUpcomingSessionForUser(userId: string) {
     },
   })
 
-  if (!session) return { ok: true as const, session: null }
+  if (!session) {
+    return { ok: true as const, role: 'patient' as const, session: null, sessions: [] }
+  }
 
   return {
     ok: true as const,
+    role: 'patient' as const,
     session: {
       sessionId: session.id,
       status: session.status,
@@ -92,6 +142,14 @@ export async function getUpcomingSessionForUser(userId: string) {
       listedCurrency: session.psm?.psm?.currency ?? 'MXN',
       quote: quoteTherapy(),
     },
+    sessions: [
+      {
+        sessionId: session.id,
+        status: session.status,
+        startsAt: session.scheduledStart?.toISOString() ?? null,
+        psmName: session.psm?.motusName || session.psm?.email || 'tu profesional',
+      },
+    ],
   }
 }
 
