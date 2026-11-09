@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       reply: turn.reply,
       sessionId: next.id,
+      actions: turn.actions,
     })
   } catch (error) {
     const authResponse = handleAuthError(error)

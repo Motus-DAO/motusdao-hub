@@ -23,3 +23,23 @@ export type ToolResult = {
   error?: string
   data?: unknown
 }
+
+
+export type MottyAction =
+  | {
+      kind: 'transfer'
+      toName: string
+      toAddress: string
+      amount: string
+      token: 'wMXN' | 'USDT' | 'CELO'
+      link?: string
+    }
+  | {
+      kind: 'escrow'
+      payPath: string
+      escrowId?: string
+      sessionId?: string
+      amountWmxn: string
+      startsAt?: string | null
+      psmName?: string | null
+    }

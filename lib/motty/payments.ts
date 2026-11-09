@@ -287,6 +287,7 @@ export async function prepareTransferForUser(
 
   return {
     ok: true as const,
+    kind: 'transfer' as const,
     fromName: user.motusName ?? null,
     toName,
     toAddress,
@@ -459,6 +460,7 @@ export async function bookTherapySessionForUser(userId: string, slotId: string) 
 
   return {
     ok: true as const,
+    kind: 'escrow' as const,
     sessionId: session.id,
     psmName,
     startsAt: slot.startsAt.toISOString(),
@@ -510,13 +512,16 @@ export async function createEscrowForUserSession(userId: string, sessionId: stri
 
   return {
     ok: true as const,
+    kind: 'escrow' as const,
     created: created.created,
     txHash: created.txHash ?? null,
     escrowId: created.id as Hex,
+    sessionId: session.id,
     amountWmxn: quote.mxn.toFixed(2),
     startsAt,
     challengeWindow,
     payPath: `/pagar/${created.id}`,
     payUrl: `https://app.motusdao.org/pagar/${created.id}`,
+    note: 'El usuario firma el depósito en /pagar; no muevas fondos.',
   }
 }

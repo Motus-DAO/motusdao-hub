@@ -11,7 +11,7 @@ import {
 import { createChatCompletion, hasMottyInference, type ProviderMessage } from '@/lib/motty/provider'
 import { mottySystemPrompt } from '@/lib/motty/system-prompt'
 import { enabledToolSchemas, executeMottyTool } from '@/lib/motty/tools'
-import type { MottySession } from '@/lib/motty/types'
+import type { MottyAction, MottySession } from '@/lib/motty/types'
 import type { MottyPageSurface } from '@/lib/motty/page-context'
 
 const FALLBACK_ES =
@@ -26,7 +26,12 @@ export async function runHubMottyTurn(input: {
   learningContext?: UserLearningContext
   pageSurface?: MottyPageSurface
   pagePath?: string | null
-}): Promise<{ session: MottySession; reply: string; learningContext: UserLearningContext | null }> {
+}): Promise<{
+  session: MottySession
+  reply: string
+  learningContext: UserLearningContext | null
+  actions: MottyAction[]
+}> {
   const { session, userMessage } = input
   const { maxToolRounds } = mottyConfig()
   const pageSurface = input.pageSurface ?? 'default'
@@ -46,7 +51,7 @@ export async function runHubMottyTurn(input: {
 
   if (!hasMottyInference()) {
     const reply = await groundedFallback(userMessage, session.locale, learningContext)
-    return { session, reply, learningContext }
+    return { session, reply, learningContext, actions: [] }
   }
 
   const messages: ProviderMessage[] = [
@@ -73,6 +78,7 @@ export async function runHubMottyTurn(input: {
 
   const tools = enabledToolSchemas()
   let working = session
+  const actions: MottyAction[] = []
 
   for (let round = 0; round < maxToolRounds; round += 1) {
     const completion = await createChatCompletion({ messages, tools })
@@ -81,7 +87,7 @@ export async function runHubMottyTurn(input: {
 
     if (!calls.length) {
       const reply = (message.content ?? '').trim() || fallbackCopy(session.locale)
-      return { session: working, reply, learningContext }
+      return { session: working, reply, learningContext, actions }
     }
 
     messages.push({
@@ -100,6 +106,13 @@ export async function runHubMottyTurn(input: {
 
       const executed = await executeMottyTool(call.function.name, parsed, working)
       working = executed.session
+
+      if (executed.result.ok) {
+        const data = executed.result.data as { kind?: unknown } | null | undefined
+        if (data?.kind === 'transfer' || data?.kind === 'escrow') {
+          actions.push(data as MottyAction)
+        }
+      }
 
       messages.push({
         role: 'tool',
@@ -121,7 +134,7 @@ export async function runHubMottyTurn(input: {
   })
 
   const reply = (last.message.content ?? '').trim() || fallbackCopy(session.locale)
-  return { session: working, reply, learningContext }
+  return { session: working, reply, learningContext, actions }
 }
 
 async function groundedFallback(

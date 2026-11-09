@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation'
 import { Loader2, Send, X } from 'lucide-react'
 import { MottyAvatar } from '@/components/motty/MottyAvatar'
 import { MottyMarkdown } from '@/components/motty/MottyMarkdown'
+import { MottyActionCard } from '@/components/motty/MottyActionCard'
 import { fetchAppSession } from '@/lib/auth/client'
 import { MOTTY_DEFAULT_LOCALE, mottyCopyForPath } from '@/lib/motty/copy'
 import { resolveMottyPageSurface } from '@/lib/motty/page-context'
 import { useUIStore } from '@/lib/store'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
-import type { MottyMessage } from '@/lib/motty/types'
+import type { MottyAction, MottyMessage } from '@/lib/motty/types'
 
 /** Same candy accent as Landing Motty FAB/bubbles. */
 const ACCENT_GRAD =
@@ -19,7 +20,7 @@ const ACCENT_GRAD =
 /** Above Hub chrome (topbar/sidebar). */
 const MOTTY_Z = 90
 
-type ChatLine = MottyMessage
+type ChatLine = MottyMessage & { actions?: MottyAction[] }
 
 /**
  * Floating Motty — same FAB + modal pattern as academia.motusdao.org.
@@ -122,7 +123,11 @@ export function MottyWidget() {
           pagePath: pathname || '/',
         }),
       })
-      const json = (await response.json()) as { reply?: string; error?: string }
+      const json = (await response.json()) as {
+        reply?: string
+        error?: string
+        actions?: MottyAction[]
+      }
       const reply =
         json.reply?.trim() ||
         (response.status === 401
@@ -130,7 +135,10 @@ export function MottyWidget() {
           : response.status === 429
             ? copy.rateLimit
             : copy.error)
-      setLines((current) => [...current, { role: 'assistant', content: reply }])
+      setLines((current) => [
+        ...current,
+        { role: 'assistant', content: reply, actions: json.actions },
+      ])
     } catch {
       setLines((current) => [
         ...current,
@@ -260,6 +268,12 @@ export function MottyWidget() {
                   style={{ color: chrome.text }}
                 >
                   <MottyMarkdown>{line.content}</MottyMarkdown>
+                  {line.actions?.map((action, actionIndex) => (
+                    <MottyActionCard
+                      key={`${index}-${actionIndex}`}
+                      action={action}
+                    />
+                  ))}
                 </div>
               )
             )}
