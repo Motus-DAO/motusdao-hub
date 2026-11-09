@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 const DEFAULT_TIMEZONE = 'America/Mexico_City'
 const SLOT_DURATION_MINUTES = 50
 const DAYS_AHEAD = 7
-const SLOT_HOURS = [9, 10, 14, 16, 18]
+const SLOT_HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
 /**
  * Approximate Mexico City local hour using a fixed UTC-6 offset (no DST handling).
@@ -23,38 +23,35 @@ export async function seedAvailabilityForPsm(
   const now = new Date()
   const daysAhead = options?.daysAhead ?? DAYS_AHEAD
   const notes = options?.notes ?? 'admin-seed-availability'
-  let created = 0
-  let skipped = 0
 
+  // 24 h x N days: build the grid in memory, then two queries instead of one
+  // per slot (a 24 h seed is 192 slots, too many sequential round-trips).
+  const wanted: Date[] = []
   for (let day = 0; day <= daysAhead; day += 1) {
     for (const hour of SLOT_HOURS) {
       const startsAt = slotStart(now, day, hour)
-      if (startsAt <= now) {
-        skipped += 1
-        continue
-      }
-
-      const existing = await prisma.providerAvailabilitySlot.findFirst({
-        where: { psmId, startsAt },
-      })
-      if (existing) {
-        skipped += 1
-        continue
-      }
-
-      const endsAt = new Date(startsAt.getTime() + SLOT_DURATION_MINUTES * 60 * 1000)
-      await prisma.providerAvailabilitySlot.create({
-        data: {
-          psmId,
-          startsAt,
-          endsAt,
-          timezone: DEFAULT_TIMEZONE,
-          notes,
-        },
-      })
-      created += 1
+      if (startsAt > now) wanted.push(startsAt)
     }
   }
 
-  return { created, skipped }
+  const existing = await prisma.providerAvailabilitySlot.findMany({
+    where: { psmId, startsAt: { in: wanted } },
+    select: { startsAt: true },
+  })
+  const taken = new Set(existing.map((slot) => slot.startsAt.getTime()))
+  const toCreate = wanted.filter((startsAt) => !taken.has(startsAt.getTime()))
+
+  if (toCreate.length > 0) {
+    await prisma.providerAvailabilitySlot.createMany({
+      data: toCreate.map((startsAt) => ({
+        psmId,
+        startsAt,
+        endsAt: new Date(startsAt.getTime() + SLOT_DURATION_MINUTES * 60 * 1000),
+        timezone: DEFAULT_TIMEZONE,
+        notes,
+      })),
+    })
+  }
+
+  return { created: toCreate.length, skipped: wanted.length - toCreate.length }
 }

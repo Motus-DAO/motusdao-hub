@@ -18,10 +18,10 @@ type Block = {
 
 type GeneratedSlot = { startsAt: string; endsAt: string }
 
-const START_HOUR = 7
-const END_HOUR = 22
+const START_HOUR = 0
+const END_HOUR = 24
 const TOTAL_MIN = (END_HOUR - START_HOUR) * 60
-const HOUR_HEIGHT = 44
+const HOUR_HEIGHT = 32
 const SNAP = 15
 const SLOT_MINUTES = 50
 const BUFFER_MINUTES = 10
