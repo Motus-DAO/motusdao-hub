@@ -20,12 +20,12 @@ function withEnv(name: string, value: string, run: () => void) {
   }
 }
 
-test('quoteTherapy uses the platform price and the configured rate', () => {
+test('quoteTherapy charges the flat wMXN demo price (1:1 with USDT)', () => {
   withEnv('NEXT_PUBLIC_THERAPY_TEST_PRICE_WMXN', '', () => {
     withEnv('MOTUS_MXN_PER_USD', '18.5', () => {
       const quote = quoteTherapy()
       assert.equal(quote.usd, 45)
-      assert.equal(quote.mxn, 832.5)
+      assert.equal(quote.mxn, 45)
       assert.equal(quote.rate, 18.5)
       assert.equal(quote.source, 'fixed')
     })
