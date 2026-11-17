@@ -5,7 +5,7 @@
 **Last updated:** 2026-11-17
 **Reference (read-only):** `Lab-Avril-Life/docs/marketing-experiments/founding-allowlist-waitlist.md`, `lib/founding-stripe.ts`, `lib/founding-promo-email-template.ts`, `lib/support-mail.ts`
 
-**Related:** [`lib/ai-credit.ts`](../lib/ai-credit.ts) (`AI_CREDIT_PACKS_USD`: 5, 10) · [`app/api/ai/credit/checkout/route.ts`](../app/api/ai/credit/checkout/route.ts) · [`app/api/stripe/checkout-session/route.ts`](../app/api/stripe/checkout-session/route.ts) (Academia) · [`lib/mns-register.ts`](../lib/mns-register.ts) · [`components/onboarding/steps/StepBlockchain.tsx`](../components/onboarding/steps/StepBlockchain.tsx)
+**Related:** [`lib/ai-credit.ts`](../lib/ai-credit.ts) (`AI_CREDIT_PACKS_USD`: 5, 10) · [`app/api/ai/credit/checkout/route.ts`](../app/api/ai/credit/checkout/route.ts) · [`app/api/stripe/checkout-session/route.ts`](../app/api/stripe/checkout-session/route.ts) (Academia) · [`lib/mns-register.ts`](../lib/mns-register.ts) · [`components/onboarding/steps/StepBlockchain.tsx`](../components/onboarding/steps/StepBlockchain.tsx) · [funnel-open-market-tofu.md](./funnel-open-market-tofu.md) (TOFU / no bloquear antes de founding)
 
 ---
 
