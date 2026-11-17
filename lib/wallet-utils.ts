@@ -9,7 +9,7 @@
  */
 export interface WaaPWallet {
   address: `0x${string}`
-  walletClientType: 'waap' | 'privy' | 'external'
+  walletClientType: 'waap' | 'privy' | 'thirdweb' | 'external'
   chainId: string
   connected: boolean
 }

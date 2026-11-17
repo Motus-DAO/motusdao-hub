@@ -104,6 +104,7 @@
     "siwe": "^3.0.0",
     "stripe": "^22.3.0",
     "tailwind-merge": "^3.3.1",
+    "thirdweb": "^5.122.1",
     "three": "^0.180.0",
     "viem": "^2.37.5",
     "web3.storage": "^4.5.5",

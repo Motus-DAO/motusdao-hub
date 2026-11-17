@@ -10,7 +10,12 @@ import type {
 
 export type { WalletAuthProvider } from './provider'
 export type { WalletInfo, WalletProviderId, WalletUser } from './types'
-export { getConfiguredWalletProvider, getPrivyAppId, getWalletConnectProjectId } from './config'
+export {
+  getConfiguredWalletProvider,
+  getPrivyAppId,
+  getThirdwebClientId,
+  getWalletConnectProjectId,
+} from './config'
 export {
   getWalletIdentity,
   appendWalletIdentityParams,
@@ -18,7 +23,7 @@ export {
 } from './client-identity'
 
 function resolveProviderId(
-  configuredProvider: 'waap' | 'privy',
+  configuredProvider: 'waap' | 'privy' | 'thirdweb',
   wallets: WalletInfo[]
 ): WalletProviderId {
   if (wallets.some((wallet) => wallet.walletClientType === 'external')) {
@@ -29,7 +34,7 @@ function resolveProviderId(
 
 export function useWallet(): WalletAuthState & {
   providerId: WalletProviderId
-  configuredProvider: 'waap' | 'privy'
+  configuredProvider: 'waap' | 'privy' | 'thirdweb'
   setupError?: string | null
 } {
   const ctx = useWalletContext()

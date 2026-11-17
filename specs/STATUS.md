@@ -3,7 +3,7 @@
 > **Único doc de estado.** El detalle vive en los specs; la taxonomía y las fases viven en
 > [platform-harmonize.md](./platform-harmonize.md). No dupliques tablas de estado en otros docs.
 >
-> **Última verificación:** 2026-11-17 · `main` @ `9f1c22b` · Owner: product + eng.
+> **Última verificación:** 2026-11-17 · identidad I1 en `feat/waap-thirdweb-siwe-multilink` · Owner: product + eng.
 >
 > Planes: [SDD-safety-plan](../docs/specs/SDD-safety-plan.md) ·
 > [SDD-chat-data](../docs/specs/SDD-chat-data.md) ·
@@ -126,6 +126,8 @@ Detalle: [spec](./celo-attribution.md).
 
 | Trabajo | Qué falta | Riesgo |
 |---------|-----------|--------|
+| **Identity I1 — Thirdweb adapter** | Merge a `main`, Vercel env + `prisma migrate deploy`; QA connect+SIWE con `NEXT_PUBLIC_WALLET_PROVIDER=thirdweb` | Default sigue `waap`; migración enum en prod |
+| **Identity I2–I5** | `LinkedWallet`, link UI, retirar Privy, hardening — ver [spec](./identity-waap-thirdweb-siwe-multilink.md) | Schema + muchas superficies Privy |
 | **Psychat PSM slice 1** | Validar en producción que el deploy incluye `4f04131`; actualizar el header del spec | El spec dice READY; el código ya está en `main` |
 | **Psychat PSM slice 2** | Bloquear el proxy RootRouter para rol PSM; verificar banner de error 502 | El botón de reporte ya existe, pero el proxy sigue disponible para PSM |
 | **Psychat usuario slice 3** | QA en prod tras merge `9f1c22b` (prompt + `roleReady`) | Código en `main`; confirmar que ya no fuerza JSON en cada turno |
@@ -143,8 +145,9 @@ Detalle: [spec](./celo-attribution.md).
 
 ## 4. Next (orden recomendado)
 
-1. **Auth / identidad:** WaaP principal, Thirdweb fallback, quitar Privy; SIWE multi-wallet
-   linking. Rollback: tag `identity-baseline-pre-waap-multiwallet-2026-11-17` (`9f1c22b`).
+1. **Auth / identidad:** I1 Thirdweb **shipped** en rama; siguiente **I2** (`LinkedWallet`). Spec:
+   [identity-waap-thirdweb-siwe-multilink.md](./identity-waap-thirdweb-siwe-multilink.md).
+   Thirdweb client id compartido con Lab-Avril-Life (`env.example`). Rollback: tag `identity-baseline-pre-waap-multiwallet-2026-11-17`.
 2. **Founding allowlist (MKT):** implementar desde [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md)
    (spec only; sin código aún).
 3. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.
@@ -260,6 +263,14 @@ Detalle y rollback: [celo-attribution.md](./celo-attribution.md).
 | `9f1c22b` | Psychat prompts + `roleReady`; STATUS slice 3 |
 
 Tag de rollback antes del slice auth: `identity-baseline-pre-waap-multiwallet-2026-11-17` → `9f1c22b`.
+
+### Addendum — identity I1 Thirdweb (2026-11-17)
+
+| Entrega | Notas |
+|---------|--------|
+| SDD | `specs/identity-waap-thirdweb-siwe-multilink.md` |
+| Código | `feat/waap-thirdweb-siwe-multilink` — adapter Thirdweb, enum Prisma, `config.test.ts` |
+| Ops | Migración `20261117040000_auth_provider_thirdweb`; mismo `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` que Lab |
 
 ---
 

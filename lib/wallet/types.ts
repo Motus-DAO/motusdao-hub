@@ -1,6 +1,6 @@
 import type { Address } from 'viem'
 
-export type WalletProviderId = 'waap' | 'privy' | 'external' | 'unknown'
+export type WalletProviderId = 'waap' | 'privy' | 'thirdweb' | 'external' | 'unknown'
 
 export type WalletUser = {
   id: string
@@ -12,7 +12,7 @@ export type WalletUser = {
 
 export type WalletInfo = {
   address: Address
-  walletClientType: 'waap' | 'privy' | 'external'
+  walletClientType: 'waap' | 'privy' | 'thirdweb' | 'external'
   chainId: string
   connected: boolean
 }

@@ -752,6 +752,7 @@ enum AuthProvider {
   waap
   privy
   external
+  thirdweb
 }
 
 enum MatchStatus {

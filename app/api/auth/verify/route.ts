@@ -15,7 +15,7 @@ import { buildAuthIdentityUpdate } from '@/lib/auth/identity'
 const verifySchema = z.object({
   message: z.string().min(1),
   signature: z.string().min(1),
-  authProvider: z.enum(['waap', 'privy', 'external']).optional(),
+  authProvider: z.enum(['waap', 'privy', 'thirdweb', 'external']).optional(),
   authProviderId: z.string().optional(),
 })
 

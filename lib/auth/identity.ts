@@ -54,7 +54,10 @@ export function parseAuthIdentity(input: {
 
   if (
     provider &&
-    (provider === 'waap' || provider === 'privy' || provider === 'external') &&
+    (provider === 'waap' ||
+      provider === 'privy' ||
+      provider === 'thirdweb' ||
+      provider === 'external') &&
     providerId
   ) {
     return {

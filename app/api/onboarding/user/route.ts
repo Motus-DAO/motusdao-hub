@@ -18,7 +18,7 @@ const userOnboardingSchema = z
   email: z.string().email(),
   eoaAddress: z.string().min(1),
   smartWalletAddress: z.string().optional(),
-  authProvider: z.enum(['waap', 'privy', 'external']).optional(),
+  authProvider: z.enum(['waap', 'privy', 'thirdweb', 'external']).optional(),
   authProviderId: z.string().optional(),
   privyId: z.string().optional(),
   intakeSource: z.enum(['manual', 'ai_assisted']).default('manual'),

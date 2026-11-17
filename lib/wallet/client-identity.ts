@@ -19,9 +19,11 @@ export function getWalletIdentity(
   const authProvider =
     providerId === 'privy'
       ? 'privy'
-      : providerId === 'external'
-        ? 'external'
-        : 'waap'
+      : providerId === 'thirdweb'
+        ? 'thirdweb'
+        : providerId === 'external'
+          ? 'external'
+          : 'waap'
 
   return {
     authProvider,
