@@ -33,6 +33,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [setSidebarOpen])
 
+  // While the mobile drawer is open, stop the main column from stealing vertical scroll.
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    if (!sidebarOpen || !mediaQuery.matches) return
+
+    const scrollRoot = document.querySelector('[data-app-shell-scroll]')
+    if (!(scrollRoot instanceof HTMLElement)) return
+
+    const previousOverflow = scrollRoot.style.overflow
+    scrollRoot.style.overflow = 'hidden'
+    return () => {
+      scrollRoot.style.overflow = previousOverflow
+    }
+  }, [sidebarOpen])
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <ActiveRoleSync />

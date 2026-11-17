@@ -105,12 +105,17 @@ export function AdminSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 app-viewport-height w-64 max-w-[85vw] border-r border-white/10 bg-background/80 backdrop-blur-lg transition-transform duration-300 ease-in-out',
+          'fixed left-0 top-0 z-50 flex flex-col app-viewport-height w-64 max-w-[85vw] overflow-hidden border-r border-white/10 transition-transform duration-300 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
         aria-label="Menú de administración"
       >
-        <div className="flex h-full min-h-0 flex-col pt-[env(safe-area-inset-top)]">
+        <div
+          className="pointer-events-none absolute inset-0 bg-background/80 backdrop-blur-lg"
+          aria-hidden
+        />
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 drawer-scroll-y pt-[env(safe-area-inset-top)]">
           {/* Header */}
           <div className="border-b border-white/10 p-4 sm:p-6">
             <div className="flex items-center justify-between">
@@ -136,7 +141,7 @@ export function AdminSidebar() {
           </div>
 
           {/* Navigation */}
-          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-4">
+          <nav className="flex-1 space-y-2 p-4">
             {navigationItems.map((item) => {
               const Icon = item.icon
               const isActive =
@@ -189,6 +194,7 @@ export function AdminSidebar() {
                 Mi perfil
               </Link>
             </div>
+          </div>
           </div>
         </div>
       </aside>

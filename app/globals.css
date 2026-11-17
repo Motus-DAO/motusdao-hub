@@ -455,6 +455,15 @@ body {
 .app-viewport-height {
   height: 100vh;
   height: 100dvh;
+  max-height: 100dvh;
+}
+
+/* Scroll inside fixed drawers (iOS): do not put overflow on backdrop-filter ancestors. */
+.drawer-scroll-y {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .app-main-offset {

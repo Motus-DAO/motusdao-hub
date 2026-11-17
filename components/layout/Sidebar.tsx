@@ -69,12 +69,17 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 app-viewport-height w-64 max-w-[85vw] glass-sidebar border-r border-border transition-transform duration-300 ease-in-out',
+          'fixed left-0 top-0 z-50 flex flex-col app-viewport-height w-64 max-w-[85vw] overflow-hidden border-r border-border transition-transform duration-300 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
         aria-label="Menú principal"
       >
-        <div className="flex h-full min-h-0 flex-col pt-[env(safe-area-inset-top)]">
+        <div
+          className="pointer-events-none absolute inset-0 glass-sidebar rounded-none border-0"
+          aria-hidden
+        />
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 drawer-scroll-y pt-[env(safe-area-inset-top)]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border p-4 sm:p-6">
             <div className="flex min-w-0 items-center space-x-3">
@@ -103,8 +108,7 @@ export function Sidebar() {
             </button>
           </div>
 
-          {/* Navigation — the only scroll container in the drawer. */}
-          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
+          <nav className="flex-1 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
             {navigationGroups.map((group) => (
               <div key={group.title ?? 'main'} className="mb-5 last:mb-0">
                 {group.title && (
@@ -159,6 +163,7 @@ export function Sidebar() {
               <p>MotusDAO Hub v1.0</p>
               <p className="mt-1">Mental Health & Wellness</p>
             </div>
+          </div>
           </div>
         </div>
       </aside>
