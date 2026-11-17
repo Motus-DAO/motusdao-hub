@@ -79,9 +79,8 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
           useOnboardingStore.setState({ isCompleted: false })
         }
 
-        if (!isOnboardingExemptPath(pathname)) {
-          router.replace(ONBOARDING_ROUTE)
-        }
+        // TOFU: do not force the clinical wizard on every route. Intake is gated at
+        // booking / other high-intent flows (see TherapistBookingCard).
       } catch (error) {
         console.warn('[OnboardingGuard] Registration check failed:', error)
       }

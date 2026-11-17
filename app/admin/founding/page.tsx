@@ -5,6 +5,7 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { authFetch } from '@/lib/auth/client'
+import { readJsonResponse } from '@/lib/fetch-json'
 
 type FoundingRole = 'user' | 'psm'
 
@@ -43,7 +44,7 @@ export default function AdminFoundingPage() {
     setActionError(null)
     try {
       const response = await authFetch(`/api/admin/founding/waitlist?role=${role}`)
-      const json = (await response.json()) as AdminPayload & { error?: string }
+      const json = await readJsonResponse<AdminPayload & { error?: string }>(response)
       if (!response.ok) throw new Error(json.error || 'No se pudo cargar.')
       setData(json)
     } catch (err) {
@@ -65,7 +66,7 @@ export default function AdminFoundingPage() {
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     })
-    const json = (await response.json()) as { error?: string }
+    const json = await readJsonResponse<{ error?: string }>(response)
     if (!response.ok) {
       setActionError(json.error || 'Acción fallida')
       return
@@ -77,7 +78,7 @@ export default function AdminFoundingPage() {
     if (!window.confirm('¿Hard delete con audit?')) return
     setActionError(null)
     const response = await authFetch(`/api/admin/founding/waitlist/${id}`, { method: 'DELETE' })
-    const json = (await response.json()) as { error?: string }
+    const json = await readJsonResponse<{ error?: string }>(response)
     if (!response.ok) {
       setActionError(json.error || 'No se pudo borrar')
       return

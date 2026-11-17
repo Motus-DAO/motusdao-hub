@@ -13,6 +13,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'role debe ser user o psm.' }, { status: 400 })
   }
 
-  const data = await listFoundingAdmin(role)
-  return NextResponse.json(data)
+  try {
+    const data = await listFoundingAdmin(role)
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('[admin/founding/waitlist]', error)
+    const message =
+      error instanceof Error ? error.message : 'No se pudo cargar la lista fundadora.'
+    const migrationHint =
+      '¿Corriste `npx prisma migrate deploy`? Tablas founding_waitlist_* deben existir.'
+    return NextResponse.json(
+      { error: `${message} ${migrationHint}` },
+      { status: 503 }
+    )
+  }
 }

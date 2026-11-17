@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
-import { useWallet } from '@/lib/wallet'
+import { useWallet, useWallets, getWalletIdentity } from '@/lib/wallet'
 import { trackFunnel } from '@/lib/track-funnel'
 import { PaymentMethodTags } from './PaymentMethodTags'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
+import { fetchRegistrationStatus } from '@/lib/registration'
+import { ONBOARDING_ROUTE } from '@/lib/onboarding-routes'
+import { getEOAAddress } from '@/lib/wallet-utils'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { sessionPriceWmxn } from '@/lib/pricing'
 import type { PublicPsmProfile } from '@/lib/psm/public-profile'
@@ -56,7 +59,8 @@ export function TherapistBookingCard({ slug, profile }: Props) {
   })
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { login } = useWallet()
+  const { login, user, providerId } = useWallet()
+  const { wallets } = useWallets()
   // When the user taps "Agendar" while logged out, we resume booking
   // automatically once the wallet/SIWE session becomes available.
   const [pendingBook, setPendingBook] = useState(false)
@@ -198,8 +202,37 @@ export function TherapistBookingCard({ slug, profile }: Props) {
       if (!ok) return
     }
 
+    const email = user?.email?.address || user?.google?.email
+    const eoaAddress = getEOAAddress(wallets)
+    const reg = await fetchRegistrationStatus({
+      email,
+      eoaAddress: eoaAddress ?? undefined,
+      identity: getWalletIdentity(user, providerId),
+    })
+    if (reg && !reg.registrationCompleted) {
+      const returnTo =
+        typeof window !== 'undefined'
+          ? `${window.location.pathname}${window.location.search}#agendar`
+          : `/psicoterapia/${slug}`
+      router.push(
+        `${ONBOARDING_ROUTE}?returnTo=${encodeURIComponent(returnTo)}`
+      )
+      return
+    }
+
     await submitBooking()
-  }, [selectedSlotId, sessionState, signIn, submitBooking])
+  }, [
+    selectedSlotId,
+    sessionState,
+    signIn,
+    submitBooking,
+    user,
+    providerId,
+    wallets,
+    router,
+    slug,
+    login,
+  ])
 
   // Resume booking once the wallet connects after the login modal.
   useEffect(() => {

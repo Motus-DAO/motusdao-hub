@@ -222,101 +222,22 @@ export default function Home() {
       {/* Authenticated experience */}
       {authenticated && (
         <>
-          {/* If onboarding is NOT completed, show clinical profile CTA and read-only app cards */}
           {!isCompleted ? (
-            <>
-              {/* Clinical profile CTA */}
-              <Section className="relative z-10">
-                <div className="container mx-auto px-6 max-w-full">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.1 }}
-                    className="text-center mb-12"
-                  >
-                    <GlassCard className="max-w-2xl mx-auto p-6">
-                      <h2 className="text-2xl md:text-3xl font-bold mb-2">
-                        Completa tu perfil clínico
-                      </h2>
-                      <p className="text-muted-foreground mb-4">
-                        Primero necesitamos algunos datos básicos para personalizar tu experiencia y activar todas las aplicaciones de MotusDAO.
-                      </p>
-                      <Link
-                        href={ONBOARDING_ROUTE}
-                        onClick={() =>
-                          trackCta('Ir al registro clínico', {
-                            location: 'onboarding',
-                            href: ONBOARDING_ROUTE,
-                          })
-                        }
-                      >
-                        <CTAButton size="lg" glow className="inline-flex items-center">
-                          Ir al registro clínico
-                          <ArrowRight className="w-5 h-5 ml-2" />
-                        </CTAButton>
-                      </Link>
-                    </GlassCard>
-                  </motion.div>
-                </div>
-              </Section>
+            <Section className="relative z-10">
+              <div className="container mx-auto max-w-full px-6">
+                <GlassCard className="mx-auto max-w-3xl border border-mauve-500/20 p-4 text-center text-sm text-muted-foreground">
+                  Puedes explorar el Hub. Cuando quieras{' '}
+                  <strong className="text-foreground">agendar terapia</strong>, te pediremos el
+                  registro clínico.{' '}
+                  <Link href={ONBOARDING_ROUTE} className="text-mauve-400 underline">
+                    Completar ahora (opcional)
+                  </Link>
+                </GlassCard>
+              </div>
+            </Section>
+          ) : null}
 
-              {/* Read-only Featured Apps (no navigation yet) */}
-              <Section className="relative z-10">
-                <div className="container mx-auto px-6 max-w-full">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-center mb-4"
-                  >
-                    <GradientText as="h2" className="text-3xl md:text-4xl font-bold mb-2">
-                      Aplicaciones Destacadas
-                    </GradientText>
-                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                      Esto es todo lo que podrás usar en MotusDAO una vez que completes tu registro clínico.
-                    </p>
-                  </motion.div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {featuredApps.map((app, index) => {
-                      const Icon = app.icon
-                      return (
-                        <motion.div
-                          key={app.title}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.8, delay: 0.3 + index * 0.1 }}
-                        >
-                          <GlassCard hover className="h-full p-6 group relative opacity-70">
-                            <div className="absolute inset-0 rounded-2xl border border-mauve-500/40 pointer-events-none" />
-                            <div className="text-center">
-                              <div className={`w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-r ${app.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 relative overflow-hidden`}>
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-50"></div>
-                                <Icon className="w-8 h-8 text-white relative z-10" />
-                              </div>
-                              
-                              <h3 className="text-xl font-semibold mb-2 group-hover:text-mauve-400 transition-colors">
-                                {app.title}
-                              </h3>
-                              
-                              <p className="text-muted-foreground text-sm mb-2">
-                                {app.description}
-                              </p>
-                              <p className="text-xs text-mauve-300 font-medium">
-                                Disponible después de completar tu perfil clínico
-                              </p>
-                            </div>
-                          </GlassCard>
-                        </motion.div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </Section>
-            </>
-          ) : (
-            <>
-              {/* Featured Apps Section - only when onboarding is completed */}
+          <>
               <Section className="relative z-10">
             <div className="container mx-auto px-6 max-w-full">
               <motion.div
@@ -422,8 +343,7 @@ export default function Home() {
                   </motion.div>
                 </div>
               </Section>
-            </>
-          )}
+          </>
         </>
       )}
 

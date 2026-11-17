@@ -24,7 +24,7 @@ import { createPortal } from 'react-dom'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 import { trackCta } from '@/lib/track-cta'
-import { logoutAppSession } from '@/lib/auth/client'
+import { authFetch, logoutAppSession } from '@/lib/auth/client'
 
 export function Topbar() {
   const { 
@@ -71,7 +71,7 @@ export function Topbar() {
   const handleRoleChange = async (newRole: UserRole) => {
     setRoleError(null)
     try {
-      const response = await fetch('/api/auth/active-role', {
+      const response = await authFetch('/api/auth/active-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),

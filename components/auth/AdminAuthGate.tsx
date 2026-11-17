@@ -9,6 +9,7 @@ import {
   fetchAppSession,
   isUserRejectedSignError,
 } from '@/lib/auth/client'
+import Link from 'next/link'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { GlassCard } from '@/components/ui/GlassCard'
 
@@ -187,6 +188,9 @@ export function AdminAuthGate({ children }: { children: React.ReactNode }) {
           <p className="text-muted-foreground text-sm">
             Esta wallet no tiene permisos de administrador.
           </p>
+          <Link href="/">
+            <CTAButton variant="secondary">Ir al Hub</CTAButton>
+          </Link>
           {sessionEoa && (
             <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10 text-left">
               <p className="text-xs text-muted-foreground mb-1">Wallet conectada (EOA):</p>
