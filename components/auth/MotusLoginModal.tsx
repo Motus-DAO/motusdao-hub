@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { useUIStore } from '@/lib/store'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { GradientText } from '@/components/ui/GradientText'
-import { useWallet } from '@/lib/wallet'
+import { useWalletContext } from '@/lib/wallet/WalletContext'
 import { useThirdwebFallback } from '@/lib/wallet/thirdweb-fallback-context'
 import { isThirdwebFallbackEnabled } from '@/lib/wallet/config'
 import {
@@ -35,7 +35,7 @@ export function MotusLoginModal({
   location = 'modal',
 }: MotusLoginModalProps) {
   const { theme } = useUIStore()
-  const { login, authenticated, ready } = useWallet()
+  const { login: connectDirect, ready } = useWalletContext()
   const thirdweb = useThirdwebFallback()
   const [provider, setProvider] = useState<'waap' | 'thirdweb'>(() =>
     getDefaultLoginProvider()
@@ -53,12 +53,6 @@ export function MotusLoginModal({
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    if (isOpen && authenticated) {
-      onClose()
-    }
-  }, [isOpen, authenticated, onClose])
 
   useEffect(() => {
     if (isOpen) {
@@ -98,7 +92,7 @@ export function MotusLoginModal({
         }
         await thirdweb.connectWithThirdweb()
       } else {
-        await login()
+        await connectDirect()
       }
       onClose()
     } catch (err) {

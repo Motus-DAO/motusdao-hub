@@ -32,7 +32,6 @@ import { authFetch } from '@/lib/auth/client'
 import { isWalletLinkModeActive } from '@/lib/auth/wallet-link-mode'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
-import { MotusLoginModal } from '@/components/auth/MotusLoginModal'
 import { StripeConnectCard } from '@/components/payments/StripeConnectCard'
 import { StripeEarningsCard } from '@/components/payments/StripeEarningsCard'
 import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
@@ -130,7 +129,7 @@ export default function PerfilPage() {
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
-  const { authenticated, user, ready } = useWallet()
+  const { authenticated, user, ready, login } = useWallet()
   const { wallets } = useWallets()
   const {
     sessionState,
@@ -151,7 +150,6 @@ export default function PerfilPage() {
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [walletTimedOut, setWalletTimedOut] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -776,7 +774,7 @@ export default function PerfilPage() {
               void signInSiwe()
               return
             }
-            setShowLoginModal(true)
+            void login()
           }}
           onRetry={() => {
             setError(null)
@@ -784,14 +782,6 @@ export default function PerfilPage() {
             setIsLoading(true)
             void refreshSession()
           }}
-        />
-        <MotusLoginModal
-          isOpen={showLoginModal}
-          onClose={() => {
-            setShowLoginModal(false)
-            void refreshSession()
-          }}
-          location="perfil"
         />
       </>
     )

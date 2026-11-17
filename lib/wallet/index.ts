@@ -1,5 +1,7 @@
 'use client'
 
+import { useCallback } from 'react'
+import { useUIStore } from '@/lib/store'
 import { useWalletContext } from './WalletContext'
 import type {
   WalletAuthState,
@@ -36,18 +38,29 @@ function resolveProviderId(
   return configuredProvider
 }
 
+/** Opens the Safari-aware provider modal (safe from any CTA). */
+export function requestMotusLogin(location?: string): Promise<void> {
+  return useUIStore.getState().openLoginModal(location ?? 'unknown')
+}
+
 export function useWallet(): WalletAuthState & {
   providerId: WalletProviderId
   configuredProvider: 'waap' | 'thirdweb'
   setupError?: string | null
 } {
   const ctx = useWalletContext()
+  const openLoginModal = useUIStore((s) => s.openLoginModal)
+
+  const login = useCallback(
+    () => openLoginModal('use_wallet'),
+    [openLoginModal]
+  )
 
   return {
     ready: ctx.ready,
     authenticated: ctx.authenticated,
     user: ctx.user,
-    login: ctx.login,
+    login,
     logout: ctx.logout,
     requestSharedEmail: ctx.requestSharedEmail,
     providerId: resolveProviderId(ctx.configuredProvider, ctx.wallets),

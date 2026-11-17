@@ -25,7 +25,6 @@ import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 import { trackCta } from '@/lib/track-cta'
 import { logoutAppSession } from '@/lib/auth/client'
-import { MotusLoginModal } from '@/components/auth/MotusLoginModal'
 
 export function Topbar() {
   const { 
@@ -127,11 +126,9 @@ export function Topbar() {
     setShowThemeDropdown(false)
   }
 
-  const [showLoginModal, setShowLoginModal] = useState(false)
-
   const handleLogin = () => {
     trackCta('Inicia Sesión', { location: 'topbar_open_modal' })
-    setShowLoginModal(true)
+    void login()
   }
 
   const handleLogout = () => {
@@ -485,12 +482,6 @@ export function Topbar() {
           )}
         </div>
       </div>
-
-      <MotusLoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        location="topbar"
-      />
 
       {/* Click outside handlers */}
       {showRoleDropdown && (

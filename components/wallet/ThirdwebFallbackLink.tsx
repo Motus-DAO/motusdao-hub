@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useWallet } from '@/lib/wallet'
-import { useThirdwebFallback } from '@/lib/wallet/thirdweb-fallback-context'
 import { isThirdwebFallbackEnabled } from '@/lib/wallet/config'
 
 type Props = {
@@ -13,12 +12,11 @@ type Props = {
  * Low-visibility alternate connect path (Thirdweb) while WaaP stays default.
  */
 export function ThirdwebFallbackLink({ className }: Props) {
-  const { authenticated, ready } = useWallet()
-  const { enabled, connectWithThirdweb } = useThirdwebFallback()
+  const { authenticated, ready, login } = useWallet()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!isThirdwebFallbackEnabled() || !enabled || authenticated) {
+  if (!isThirdwebFallbackEnabled() || authenticated) {
     return null
   }
 
@@ -30,7 +28,7 @@ export function ThirdwebFallbackLink({ className }: Props) {
         onClick={() => {
           setError(null)
           setBusy(true)
-          void connectWithThirdweb()
+          void login()
             .catch((err: unknown) => {
               setError(
                 err instanceof Error ? err.message : 'No se pudo abrir Thirdweb'

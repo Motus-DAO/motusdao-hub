@@ -17,6 +17,7 @@ import {
   releaseWaapOverlayInput,
   syncWaapOverlayInput,
 } from '@/lib/wallet/waap-modal-recovery'
+import { useUIStore } from '@/lib/store'
 
 // ============================================================================
 // TYPES - Compatible with Privy patterns for easier migration
@@ -556,17 +557,17 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
 
   // Legacy Privy-shaped email helpers — WaaP owns email OTP inside its modal.
   const sendCode = useCallback(async () => {
-      console.log('[WAAP] Opening Human Tech modal instead of legacy email OTP')
-      await login()
+      console.log('[WAAP] Opening provider login modal instead of legacy email OTP')
+      await useUIStore.getState().openLoginModal('email_legacy')
     },
-    [login]
+    []
   )
 
   const loginWithCode = useCallback(async () => {
-      console.log('[WAAP] loginWithCode redirected to Human Tech modal')
-      await login()
+      console.log('[WAAP] loginWithCode redirected to provider login modal')
+      await useUIStore.getState().openLoginModal('email_legacy')
     },
-    [login]
+    []
   )
 
   // Listen for WaaP events

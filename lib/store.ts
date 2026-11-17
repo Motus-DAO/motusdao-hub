@@ -9,6 +9,11 @@ import {
 export type UserRole = 'usuario' | 'psm' | 'admin'
 export type { AccentColor, MatrixColor }
 
+type LoginModalWaiter = {
+  resolve: () => void
+  reject: (error: Error) => void
+}
+
 interface UIState {
   // Role management
   role: UserRole
@@ -38,9 +43,14 @@ interface UIState {
   setAccentColor: (color: AccentColor) => void
   /** @deprecated Use setAccentColor */
   setMatrixColor: (color: MatrixColor) => void
-  
-  // Note: Authentication state is now handled by Privy directly
-  // No need for mock auth state in the store
+
+  /** Global Motus login provider modal (Safari-aware Thirdweb vs Human). */
+  loginModalOpen: boolean
+  loginModalLocation: string
+  loginModalWaiter: LoginModalWaiter | null
+  openLoginModal: (location?: string) => Promise<void>
+  closeLoginModal: (reason?: 'cancelled') => void
+  completeLoginModal: () => void
 }
 
 export const useUIStore = create<UIState>()(
@@ -69,8 +79,33 @@ export const useUIStore = create<UIState>()(
       accentColor: null,
       setAccentColor: (color) => set({ accentColor: color }),
       setMatrixColor: (color) => set({ accentColor: color }),
-      
-      // Authentication is now handled by Privy - no mock state needed
+
+      loginModalOpen: false,
+      loginModalLocation: 'unknown',
+      loginModalWaiter: null,
+      openLoginModal: (location = 'unknown') =>
+        new Promise<void>((resolve, reject) => {
+          set({
+            loginModalOpen: true,
+            loginModalLocation: location,
+            loginModalWaiter: {
+              resolve: () => resolve(),
+              reject: (error) => reject(error),
+            },
+          })
+        }),
+      closeLoginModal: (reason) => {
+        const waiter = useUIStore.getState().loginModalWaiter
+        if (reason === 'cancelled' && waiter) {
+          waiter.reject(new Error('Inicio de sesión cancelado'))
+        }
+        set({ loginModalOpen: false, loginModalWaiter: null })
+      },
+      completeLoginModal: () => {
+        const waiter = useUIStore.getState().loginModalWaiter
+        waiter?.resolve()
+        set({ loginModalOpen: false, loginModalWaiter: null })
+      },
     }),
     {
       name: 'motusdao-ui-storage',
