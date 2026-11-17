@@ -1,15 +1,14 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { AnimatedAIChat } from '@/components/ui/animated-ai-chat'
 import { useUIStore } from '@/lib/store'
-import { useWallet, useWallets, getWalletIdentity, appendWalletIdentityParams } from '@/lib/wallet'
+import { useWallet, useWallets } from '@/lib/wallet'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { buildVideochatUrl } from '@/lib/jitsi'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
 import { authFetch } from '@/lib/auth/client'
-import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { aiProcessingConsentCopy, chatModelLabel } from '@/lib/ai-consent-copy'
 import { PsychatArchivePanel } from '@/components/psychat/PsychatArchivePanel'
@@ -29,6 +28,11 @@ import {
   resolveProxyBaseUrl,
   type PsychatContextSettings,
 } from '@/lib/psychat-context/settings'
+import { PSYCHAT_GUEST_CONSENT_VERSION } from '@/lib/psychat-guest-limit'
+import { trackFunnel } from '@/lib/track-funnel'
+import { CTAButton } from '@/components/ui/CTAButton'
+
+const GUEST_CONSENT_STORAGE_KEY = 'psychat_guest_consent_v1'
 
 type PsychatCreditState = {
   remainingUsd: number
@@ -71,6 +75,9 @@ type PsychatMainColumnProps = {
   useRootRouterProxy: boolean
   rootRouterProxyUrl: string
   onOpenContextSettings: () => void
+  guestMode?: boolean
+  onLogin?: () => void
+  notice?: ReactNode
 }
 
 function PsychatMainColumn({
@@ -106,11 +113,16 @@ function PsychatMainColumn({
   useRootRouterProxy,
   rootRouterProxyUrl,
   onOpenContextSettings,
+  guestMode = false,
+  onLogin,
+  notice,
 }: PsychatMainColumnProps) {
   const { optIn, isUnlocked } = usePsychatArchiveKeyContext()
   const archiveUnlockPending = optIn && !isUnlocked
 
-  const sendBlockedReason = !ready
+  const sendBlockedReason = guestMode
+    ? null
+    : !ready
     ? null
     : !authenticated
       ? 'Conecta tu wallet para usar Psychat.'
@@ -124,11 +136,17 @@ function PsychatMainColumn({
               ? 'Firmar la copia cifrada en el recuadro del chat, o desmarca la opción de copia, para poder chatear.'
               : null
 
-  const psychatChatGate =
-    !ready || !authenticated ? (
+  const psychatChatGate = guestMode
+    ? null
+    : !ready || !authenticated ? (
       <div className="px-5 py-6 text-sm">
         <p className="font-medium">Conecta tu wallet para usar Psychat.</p>
         <p className="mt-2 text-muted-foreground">Sin wallet no podemos verificar tu sesión ni enviar mensajes.</p>
+        {onLogin ? (
+          <CTAButton type="button" size="sm" className="mt-3 w-full" onClick={onLogin}>
+            Iniciar sesión
+          </CTAButton>
+        ) : null}
       </div>
     ) : !isSessionReady ? (
       <div className="p-3 sm:p-4">
@@ -169,11 +187,13 @@ function PsychatMainColumn({
         </div>
       )}
 
-      <PsychatArchivePanel
-        isSessionReady={isSessionReady}
-        messages={archiveMessages}
-        hideWhenUnlockGate={archiveUnlockPending}
-      />
+      {!guestMode ? (
+        <PsychatArchivePanel
+          isSessionReady={isSessionReady}
+          messages={archiveMessages}
+          hideWhenUnlockGate={archiveUnlockPending}
+        />
+      ) : null}
 
       <AnimatedAIChat
         fullScreen={false}
@@ -201,7 +221,10 @@ function PsychatMainColumn({
         useRootRouterProxy={useRootRouterProxy}
         rootRouterProxyUrl={rootRouterProxyUrl}
         onOpenContextSettings={onOpenContextSettings}
+        notice={notice}
         chatGate={psychatChatGate}
+        chatTransport={guestMode ? 'guest' : 'hub'}
+        guestConsentVersion={guestMode ? PSYCHAT_GUEST_CONSENT_VERSION : undefined}
       />
     </>
   )
@@ -210,7 +233,8 @@ function PsychatMainColumn({
 export default function PsychatPage() {
   const { role, theme, setRole } = useUIStore()
   const isLight = theme === 'light'
-  const { user, authenticated, ready, providerId } = useWallet()
+  const { user, authenticated, ready, providerId, login } = useWallet()
+  const [guestConsent, setGuestConsent] = useState(false)
   const { wallets } = useWallets()
   const { isSessionReady, sessionState } = useSiweSession()
   const sessionEoa = getEOAAddress(wallets)
@@ -243,7 +267,18 @@ export default function PsychatPage() {
 
   useEffect(() => {
     setContextSettings(readPsychatContextSettings())
+    if (typeof localStorage !== 'undefined') {
+      setGuestConsent(localStorage.getItem(GUEST_CONSENT_STORAGE_KEY) === PSYCHAT_GUEST_CONSENT_VERSION)
+    }
   }, [])
+
+  const isGuestMode = !authenticated && guestConsent
+
+  useEffect(() => {
+    if (!authenticated && !isSessionReady) {
+      setDbRoleResolved(true)
+    }
+  }, [authenticated, isSessionReady])
 
   useEffect(() => {
     if (!isSessionReady) return
@@ -350,6 +385,7 @@ export default function PsychatPage() {
   }, [isSessionReady, refreshCredit])
 
   const buyCredit = (amountUsd: 5 | 10) => {
+    trackFunnel('credit_checkout_start', { amountUsd })
     setBuyingPack(amountUsd)
     setCreditShopError(null)
     void fetch('/api/ai/credit/checkout', {
@@ -431,79 +467,30 @@ export default function PsychatPage() {
   }
 
   const handleRequestHumanSession = async () => {
-    try {
-      setSessionError(null)
-
-      if (!ready || !authenticated || !isSessionReady) {
-        setSessionError('Confirma la sesión de esta wallet antes de pedir una sesión humana.')
-        return
-      }
-
-      const userEmail = user?.email?.address || user?.google?.email
-      const walletIdentity = getWalletIdentity(user, providerId)
-
-      if (!userEmail && !walletIdentity) {
-        setSessionError('No se pudo identificar tu usuario. Intenta desde la página de perfil.')
-        return
-      }
-
-      setIsCreatingSession(true)
-
-      const params = new URLSearchParams()
-      appendWalletIdentityParams(params, walletIdentity)
-      if (userEmail) params.append('email', userEmail)
-
-      const profileRes = await fetch(`/api/profile?${params.toString()}`)
-      if (!profileRes.ok) {
-        if (profileRes.status === 404) {
-          throw new Error('No encontramos tu perfil. Completa primero tu registro en la sección Perfil.')
-        }
-        throw new Error('Error al obtener tu perfil de usuario.')
-      }
-
-      const profileData = await profileRes.json()
-      const userId = profileData.user?.id as string | undefined
-      if (
-        profileData.user?.eoaAddress &&
-        sessionEoa &&
-        !sessionBelongsToWallet(profileData.user.eoaAddress, sessionEoa)
-      ) {
-        throw new Error('La sesión del Hub no corresponde a la wallet conectada. Cierra sesión y vuelve a entrar.')
-      }
-
-      if (!userId) {
-        throw new Error('No se pudo obtener tu ID de usuario.')
-      }
-
-      const sessionRes = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-
-      const sessionData = await sessionRes.json()
-
-      if (!sessionRes.ok) {
-        throw new Error(sessionData.error || 'Error al crear la sesión.')
-      }
-
-      const url = sessionData.session?.externalUrl
-      if (!url) {
-        throw new Error('La sesión no tiene un enlace de videollamada válido.')
-      }
-
-      router.push(buildVideochatUrl(url))
-    } catch (err) {
-      console.error('Error requesting human session:', err)
-      setSessionError(
-        err instanceof Error
-          ? err.message
-          : 'Hubo un problema al crear tu sesión. Intenta nuevamente más tarde.',
-      )
-    } finally {
-      setIsCreatingSession(false)
-    }
+    trackFunnel('human_handoff_marketplace', { guest: String(isGuestMode) })
+    router.push('/psicoterapia')
   }
+
+  const acceptGuestConsent = () => {
+    localStorage.setItem(GUEST_CONSENT_STORAGE_KEY, PSYCHAT_GUEST_CONSENT_VERSION)
+    setGuestConsent(true)
+    trackFunnel('tofu_page_view', { surface: 'psychat_guest_consent' })
+  }
+
+  const handleLoginFromPsychat = () => {
+    trackFunnel('login_from_tofu', { surface: 'psychat' })
+    void login()
+  }
+
+  const guestNotice = isGuestMode ? (
+    <div className="rounded-xl border border-border/50 bg-foreground/5 px-4 py-3 text-xs text-muted-foreground">
+      Modo prueba (límite diario). No es terapia ni diagnóstico.{' '}
+      <button type="button" className="text-mauve-300 underline" onClick={handleLoginFromPsychat}>
+        Inicia sesión
+      </button>{' '}
+      para más uso.
+    </div>
+  ) : null
 
   const proxyBase = resolveProxyBaseUrl(contextSettings)
   const useRootRouterProxy =
@@ -518,18 +505,38 @@ export default function PsychatPage() {
         onSaved={setContextSettings}
       />
       <div className="flex min-h-[calc(100dvh-5rem)] w-full flex-col bg-background sm:flex-row">
-        <PsychatSessionsSidebar
-          isSessionReady={isSessionReady}
-          activeSessionLabel={activeSessionLabel}
-          onNewChat={handleNewChat}
-          onOpenThread={handleOpenThread}
-        />
+        {authenticated ? (
+          <PsychatSessionsSidebar
+            isSessionReady={isSessionReady}
+            activeSessionLabel={activeSessionLabel}
+            onNewChat={handleNewChat}
+            onOpenThread={handleOpenThread}
+          />
+        ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
           <div className="flex w-full max-w-2xl flex-col gap-3">
+            {!authenticated && !guestConsent ? (
+              <div className="rounded-2xl border border-border/60 bg-foreground/5 p-6 text-sm">
+                <p className="font-medium">Probar Psychat sin cuenta</p>
+                <p className="mt-2 text-muted-foreground leading-relaxed">
+                  Puedes enviar algunos mensajes al día como invitado. No sustituye terapia ni guarda expediente.
+                  Para continuar después, inicia sesión o elige un profesional.
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <CTAButton type="button" className="flex-1" onClick={acceptGuestConsent}>
+                    Probar como invitado
+                  </CTAButton>
+                  <CTAButton type="button" variant="secondary" className="flex-1" onClick={handleLoginFromPsychat}>
+                    Iniciar sesión
+                  </CTAButton>
+                </div>
+              </div>
+            ) : null}
+            {authenticated || guestConsent ? (
             <PsychatMainColumn
-              role={role}
-              roleReady={dbRoleResolved || (ready && !authenticated)}
+              role={isGuestMode ? 'usuario' : role}
+              roleReady={isGuestMode || dbRoleResolved}
               isLight={isLight}
               ready={ready}
               authenticated={authenticated}
@@ -560,7 +567,11 @@ export default function PsychatPage() {
               useRootRouterProxy={useRootRouterProxy}
               rootRouterProxyUrl={proxyBase ?? ''}
               onOpenContextSettings={() => setContextModalOpen(true)}
+              guestMode={isGuestMode}
+              onLogin={handleLoginFromPsychat}
+              notice={guestNotice}
             />
+            ) : null}
           </div>
         </div>
       </div>
