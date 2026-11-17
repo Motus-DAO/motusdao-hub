@@ -3,7 +3,7 @@
 > **Único doc de estado.** El detalle vive en los specs; la taxonomía y las fases viven en
 > [platform-harmonize.md](./platform-harmonize.md). No dupliques tablas de estado en otros docs.
 >
-> **Última verificación:** 2026-11-07 · `main` + dashboard embebido de Connect · Owner: product + eng.
+> **Última verificación:** 2026-11-17 · `main` @ `9f1c22b` · Owner: product + eng.
 >
 > Planes: [SDD-safety-plan](../docs/specs/SDD-safety-plan.md) ·
 > [SDD-chat-data](../docs/specs/SDD-chat-data.md) ·
@@ -32,7 +32,7 @@ Si toca la app, además `npm run build`. Si toca el schema, migración + nota de
 | Academia + Stripe | **Shipped** / cobrando | [admin](./academy-admin-courses.md) · `862e2b6` |
 | Pagos (terapia + P2P) | **Stripe Connect dashboard + CLABE/P2P live**; Ripio mock; Textile wired | [README §Pagos](../README.md#payments-and-self-custody) · [CLABE](./therapy-payments-clabe-connect.md) · [Connect v2](./stripe-connect-therapy-v2.md) |
 | Psychat PSM (supervisor) | **In flight** — slice 3 cerrado en working tree; falta sign-off clínico del bloque "Conversación (A)" | [lock-in](./psychat-psm-supervisor-lockin.md) · `4f04131` |
-| Psychat usuario (exploración) | **In flight** — routing por trigger restaurado (2026-11-10); pendiente merge + QA | [spec](./psychat-usuario-modo-exploracion.md) · [slice 3](./psychat-psm-slice-3-usuario-routing-e.md) |
+| Psychat usuario (exploración) | **In flight** — routing por trigger en `main` (`9f1c22b`); QA prod pendiente | [spec](./psychat-usuario-modo-exploracion.md) · [slice 3](./psychat-psm-slice-3-usuario-routing-e.md) |
 | Video / Jitsi | **Shipped** (servidor privado) | [runbook](../docs/runbooks/VERCEL_VIDEOCHAT_ENV.md) |
 | Compliance beta | **Shipped** | [compliance](../docs/compliance/README.md) · `fde8017` |
 | Seguridad de dependencias | **Parcheado Oct-2026**; deuda transitiva | [runbook](../docs/runbooks/security-patching.md) |
@@ -128,7 +128,7 @@ Detalle: [spec](./celo-attribution.md).
 |---------|-----------|--------|
 | **Psychat PSM slice 1** | Validar en producción que el deploy incluye `4f04131`; actualizar el header del spec | El spec dice READY; el código ya está en `main` |
 | **Psychat PSM slice 2** | Bloquear el proxy RootRouter para rol PSM; verificar banner de error 502 | El botón de reporte ya existe, pero el proxy sigue disponible para PSM |
-| **Psychat usuario slice 3** | Restaurar exploración **solo con trigger**; hoy cada turno devuelve JSON | Contradice el spec de usuario y empeora la conversación |
+| **Psychat usuario slice 3** | QA en prod tras merge `9f1c22b` (prompt + `roleReady`) | Código en `main`; confirmar que ya no fuerza JSON en cada turno |
 | **Stripe Connect terapia v2** | Verificación del primer PSM, E2E test mode y primer cobro live | Dashboard embebido + Site links + AccountSession ya en prod (2026-11-07); la cuenta sigue sin `charges`/`payouts` |
 | **Enclave Phala fases 2–3** | Worker, medición publicada, attestation real, precios | `PSYCHAT_ENCLAVE_ATTESTATION_MOCK_OK` no es un control |
 | **Ripio rampa pública** | Confirmar el payout del off-ramp (Ripio valida la CLABE con un micro-depósito) y decidir el off-ramp automático | Compra y venta ya probadas en prod desde iPhone; el B2B sigue bloqueado por KYB |
@@ -143,17 +143,20 @@ Detalle: [spec](./celo-attribution.md).
 
 ## 4. Next (orden recomendado)
 
-1. **Cerrar Psychat PSM slice 2 + slice 3.** Son cambios chicos y ya hay tests en
-   `lib/psychat-prompt.test.ts`; devuelven el contrato que describen los specs.
-2. **Verificar el deploy de este refresh en Vercel.** Antes de estos fixes, `main` no pasaba
-   `tsc`/`build`; confirmar que el PSM fix y la bitácora cifrada ya están en producción.
-3. **Revisar los headers de Academia** y moverlos a IMPLEMENTED/SHIPPED con la fecha del commit,
+1. **Auth / identidad:** WaaP principal, Thirdweb fallback, quitar Privy; SIWE multi-wallet
+   linking. Rollback: tag `identity-baseline-pre-waap-multiwallet-2026-11-17` (`9f1c22b`).
+2. **Founding allowlist (MKT):** implementar desde [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md)
+   (spec only; sin código aún).
+3. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.
+4. **Verificar el deploy de este refresh en Vercel.** Antes de estos fixes, `main` no pasaba
+   `tsc`/`build`; confirmar nav `ActiveRoleSync` y Psychat en producción.
+5. **Revisar los headers de Academia** y moverlos a IMPLEMENTED/SHIPPED con la fecha del commit,
    para que el índice no diga DRAFT sobre flujo en producción.
-4. **Decidir `/supervision` y `/mis-usuarios`:** implementarlos con datos reales o quitarlos del
+6. **Decidir `/supervision` y `/mis-usuarios`:** implementarlos con datos reales o quitarlos del
    nav PSM. Hoy son mock con datos de 2024.
-5. **Política de migraciones:** `db:deploy` usa `prisma db push`; no hay paso `migrate deploy` en
+7. **Política de migraciones:** `db:deploy` usa `prisma db push`; no hay paso `migrate deploy` en
    el deploy. Decidir y documentar antes del próximo cambio de schema.
-6. **Ripio:** activar con credenciales partner o esconder el proveedor con
+8. **Ripio:** activar con credenciales partner o esconder el proveedor con
    `NEXT_PUBLIC_RIPIO_RAMPS_ENABLED=false`. No dejar un botón de on/off-ramp en mock sin aviso.
 
 ---
@@ -162,7 +165,7 @@ Detalle: [spec](./celo-attribution.md).
 
 | Gap | Impacto | Nota |
 |-----|---------|------|
-| `/supervision` y `/mis-usuarios` son mock | Confunden “Supervisión” con Psychat supervisor | Están en el nav PSM (`lib/store.ts`) |
+| `/supervision` y `/mis-usuarios` son mock | Confunden “Supervisión” con Psychat supervisor | Nav PSM en `lib/navigation.ts` |
 | Attestation de enclave mock | No se puede prometer TEE de contexto | Fase 2–3 |
 | `db:deploy` = `db push` | Sin historial de migraciones en deploy | `prisma/migrations` existe |
 | Stripe Connect en rama local | Bus factor y drift con `main` | Documentado en el spec |
@@ -248,4 +251,16 @@ Detalle y rollback: [celo-attribution.md](./celo-attribution.md).
 
 ---
 
-*Estado del Hub · actualizado 2026-11-07 · MotusDAO*
+### Addendum — nav + Psychat + founding spec (2026-11-17)
+
+| Commit | Qué |
+|--------|-----|
+| `98e997d` | SDD founding allowlist usuario/PSM (`MTU` / `MTP`) |
+| `bc57669` | Nav agrupado + `ActiveRoleSync` (rol desde sesión SIWE) |
+| `9f1c22b` | Psychat prompts + `roleReady`; STATUS slice 3 |
+
+Tag de rollback antes del slice auth: `identity-baseline-pre-waap-multiwallet-2026-11-17` → `9f1c22b`.
+
+---
+
+*Estado del Hub · actualizado 2026-11-17 · MotusDAO*
