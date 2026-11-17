@@ -31,8 +31,8 @@ Si toca la app, además `npm run build`. Si toca el schema, migración + nota de
 | Portabilidad de datos (chat-data 1–5) | **Shipped** (fase 1 del enclave) | [roadmap](./chat-data-roadmap.md) · Oct 27–28 |
 | Academia + Stripe | **Shipped** / cobrando | [admin](./academy-admin-courses.md) · `862e2b6` |
 | Pagos (terapia + P2P) | **Stripe Connect dashboard + CLABE/P2P live**; Ripio mock; Textile wired | [README §Pagos](../README.md#payments-and-self-custody) · [CLABE](./therapy-payments-clabe-connect.md) · [Connect v2](./stripe-connect-therapy-v2.md) |
-| Psychat PSM (supervisor) | **In flight** | [lock-in](./psychat-psm-supervisor-lockin.md) · `4f04131` |
-| Psychat usuario (exploración) | **Parcial** (regresión de routing) | [spec](./psychat-usuario-modo-exploracion.md) · slice 3 |
+| Psychat PSM (supervisor) | **In flight** — slice 3 cerrado en working tree; falta sign-off clínico del bloque "Conversación (A)" | [lock-in](./psychat-psm-supervisor-lockin.md) · `4f04131` |
+| Psychat usuario (exploración) | **In flight** — routing por trigger restaurado (2026-11-10); pendiente merge + QA | [spec](./psychat-usuario-modo-exploracion.md) · [slice 3](./psychat-psm-slice-3-usuario-routing-e.md) |
 | Video / Jitsi | **Shipped** (servidor privado) | [runbook](../docs/runbooks/VERCEL_VIDEOCHAT_ENV.md) |
 | Compliance beta | **Shipped** | [compliance](../docs/compliance/README.md) · `fde8017` |
 | Seguridad de dependencias | **Parcheado Oct-2026**; deuda transitiva | [runbook](../docs/runbooks/security-patching.md) |

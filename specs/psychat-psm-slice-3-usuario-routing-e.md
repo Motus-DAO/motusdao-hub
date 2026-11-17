@@ -1,6 +1,8 @@
 # Psychat PSM — Slice 3: Usuario routing (paridad E)
 
-> Status: **READY** · Slice 1 is in `main` (`4f04131`); this slice restores trigger-based routing for `usuario` · Complements [`psychat-usuario-modo-exploracion.md`](./psychat-usuario-modo-exploracion.md)
+> Status: **DONE (working tree, pending merge + QA de producción)** · Slice 1 is in `main` (`4f04131`); this slice restores trigger-based routing for `usuario` · Complements [`psychat-usuario-modo-exploracion.md`](./psychat-usuario-modo-exploracion.md)
+>
+> **Implementado (2026-11-10):** `resolvePsychatStructuredMode('usuario', …)` devuelve `exploracion` solo con trigger (`wantsExploracionMode`), `null` en turno normal. Tests `psychat-prompt.test.ts` y `psychat-structured-output.test.ts` actualizados. Efecto lateral esperado: el RAG vuelve a correr en turnos QA de usuario (`!structuredMode`).
 
 ---
 

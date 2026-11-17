@@ -1,6 +1,8 @@
 # Psychat — Modo exploración (usuario) — Spec
 
-> Status: **PARTIAL** — the trigger-based routing described here regressed at `0f35444`; the code currently forces `exploracion` on every `usuario` turn. Fix tracked in [`psychat-psm-slice-3-usuario-routing-e.md`](./psychat-psm-slice-3-usuario-routing-e.md). · Complements PSM Modo Supervisor · `safety-slice-2-psychat.md`
+> Status: **IN FLIGHT** — routing por trigger restaurado el 2026-11-10 (ver [`psychat-psm-slice-3-usuario-routing-e.md`](./psychat-psm-slice-3-usuario-routing-e.md)); pendiente merge + QA de producción. · Complements PSM Modo Supervisor · `safety-slice-2-psychat.md`
+>
+> **2026-11-10 — por qué "no respondía bien":** (a) `resolvePsychatStructuredMode` forzaba `exploracion` en cada turno de `usuario`, así que toda respuesta llevaba `Límite` + `Puente humano` + chip de handoff y el RAG nunca corría; (b) cuentas `psm` recibían el prompt supervisor —que no tiene modo conversacional— cuando hablaban en primera persona, y el modelo rechazaba explorar citando "distancia analítica / no satisfacer demandas"; (c) el saludo de usuario se renderizaba antes de hidratar el rol desde la DB. Los tres puntos están corregidos en el prompt, el routing y la hidratación de rol.
 
 ## Scope
 

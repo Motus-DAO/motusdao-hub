@@ -9,12 +9,13 @@ import {
 } from './psychat-structured-output'
 
 describe('psychat structured output', () => {
-  it('usuario hub role resolves to exploracion mode', () => {
+  it('usuario hub role resolves to exploracion mode on trigger', () => {
     assert.equal(normalizePsychatRole('usuario'), 'usuario')
     assert.equal(
-      resolvePsychatStructuredMode('usuario', 'hoy me pelee con mi papa y estoy triste'),
+      resolvePsychatStructuredMode('usuario', 'quiero explorar lo que siento, hoy me pelee con mi papa'),
       'exploracion'
     )
+    assert.equal(resolvePsychatStructuredMode('usuario', 'hola'), null)
   })
 
   it('psm hub role uses structured supervisor only when API requests report', () => {

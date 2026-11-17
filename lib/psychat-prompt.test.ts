@@ -32,9 +32,17 @@ describe('psychat-prompt modes', () => {
       'supervisor'
     )
     assert.equal(resolvePsychatStructuredMode('psm', 'modo supervisor'), null)
-    assert.equal(resolvePsychatStructuredMode('usuario', 'hola'), 'exploracion')
+  })
+
+  it('usuario: exploracion only on trigger, not every turn (slice 3)', () => {
+    assert.equal(resolvePsychatStructuredMode('usuario', 'hola'), null)
+    assert.equal(resolvePsychatStructuredMode('usuario', 'ando confundido, debe ser el cansancio'), null)
     assert.equal(
       resolvePsychatStructuredMode('usuario', 'quiero explorar lo que siento'),
+      'exploracion'
+    )
+    assert.equal(
+      resolvePsychatStructuredMode('usuario', 'solo quiero explorar ideas contigo y que me preguntes cosas'),
       'exploracion'
     )
   })

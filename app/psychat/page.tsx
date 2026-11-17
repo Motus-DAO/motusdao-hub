@@ -39,6 +39,8 @@ type PsychatCreditState = {
 
 type PsychatMainColumnProps = {
   role: 'psm' | 'usuario' | 'admin'
+  /** Hub role hydrated from the DB; gates the role-specific greeting. */
+  roleReady: boolean
   isLight: boolean
   ready: boolean
   authenticated: boolean
@@ -73,6 +75,7 @@ type PsychatMainColumnProps = {
 
 function PsychatMainColumn({
   role,
+  roleReady,
   isLight,
   ready,
   authenticated,
@@ -175,6 +178,7 @@ function PsychatMainColumn({
       <AnimatedAIChat
         fullScreen={false}
         role={role === 'admin' ? 'usuario' : role}
+        roleReady={roleReady}
         chatSessionKey={chatSessionKey}
         loadedThread={loadedThread}
         onRequestHumanSession={handleRequestHumanSession}
@@ -234,6 +238,8 @@ export default function PsychatPage() {
   const [activeSessionLabel, setActiveSessionLabel] = useState('Nuevo chat')
   const [contextSettings, setContextSettings] = useState<PsychatContextSettings>(defaultPsychatContextSettings)
   const [contextModalOpen, setContextModalOpen] = useState(false)
+  /** Hub role from DB; until true the chat must not render a role-specific greeting. */
+  const [dbRoleResolved, setDbRoleResolved] = useState(false)
 
   useEffect(() => {
     setContextSettings(readPsychatContextSettings())
@@ -252,6 +258,9 @@ export default function PsychatPage() {
         }
       })
       .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setDbRoleResolved(true)
+      })
     return () => {
       cancelled = true
     }
@@ -520,6 +529,7 @@ export default function PsychatPage() {
           <div className="flex w-full max-w-2xl flex-col gap-3">
             <PsychatMainColumn
               role={role}
+              roleReady={dbRoleResolved || (ready && !authenticated)}
               isLight={isLight}
               ready={ready}
               authenticated={authenticated}

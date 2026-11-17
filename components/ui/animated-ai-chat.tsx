@@ -146,6 +146,12 @@ const CLINICAL_EXAMPLE =
 export interface AnimatedAIChatProps {
   fullScreen?: boolean
   role?: UserRole
+  /**
+   * True once the Hub role is hydrated from the DB. While false, no greeting is
+   * rendered: a `psm` account must never see the usuario "explora lo que sientes"
+   * opener before the role resolves.
+   */
+  roleReady?: boolean
   onRequestHumanSession?: () => void | Promise<void>
   isCreatingSession?: boolean
   sessionError?: string | null
@@ -185,6 +191,7 @@ export interface AnimatedAIChatProps {
 export function AnimatedAIChat({
   fullScreen = true,
   role = 'usuario',
+  roleReady = true,
   onRequestHumanSession,
   isCreatingSession = false,
   sessionError = null,
@@ -216,13 +223,17 @@ export function AnimatedAIChat({
   const [value, setValue] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const e2eeAvailable = aiProvider === 'venice' && (!modelId || modelId.startsWith('e2ee-'))
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: isPsm ? PSM_GREETING : USUARIO_GREETING,
-    },
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    roleReady
+      ? [
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content: isPsm ? PSM_GREETING : USUARIO_GREETING,
+          },
+        ]
+      : []
+  )
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
@@ -257,6 +268,12 @@ export function AnimatedAIChat({
   }, [messages, onMessagesChange])
 
   useEffect(() => {
+    if (!roleReady) {
+      setMessages([])
+      setValue('')
+      setError(null)
+      return
+    }
     if (loadedThread && loadedThread.length > 0) {
       setMessages(
         loadedThread.map((m, i) => ({
@@ -276,7 +293,7 @@ export function AnimatedAIChat({
     }
     setValue('')
     setError(null)
-  }, [chatSessionKey, loadedThread, isPsm])
+  }, [chatSessionKey, loadedThread, isPsm, roleReady])
 
   const isComposerLocked = Boolean(sendBlockedReason)
   const showComposerOverlay = isComposerLocked && !chatGate
