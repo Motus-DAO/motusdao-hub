@@ -47,7 +47,7 @@ export function WaaPWalletContextBridgeWithFallback({
         requestSharedEmail: async () => null,
         wallets,
         provider: fallback.eip1193Provider ?? waapProvider,
-        isProviderReady: Boolean(fallback.eip1193Provider),
+        isProviderReady: Boolean(fallback.eip1193Provider || fallback.address),
         emailLogin: {
           sendCode: auth.sendCode,
           loginWithCode: auth.loginWithCode,

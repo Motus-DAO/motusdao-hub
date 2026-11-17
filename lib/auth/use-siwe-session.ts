@@ -81,6 +81,9 @@ function useSiweSessionController(): SiweSessionValue {
     }
 
     if (!eoaAddress) {
+      if (authenticated) {
+        setSessionState('needs_signature')
+      }
       return
     }
 
@@ -167,7 +170,9 @@ function useSiweSessionController(): SiweSessionValue {
           ? 'external'
           : providerId === 'privy'
             ? 'privy'
-            : 'waap'
+            : providerId === 'thirdweb'
+              ? 'thirdweb'
+              : 'waap'
 
       await withSignTimeout(
         establishSiweSession({

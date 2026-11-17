@@ -60,7 +60,7 @@ export async function fetchAppSession(): Promise<AppSession> {
 
 export async function establishSiweSession(params: {
   waapProvider: unknown
-  authProvider?: 'waap' | 'privy' | 'external'
+  authProvider?: 'waap' | 'privy' | 'thirdweb' | 'external'
   authProviderId?: string
   eoaAddress?: string
   signal?: AbortSignal
@@ -118,7 +118,7 @@ export function waitForExistingHubBootstrap(): Promise<boolean> | null {
  */
 export async function bootstrapHubSessionIfNeeded(params: {
   waapProvider: unknown
-  authProvider?: 'waap' | 'privy' | 'external'
+  authProvider?: 'waap' | 'privy' | 'thirdweb' | 'external'
   authProviderId?: string
   eoaAddress?: string
 }): Promise<boolean> {

@@ -153,6 +153,19 @@ describe('Hub session + /perfil auth', () => {
     assert.equal(gate, 'unauthenticated')
   })
 
+  it('Wallet connected (Thirdweb) but stale no_wallet → signature gate', () => {
+    const gate = resolveProfileAccessGate({
+      walletReady: true,
+      walletAuthenticated: true,
+      sessionState: 'no_wallet',
+      signing: false,
+      profileLoading: false,
+      error: null,
+      hasProfileName: false,
+    })
+    assert.equal(gate, 'needs_signature')
+  })
+
   it('Needs SIWE signature → confirm-session gate, not Error + nested loading', () => {
     const gate = resolveProfileAccessGate({
       walletReady: true,

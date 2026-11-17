@@ -151,8 +151,12 @@ export function resolveProfileAccessGate(input: {
     return input.walletTimedOut ? 'unauthenticated' : 'wallet_loading'
   }
 
-  if (!input.walletAuthenticated || input.sessionState === 'no_wallet') {
+  if (!input.walletAuthenticated) {
     return 'unauthenticated'
+  }
+
+  if (input.sessionState === 'no_wallet') {
+    return 'needs_signature'
   }
 
   if (input.signing || input.sessionState === 'needs_signature') {

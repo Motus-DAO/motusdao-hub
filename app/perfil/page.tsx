@@ -120,6 +120,7 @@ export default function PerfilPage() {
     isSessionReady,
     signing: isSigningSession,
     refresh: refreshSession,
+    signIn: signInSiwe,
   } = useSiweSession()
   
   // ZeroDev smart wallet hook
@@ -764,7 +765,13 @@ export default function PerfilPage() {
         kind={accessGate}
         errorMessage={error}
         errorKind={errorKind}
-        onLogin={() => void login()}
+        onLogin={() => {
+          if (authenticated) {
+            void signInSiwe()
+            return
+          }
+          void login()
+        }}
         onRetry={() => {
           setError(null)
           setErrorKind(null)

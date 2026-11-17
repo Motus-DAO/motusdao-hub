@@ -75,6 +75,13 @@ export function identifyEmbeddedWallet(wallets: WaaPWallet[]): WaaPWallet | null
   }
   
   // Check for external wallets (MetaMask, etc.)
+  const thirdwebWallet = wallets.find(wallet => wallet.walletClientType === 'thirdweb')
+
+  if (thirdwebWallet) {
+    console.log('ℹ️ Using Thirdweb wallet as EOA:', thirdwebWallet.address)
+    return thirdwebWallet
+  }
+
   const externalWallet = wallets.find(wallet => wallet.walletClientType === 'external')
   
   if (externalWallet) {
@@ -193,6 +200,13 @@ export function verifySmartWallet(wallets: WaaPWallet[]): {
  * @returns The EOA address to use, or null if not found
  */
 export function getEOAAddress(wallets: WaaPWallet[]): string | null {
+  const thirdwebWallet = wallets.find(wallet => wallet.walletClientType === 'thirdweb')
+
+  if (thirdwebWallet?.address) {
+    console.log('✅ Using Thirdweb wallet EOA address:', thirdwebWallet.address)
+    return thirdwebWallet.address
+  }
+
   // First, check for external wallet (MetaMask, WalletConnect, etc.)
   const externalWallet = wallets.find(wallet => wallet.walletClientType === 'external')
   
