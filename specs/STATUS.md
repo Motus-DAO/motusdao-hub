@@ -147,7 +147,7 @@ Detalle: [spec](./celo-attribution.md).
 ## 4. Next (orden recomendado)
 
 1. **Identity I6 Safari** — [identity-safari-connect-routing.md](./identity-safari-connect-routing.md): login en iPhone Safari → Thirdweb directo (evitar iframe Human congelado); Human sigue en desktop / link en Perfil. *(Modal global login en AppShell alinea con F1.)*
-3. **Founding MKT M1** — [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md) (identidad I1–I4 **shipped**; leaderboard público + modal; **después** de F1 para que la lista no sea el primer muro).
+3. **Founding MKT** — [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md): **código M1–M3 shipped** (`/founding`, admin, Stripe promo, checkouts); **ops M0** = cupones en Stripe + `STRIPE_FOUNDING_COUPON_*` + Resend en prod.
 3. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.
 4. **Verificar el deploy de este refresh en Vercel.** Antes de estos fixes, `main` no pasaba
    `tsc`/`build`; confirmar nav `ActiveRoleSync` y Psychat en producción.
@@ -269,6 +269,7 @@ Tags: rollback **`funnel-baseline-pre-open-market-2026-11-17`** (`7cf8806`) · s
 | Commit | Qué |
 |--------|-----|
 | `98e997d` | SDD founding allowlist usuario/PSM (`MTU` / `MTP`) |
+| *(pendiente commit)* | Founding M1–M3: waitlist Prisma, APIs, UI, promo Stripe, `allow_promotion_codes` |
 | `bc57669` | Nav agrupado + `ActiveRoleSync` (rol desde sesión SIWE) |
 | `9f1c22b` | Psychat prompts + `roleReady`; STATUS slice 3 |
 

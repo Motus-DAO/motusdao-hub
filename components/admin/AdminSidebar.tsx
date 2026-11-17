@@ -21,6 +21,7 @@ import {
   Home,
   X,
   AtSign,
+  Sparkles,
 } from 'lucide-react'
 import { GradientText } from '@/components/ui/GradientText'
 
@@ -69,6 +70,11 @@ const navigationItems = [
     name: 'MNS Debug',
     href: '/admin/mns',
     icon: AtSign,
+  },
+  {
+    name: 'Founding',
+    href: '/admin/founding',
+    icon: Sparkles,
   },
   {
     name: 'Reportes',

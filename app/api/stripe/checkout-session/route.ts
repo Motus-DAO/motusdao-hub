@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: isSubscription ? 'subscription' : 'payment',
+      allow_promotion_codes: true,
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: order.id,

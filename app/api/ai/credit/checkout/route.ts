@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     const base = returnBase(request)
     const checkout = await stripe.checkout.sessions.create({
       mode: 'payment',
+      allow_promotion_codes: true,
       success_url: `${base}/psychat?credit=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/psychat?credit=cancelled`,
       client_reference_id: session.userId,

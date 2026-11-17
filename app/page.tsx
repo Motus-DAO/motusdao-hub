@@ -154,6 +154,14 @@ export default function Home() {
                   >
                     Iniciar sesión
                   </CTAButton>
+                  <Link
+                    href="/founding"
+                    onClick={() => trackTofuExplore('Lista fundadora', 'hero', '/founding')}
+                  >
+                    <CTAButton variant="ghost" size="lg" className="w-full sm:w-auto">
+                      Lista fundadora
+                    </CTAButton>
+                  </Link>
                 </div>
               </GlassCard>
             </motion.div>

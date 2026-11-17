@@ -1,6 +1,6 @@
 # MKT-EXP · Founding allowlist — Usuarios y PSM
 
-**Status:** **active SDD** — experiment; manual-first ops, mismo patrón que Lab-Avril-Life (MKT-EXP M1–M4).
+**Status:** **SHIPPED (code M1–M3)** · ops M0 (cupones Stripe live + Resend) pendiente en cada entorno · spec **LOCKED** salvo cambios de cap/legal.
 **Surface:** Hub MotusDAO (`NEXT_PUBLIC_APP_URL`)
 **Last updated:** 2026-11-17
 **Reference (read-only):** `Lab-Avril-Life/docs/marketing-experiments/founding-allowlist-waitlist.md`, `lib/founding-stripe.ts`, `lib/founding-promo-email-template.ts`, `lib/support-mail.ts`
@@ -355,3 +355,4 @@ Sección **Founding** (o dos tabs **Usuarios** / **PSM**):
 | Date | Change |
 |------|--------|
 | 2026-11-17 | Initial SDD — dual list Usuario/PSM, códigos `MTU-*` / `MTP-*`, Resend espejo Lab, redención Psychat 5/10 + Academia |
+| 2026-11-17 | Implementación Hub — Prisma waitlist, APIs, `/founding`, admin `/admin/founding`, promo Stripe, `allow_promotion_codes` en checkouts |

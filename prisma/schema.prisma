@@ -920,3 +920,58 @@ enum CourseDifficulty {
   intermediate
   advanced
 }
+
+enum FoundingWaitlistRole {
+  user
+  psm
+}
+
+enum FoundingWaitlistTier {
+  A
+  B
+  C
+}
+
+enum FoundingWaitlistStatus {
+  registered
+  code_sent
+  redeemed
+}
+
+model FoundingWaitlistEntry {
+  id                      String                 @id
+  role                    FoundingWaitlistRole
+  createdAt               DateTime               @default(now())
+  position                Int
+  tier                    FoundingWaitlistTier
+  discountPercent         Int
+  displayName             String
+  email                   String
+  wallet                  String?
+  mnsLabel                String
+  mnsTxHash               String
+  status                  FoundingWaitlistStatus @default(registered)
+  stripePromotionCode     String?
+  stripePromotionCodeId   String?
+  codeSentAt              DateTime?
+  clientIp                String
+  locale                  String                 @default("es")
+  optionalNote            String?
+
+  @@unique([role, email])
+  @@index([role, position])
+  @@map("founding_waitlist_entries")
+}
+
+model FoundingWaitlistAudit {
+  id          String               @id @default(cuid())
+  entryId     String?
+  emailHash   String
+  role        FoundingWaitlistRole
+  adminWallet String
+  position    Int
+  deletedAt   DateTime             @default(now())
+
+  @@index([role, deletedAt])
+  @@map("founding_waitlist_audit")
+}
