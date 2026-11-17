@@ -24,6 +24,7 @@ import {
   SIWE_SESSION_LOADING_TIMEOUT_MS,
   SIWE_SIGN_TIMEOUT_MS,
 } from '@/lib/auth/hub-session'
+import { isWalletLinkModeActive } from '@/lib/auth/wallet-link-mode'
 import { withSignTimeout, SignMessageError } from '@/lib/auth/signing'
 import {
   releaseHiddenWaapOverlayInput,
@@ -58,6 +59,7 @@ function useSiweSessionController(): SiweSessionValue {
   const acceptedEoaRef = useRef<string | null>(null)
 
   if (
+    !isWalletLinkModeActive() &&
     sessionState === 'ready' &&
     eoaAddress &&
     acceptedEoaRef.current &&
@@ -97,11 +99,15 @@ function useSiweSessionController(): SiweSessionValue {
       }
 
       acceptedEoaRef.current = null
+      if (isWalletLinkModeActive() && session.authenticated && session.userId) {
+        acceptedEoaRef.current = session.eoaAddress?.toLowerCase() ?? null
+        setSessionState('ready')
+        setSignError(null)
+        return
+      }
       if (session.authenticated) {
         await logoutAppSession()
       }
-      // Drop the old cookie. Do not auto-sign: a background personal_sign
-      // often hangs, and the new account must confirm its own session.
       setSessionState('needs_signature')
       setSignError(null)
     } catch (error) {
@@ -130,6 +136,13 @@ function useSiweSessionController(): SiweSessionValue {
   }, [sessionState, authenticated])
 
   const signIn = useCallback(async () => {
+    if (isWalletLinkModeActive()) {
+      setSignError(
+        'Estás vinculando otra wallet. Usa «Firmar SIWE y vincular» o cancela antes de iniciar sesión.'
+      )
+      return false
+    }
+
     if (!provider) {
       setSignError('Wallet no disponible. Recarga la página e intenta de nuevo.')
       return false

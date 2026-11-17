@@ -36,10 +36,13 @@ import { getTokenBalance, getAllTokenBalances, type TokenBalance } from '@/lib/b
 import { motusNameService } from '@/lib/motus-name-service'
 import { formatUnits } from 'viem'
 import type { Address } from 'viem'
-import { getEOAAddress, getPrimaryWallet } from '@/lib/wallet-utils'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
+import {
+  PaymentSessionHint,
+  WalletBalancesCard,
+} from '@/components/profile/WalletBalancesCard'
 import { useUIStore } from '@/lib/store'
-import { sessionBelongsToWallet } from '@/lib/auth/hub-session'
 import {
   motusUserToRipioExternalRef,
   type RipioRampFlow,
@@ -137,9 +140,12 @@ export default function PagosPage() {
   const { authenticated, user, ready, providerId } = useWallet()
   const { isSessionReady } = useSiweSession()
   const { wallets } = useWallets()
-  const sessionEoa = getEOAAddress(wallets)
-  const primaryWallet = getPrimaryWallet(wallets || [])
-  const walletAddress = primaryWallet?.address || null
+  const {
+    sessionEoa: walletAddress,
+    sessionAuthProvider,
+    isSessionReady: paymentSessionReady,
+    getPaymentContext,
+  } = useHubPaymentSession()
   const [isStartingOnramp, setIsStartingOnramp] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<OnrampProvider | null>(null)
   const [mtPelerinUrl, setMtPelerinUrl] = useState<string | null>(null)
@@ -366,8 +372,8 @@ export default function PagosPage() {
       return
     }
 
-    if (!primaryWallet || !walletAddress) {
-      setSendError('Wallet no disponible. Asegúrate de haber iniciado sesión con WaaP.')
+    if (!paymentSessionReady || !walletAddress) {
+      setSendError('Confirma tu sesión SIWE antes de enviar pagos.')
       return
     }
 
@@ -409,10 +415,11 @@ export default function PagosPage() {
         token: selectedToken
       })
 
+      const paymentCtx = await getPaymentContext()
       const isNative = selectedToken === 'CELO'
       const result = isNative
-        ? await sendCELOPayment(primaryWallet, params, wallets)
-        : await sendStablecoinPayment(primaryWallet, params)
+        ? await sendCELOPayment(paymentCtx, params)
+        : await sendStablecoinPayment(paymentCtx, params)
 
       if (result.success && result.transactionHash) {
         setSendSuccess({
@@ -438,7 +445,7 @@ export default function PagosPage() {
   // Load token balances
   useEffect(() => {
     const loadBalances = async () => {
-      if (!authenticated || !walletAddress || !ready) {
+      if (!authenticated || !paymentSessionReady || !walletAddress || !ready) {
         setTokenBalances([])
         return
       }
@@ -464,7 +471,7 @@ export default function PagosPage() {
     // Refresh balances every 30 seconds
     const interval = setInterval(loadBalances, 30000)
     return () => clearInterval(interval)
-  }, [authenticated, walletAddress, ready, enabledTokens])
+  }, [authenticated, paymentSessionReady, walletAddress, ready, enabledTokens])
 
   // Refresh balances after successful payment
   useEffect(() => {
@@ -519,14 +526,6 @@ export default function PagosPage() {
         const profileResponse = await fetch(`/api/profile?${params.toString()}`)
         if (profileResponse.ok) {
           const profileData = await profileResponse.json()
-          if (
-            profileData.user?.eoaAddress &&
-            sessionEoa &&
-            !sessionBelongsToWallet(profileData.user.eoaAddress, sessionEoa)
-          ) {
-            setUserData(null)
-            return
-          }
           setUserData(profileData.user)
         }
       } catch (err) {
@@ -535,7 +534,7 @@ export default function PagosPage() {
     }
 
     void fetchUser()
-  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId, isSessionReady, sessionEoa])
+  }, [ready, authenticated, userEmail, walletIdentity?.authProviderId, isSessionReady])
 
   const handleStartRipioRamp = async (flow: RipioRampFlow) => {
     if (!authenticated) {
@@ -945,6 +944,12 @@ export default function PagosPage() {
             </GlassCard>
           </motion.div>
 
+          {authenticated && paymentSessionReady ? (
+            <div className="mb-12">
+              <WalletBalancesCard />
+            </div>
+          ) : null}
+
           {/* Wallet Balances Section */}
           {authenticated && walletAddress && (
             <motion.div
@@ -962,8 +967,13 @@ export default function PagosPage() {
                       Saldos de tu Wallet
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Balances actuales de tus tokens en la smart wallet
+                      Balances de la wallet de tu sesión (solo lectura para enviar).
                     </p>
+                    <PaymentSessionHint
+                      sessionEoa={walletAddress}
+                      sessionAuthProvider={sessionAuthProvider}
+                      className="mt-2"
+                    />
                   </div>
                   <div className="flex items-center space-x-2">
                     <Link
@@ -1612,11 +1622,23 @@ export default function PagosPage() {
                         </div>
                       )}
 
+                      <PaymentSessionHint
+                        sessionEoa={walletAddress}
+                        sessionAuthProvider={sessionAuthProvider}
+                        className="mb-2"
+                      />
+
                       <CTAButton
                         size="lg"
                         className="w-full"
                         onClick={handleSendPayment}
-                        disabled={isSending || !resolvedAddress || !sendAmount || isResolvingName}
+                        disabled={
+                          isSending ||
+                          !paymentSessionReady ||
+                          !resolvedAddress ||
+                          !sendAmount ||
+                          isResolvingName
+                        }
                       >
                         {isSending ? (
                           <>
@@ -1984,7 +2006,6 @@ export default function PagosPage() {
           {wfiatSwapSymbol && (
             <WfiatSwapPanel
               initialSellSymbol={wfiatSwapSymbol}
-              wallet={primaryWallet ?? null}
               walletAddress={walletAddress}
               onClose={() => setWfiatSwapSymbol(null)}
             />

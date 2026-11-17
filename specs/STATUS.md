@@ -127,6 +127,8 @@ Detalle: [spec](./celo-attribution.md).
 | Trabajo | Qué falta | Riesgo |
 |---------|-----------|--------|
 | **Identity multi-wallet (I2–I4)** | Vercel: `migrate deploy` `20261117082000_linked_wallets`; QA vincular 2ª wallet en `/perfil` + login con ambas | [spec](./identity-waap-thirdweb-siwe-multilink.md) SHIPPED |
+| **Identity Safari (I6)** | Implementar preempt Thirdweb en iOS Safari (no abrir modal Human); copy + métricas | [spec](./identity-safari-connect-routing.md) **LOCKED**, código pending |
+| **Payment wallet (I7)** | Pagos = sesión (WaaP vs Thirdweb); saldos por wallet linkada + copy relogin | [spec](./identity-payment-wallet-session-default.md) **LOCKED**, código pending |
 | **Psychat PSM slice 1** | Validar en producción que el deploy incluye `4f04131`; actualizar el header del spec | El spec dice READY; el código ya está en `main` |
 | **Psychat PSM slice 2** | Bloquear el proxy RootRouter para rol PSM; verificar banner de error 502 | El botón de reporte ya existe, pero el proxy sigue disponible para PSM |
 | **Psychat usuario slice 3** | QA en prod tras merge `9f1c22b` (prompt + `roleReady`) | Código en `main`; confirmar que ya no fuerza JSON en cada turno |
@@ -144,9 +146,8 @@ Detalle: [spec](./celo-attribution.md).
 
 ## 4. Next (orden recomendado)
 
-1. **Founding MKT** — [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md) (identidad I1–I4 **shipped**; ver [spec](./identity-waap-thirdweb-siwe-multilink.md)).
-2. **Founding allowlist (MKT):** implementar desde [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md)
-   (spec only; sin código aún).
+1. **Identity I6 Safari** — [identity-safari-connect-routing.md](./identity-safari-connect-routing.md): login en iPhone Safari → Thirdweb directo (evitar iframe Human congelado); Human sigue en desktop / link en Perfil.
+2. **Founding MKT** — [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md) (identidad I1–I4 **shipped**; implementar allowlist; ver [spec](./identity-waap-thirdweb-siwe-multilink.md)).
 3. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.
 4. **Verificar el deploy de este refresh en Vercel.** Antes de estos fixes, `main` no pasaba
    `tsc`/`build`; confirmar nav `ActiveRoleSync` y Psychat en producción.

@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
-import { useWallet, useWallets } from '@/lib/wallet'
-import { getPrimaryWallet } from '@/lib/wallet-utils'
+import { useWallet } from '@/lib/wallet'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
 import { motusNameService } from '@/lib/motus-name-service'
 import {
   sendCELOPayment,
@@ -21,9 +21,8 @@ type TxSuccess = { hash: string; explorerUrl: string }
 
 export default function EnviarPage() {
   const { authenticated, login } = useWallet()
-  const { wallets } = useWallets()
-  const primaryWallet = getPrimaryWallet(wallets || [])
-  const walletAddress = primaryWallet?.address as Address | undefined
+  const { sessionEoa, isSessionReady, getPaymentContext } = useHubPaymentSession()
+  const walletAddress = sessionEoa as Address | undefined
 
   const [to, setTo] = useState('')
   const [toName, setToName] = useState('')
@@ -94,8 +93,8 @@ export default function EnviarPage() {
       await login()
       return
     }
-    if (!primaryWallet || !walletAddress) {
-      setError('Conecta tu wallet para firmar.')
+    if (!isSessionReady || !walletAddress) {
+      setError('Confirma tu sesión SIWE para firmar.')
       return
     }
     if (!resolved) {
@@ -117,10 +116,11 @@ export default function EnviarPage() {
         amount,
         currency: token,
       }
+      const ctx = await getPaymentContext()
       const result =
         token === 'CELO'
-          ? await sendCELOPayment(primaryWallet, params, wallets)
-          : await sendStablecoinPayment(primaryWallet, params)
+          ? await sendCELOPayment(ctx, params)
+          : await sendStablecoinPayment(ctx, params)
       if (!result.success || !result.transactionHash) {
         throw new Error(result.error || 'No se pudo enviar.')
       }

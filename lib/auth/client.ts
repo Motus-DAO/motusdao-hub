@@ -9,6 +9,7 @@ import {
   shouldBootstrapHubSession,
   type HubSessionSnapshot,
 } from './hub-session'
+import { isWalletLinkModeActive } from './wallet-link-mode'
 
 export { isUserRejectedSignError, SignMessageError }
 
@@ -135,12 +136,17 @@ export async function bootstrapHubSessionIfNeeded(params: {
     }
     const currentEoa = params.eoaAddress ?? null
 
+    if (isWalletLinkModeActive()) {
+      return Boolean(session.authenticated && session.userId)
+    }
+
     if (
       !shouldBootstrapHubSession({
         walletReady: true,
         walletAuthenticated: true,
         currentEoa,
         session: snapshot,
+        walletLinkMode: isWalletLinkModeActive(),
       })
     ) {
       return Boolean(session.authenticated && session.userId)

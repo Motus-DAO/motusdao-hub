@@ -33,6 +33,7 @@ import { useWallet, useWallets, getWaapAuthEmail } from '@/lib/wallet'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { authFetch } from '@/lib/auth/client'
+import { isWalletLinkModeActive } from '@/lib/auth/wallet-link-mode'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
 import { StripeConnectCard } from '@/components/payments/StripeConnectCard'
@@ -54,6 +55,7 @@ import { asStringArray } from '@/lib/prisma-json'
 import Link from 'next/link'
 import { PatientSharedSummariesPanel } from '@/components/clinical-summary/PatientSharedSummariesPanel'
 import { LinkedWalletsPanel } from '@/components/profile/LinkedWalletsPanel'
+import { WalletBalancesCard } from '@/components/profile/WalletBalancesCard'
 
 interface ProfileData {
   nombre: string
@@ -289,7 +291,11 @@ export default function PerfilPage() {
   const [motusName, setMotusName] = useState<string | null>(null)
   const [isLoadingMotusName, setIsLoadingMotusName] = useState(false)
 
-  if (!isSessionReady && (userData || profileData.nombre)) {
+  if (
+    !isWalletLinkModeActive() &&
+    !isSessionReady &&
+    (userData || profileData.nombre)
+  ) {
     setUserData(null)
     setProfileData(EMPTY_PROFILE)
     setMatchData(null)
@@ -337,6 +343,10 @@ export default function PerfilPage() {
           if (cancelled) return
           const body = (await response.json().catch(() => ({}))) as { code?: string }
           const kind = classifyProfileLoadError(response.status, body.code)
+          if (isWalletLinkModeActive() && userData) {
+            setIsLoading(false)
+            return
+          }
           setErrorKind(kind)
           setError(profileLoadErrorMessage(kind))
           setIsLoading(false)
@@ -347,6 +357,7 @@ export default function PerfilPage() {
         if (cancelled) return
 
         if (
+          !isWalletLinkModeActive() &&
           data.user?.eoaAddress &&
           eoaAddress &&
           !sessionBelongsToWallet(data.user.eoaAddress, eoaAddress)
@@ -749,16 +760,19 @@ export default function PerfilPage() {
     ? `${profileData.nombre} ${profileData.apellido}` 
     : 'Usuario MotusDAO'
 
-  const accessGate = resolveProfileAccessGate({
-    walletReady: ready,
-    walletAuthenticated: authenticated,
-    walletTimedOut,
-    sessionState,
-    signing: isSigningSession,
-    profileLoading: isLoading,
-    error,
-    hasProfileName: Boolean(profileData.nombre),
-  })
+  const linkingWallet = isWalletLinkModeActive()
+  const accessGate = linkingWallet && isSessionReady
+    ? 'ready'
+    : resolveProfileAccessGate({
+        walletReady: ready,
+        walletAuthenticated: authenticated,
+        walletTimedOut,
+        sessionState,
+        signing: isSigningSession,
+        profileLoading: isLoading,
+        error: linkingWallet ? null : error,
+        hasProfileName: Boolean(profileData.nombre),
+      })
 
   if (accessGate !== 'ready') {
     return (
@@ -1137,8 +1151,9 @@ export default function PerfilPage() {
                 </GlassCard>
               </motion.div>
 
-              <div className="mt-8">
+              <div className="mt-8 space-y-8">
                 <LinkedWalletsPanel />
+                <WalletBalancesCard />
               </div>
 
               {(userData?.role === 'usuario' || userData?.role === 'psm') && (

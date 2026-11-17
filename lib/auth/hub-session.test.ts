@@ -79,6 +79,24 @@ describe('Hub session + /perfil auth', () => {
     assert.equal(sessionBelongsToWallet(null, OTHER_EOA), false)
   })
 
+  it('walletLinkMode blocks auto-bootstrap while a second wallet is connected', () => {
+    const session = {
+      authenticated: true,
+      userId: 'user_admin',
+      eoaAddress: ORIGINAL_EOA,
+    }
+    assert.equal(
+      shouldBootstrapHubSession({
+        walletReady: true,
+        walletAuthenticated: true,
+        currentEoa: OTHER_EOA,
+        session,
+        walletLinkMode: true,
+      }),
+      false
+    )
+  })
+
   it('Different wallet → 401/unlinked, never registration CTA', () => {
     const unlinkedSession = {
       authenticated: true,

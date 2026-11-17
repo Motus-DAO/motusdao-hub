@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { createPublicClient, encodeFunctionData, http, parseUnits, type Address, type Hex } from 'viem'
 import { celo } from 'viem/chains'
 import { CheckCircle2, ExternalLink, Loader2 } from 'lucide-react'
-import { useWallet, useWallets } from '@/lib/wallet'
-import { getPrimaryWallet } from '@/lib/wallet-utils'
+import { useWallet } from '@/lib/wallet'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import {
   sendCELOPayment,
@@ -39,8 +39,7 @@ function formatDate(value?: string | null): string {
 
 export function MottyActionCard({ action }: { action: MottyAction }) {
   const { authenticated, login } = useWallet()
-  const { wallets } = useWallets()
-  const primary = getPrimaryWallet(wallets || [])
+  const { sessionEoa, isSessionReady, getPaymentContext } = useHubPaymentSession()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [txHash, setTxHash] = useState('')
@@ -54,23 +53,24 @@ export function MottyActionCard({ action }: { action: MottyAction }) {
       await login()
       return
     }
-    if (!primary) {
-      setError('Conecta tu wallet para firmar.')
+    if (!isSessionReady || !sessionEoa) {
+      setError('Confirma tu sesión SIWE para firmar.')
       return
     }
     setBusy(true)
     setError('')
     try {
+      const ctx = await getPaymentContext()
       const params: PaymentParams = {
-        from: primary.address as Address,
+        from: sessionEoa as Address,
         to: transfer.toAddress as Address,
         amount: transfer.amount,
         currency: transfer.token as PaymentCurrency,
       }
       const result =
         transfer.token === 'CELO'
-          ? await sendCELOPayment(primary, params, wallets)
-          : await sendStablecoinPayment(primary, params)
+          ? await sendCELOPayment(ctx, params)
+          : await sendStablecoinPayment(ctx, params)
       if (!result.success || !result.transactionHash) {
         throw new Error(result.error || 'No se pudo enviar.')
       }
@@ -88,8 +88,8 @@ export function MottyActionCard({ action }: { action: MottyAction }) {
       await login()
       return
     }
-    if (!primary) {
-      setError('Conecta tu wallet para firmar.')
+    if (!isSessionReady || !sessionEoa) {
+      setError('Confirma tu sesión SIWE para firmar.')
       return
     }
     if (!escrow.escrowId) {
@@ -100,18 +100,19 @@ export function MottyActionCard({ action }: { action: MottyAction }) {
     setBusy(true)
     setError('')
     try {
+      const ctx = await getPaymentContext()
       const publicClient = createPublicClient({ chain: celo, transport: http(RPC) })
       const amount = parseUnits(escrow.amountWmxn, 18)
       const allowance = (await publicClient.readContract({
         address: WMXN_ADDRESS,
         abi: ERC20_APPROVE_ABI,
         functionName: 'allowance',
-        args: [primary.address as Address, THERAPY_ESCROW_ADDRESS],
+        args: [sessionEoa as Address, THERAPY_ESCROW_ADDRESS],
       })) as bigint
 
       if (allowance < amount) {
         const approval = await sendUnsignedEvmTx(
-          primary,
+          ctx,
           {
             to: WMXN_ADDRESS,
             data: encodeFunctionData({
@@ -127,7 +128,7 @@ export function MottyActionCard({ action }: { action: MottyAction }) {
       }
 
       const deposit = await sendUnsignedEvmTx(
-        primary,
+        ctx,
         {
           to: THERAPY_ESCROW_ADDRESS,
           data: encodeFunctionData({

@@ -24,9 +24,9 @@ import {
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
-import { useWallet, useWallets } from '@/lib/wallet'
-import { getPrimaryWallet } from '@/lib/wallet-utils'
+import { useWallet } from '@/lib/wallet'
 import { sendUnsignedEvmTx } from '@/lib/payments'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
 import { ensureCeloNetwork } from '@/lib/celo-waap'
 import {
   ERC20_APPROVE_ABI,
@@ -88,8 +88,7 @@ export default function PagarSesionPage() {
   const sessionId = params.sessionId as Hex
 
   const { authenticated, login } = useWallet()
-  const { wallets } = useWallets()
-  const waaP = getPrimaryWallet(wallets || [])
+  const { sessionEoa, isSessionReady, getPaymentContext } = useHubPaymentSession()
 
   const [session, setSession] = useState<EscrowSession | null>(null)
   const [loading, setLoading] = useState(true)
@@ -177,7 +176,7 @@ export default function PagarSesionPage() {
     return () => window.clearInterval(timer)
   }, [load, pending])
 
-  const signer = (waaP?.address as Address | undefined) || injected || null
+  const signer = (sessionEoa as Address | undefined) || injected || null
   const isPatient =
     Boolean(signer && session) && signer!.toLowerCase() === session!.patient.toLowerCase()
   const isPayee =
@@ -199,9 +198,10 @@ export default function PagarSesionPage() {
   }
 
   const send = async (to: Address, data: Hex): Promise<string> => {
-    if (waaP) {
+    if (isSessionReady && sessionEoa) {
+      const ctx = await getPaymentContext()
       const result = await sendUnsignedEvmTx(
-        waaP,
+        ctx,
         { to, data, value: '0' },
         { wait: true }
       )

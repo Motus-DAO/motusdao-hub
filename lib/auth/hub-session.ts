@@ -33,7 +33,12 @@ export function shouldBootstrapHubSession(input: {
   walletAuthenticated: boolean
   currentEoa: string | null
   session: HubSessionSnapshot | null
+  /** When true, never auto-SIWE the connected wallet (link step-up uses its own nonce). */
+  walletLinkMode?: boolean
 }): boolean {
+  if (input.walletLinkMode) {
+    return false
+  }
   if (!input.walletReady || !input.walletAuthenticated || !input.currentEoa) {
     return false
   }

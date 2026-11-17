@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { motusNameService } from '@/lib/motus-name-service'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
-import { useWallet, useWallets } from '@/lib/wallet'
-import { getPrimaryWallet } from '@/lib/wallet-utils'
+import { useWallet } from '@/lib/wallet'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
 import { sendCELOPayment } from '@/lib/payments'
 
 interface SendWithMotusNameProps {
@@ -14,7 +14,7 @@ interface SendWithMotusNameProps {
 
 export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps = {}) {
   const { authenticated } = useWallet()
-  const { wallets } = useWallets()
+  const { sessionEoa, isSessionReady, getPaymentContext } = useHubPaymentSession()
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [resolvedAddress, setResolvedAddress] = useState<Address | null>(null)
@@ -61,9 +61,8 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
       return
     }
 
-    const primaryWallet = getPrimaryWallet(wallets || [])
-    if (!primaryWallet) {
-      setError('No se encontró una WaaP wallet. Inicia sesión para obtener una.')
+    if (!isSessionReady || !sessionEoa) {
+      setError('Confirma tu sesión SIWE para enviar pagos.')
       return
     }
 
@@ -83,16 +82,13 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
     setResult('🔄 Enviando transacción...')
 
     try {
-      const response = await sendCELOPayment(
-        primaryWallet,
-        {
-          from: primaryWallet.address,
-          to: resolvedAddress,
-          amount: amount,
-          currency: 'CELO',
-        },
-        wallets,
-      )
+      const ctx = await getPaymentContext()
+      const response = await sendCELOPayment(ctx, {
+        from: sessionEoa as Address,
+        to: resolvedAddress,
+        amount: amount,
+        currency: 'CELO',
+      })
 
       if (response.success) {
         setResult('✅ Transacción exitosa!')

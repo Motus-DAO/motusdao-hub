@@ -1,24 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { useWallet, useWallets } from '@/lib/wallet'
+import { useWallet } from '@/lib/wallet'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { Loader, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
 import { getCeloExplorerUrl } from '@/lib/celo'
-import { getPrimaryWallet } from '@/lib/wallet-utils'
 import { sendCELOPayment } from '@/lib/payments'
+import type { Address } from 'viem'
 
 type TransactionStatus = 'idle' | 'preparing' | 'sending' | 'success' | 'error'
 
 export function TestGaslessTransaction() {
-  const { wallets } = useWallets()
   const { authenticated, ready } = useWallet()
+  const { sessionEoa, isSessionReady, getPaymentContext } = useHubPaymentSession()
   const [status, setStatus] = useState<TransactionStatus>('idle')
   const [txHash, setTxHash] = useState<string>('')
   const [error, setError] = useState<string>('')
-
-  const primaryWallet = getPrimaryWallet(wallets || [])
 
   const sendTestTransaction = async () => {
     if (!ready || !authenticated) {
@@ -26,8 +25,8 @@ export function TestGaslessTransaction() {
       return
     }
 
-    if (!primaryWallet) {
-      setError('No WaaP wallet found. Please log in with email to get a wallet.')
+    if (!isSessionReady || !sessionEoa) {
+      setError('Confirm SIWE session before sending.')
       return
     }
 
@@ -40,8 +39,9 @@ export function TestGaslessTransaction() {
 
       console.log('🔄 Sending test CELO transaction using WaaP EOA...')
 
-      const result = await sendCELOPayment(primaryWallet, {
-        from: primaryWallet.address,
+      const ctx = await getPaymentContext()
+      const result = await sendCELOPayment(ctx, {
+        from: sessionEoa as Address,
         to: '0xf229F3Dcea3D7cd3cA5ca41C4C50135D7b37F2b9' as `0x${string}`,
         amount: '0.001',
         currency: 'CELO',
@@ -112,11 +112,11 @@ export function TestGaslessTransaction() {
 
         <div className="p-4 bg-mauve-500/10 rounded-lg border border-mauve-500/20">
           <div className="space-y-2 text-sm">
-            {primaryWallet && (
+            {sessionEoa && (
               <>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Wallet Address:</span>
-                  <span className="font-mono text-xs">{primaryWallet.address}</span>
+                  <span className="font-mono text-xs">{sessionEoa}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Wallet Type:</span>

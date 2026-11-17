@@ -59,6 +59,9 @@
 | D6 | `AuthProvider` enum añade **`thirdweb`**; **`privy` deja de escribirse** | Columna `privyId` read-only legacy hasta slice de limpieza schema. |
 | D7 | Rollback = checkout tag + revert branch | No “feature flag Privy” permanente. |
 | D8 | **Mismo `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` que Lab-Avril-Life** | Un solo proyecto Thirdweb (dashboard compartido Avril ↔ MotusDAO); misma experiencia de connect/fallback; la EOA la controla el usuario, no el client id. |
+| D9 | **`userId` canónico**; Human o Thirdweb = **cómo obtienes la EOA**, no dos cuentas | Primera visita Safari puede ser solo Thirdweb + SIWE; WaaP se puede vincular después. |
+| D10 | **iOS Safari: no abrir modal Human**; Thirdweb connect directo + copy honesta | Evitar modal WaaP congelado (iframe); ver [identity-safari-connect-routing.md](./identity-safari-connect-routing.md). |
+| D11 | **Pagos = wallet de la sesión** (proveedor con el que entraste); saldos de todas las linkadas en UI | Ver [identity-payment-wallet-session-default.md](./identity-payment-wallet-session-default.md). |
 
 ---
 
@@ -176,6 +179,11 @@ Cada slice = un PR a `feat/waap-thirdweb-siwe-multilink`; merge a `main` solo co
 ### Slice I5 — Hardening + docs
 
 **Entrega:** actualizar `specs/STATUS.md`, `env.example`, runbook rollback; auditar rutas “session eoa must match” en [safety-slice-4](./safety-slice-4-inbox-platform-keys.md); tests negativos link.
+
+### Slice I6 — Safari preempt Thirdweb — **Next**
+
+**Spec:** [identity-safari-connect-routing.md](./identity-safari-connect-routing.md) (decisions S1–S7).  
+**Entrega:** en iPhone/iPad **Safari**, CTA login abre Thirdweb sin modal Human; banner ES; métricas `connect_route`; flag `NEXT_PUBLIC_WAAP_FORCE_ON_SAFARI` para QA.
 
 ---
 

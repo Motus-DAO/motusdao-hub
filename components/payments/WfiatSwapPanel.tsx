@@ -16,7 +16,7 @@ import {
   type TextileUnsignedTx,
   type TextileWfiatLeg,
 } from '@/lib/textile/fx'
-import type { WaaPWallet } from '@/lib/wallet-utils'
+import { useHubPaymentSession } from '@/lib/payment-session-client'
 
 type QuoteResponse = {
   mode?: 'rfq' | 'live' | 'indicative'
@@ -54,7 +54,6 @@ type SwapPath = 'inapp' | 'external'
 
 type WfiatSwapPanelProps = {
   initialSellSymbol: string
-  wallet: WaaPWallet | null
   walletAddress: string | null
   onClose: () => void
 }
@@ -65,10 +64,10 @@ function counterpart(sell: TextileSwapSymbol, wfiat: TextileWfiatLeg): TextileSw
 
 export function WfiatSwapPanel({
   initialSellSymbol,
-  wallet,
   walletAddress,
   onClose,
 }: WfiatSwapPanelProps) {
+  const { getPaymentContext, isSessionReady } = useHubPaymentSession()
   const wfiat: TextileWfiatLeg = isTextileWfiatLeg(initialSellSymbol)
     ? initialSellSymbol
     : 'wARS'
@@ -154,8 +153,8 @@ export function WfiatSwapPanel({
   }
 
   const execute = async () => {
-    if (!wallet || !walletAddress) {
-      setError('Conecta tu wallet WaaP para firmar el swap en Motus.')
+    if (!isSessionReady || !walletAddress) {
+      setError('Confirma tu sesión SIWE para firmar el swap en Motus.')
       return
     }
     if (!sellAmount || Number(sellAmount) < 1) {
@@ -168,9 +167,10 @@ export function WfiatSwapPanel({
     setError(null)
     setSuccessHash(null)
     try {
+      const paymentCtx = await getPaymentContext()
       const required = BigInt(toAtomicAmount(sellAmount, sellSymbol))
       const allowance = await ensureErc20Allowance({
-        wallet,
+        ctx: paymentCtx,
         owner: walletAddress as `0x${string}`,
         token: TEXTILE_TOKEN_ADDRESSES[sellSymbol],
         spender: TEXTILE_LIMIT_ORDER_REACTOR,
@@ -215,7 +215,7 @@ export function WfiatSwapPanel({
       if (!swapTx) {
         throw new Error('Textile no devolvió la transacción de swap.')
       }
-      const swap = await sendUnsignedEvmTx(wallet, swapTx, { wait: true })
+      const swap = await sendUnsignedEvmTx(paymentCtx, swapTx, { wait: true })
       if (!swap.success || !swap.transactionHash) {
         throw new Error(swap.error || 'Falló el swap')
       }

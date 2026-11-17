@@ -3,23 +3,20 @@ import { celoMainnet, CELO_STABLE_TOKENS, getCeloTokenDecimals, type PaymentCurr
 import { getCeloExplorerUrl } from './celo'
 import { getAttributionSuffix } from './attribution'
 import { ensureCeloNetwork } from './celo-waap'
-import type { WaaPWallet } from './wallet-utils'
-import { getPrimaryWallet } from './wallet-utils'
+import type { SessionPaymentContext } from './payment-session'
+import { normalizeSessionPaymentAddress } from './payment-session'
 
 export type { PaymentCurrency }
+export type { SessionPaymentContext } from './payment-session'
 
 /**
- * Payment utilities for sending transactions using the WaaP EOA wallet.
- * 
- * WaaP provides the EOA (Externally Owned Account) with Human Keys security.
- * Gas sponsorship (if enabled) is handled by WaaP's own Gas Tank / policies,
- * so from the app's perspective these are standard transactions.
+ * On-chain spend uses the SIWE session wallet (P1) via its EIP-1193 provider (P6).
  */
 
 export interface PaymentParams {
-  from: Address // User's wallet address
-  to: Address // Recipient address (psychologist)
-  amount: string // Amount in human-readable format (e.g., "10.5")
+  from: Address
+  to: Address
+  amount: string
   currency: PaymentCurrency
 }
 
@@ -30,78 +27,46 @@ export interface PaymentResult {
   explorerUrl?: string
 }
 
-/**
- * Create a wallet client from a WaaP wallet
- *
- * @param wallet - The WaaP wallet to use
- * @param allWallets - Optional: all available wallets to identify best wallet
- */
-export async function createEoaWalletClient(
-  wallet: WaaPWallet, 
-  allWallets?: WaaPWallet[]
-) {
-  // Try to get the primary wallet
-  let targetWallet = wallet
-  if (allWallets && allWallets.length > 0) {
-    const primaryWallet = getPrimaryWallet(allWallets)
-    if (primaryWallet) {
-      targetWallet = primaryWallet
-      console.log('✅ Using primary WaaP wallet:', targetWallet.address)
-    }
+function assertPaymentFromSession(
+  ctx: SessionPaymentContext,
+  from: Address
+): void {
+  if (
+    normalizeSessionPaymentAddress(from) !==
+    normalizeSessionPaymentAddress(ctx.address)
+  ) {
+    throw new Error('El pago debe salir de la wallet de tu sesión actual.')
   }
-  
-  console.log('✅ Creating wallet client for:', targetWallet.address)
+}
 
-  // WaaP provides an EIP-1193 compatible provider via window.waap
-  // For direct wallet client creation, we need to get the provider
-  if (typeof window === 'undefined' || !(window as unknown as { waap?: unknown }).waap) {
-    throw new Error('WaaP provider not available. Please ensure WaaP is initialized.')
-  }
+export async function createEoaWalletClient(ctx: SessionPaymentContext) {
+  await ensureCeloNetwork(
+    ctx.eip1193Provider as Parameters<typeof ensureCeloNetwork>[0]
+  )
 
-  const waapProvider = (window as unknown as { waap: unknown }).waap
-
-  // WaaP keeps its own chain across sessions (Optimism in the wild). viem
-  // refuses to sign when the wallet chain differs from the target chain, so
-  // switch before building the client — every payment and swap path goes here.
-  await ensureCeloNetwork(waapProvider as Parameters<typeof ensureCeloNetwork>[0])
-
-  // ERC-8021: viem appends this suffix to every sendTransaction/writeContract,
-  // so payment and swap calls are tagged without touching each call site.
   const dataSuffix = getAttributionSuffix()
 
   return createWalletClient({
-    account: targetWallet.address,
+    account: ctx.address,
     chain: celoMainnet,
-    transport: custom(waapProvider as Parameters<typeof custom>[0]),
+    transport: custom(ctx.eip1193Provider as Parameters<typeof custom>[0]),
     ...(dataSuffix ? { dataSuffix } : {}),
   })
 }
 
-/**
- * Send a payment in native CELO
- *
- * @param wallet - The WaaP wallet to use
- * @param params - Payment parameters
- * @param allWallets - Optional: all available wallets
- * @returns Payment result with transaction hash
- */
 export async function sendCELOPayment(
-  wallet: WaaPWallet,
-  params: PaymentParams,
-  allWallets?: WaaPWallet[]
+  ctx: SessionPaymentContext,
+  params: PaymentParams
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createEoaWalletClient(wallet, allWallets)
-    const amountInWei = parseUnits(params.amount, 18) // CELO has 18 decimals
+    assertPaymentFromSession(ctx, params.from)
+    const walletClient = await createEoaWalletClient(ctx)
+    const amountInWei = parseUnits(params.amount, 18)
 
-    console.log('🔄 Sending CELO transaction via WaaP EOA...')
-    
     const hash = await walletClient.sendTransaction({
       to: params.to,
       value: amountInWei,
     })
-
-    console.log('✅ Transaction sent:', hash)
 
     return {
       success: true,
@@ -109,7 +74,6 @@ export async function sendCELOPayment(
       explorerUrl: getCeloExplorerUrl(hash, 'tx'),
     }
   } catch (error) {
-    console.error('❌ Payment error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Payment failed',
@@ -117,16 +81,15 @@ export async function sendCELOPayment(
   }
 }
 
-/**
- * Send a payment in ERC20 stablecoin or utility token
- */
 export async function sendStablecoinPayment(
-  wallet: WaaPWallet,
+  ctx: SessionPaymentContext,
   params: PaymentParams
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createEoaWalletClient(wallet)
-    
+    assertPaymentFromSession(ctx, params.from)
+
+    const walletClient = await createEoaWalletClient(ctx)
+
     const tokenAddress = CELO_STABLE_TOKENS[params.currency as keyof typeof CELO_STABLE_TOKENS]
     if (!tokenAddress) {
       return {
@@ -135,10 +98,8 @@ export async function sendStablecoinPayment(
       }
     }
 
-    // ERC20 transfer function signature: transfer(address to, uint256 amount)
     const amountInWei = parseUnits(params.amount, getCeloTokenDecimals(params.currency))
 
-    // Encode the transfer function call
     const data = encodeFunctionData({
       abi: [
         {
@@ -179,14 +140,13 @@ const celoPublicClient = createPublicClient({
   transport: http(),
 })
 
-/** Sign and broadcast an unsigned EVM tx with the user's WaaP wallet (in-app swap). */
 export async function sendUnsignedEvmTx(
-  wallet: WaaPWallet,
+  ctx: SessionPaymentContext,
   tx: { to: string; data: string; value?: string },
   options?: { wait?: boolean }
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createEoaWalletClient(wallet)
+    const walletClient = await createEoaWalletClient(ctx)
     const hash = await walletClient.sendTransaction({
       to: tx.to as Address,
       data: tx.data as Hex,
@@ -242,15 +202,21 @@ const ERC20_ALLOWANCE_ABI = [
   },
 ] as const
 
-/** Approve spender if allowance is below `required`. Unlimited approve so RFQ TTL is not spent on this. */
 export async function ensureErc20Allowance(params: {
-  wallet: WaaPWallet
+  ctx: SessionPaymentContext
   owner: Address
   token: Address
   spender: Address
   required: bigint
 }): Promise<PaymentResult & { skipped?: boolean }> {
   try {
+    if (
+      normalizeSessionPaymentAddress(params.owner) !==
+      normalizeSessionPaymentAddress(params.ctx.address)
+    ) {
+      throw new Error('El allowance debe ser de la wallet de tu sesión actual.')
+    }
+
     const allowance = (await celoPublicClient.readContract({
       address: params.token,
       abi: ERC20_ALLOWANCE_ABI,
@@ -268,7 +234,11 @@ export async function ensureErc20Allowance(params: {
       args: [params.spender, maxUint256],
     })
 
-    return sendUnsignedEvmTx(params.wallet, { to: params.token, data, value: '0' }, { wait: true })
+    return sendUnsignedEvmTx(
+      params.ctx,
+      { to: params.token, data, value: '0' },
+      { wait: true }
+    )
   } catch (error) {
     return {
       success: false,
