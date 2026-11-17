@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireSelfOrAdmin } from '@/lib/auth/guards'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
@@ -10,6 +11,10 @@ import {
   resolveProfileSessionAccess,
   UNLINKED_WALLET_CODE,
 } from '@/lib/auth/hub-session'
+import { toInputJson } from '@/lib/prisma-json'
+import { z } from 'zod'
+
+const languagesSchema = z.array(z.string().min(1)).min(1).optional()
 
 export async function POST(request: NextRequest) {
   try {
@@ -210,10 +215,47 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function syncClinicalLanguages(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  role: string,
+  languages: string[] | undefined,
+) {
+  if (!languages?.length) return
+  const json = toInputJson(languages)
+  if (role === 'psm') {
+    await tx.pSMProfile.updateMany({
+      where: { userId },
+      data: { languages: json },
+    })
+    return
+  }
+  if (role === 'usuario') {
+    await tx.patientProfile.updateMany({
+      where: { userId },
+      data: { languages: json },
+    })
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, nombre, apellido, telefono, fechaNacimiento, ciudad, pais, avatarUrl, bio, language } = body
+    const {
+      userId,
+      nombre,
+      apellido,
+      telefono,
+      fechaNacimiento,
+      ciudad,
+      pais,
+      avatarUrl,
+      bio,
+      language,
+      languages: rawLanguages,
+    } = body
+    const parsedLanguages = languagesSchema.safeParse(rawLanguages)
+    const languages = parsedLanguages.success ? parsedLanguages.data : undefined
 
     if (!userId) {
       return NextResponse.json(
@@ -225,6 +267,10 @@ export async function PUT(request: NextRequest) {
     const session = await requireSelfOrAdmin(request, userId)
 
     const profile = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      })
       const row = await tx.profile.update({
         where: { userId },
         data: {
@@ -239,6 +285,9 @@ export async function PUT(request: NextRequest) {
           language: language || 'es',
         },
       })
+      if (user) {
+        await syncClinicalLanguages(tx, userId, user.role, languages)
+      }
       await recordClinicalAccess(
         {
           request,
