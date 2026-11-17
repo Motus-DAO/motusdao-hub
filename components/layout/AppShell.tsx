@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { MottyWidget } from '@/components/motty/MottyWidget'
+import { ActiveRoleSync } from '@/components/auth/ActiveRoleSync'
 import { SidebarWrapper } from './SidebarWrapper'
 import { Topbar } from './Topbar'
 import { Footer } from './Footer'
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <ActiveRoleSync />
       <div className="flex min-h-screen max-w-full">
         <SidebarWrapper />
         <div
@@ -43,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <Topbar />
-          <main className="flex-1 max-w-full overflow-x-hidden pt-16 sm:pt-20 pb-[env(safe-area-inset-bottom)]">
+          <main className="app-main-offset flex-1 max-w-full overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
             {roleSwitcherEnabled && (
               <div
                 role="status"

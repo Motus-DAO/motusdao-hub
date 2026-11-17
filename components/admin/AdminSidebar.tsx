@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/lib/store'
-import { useEffect, useState } from 'react'
-import { 
+import { useEffect } from 'react'
+import {
   LayoutDashboard,
   Users,
   UserCheck,
@@ -17,10 +17,11 @@ import {
   BarChart3,
   Settings,
   Shield,
+  User,
+  Home,
   X,
-  AtSign
+  AtSign,
 } from 'lucide-react'
-import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientText } from '@/components/ui/GradientText'
 
 const navigationItems = [
@@ -84,94 +85,85 @@ const navigationItems = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const { sidebarOpen, setSidebarOpen } = useUIStore()
-  const [isMobile, setIsMobile] = useState(false)
 
-  // Detect mobile on mount and resize
+  // Close the drawer after navigation on mobile; the desktop rail stays put.
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-    }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    if (window.innerWidth < 1024) setSidebarOpen(false)
+  }, [pathname, setSidebarOpen])
 
   return (
     <>
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={cn(
-          "fixed left-0 top-0 h-screen w-64 bg-background/80 backdrop-blur-lg border-r border-white/10 z-50 transition-transform duration-300 ease-in-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          'fixed left-0 top-0 z-50 app-viewport-height w-64 max-w-[85vw] border-r border-white/10 bg-background/80 backdrop-blur-lg transition-transform duration-300 ease-in-out',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
+        aria-label="Menú de administración"
       >
-        <div className="flex flex-col h-full">
+        <div className="flex h-full min-h-0 flex-col pt-[env(safe-area-inset-top)]">
           {/* Header */}
-          <div className="p-6 border-b border-white/10">
+          <div className="border-b border-white/10 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-mauve-500 to-iris-500 rounded-lg flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-white" />
+              <div className="flex min-w-0 items-center space-x-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-mauve-500 to-iris-500">
+                  <Shield className="h-6 w-6 text-white" />
                 </div>
-                <div>
-                  <GradientText as="h2" className="text-lg font-bold">
+                <div className="min-w-0">
+                  <GradientText as="h2" className="truncate text-lg font-bold">
                     Admin Panel
                   </GradientText>
-                  <p className="text-xs text-muted-foreground">MotusDAO Hub</p>
+                  <p className="truncate text-xs text-muted-foreground">MotusDAO Hub</p>
                 </div>
               </div>
-              {/* Close button for mobile */}
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 hover:bg-white/15 rounded-xl transition-colors"
+                className="shrink-0 rounded-xl p-2 transition-colors hover:bg-white/15"
                 aria-label="Cerrar menú"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-4">
             {navigationItems.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href || 
+              const isActive =
+                pathname === item.href ||
                 (item.href !== '/admin' && pathname.startsWith(item.href))
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => {
-                    // Close sidebar on mobile when clicking a link
-                    if (isMobile) {
-                      setSidebarOpen(false)
-                    }
+                    if (window.innerWidth < 1024) setSidebarOpen(false)
                   }}
                   className={cn(
-                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
+                    'flex items-center space-x-3 rounded-lg px-4 py-3 transition-all duration-200',
                     isActive
-                      ? 'bg-gradient-to-r from-mauve-500/20 to-iris-500/20 border border-mauve-500/30 text-mauve-400'
+                      ? 'border border-mauve-500/30 bg-gradient-to-r from-mauve-500/20 to-iris-500/20 text-mauve-400'
                       : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
                   )}
                 >
-                  <Icon className={cn(
-                    'w-5 h-5',
-                    isActive && 'text-mauve-400'
-                  )} />
-                  <span className={cn(
-                    'font-medium',
-                    isActive && 'text-mauve-400'
-                  )}>
+                  <Icon
+                    className={cn('h-5 w-5 shrink-0', isActive && 'text-mauve-400')}
+                  />
+                  <span
+                    className={cn('font-medium', isActive && 'text-mauve-400')}
+                  >
                     {item.name}
                   </span>
                 </Link>
@@ -179,17 +171,27 @@ export function AdminSidebar() {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-white/10">
-            <GlassCard className="p-3">
-              <p className="text-xs text-muted-foreground text-center">
-                Panel de Administración
-              </p>
-            </GlassCard>
+          {/* Ways back to the account surfaces; admin is a role, not a cage. */}
+          <div className="border-t border-white/10 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/"
+                className="flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+              >
+                <Home className="h-4 w-4" />
+                Ir al Hub
+              </Link>
+              <Link
+                href="/perfil"
+                className="flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+              >
+                <User className="h-4 w-4" />
+                Mi perfil
+              </Link>
+            </div>
           </div>
         </div>
       </aside>
     </>
   )
 }
-

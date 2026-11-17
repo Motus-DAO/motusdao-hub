@@ -6,12 +6,12 @@ import { AvailabilityManager } from '@/components/psm/AvailabilityManager'
 
 export default function DisponibilidadPage() {
   return (
-    <Section className="py-10">
-      <div className="mx-auto max-w-3xl px-4">
-        <h1 className="mb-2 text-3xl font-bold">
+    <Section>
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
+        <h1 className="mb-2 text-3xl font-bold sm:text-4xl">
           <GradientText>Disponibilidad</GradientText>
         </h1>
-        <p className="mb-8 text-muted-foreground">
+        <p className="mb-6 text-muted-foreground sm:mb-8">
           Publica los horarios en los que los pacientes pueden agendar sesión contigo en Psicoterapia.
         </p>
         <AvailabilityManager />

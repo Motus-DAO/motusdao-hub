@@ -1,20 +1,20 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useUIStore } from '@/lib/store'
 import { Sidebar } from './Sidebar'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 
 export function SidebarWrapper() {
-  const { role } = useUIStore()
   const pathname = usePathname()
   const onAdminRoute = Boolean(pathname?.startsWith('/admin'))
 
-  // Prefer URL so dual-role users keep AdminSidebar on /admin even if
-  // the store briefly still says psm after a refresh.
-  if (onAdminRoute || role === 'admin') {
+  // The admin shell belongs to /admin. A dual admin+PSM account that switches
+  // to "admin" still needs the practice menu everywhere else, otherwise
+  // Disponibilidad and Perfil disappear from the only menu it can see.
+  if (onAdminRoute) {
     return <AdminSidebar />
   }
 
   return <Sidebar />
 }
+

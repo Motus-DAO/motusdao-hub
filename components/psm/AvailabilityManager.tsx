@@ -45,6 +45,7 @@ export function AvailabilityManager() {
   const { isSessionReady } = useSiweSession()
   const [psmId, setPsmId] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
+  const [hasSession, setHasSession] = useState(false)
   const [slots, setSlots] = useState<Slot[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -84,6 +85,7 @@ export function AvailabilityManager() {
     const session = await fetchAppSession()
     setPsmId(session.authenticated ? session.userId : null)
     setRole(session.role)
+    setHasSession(session.authenticated)
     return session
   }, [])
 
@@ -105,11 +107,16 @@ export function AvailabilityManager() {
         setLoading(true)
         setError(null)
         const session = await loadSession()
-        if (!session.authenticated || session.role !== 'psm' || !session.userId) {
+        // The signed Hub session is enough to read/write availability; the
+        // wallet connection is only needed to create that session.
+        if (
+          !session.authenticated ||
+          !session.userId ||
+          (session.role !== 'psm' && session.role !== 'admin')
+        ) {
           setSlots([])
           return
         }
-        if (!isSessionReady) return
         await loadSlots(session.userId)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al cargar disponibilidad')
@@ -178,9 +185,21 @@ export function AvailabilityManager() {
     )
   }
 
-  if (role !== 'psm') {
+  if (!hasSession) {
     return (
-      <GlassCard className="p-8 text-center">
+      <GlassCard className="space-y-4 p-6">
+        <p className="text-sm text-muted-foreground">
+          Inicia sesión con tu wallet para administrar los horarios que ven los pacientes en tu
+          perfil público.
+        </p>
+        <SiweSessionBanner compact />
+      </GlassCard>
+    )
+  }
+
+  if (role !== 'psm' && role !== 'admin') {
+    return (
+      <GlassCard className="p-6 text-center sm:p-8">
         <p className="text-muted-foreground">
           Esta sección es solo para profesionales (PSM). Si eres paciente, agenda desde{' '}
           <Link href="/psicoterapia" className="text-mauve-400 underline">
@@ -188,18 +207,6 @@ export function AvailabilityManager() {
           </Link>
           .
         </p>
-      </GlassCard>
-    )
-  }
-
-  if (!isSessionReady) {
-    return (
-      <GlassCard className="space-y-4 p-6">
-        <p className="text-sm text-muted-foreground">
-          Firma con tu wallet para administrar los horarios que ven los pacientes en tu perfil
-          público.
-        </p>
-        <SiweSessionBanner compact />
       </GlassCard>
     )
   }

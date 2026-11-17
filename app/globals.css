@@ -445,6 +445,29 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * Mobile layout invariants.
+ * - `100vh` on iOS includes the space behind the browser chrome, so a fixed
+ *   drawer with h-screen puts its last items (Perfil) below the visible edge.
+ * - The floating topbar starts at max(1rem, safe-area-inset-top); content must
+ *   clear its real bottom edge, not a hardcoded 4rem.
+ */
+.app-viewport-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-main-offset {
+  padding-top: max(4rem, calc(env(safe-area-inset-top) + 3rem));
+}
+
+@media (min-width: 640px) {
+  .app-main-offset {
+    padding-top: max(5rem, calc(env(safe-area-inset-top) + 4rem));
+  }
+}
+
+
 /* Animated gradient background */
 body::before {
   content: '';

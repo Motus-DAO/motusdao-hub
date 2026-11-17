@@ -1,30 +1,29 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useUIStore, getNavigationGroups } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import { 
-  Home, 
-  Bot, 
-  Heart, 
-  Users, 
-  Eye, 
-  GraduationCap, 
-  CreditCard, 
-  BookOpen, 
+import {
+  Home,
+  Bot,
+  Heart,
+  Users,
+  Eye,
+  GraduationCap,
+  CreditCard,
+  BookOpen,
   User,
   Video,
   Calendar,
   Wallet,
   History,
   Landmark,
-  X
+  Shield,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { useWallet } from '@/lib/wallet'
-import { useState } from 'react'
-import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
 
 const iconMap = {
   Home,
@@ -41,77 +40,71 @@ const iconMap = {
   Wallet,
   History,
   Landmark,
+  Shield,
 }
 
 export function Sidebar() {
-  const { role, sidebarOpen, setSidebarOpen } = useUIStore()
+  const { role, isPlatformAdmin, sidebarOpen, setSidebarOpen } = useUIStore()
   const pathname = usePathname()
-  const { authenticated } = useWallet()
-  const [showLoginModal, setShowLoginModal] = useState(false)
 
-  const navigationGroups = getNavigationGroups(role)
+  const navigationGroups = getNavigationGroups(role, { isPlatformAdmin })
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    // Allow access to home and docs pages
-    if (href === '/' || href === '/docs') {
-      return
-    }
-
-    // Block access to other pages if not authenticated
-    if (!authenticated) {
-      e.preventDefault()
-      setShowLoginModal(true)
-    }
-  }
+  // Close the drawer after a client navigation (back/forward included). The
+  // desktop sidebar is permanent, so only act below the lg breakpoint.
+  useEffect(() => {
+    if (window.innerWidth < 1024) setSidebarOpen(false)
+  }, [pathname, setSidebarOpen])
 
   return (
     <>
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-64 glass-sidebar border-r border-border transition-transform duration-300 ease-in-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          'fixed left-0 top-0 z-50 app-viewport-height w-64 max-w-[85vw] glass-sidebar border-r border-border transition-transform duration-300 ease-in-out',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
+        aria-label="Menú principal"
       >
-        <div className="flex h-screen flex-col">
+        <div className="flex h-full min-h-0 flex-col pt-[env(safe-area-inset-top)]">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-border">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 relative">
+          <div className="flex items-center justify-between border-b border-border p-4 sm:p-6">
+            <div className="flex min-w-0 items-center space-x-3">
+              <div className="relative h-8 w-8 shrink-0">
                 <Image
                   src="/logo.svg"
                   alt="MotusDAO Logo"
                   width={32}
                   height={32}
-                  className="w-full h-full object-contain"
+                  className="h-full w-full object-contain"
                 />
               </div>
-              <div>
-                <h1 className="font-heading font-bold text-lg gradient-text">
+              <div className="min-w-0">
+                <h1 className="truncate font-heading text-lg font-bold gradient-text">
                   MotusDAO
                 </h1>
-                <p className="text-xs text-muted-foreground">Mental Health Hub</p>
+                <p className="truncate text-xs text-muted-foreground">Mental Health Hub</p>
               </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 hover:bg-foreground/5 rounded-xl transition-colors"
+              className="shrink-0 rounded-xl p-2 transition-colors hover:bg-foreground/5"
               aria-label="Cerrar menú"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4">
+          {/* Navigation — the only scroll container in the drawer. */}
+          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
             {navigationGroups.map((group) => (
               <div key={group.title ?? 'main'} className="mb-5 last:mb-0">
                 {group.title && (
@@ -127,30 +120,28 @@ export function Sidebar() {
                       (item.href !== '/' &&
                         item.href !== '/finanzas' &&
                         pathname.startsWith(`${item.href}/`))
-                    const isBlocked = !authenticated && item.href !== '/' && item.href !== '/docs'
 
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
+                        aria-current={isActive ? 'page' : undefined}
                         className={cn(
-                          "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+                          'group flex items-center space-x-3 rounded-xl px-4 py-3 transition-all duration-200',
                           isActive
-                            ? "bg-mauve-500/20 text-mauve-700 dark:text-mauve-400 border border-mauve-500/30"
-                            : "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
-                          isBlocked && "opacity-60 cursor-not-allowed"
+                            ? 'border border-mauve-500/30 bg-mauve-500/20 text-mauve-700 dark:text-mauve-400'
+                            : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
                         )}
-                        onClick={(e) => {
-                          handleLinkClick(e, item.href)
-                          if (window.innerWidth < 1024) {
-                            setSidebarOpen(false)
-                          }
+                        onClick={() => {
+                          if (window.innerWidth < 1024) setSidebarOpen(false)
                         }}
                       >
                         <Icon
                           className={cn(
-                            "w-5 h-5 transition-colors",
-                            isActive ? "text-mauve-700 dark:text-mauve-400" : "group-hover:text-foreground"
+                            'h-5 w-5 shrink-0 transition-colors',
+                            isActive
+                              ? 'text-mauve-700 dark:text-mauve-400'
+                              : 'group-hover:text-foreground'
                           )}
                         />
                         <span className="font-medium">{item.name}</span>
@@ -162,21 +153,15 @@ export function Sidebar() {
             ))}
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-border">
-            <div className="text-xs text-muted-foreground text-center">
+          {/* Footer is decorative; on phones the vertical space belongs to the menu. */}
+          <div className="hidden border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:block">
+            <div className="text-center text-xs text-muted-foreground">
               <p>MotusDAO Hub v1.0</p>
               <p className="mt-1">Mental Health & Wellness</p>
             </div>
           </div>
         </div>
       </aside>
-
-      {/* Login Required Modal */}
-      <LoginRequiredModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-      />
     </>
   )
 }

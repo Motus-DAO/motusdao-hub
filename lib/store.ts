@@ -13,6 +13,9 @@ interface UIState {
   // Role management
   role: UserRole
   setRole: (role: UserRole) => void
+  /** Roles the signed-in account may hold, per the server. Not persisted. */
+  allowedRoles: UserRole[]
+  setAllowedRoles: (roles: UserRole[]) => void
   /** True when the DB user can open admin surfaces while role stays psm/usuario */
   isPlatformAdmin: boolean
   setIsPlatformAdmin: (value: boolean) => void
@@ -46,6 +49,8 @@ export const useUIStore = create<UIState>()(
       // Role management
       role: 'usuario',
       setRole: (role) => set({ role }),
+      allowedRoles: [],
+      setAllowedRoles: (allowedRoles) => set({ allowedRoles }),
       isPlatformAdmin: false,
       setIsPlatformAdmin: (isPlatformAdmin) => set({ isPlatformAdmin }),
       
@@ -91,54 +96,10 @@ export const useUIStore = create<UIState>()(
   )
 )
 
-export type NavItem = { name: string; href: string; icon: string }
-export type NavGroup = { title: string | null; items: NavItem[] }
-
-/**
- * Navigation grouped by domain: practice (clinical), finance, learn, account.
- *
- * URLs stay where they are on purpose. `/cobros/*` is pinned by the six Stripe
- * Site links (`https://app.motusdao.org/cobros/...`); moving it breaks live
- * AccountSessions and AccountLinks. The finance hub links, it does not rewrite.
- */
-export const getNavigationGroups = (role: UserRole): NavGroup[] => {
-  const practice: NavItem[] = [
-    { name: 'Psychat', href: '/psychat', icon: 'Bot' },
-    ...(role === 'usuario'
-      ? ([{ name: 'Psicoterapia', href: '/psicoterapia', icon: 'Heart' }] as NavItem[])
-      : ([
-          { name: 'Mis usuarios', href: '/mis-usuarios', icon: 'Users' },
-          { name: 'Disponibilidad', href: '/disponibilidad', icon: 'Calendar' },
-          { name: 'Supervisión', href: '/supervision', icon: 'Eye' },
-        ] as NavItem[])),
-    { name: 'Bitácora', href: '/bitacora', icon: 'BookOpen' },
-    { name: 'Videochat', href: '/videochat', icon: 'Video' },
-  ]
-
-  const finance: NavItem[] = [
-    { name: role === 'usuario' ? 'Pagos' : 'Resumen', href: '/finanzas', icon: 'Wallet' },
-    { name: 'Wallet', href: '/pagos', icon: 'Landmark' },
-    ...(role === 'usuario'
-      ? ([] as NavItem[])
-      : ([
-          { name: 'Cobros', href: '/cobros', icon: 'CreditCard' },
-          { name: 'Depósitos', href: '/finanzas/depositos', icon: 'Landmark' },
-          { name: 'Sesiones', href: '/pagos/sesiones', icon: 'Calendar' },
-        ] as NavItem[])),
-  ]
-
-  return [
-    { title: null, items: [{ name: 'Inicio', href: '/', icon: 'Home' }] },
-    { title: 'Práctica', items: practice },
-    { title: 'Finanzas', items: finance },
-    {
-      title: 'Aprender',
-      items: [{ name: 'Academia', href: '/academia', icon: 'GraduationCap' }],
-    },
-    { title: 'Cuenta', items: [{ name: 'Perfil', href: '/perfil', icon: 'User' }] },
-  ]
-}
-
-/** Flat list for callers that do not render group headers. */
-export const getNavigationItems = (role: UserRole): NavItem[] =>
-  getNavigationGroups(role).flatMap((group) => group.items)
+// Navigation lives in a dependency-free module so it can be unit-tested
+// without booting the persisted Zustand store.
+export {
+  getNavigationGroups,
+  getNavigationItems,
+} from './navigation'
+export type { NavGroup, NavItem, NavOptions } from './navigation'

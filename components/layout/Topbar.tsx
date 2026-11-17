@@ -17,6 +17,7 @@ import {
   Shield
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useWallet, useWallets } from '@/lib/wallet'
 import { createPortal } from 'react-dom'
@@ -24,13 +25,13 @@ import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 import { trackCta } from '@/lib/track-cta'
 import { logoutAppSession } from '@/lib/auth/client'
-import { useSiweSession } from '@/lib/auth/use-siwe-session'
 
 export function Topbar() {
   const { 
     role, 
     setRole,
-    setIsPlatformAdmin,
+    allowedRoles,
+    setAllowedRoles,
     sidebarOpen, 
     toggleSidebar, 
     theme, 
@@ -41,7 +42,6 @@ export function Topbar() {
   
   // WaaP authentication hooks (replaces Privy)
   const { ready, authenticated, user, login, logout } = useWallet()
-  const { isSessionReady } = useSiweSession()
   const { wallets } = useWallets()
   
   // ZeroDev smart wallet hook
@@ -58,7 +58,6 @@ export function Topbar() {
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [showThemeDropdown, setShowThemeDropdown] = useState(false)
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
-  const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(['usuario'])
   const [roleError, setRoleError] = useState<string | null>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
   const roleButtonRef = useRef<HTMLButtonElement>(null)
@@ -79,10 +78,12 @@ export function Topbar() {
       })
       const data = (await response.json().catch(() => ({}))) as {
         error?: string
+        allowedRoles?: UserRole[]
       }
       if (!response.ok) {
         throw new Error(data.error || 'No se pudo cambiar el rol')
       }
+      if (Array.isArray(data.allowedRoles)) setAllowedRoles(data.allowedRoles)
       setRole(newRole)
       if (newRole !== 'admin') {
         const onboarding = useOnboardingStore.getState()
@@ -119,37 +120,6 @@ export function Topbar() {
       })
     }
   }, [showRoleDropdown])
-
-  // Keep UI role aligned with /admin without fighting the toggle
-  useEffect(() => {
-    if (pathname?.startsWith('/admin') && role !== 'admin') {
-      setRole('admin')
-    }
-  }, [pathname, role, setRole])
-
-  // The active role is a signed server cookie. The client only mirrors what
-  // /api/auth/active-role returns; it cannot grant a role by itself.
-  useEffect(() => {
-    const syncActiveRole = async () => {
-      if (!ready || !authenticated || !user?.id || !isSessionReady) return
-      try {
-        const response = await fetch('/api/auth/active-role')
-        if (!response.ok) return
-        const data = (await response.json()) as {
-          activeRole: UserRole
-          allowedRoles: UserRole[]
-          isPlatformAdmin: boolean
-        }
-        setAllowedRoles(data.allowedRoles)
-        setIsPlatformAdmin(data.isPlatformAdmin === true)
-        setRole(data.activeRole)
-      } catch (err) {
-        console.error('Error syncing active role:', err)
-      }
-    }
-
-    void syncActiveRole()
-  }, [ready, authenticated, user?.id, isSessionReady, setRole, setIsPlatformAdmin])
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'matrix') => {
     setTheme(newTheme)
@@ -199,29 +169,29 @@ export function Topbar() {
         sidebarOpen ? 'lg:ml-64' : 'lg:ml-4'
       )}
     >
-      <div className="flex h-12 sm:h-16 items-center justify-between px-3 sm:px-6">
+      <div className="flex h-12 items-center justify-between gap-2 px-2.5 sm:h-16 sm:px-6">
         {/* Left side */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">
           <button
             onClick={toggleSidebar}
-            className="p-2 hover:bg-foreground/5 rounded-xl transition-colors"
+            className="shrink-0 rounded-xl p-2 transition-colors hover:bg-foreground/5"
             aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={sidebarOpen}
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="h-5 w-5" />
           </button>
 
           {/* Role Selector */}
           {canSwitchRoles ? (
-          <div className="relative">
+          <div className="relative min-w-0">
             <button
               ref={roleButtonRef}
               onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-              className="relative min-w-[132px] rounded-2xl border border-border bg-foreground/5 backdrop-blur-xl px-4 h-10 flex items-center gap-2 hover:bg-foreground/10 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-2xl border border-border bg-foreground/5 px-2.5 backdrop-blur-xl transition-colors hover:bg-foreground/10 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-10 sm:min-w-[132px] sm:gap-2 sm:px-4"
               aria-label="Selector de rol"
             >
-              <span className="text-xs sm:text-sm font-medium capitalize">{role}</span>
-              <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate text-xs font-medium capitalize sm:text-sm">{role}</span>
+              <ChevronDown className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
             </button>
 
             {showRoleDropdown && createPortal(
@@ -289,8 +259,8 @@ export function Topbar() {
             )}
           </div>
           ) : (
-            <div className="flex h-10 min-w-[100px] items-center rounded-2xl border border-border bg-foreground/5 px-4">
-              <span className="text-xs font-medium sm:text-sm">
+            <div className="flex h-9 min-w-0 items-center rounded-2xl border border-border bg-foreground/5 px-2.5 sm:h-10 sm:min-w-[100px] sm:px-4">
+              <span className="truncate text-xs font-medium sm:text-sm">
                 {role === 'psm' ? 'PSM' : role === 'admin' ? 'Admin' : 'Usuario'}
               </span>
             </div>
@@ -298,13 +268,13 @@ export function Topbar() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-4">
           {/* Theme Toggle Dropdown */}
           <div className="relative">
           <button
               onClick={() => setShowThemeDropdown(!showThemeDropdown)}
-            className="p-2 hover:bg-foreground/5 rounded-xl transition-colors focus-ring"
-              aria-label="Theme selector"
+            className="rounded-xl p-2 transition-colors hover:bg-foreground/5 focus-ring"
+              aria-label="Cambiar tema"
           >
             {theme === 'light' ? (
                 <Sun className="w-5 h-5 text-yellow-500" />
@@ -382,10 +352,21 @@ export function Topbar() {
               </button>
 
               {showUserDropdown && (
-                <div className="absolute top-full right-0 mt-2 w-80 glass-strong border border-border rounded-xl shadow-lg z-50">
-                  <div className="p-3 space-y-3">
+                <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-6rem)] w-80 max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border glass-strong shadow-lg">
+                  <div className="space-y-3 p-3">
+                    {/* Direct profile entry: on phones the account section sits
+                        at the bottom of the drawer, so the avatar is the shortcut. */}
+                    <Link
+                      href="/perfil"
+                      onClick={() => setShowUserDropdown(false)}
+                      className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-foreground/5"
+                    >
+                      <User className="h-4 w-4 text-mauve-400" />
+                      Mi perfil
+                    </Link>
+
                     {/* Email */}
-                    <div className="px-3 py-2 text-sm border-b border-border">
+                    <div className="border-b border-border px-3 py-2 text-sm">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-muted-foreground flex items-center space-x-2">
                           <User className="w-4 h-4" />
