@@ -6,6 +6,7 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { StatusBanner } from '@/components/ui/StatusBanner'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { SIWE_SESSION_LOADING_TIMEOUT_MS } from '@/lib/auth/hub-session'
+import { ThirdwebFallbackLink } from '@/components/wallet/ThirdwebFallbackLink'
 
 type Props = {
   onReadyChange?: (ready: boolean) => void
@@ -68,11 +69,14 @@ export function SiweSessionBanner({ onReadyChange, compact }: Props) {
 
   if (sessionState === 'no_wallet') {
     return (
-      <StatusBanner
-        variant="warning"
-        icon={AlertCircle}
-        title="Conecta tu wallet antes de continuar."
-      />
+      <div className="space-y-2">
+        <StatusBanner
+          variant="warning"
+          icon={AlertCircle}
+          title="Conecta tu wallet antes de continuar."
+        />
+        <ThirdwebFallbackLink className="text-center sm:text-left" />
+      </div>
     )
   }
 

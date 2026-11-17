@@ -38,7 +38,11 @@ export function ThirdwebFallbackLink({ className }: Props) {
             })
             .finally(() => setBusy(false))
         }}
-        className="text-[10px] leading-tight text-muted-foreground/35 hover:text-muted-foreground/60 underline-offset-2 hover:underline disabled:opacity-40"
+        className={
+          process.env.NODE_ENV === 'development'
+            ? 'text-xs leading-tight text-mauve-400/80 hover:text-mauve-300 underline underline-offset-2 disabled:opacity-40'
+            : 'text-[10px] leading-tight text-muted-foreground/35 hover:text-muted-foreground/60 underline-offset-2 hover:underline disabled:opacity-40'
+        }
         aria-label="Conectar wallet externa (Thirdweb)"
         title={ready ? 'Wallet alternativa (Thirdweb)' : undefined}
       >
