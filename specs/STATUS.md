@@ -269,7 +269,7 @@ Tags: rollback **`funnel-baseline-pre-open-market-2026-11-17`** (`7cf8806`) · s
 | Commit | Qué |
 |--------|-----|
 | `98e997d` | SDD founding allowlist usuario/PSM (`MTU` / `MTP`) |
-| *(pendiente commit)* | Founding M1–M3: waitlist Prisma, APIs, UI, promo Stripe, `allow_promotion_codes` |
+| `6c403c9` | Founding M1–M3: waitlist Prisma, APIs, UI, promo Stripe, `allow_promotion_codes` |
 | `bc57669` | Nav agrupado + `ActiveRoleSync` (rol desde sesión SIWE) |
 | `9f1c22b` | Psychat prompts + `roleReady`; STATUS slice 3 |
 
