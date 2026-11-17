@@ -7,6 +7,12 @@ import { motusNameService, MNS_CONTRACT_ADDRESS } from '@/lib/motus-name-service
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
 import { registerMotusName } from '@/lib/mns-register'
+import {
+  MNS_ACCOUNT_VS_NAME,
+  MNS_CAN_MOVE,
+  MNS_ONE_NAME_ONE_PAYOUT,
+  MNS_TRANSFER_STEPS,
+} from '@/lib/mns-ux-copy'
 
 export default function MotusNamesPage() {
   const { kernelClient, smartAccountAddress, isInitializing } = useSmartAccount()
@@ -100,6 +106,16 @@ export default function MotusNamesPage() {
     }
     loadMyNameAndCheckMismatch()
   }, [smartAccountAddress])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const id = window.location.hash.replace(/^#/, '')
+    if (!id) return
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
+    return () => window.clearTimeout(t)
+  }, [myName, smartAccountAddress])
 
   const checkAvailability = async (inputName: string) => {
     if (!inputName) {
@@ -307,9 +323,21 @@ export default function MotusNamesPage() {
           </p>
         </div>
 
+        <div className="mb-8 p-5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/30 text-sm text-gray-700 dark:text-gray-300 space-y-2">
+          <p>{MNS_ACCOUNT_VS_NAME}</p>
+          <p>{MNS_ONE_NAME_ONE_PAYOUT}</p>
+          <p>{MNS_CAN_MOVE}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
+            Al vincular otra wallet (p. ej. Thirdweb) <strong>no</strong> heredas el mismo .motus en
+            reverse. Compra o registra uno por wallet, o transfiere el NFT entre las que controles.
+          </p>
+        </div>
+
         {/* Mi Nombre Actual */}
         {myName && (
-          <div className={`mb-8 p-6 rounded-xl border ${
+          <div
+            id="mns-update"
+            className={`mb-8 p-6 rounded-xl border scroll-mt-24 ${
             hasAddressMismatch 
               ? 'bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border-red-300 dark:border-red-800'
               : 'bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800'
@@ -454,11 +482,61 @@ export default function MotusNamesPage() {
           </div>
         )}
 
-        {/* Formulario de Registro */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            {myName ? 'Registra otro nombre' : 'Registra tu nombre'}
+        {!myName && (
+          <div
+            id="mns-update"
+            className="mb-8 p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 scroll-mt-24"
+          >
+            <h2 className="text-xl font-bold mb-2">Cambiar dónde cobro</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Cuando tengas un nombre, podrás apuntar los pagos a la wallet que elijas con{' '}
+              <span className="font-mono text-xs">updateNameAddress</span> (solo si tu wallet es
+              dueña del NFT).
+            </p>
+          </div>
+        )}
+
+        <div
+          id="mns-transfer"
+          className="mb-8 p-6 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 scroll-mt-24"
+        >
+          <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+            Transferir este nombre a otra wallet mía
           </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            El nombre es un NFT en el contrato Motus Name Service. Puedes enviarlo de una wallet
+            tuya a otra; después ajusta la dirección de cobro desde la wallet que ahora sea dueña.
+          </p>
+          <ol className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+            {MNS_TRANSFER_STEPS.map((step) => (
+              <li key={step.title} className="rounded-lg bg-white/60 dark:bg-black/20 p-3">
+                <p className="font-semibold">{step.title}</p>
+                <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+          <a
+            href={getCeloExplorerUrl(MNS_CONTRACT_ADDRESS, 'address')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-4 text-xs font-medium text-purple-700 dark:text-purple-300 underline"
+          >
+            Abrir contrato MNS en Celo Explorer (transfer NFT) →
+          </a>
+        </div>
+
+        {/* Formulario de Registro */}
+        <div
+          id="mns-register"
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8 scroll-mt-24"
+        >
+          <h2 className="text-2xl font-bold mb-2">
+            {myName ? 'Registra otro nombre para esta wallet' : 'Registra un nombre .motus'}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Cada registro es único en la red y se paga por wallet. Si ya tienes otro nombre en otra
+            wallet, necesitas un segundo registro o transferir el NFT.
+          </p>
 
           {/* Input de Nombre */}
           <div className="mb-6">
@@ -621,10 +699,10 @@ export default function MotusNamesPage() {
               🎯 ¿Qué es .motus?
             </h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li>✅ Identidad legible en lugar de direcciones complejas</li>
-              <li>✅ NFT transferible que puedes vender o regalar</li>
+              <li>✅ Un nombre → una dirección de cobro a la vez</li>
+              <li>✅ NFT transferible entre tus wallets</li>
               <li>✅ Personalizable con avatar y bio</li>
-              <li>✅ Compatible con todos los servicios de MotusDAO</li>
+              <li>✅ Resolución en Pagos antes de firmar envíos</li>
             </ul>
           </div>
 

@@ -7,6 +7,7 @@ import type { Address } from 'viem'
 import { useWallet } from '@/lib/wallet'
 import { useHubPaymentSession } from '@/lib/payment-session-client'
 import { sendCELOPayment } from '@/lib/payments'
+import { MnsResolutionPreview } from '@/components/mns/MnsResolutionPreview'
 
 interface SendWithMotusNameProps {
   onSuccess?: () => void
@@ -137,27 +138,14 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
           Puedes usar un nombre .motus o una dirección completa
         </p>
         
-        {isResolving && (
-          <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-            🔍 Resolviendo destinatario...
-          </p>
-        )}
-        
-        {resolvedAddress && !isResolving && (
-          <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-sm text-green-800 dark:text-green-300 font-medium mb-1">
-              ✅ Destinatario encontrado
-            </p>
-            {displayName && (
-              <p className="text-sm text-green-700 dark:text-green-400 mb-1">
-                📛 {displayName}
-              </p>
-            )}
-            <p className="text-xs font-mono text-green-600 dark:text-green-500 break-all">
-              {resolvedAddress}
-            </p>
-          </div>
-        )}
+        <div className="mt-3 space-y-2">
+          <MnsResolutionPreview
+            resolving={isResolving}
+            resolvedAddress={resolvedAddress}
+            displayName={displayName}
+            error={error && !resolvedAddress && recipient.trim() ? error : null}
+          />
+        </div>
       </div>
 
       {/* Campo Monto */}
@@ -200,8 +188,8 @@ export default function SendWithMotusName({ onSuccess }: SendWithMotusNameProps 
         )}
       </button>
 
-      {/* Error */}
-      {error && (
+      {/* Error (envío; la resolución se muestra arriba) */}
+      {error && resolvedAddress && (
         <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm text-red-800 dark:text-red-300">
             ❌ {error}

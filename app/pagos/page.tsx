@@ -34,6 +34,7 @@ import { TextileFxSwapCta } from '@/components/payments/TextileFxSwapCta'
 import { WfiatSwapPanel } from '@/components/payments/WfiatSwapPanel'
 import { getTokenBalance, getAllTokenBalances, type TokenBalance } from '@/lib/balances'
 import { motusNameService } from '@/lib/motus-name-service'
+import { MnsResolutionPreview } from '@/components/mns/MnsResolutionPreview'
 import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -1340,43 +1341,21 @@ export default function PagosPage() {
                           )}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          💡 Usa un nombre <span className="text-mauve-400 font-medium">.motus</span> o pega una dirección 0x...
+                          Usa <span className="text-mauve-400 font-medium">nombre.motus</span> o 0x…;
+                          revisa la dirección resuelta antes de enviar.
                         </p>
-                        
-                        {/* Name Resolution Status */}
-                        {isResolvingName && (
-                          <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                            <p className="text-xs text-blue-400 flex items-center">
-                              <Loader className="w-3 h-3 mr-2 animate-spin" />
-                              Resolviendo nombre...
-                            </p>
-                          </div>
-                        )}
-                        
-                        {resolvedAddress && !isResolvingName && (
-                          <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                            <p className="text-xs text-green-400 font-medium mb-1 flex items-center">
-                              <CheckCircle className="w-3 h-3 mr-2" />
-                              Destinatario verificado
-                            </p>
-                            {resolvedDisplayName && (
-                              <p className="text-sm text-green-300 font-semibold mb-1">
-                                📛 {resolvedDisplayName}
-                              </p>
-                            )}
-                            <p className="text-xs font-mono text-green-500/80 break-all">
-                              {resolvedAddress}
-                            </p>
-                          </div>
-                        )}
-                        
-                        {nameResolutionError && !isResolvingName && (
-                          <div className="mt-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
-                            <p className="text-xs text-red-400">
-                              ❌ {nameResolutionError}
-                            </p>
-                          </div>
-                        )}
+
+                        <MnsResolutionPreview
+                          className="mt-2"
+                          resolving={isResolvingName}
+                          resolvedAddress={resolvedAddress}
+                          displayName={resolvedDisplayName}
+                          error={
+                            nameResolutionError && !isResolvingName
+                              ? nameResolutionError
+                              : null
+                          }
+                        />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1556,17 +1535,11 @@ export default function PagosPage() {
                         {/* Show resolved address info */}
                         {resolvedAddress && (
                           <div className="mt-3 space-y-2">
-                            <div className="p-3 rounded-lg bg-mauve-500/10 border border-mauve-500/20">
-                              <p className="text-[11px] text-muted-foreground mb-1">Destinatario:</p>
-                              {resolvedDisplayName && (
-                                <p className="text-sm font-semibold text-mauve-400 mb-1">
-                                  {resolvedDisplayName}
-                                </p>
-                              )}
-                              <p className="text-[11px] font-mono break-all text-foreground/80">
-                                {resolvedAddress}
-                              </p>
-                            </div>
+                            <MnsResolutionPreview
+                              resolvedAddress={resolvedAddress}
+                              displayName={resolvedDisplayName}
+                              variant="compact"
+                            />
                             
                             {sendAmount && parseFloat(sendAmount) > 0 && (
                               <div className="p-3 rounded-lg bg-mauve-500/10 border border-mauve-500/20">

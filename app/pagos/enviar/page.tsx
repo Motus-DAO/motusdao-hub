@@ -16,6 +16,7 @@ import {
 } from '@/lib/payments'
 import { getCeloExplorerUrl } from '@/lib/celo'
 import type { Address } from 'viem'
+import { MnsResolutionPreview } from '@/components/mns/MnsResolutionPreview'
 
 type TxSuccess = { hash: string; explorerUrl: string }
 
@@ -188,14 +189,21 @@ export default function EnviarPage() {
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Para</dt>
-            <dd className="mt-1 font-medium">
-              {toName || to || '—'}
-              {resolved && toName && toName !== resolved ? (
-                <span className="mt-1 block break-all font-mono text-xs text-muted-foreground">
-                  {resolved}
-                </span>
-              ) : null}
-            </dd>
+            <dd className="mt-1 font-medium">{toName || to || '—'}</dd>
+            {resolved ? (
+              <MnsResolutionPreview
+                className="mt-3"
+                resolvedAddress={resolved}
+                displayName={
+                  toName
+                    ? toName.includes('.motus')
+                      ? toName
+                      : `${toName}.motus`
+                    : null
+                }
+                variant="compact"
+              />
+            ) : null}
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Monto</dt>
