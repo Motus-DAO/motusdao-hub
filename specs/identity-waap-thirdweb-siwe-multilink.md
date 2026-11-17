@@ -1,6 +1,6 @@
 # Identity · WaaP + Thirdweb fallback · SIWE multi-wallet
 
-**Status:** **active SDD** — **I1 shipped** on `feat/waap-thirdweb-siwe-multilink`; I2–I5 pending  
+**Status:** **active SDD** — **I1 shipped** on `main` @ `f053200`; I2–I5 pending  
 **Surface:** Hub MotusDAO (`NEXT_PUBLIC_APP_URL`)  
 **Last updated:** 2026-11-17  
 **Rollback:** tag `identity-baseline-pre-waap-multiwallet-2026-11-17` → `9f1c22b` (docs-only delta on `main` after tag: `b6bfe01`)
