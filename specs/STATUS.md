@@ -259,10 +259,10 @@ Detalle y rollback: [celo-attribution.md](./celo-attribution.md).
 | `09d4f59` | SDD [funnel-open-market-tofu.md](./funnel-open-market-tofu.md) |
 | `ad90708` | Modal global de login (Safari → Thirdweb) |
 | `3362890` | F1: home explore + PWA hint |
-| `6434f9b` | F2–F3: handoff `/psicoterapia` + Psychat invitado (`/api/chat/guest`) |
+| `6434f9b` | F2–F3: handoff `/psicoterapia` + Psychat invitado (`/api/chat/guest`) — **F3 reverted** (Psychat solo con sesión) |
 | `6824b2c` | F4: PostHog `funnel_step` |
 
-Tags: rollback **`funnel-baseline-pre-open-market-2026-11-17`** (`7cf8806`) · shipped **`funnel-shipped-open-market-2026-11-17`** (`6824b2c`).
+Tags: rollback **`funnel-baseline-pre-open-market-2026-11-17`** (`7cf8806`) · shipped **`funnel-shipped-open-market-2026-11-17`** (`6824b2c`) · post-revert guest opcional **`funnel-no-guest-post-siwe-2026-11-17`** (tras commit revert).
 
 ### Addendum — nav + Psychat + founding spec (2026-11-17)
 

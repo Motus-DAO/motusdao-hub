@@ -23,12 +23,10 @@ import { formatExploracionMarkdown, formatSupervisorMarkdown } from '@/lib/psych
 import { sendPsychatViaRootRouterProxy } from '@/lib/psychat-context/send-local-proxy'
 import {
   formatPsychatChatNetworkError,
-  postPsychatGuestChat,
   postPsychatHubChat,
   type PsychatChatApiPayload,
   type PsychatRagSource,
 } from '@/lib/psychat-chat-client'
-import { trackFunnel } from '@/lib/track-funnel'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -188,8 +186,6 @@ export interface AnimatedAIChatProps {
   onOpenContextSettings?: () => void
   /** Modal sobre historial + compositor (p. ej. firma SIWE). Sustituye el overlay oscuro del input. */
   chatGate?: React.ReactNode
-  chatTransport?: 'hub' | 'guest'
-  guestConsentVersion?: string
 }
 
 export function AnimatedAIChat({
@@ -218,8 +214,6 @@ export function AnimatedAIChat({
   rootRouterProxyUrl = '',
   onOpenContextSettings,
   chatGate = null,
-  chatTransport = 'hub',
-  guestConsentVersion,
 }: AnimatedAIChatProps) {
   const containerHeightClass = fullScreen ? 'min-h-screen' : 'min-h-[calc(100dvh-8rem)]'
   const { theme } = useUIStore()
@@ -333,17 +327,6 @@ export function AnimatedAIChat({
           apiMessages
         ).then((r) => ({ mode: 'qa' as const, text: r.text }))
       }
-      if (chatTransport === 'guest' && guestConsentVersion) {
-        return postPsychatGuestChat(apiMessages, guestConsentVersion).catch((err: unknown) => {
-          const tagged = err as Error & { psychatCode?: string }
-          if (tagged.psychatCode === 'guest_limit') {
-            trackFunnel('psychat_guest_limit')
-            setError(tagged.message || 'Límite de prueba alcanzado.')
-            return null
-          }
-          throw err
-        })
-      }
       return postPsychatHubChat(apiMessages, options).catch((err: unknown) => {
         const tagged = err as Error & { psychatCode?: string }
         if (tagged.psychatCode === 'ai_credit_exhausted') {
@@ -355,8 +338,6 @@ export function AnimatedAIChat({
       })
     },
     [
-      chatTransport,
-      guestConsentVersion,
       isPsm,
       modelId,
       onCreditRefresh,
@@ -432,10 +413,6 @@ export function AnimatedAIChat({
       { id: `user-${Date.now()}`, role: 'user', content: userMessage },
     ]
     setMessages(nextMessages)
-
-    if (chatTransport === 'guest') {
-      trackFunnel('psychat_guest_send')
-    }
 
     void runHubChat(hubApiMessages(nextMessages))
       .then(applyChatResponse)

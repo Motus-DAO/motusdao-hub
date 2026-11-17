@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { AnimatedAIChat } from '@/components/ui/animated-ai-chat'
 import { useUIStore } from '@/lib/store'
 import { useWallet, useWallets } from '@/lib/wallet'
@@ -28,11 +27,8 @@ import {
   resolveProxyBaseUrl,
   type PsychatContextSettings,
 } from '@/lib/psychat-context/settings'
-import { PSYCHAT_GUEST_CONSENT_VERSION } from '@/lib/psychat-guest-limit'
 import { trackFunnel } from '@/lib/track-funnel'
 import { CTAButton } from '@/components/ui/CTAButton'
-
-const GUEST_CONSENT_STORAGE_KEY = 'psychat_guest_consent_v1'
 
 type PsychatCreditState = {
   remainingUsd: number
@@ -75,9 +71,7 @@ type PsychatMainColumnProps = {
   useRootRouterProxy: boolean
   rootRouterProxyUrl: string
   onOpenContextSettings: () => void
-  guestMode?: boolean
   onLogin?: () => void
-  notice?: ReactNode
 }
 
 function PsychatMainColumn({
@@ -113,16 +107,12 @@ function PsychatMainColumn({
   useRootRouterProxy,
   rootRouterProxyUrl,
   onOpenContextSettings,
-  guestMode = false,
   onLogin,
-  notice,
 }: PsychatMainColumnProps) {
   const { optIn, isUnlocked } = usePsychatArchiveKeyContext()
   const archiveUnlockPending = optIn && !isUnlocked
 
-  const sendBlockedReason = guestMode
-    ? null
-    : !ready
+  const sendBlockedReason = !ready
     ? null
     : !authenticated
       ? 'Conecta tu wallet para usar Psychat.'
@@ -136,9 +126,7 @@ function PsychatMainColumn({
               ? 'Firmar la copia cifrada en el recuadro del chat, o desmarca la opción de copia, para poder chatear.'
               : null
 
-  const psychatChatGate = guestMode
-    ? null
-    : !ready || !authenticated ? (
+  const psychatChatGate = !ready || !authenticated ? (
       <div className="px-5 py-6 text-sm">
         <p className="font-medium">Conecta tu wallet para usar Psychat.</p>
         <p className="mt-2 text-muted-foreground">Sin wallet no podemos verificar tu sesión ni enviar mensajes.</p>
@@ -187,13 +175,11 @@ function PsychatMainColumn({
         </div>
       )}
 
-      {!guestMode ? (
-        <PsychatArchivePanel
-          isSessionReady={isSessionReady}
-          messages={archiveMessages}
-          hideWhenUnlockGate={archiveUnlockPending}
-        />
-      ) : null}
+      <PsychatArchivePanel
+        isSessionReady={isSessionReady}
+        messages={archiveMessages}
+        hideWhenUnlockGate={archiveUnlockPending}
+      />
 
       <AnimatedAIChat
         fullScreen={false}
@@ -221,10 +207,7 @@ function PsychatMainColumn({
         useRootRouterProxy={useRootRouterProxy}
         rootRouterProxyUrl={rootRouterProxyUrl}
         onOpenContextSettings={onOpenContextSettings}
-        notice={notice}
         chatGate={psychatChatGate}
-        chatTransport={guestMode ? 'guest' : 'hub'}
-        guestConsentVersion={guestMode ? PSYCHAT_GUEST_CONSENT_VERSION : undefined}
       />
     </>
   )
@@ -233,8 +216,7 @@ function PsychatMainColumn({
 export default function PsychatPage() {
   const { role, theme, setRole } = useUIStore()
   const isLight = theme === 'light'
-  const { user, authenticated, ready, providerId, login } = useWallet()
-  const [guestConsent, setGuestConsent] = useState(false)
+  const { authenticated, ready, login } = useWallet()
   const { wallets } = useWallets()
   const { isSessionReady, sessionState } = useSiweSession()
   const sessionEoa = getEOAAddress(wallets)
@@ -267,18 +249,13 @@ export default function PsychatPage() {
 
   useEffect(() => {
     setContextSettings(readPsychatContextSettings())
-    if (typeof localStorage !== 'undefined') {
-      setGuestConsent(localStorage.getItem(GUEST_CONSENT_STORAGE_KEY) === PSYCHAT_GUEST_CONSENT_VERSION)
-    }
   }, [])
 
-  const isGuestMode = !authenticated && guestConsent
-
   useEffect(() => {
-    if (!authenticated && !isSessionReady) {
+    if (!authenticated) {
       setDbRoleResolved(true)
     }
-  }, [authenticated, isSessionReady])
+  }, [authenticated])
 
   useEffect(() => {
     if (!isSessionReady) return
@@ -467,30 +444,14 @@ export default function PsychatPage() {
   }
 
   const handleRequestHumanSession = async () => {
-    trackFunnel('human_handoff_marketplace', { guest: String(isGuestMode) })
+    trackFunnel('human_handoff_marketplace')
     router.push('/psicoterapia')
-  }
-
-  const acceptGuestConsent = () => {
-    localStorage.setItem(GUEST_CONSENT_STORAGE_KEY, PSYCHAT_GUEST_CONSENT_VERSION)
-    setGuestConsent(true)
-    trackFunnel('tofu_page_view', { surface: 'psychat_guest_consent' })
   }
 
   const handleLoginFromPsychat = () => {
     trackFunnel('login_from_tofu', { surface: 'psychat' })
     void login()
   }
-
-  const guestNotice = isGuestMode ? (
-    <div className="rounded-xl border border-border/50 bg-foreground/5 px-4 py-3 text-xs text-muted-foreground">
-      Modo prueba (límite diario). No es terapia ni diagnóstico.{' '}
-      <button type="button" className="text-mauve-300 underline" onClick={handleLoginFromPsychat}>
-        Inicia sesión
-      </button>{' '}
-      para más uso.
-    </div>
-  ) : null
 
   const proxyBase = resolveProxyBaseUrl(contextSettings)
   const useRootRouterProxy =
@@ -516,27 +477,9 @@ export default function PsychatPage() {
 
         <div className="flex min-w-0 flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
           <div className="flex w-full max-w-2xl flex-col gap-3">
-            {!authenticated && !guestConsent ? (
-              <div className="rounded-2xl border border-border/60 bg-foreground/5 p-6 text-sm">
-                <p className="font-medium">Probar Psychat sin cuenta</p>
-                <p className="mt-2 text-muted-foreground leading-relaxed">
-                  Puedes enviar algunos mensajes al día como invitado. No sustituye terapia ni guarda expediente.
-                  Para continuar después, inicia sesión o elige un profesional.
-                </p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <CTAButton type="button" className="flex-1" onClick={acceptGuestConsent}>
-                    Probar como invitado
-                  </CTAButton>
-                  <CTAButton type="button" variant="secondary" className="flex-1" onClick={handleLoginFromPsychat}>
-                    Iniciar sesión
-                  </CTAButton>
-                </div>
-              </div>
-            ) : null}
-            {authenticated || guestConsent ? (
             <PsychatMainColumn
-              role={isGuestMode ? 'usuario' : role}
-              roleReady={isGuestMode || dbRoleResolved}
+              role={role}
+              roleReady={dbRoleResolved}
               isLight={isLight}
               ready={ready}
               authenticated={authenticated}
@@ -567,11 +510,8 @@ export default function PsychatPage() {
               useRootRouterProxy={useRootRouterProxy}
               rootRouterProxyUrl={proxyBase ?? ''}
               onOpenContextSettings={() => setContextModalOpen(true)}
-              guestMode={isGuestMode}
               onLogin={handleLoginFromPsychat}
-              notice={guestNotice}
             />
-            ) : null}
           </div>
         </div>
       </div>

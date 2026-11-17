@@ -6,8 +6,6 @@ export type FunnelStep =
   | 'tofu_page_view'
   | 'pwa_hint_shown'
   | 'pwa_hint_dismissed'
-  | 'psychat_guest_send'
-  | 'psychat_guest_limit'
   | 'login_from_tofu'
   | 'human_handoff_marketplace'
   | 'credit_checkout_start'

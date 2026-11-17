@@ -55,32 +55,6 @@ export function formatPsychatChatHttpError(
   return parts.join(' · ')
 }
 
-export async function postPsychatGuestChat(
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-  guestConsentVersion: string,
-): Promise<PsychatChatApiPayload> {
-  const res = await fetch('/api/chat/guest', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, guestConsentVersion }),
-    signal: AbortSignal.timeout(PSYCHAT_CHAT_TIMEOUT_MS),
-  })
-
-  const data = (await res.json().catch(() => ({}))) as PsychatChatApiPayload & {
-    remaining?: number
-    code?: string
-  }
-  if (!res.ok) {
-    if (data.code === 'guest_limit') {
-      throw Object.assign(new Error(data.error || 'Límite de invitado alcanzado.'), {
-        psychatCode: 'guest_limit' as const,
-      })
-    }
-    throw new Error(formatPsychatChatHttpError(res.status, data))
-  }
-  return data
-}
-
 export async function postPsychatHubChat(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   options: PostPsychatHubChatOptions = {}
