@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
-import { LoginRequiredModal } from '@/components/ui/LoginRequiredModal'
+import { useWallet } from '@/lib/wallet'
+import { trackFunnel } from '@/lib/track-funnel'
 import { PaymentMethodTags } from './PaymentMethodTags'
 import { authFetch, fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
@@ -55,7 +56,7 @@ export function TherapistBookingCard({ slug, profile }: Props) {
   })
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loginOpen, setLoginOpen] = useState(false)
+  const { login } = useWallet()
   // When the user taps "Agendar" while logged out, we resume booking
   // automatically once the wallet/SIWE session becomes available.
   const [pendingBook, setPendingBook] = useState(false)
@@ -181,12 +182,13 @@ export function TherapistBookingCard({ slug, profile }: Props) {
   // session state. Logged-in users skip straight to booking.
   const proceedBooking = useCallback(async () => {
     if (!selectedSlotId) return
+    trackFunnel('therapy_book_start', { slug })
     setError(null)
 
     // No wallet yet -> open WaaP/email login, resume after connecting.
     if (sessionState === 'no_wallet') {
       setPendingBook(true)
-      setLoginOpen(true)
+      void login()
       return
     }
 
@@ -382,10 +384,6 @@ export function TherapistBookingCard({ slug, profile }: Props) {
       </GlassCard>
       </div>
 
-      <LoginRequiredModal
-        isOpen={loginOpen}
-        onClose={() => setLoginOpen(false)}
-      />
     </>
   )
 }
