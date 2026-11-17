@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Section } from '@/components/ui/Section'
 import { GradientText } from '@/components/ui/GradientText'
@@ -10,16 +9,13 @@ import {
   User, 
   Save,
   Edit,
-  Camera,
   Shield,
-  Wallet,
   Settings,
   Loader,
   AlertCircle,
   Users,
   Heart,
   Calendar,
-  AtSign,
   Video,
   Link2,
   Copy,
@@ -27,7 +23,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useUIStore } from '@/lib/store'
 import { useWallet, useWallets, getWaapAuthEmail } from '@/lib/wallet'
 import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
@@ -48,14 +44,30 @@ import {
   resolveProfileAccessGate,
   type ProfileLoadErrorKind,
 } from '@/lib/auth/hub-session'
-import { motusNameService } from '@/lib/motus-name-service'
 import { buildVideochatUrl } from '@/lib/jitsi'
 import { useRouter } from 'next/navigation'
 import { asStringArray } from '@/lib/prisma-json'
+import { ProfileLanguagesSelector } from '@/components/profile/ProfileLanguagesSelector'
 import Link from 'next/link'
 import { PatientSharedSummariesPanel } from '@/components/clinical-summary/PatientSharedSummariesPanel'
 import { LinkedWalletsPanel } from '@/components/profile/LinkedWalletsPanel'
 import { WalletBalancesCard } from '@/components/profile/WalletBalancesCard'
+import { MotusNamesPanel } from '@/components/profile/MotusNamesPanel'
+import {
+  ProfileSettingsNav,
+  readProfileSectionFromHash,
+} from '@/components/profile/ProfileSettingsNav'
+import { ProfileSectionHeader } from '@/components/profile/ProfileSectionHeader'
+import { MotusAccountCard } from '@/components/profile/MotusAccountCard'
+import {
+  ProfileSidebarCard,
+  readProfileRailCollapsed,
+  writeProfileRailCollapsed,
+} from '@/components/profile/ProfileSidebarCard'
+import {
+  PROFILE_PREFERENCE_ITEMS,
+  type ProfileSectionId,
+} from '@/lib/profile-settings-sections'
 
 interface ProfileData {
   nombre: string
@@ -66,6 +78,7 @@ interface ProfileData {
   pais: string
   bio?: string
   language: string
+  languages: string[]
   avatarUrl?: string
 }
 
@@ -78,6 +91,7 @@ const EMPTY_PROFILE: ProfileData = {
   pais: '',
   bio: '',
   language: 'es',
+  languages: ['es'],
   avatarUrl: '',
 }
 
@@ -141,6 +155,9 @@ export default function PerfilPage() {
   const [walletTimedOut, setWalletTimedOut] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [profileRailCollapsed, setProfileRailCollapsed] = useState(false)
+  const [activeProfileSection, setActiveProfileSection] =
+    useState<ProfileSectionId>('perfil-personal')
   const [error, setError] = useState<string | null>(null)
   const [errorKind, setErrorKind] = useState<ProfileLoadErrorKind | null>(null)
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -152,6 +169,7 @@ export default function PerfilPage() {
     pais: '',
     bio: '',
     language: 'es',
+    languages: ['es'],
     avatarUrl: ''
   })
   const [userData, setUserData] = useState<UserData | null>(null)
@@ -267,7 +285,25 @@ export default function PerfilPage() {
     if (saved === 'secure' || saved === 'open') {
       setPsmMeetingMode(saved)
     }
+    setProfileRailCollapsed(readProfileRailCollapsed())
+    const fromHash = readProfileSectionFromHash()
+    if (fromHash) setActiveProfileSection(fromHash)
   }, [])
+
+  const handleProfileSectionChange = useCallback((id: ProfileSectionId) => {
+    setActiveProfileSection(id)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${id}`)
+    }
+  }, [])
+
+  const toggleProfileRail = () => {
+    setProfileRailCollapsed((prev) => {
+      const next = !prev
+      writeProfileRailCollapsed(next)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (ready) {
@@ -288,10 +324,6 @@ export default function PerfilPage() {
     }
   }
   
-  // Motus Name state
-  const [motusName, setMotusName] = useState<string | null>(null)
-  const [isLoadingMotusName, setIsLoadingMotusName] = useState(false)
-
   if (
     !isWalletLinkModeActive() &&
     !isSessionReady &&
@@ -302,7 +334,6 @@ export default function PerfilPage() {
     setMatchData(null)
     setActiveSession(null)
     setEnrollments([])
-    setMotusName(null)
   }
 
   // Fetch profile data from API — Hub session is canonical; do not look up by email/wallet.
@@ -358,6 +389,18 @@ export default function PerfilPage() {
         if (cancelled) return
 
         if (data.profile) {
+          const patientLangs = asStringArray(
+            (data as { patientProfile?: { languages?: unknown } }).patientProfile?.languages,
+          )
+          const psmLangs = asStringArray(
+            (data as { psmProfile?: { languages?: unknown } }).psmProfile?.languages,
+          )
+          const clinicalLanguages = patientLangs.length
+            ? patientLangs
+            : psmLangs.length
+              ? psmLangs
+              : ['es']
+
           setProfileData({
             nombre: data.profile.nombre || '',
             apellido: data.profile.apellido || '',
@@ -367,6 +410,7 @@ export default function PerfilPage() {
             pais: data.profile.pais || '',
             bio: data.profile.bio || '',
             language: data.profile.language || 'es',
+            languages: clinicalLanguages,
             avatarUrl: data.profile.avatarUrl || ''
           })
         } else if (data.profileIncomplete) {
@@ -376,9 +420,6 @@ export default function PerfilPage() {
 
         if (data.user) {
           setUserData(data.user)
-          if (data.user.motusName) {
-            setMotusName(data.user.motusName.replace(/\.motus$/i, ''))
-          }
         }
       } catch (err) {
         console.error('Error fetching profile:', err)
@@ -422,50 +463,6 @@ export default function PerfilPage() {
       fetchMatchData()
     }
   }, [userData?.id, userData?.role])
-
-  // Fetch Motus Name — DB first, then on-chain fallback
-  useEffect(() => {
-    const fetchMotusName = async () => {
-      if (userData?.motusName) {
-        setMotusName(userData.motusName.replace(/\.motus$/i, ''))
-        return
-      }
-
-      const walletAddresses = [
-        userData?.smartWalletAddress,
-        userData?.eoaAddress,
-        smartAccountAddress,
-        eoaAddress
-      ].filter((addr): addr is string => Boolean(addr))
-
-      const seen = new Set<string>()
-      const uniqueAddresses = walletAddresses.filter((addr) => {
-        const key = addr.toLowerCase()
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-
-      if (uniqueAddresses.length === 0) return
-      
-      setIsLoadingMotusName(true)
-      try {
-        for (const address of uniqueAddresses) {
-          const name = await motusNameService.reverseLookup(address as `0x${string}`)
-          if (name) {
-            setMotusName(name)
-            break
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching motus name:', err)
-      } finally {
-        setIsLoadingMotusName(false)
-      }
-    }
-    
-    fetchMotusName()
-  }, [userData?.motusName, userData?.smartWalletAddress, userData?.eoaAddress, smartAccountAddress, eoaAddress])
 
   // Fetch active therapy session
   useEffect(() => {
@@ -677,6 +674,10 @@ export default function PerfilPage() {
     setProfileData(prev => ({ ...prev, [field]: value }))
   }
 
+  const handleLanguagesChange = (languages: string[]) => {
+    setProfileData((prev) => ({ ...prev, languages }))
+  }
+
   const handleAvatarClick = () => {
     if (isEditing && userData?.id) {
       const input = document.createElement('input')
@@ -815,7 +816,9 @@ export default function PerfilPage() {
                 <GradientText as="h1" className="text-4xl md:text-5xl font-bold">
                   Mi Perfil
                 </GradientText>
-                <p className="text-muted-foreground">Gestiona tu información personal</p>
+                <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                  En móvil, desliza las pestañas de sección; en escritorio, usa el menú izquierdo
+                </p>
               </div>
             </div>
           </motion.div>
@@ -829,176 +832,58 @@ export default function PerfilPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Profile Card */}
-            <div className="lg:col-span-1">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <GlassCard className="p-6 text-center">
-                  {/* Avatar */}
-                  <div className="relative mb-6">
-                    <div 
-                      className={`w-32 h-32 bg-gradient-mauve rounded-full flex items-center justify-center mx-auto overflow-hidden ${
-                        isEditing ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
-                      } ${isUploadingAvatar ? 'opacity-50' : ''}`}
-                      onClick={handleAvatarClick}
-                    >
-                      {isUploadingAvatar ? (
-                        <Loader className="w-8 h-8 text-white animate-spin" />
-                      ) : profileData.avatarUrl ? (
-                        <Image 
-                          src={profileData.avatarUrl} 
-                          alt={displayName} 
-                          width={128}
-                          height={128}
-                          className="w-32 h-32 rounded-full object-cover" 
-                        />
-                      ) : (
-                        <User className="w-16 h-16 text-white" />
-                      )}
-                    </div>
-                    {isEditing && !isUploadingAvatar && (
-                      <button 
-                        onClick={handleAvatarClick}
-                        className="absolute bottom-2 right-2 w-10 h-10 bg-mauve-500 rounded-full flex items-center justify-center hover:bg-mauve-600 transition-colors shadow-lg"
-                        title="Cambiar foto de perfil"
-                      >
-                        <Camera className="w-5 h-5 text-white" />
-                      </button>
-                    )}
-                    {isUploadingAvatar && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-32 h-32 bg-black/50 rounded-full flex items-center justify-center">
-                          <Loader className="w-8 h-8 text-white animate-spin" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+            <aside className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)]">
+              <div className="max-lg:max-w-sm max-lg:mx-auto max-lg:w-full">
+                <ProfileSidebarCard
+                  collapsed={profileRailCollapsed}
+                  onToggleCollapsed={toggleProfileRail}
+                  displayName={displayName}
+                  roleLabel={String(userData?.role || role)}
+                  avatarUrl={profileData.avatarUrl}
+                  isEditing={isEditing}
+                  isUploadingAvatar={isUploadingAvatar}
+                  onAvatarClick={handleAvatarClick}
+                />
+              </div>
+              <ProfileSettingsNav
+                layout="sidebar"
+                role={userData?.role}
+                activeId={activeProfileSection}
+                onSectionChange={handleProfileSectionChange}
+                className="hidden lg:flex flex-1 min-h-0"
+              />
+            </aside>
 
-                  {/* Basic Info */}
-                  <h2 className="text-2xl font-bold mb-2">{displayName}</h2>
-                  <p className="text-muted-foreground mb-4 capitalize">{userData?.role || role}</p>
-                  
-                  {/* Account Info */}
-                  {authenticated && (
-                    <div className="mb-4 space-y-3">
-                      {/* Email */}
-                      <div className="p-3 glass-card rounded-lg">
-                        <div className="flex items-center justify-center space-x-2 mb-1">
-                          <User className="w-4 h-4 text-mauve-500" />
-                          <span className="text-xs text-muted-foreground">Email</span>
-                        </div>
-                        <p className="text-sm font-mono text-center break-all">
-                          {userData?.email || waapEmail || 'Sin correo registrado'}
-                        </p>
-                      </div>
-                      
-                      {/* EOA Address */}
-                      {(userData?.eoaAddress || eoaAddress) && (
-                        <div className="p-3 glass-card rounded-lg">
-                          <div className="flex items-center justify-center space-x-2 mb-1">
-                            <Wallet className="w-4 h-4 text-mauve-500" />
-                            <span className="text-xs text-muted-foreground">Wallet Conectada (EOA)</span>
-                          </div>
-                          <p className="text-sm font-mono text-center">
-                            {(userData?.eoaAddress || eoaAddress)?.slice(0, 6)}...{(userData?.eoaAddress || eoaAddress)?.slice(-4)}
-                          </p>
-                          <p className="text-xs font-mono text-center text-muted-foreground mt-1 break-all">
-                            {userData?.eoaAddress || eoaAddress}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Smart Wallet Address */}
-                      {(userData?.smartWalletAddress || smartAccountAddress) ? (
-                        <div className="p-3 glass-card rounded-lg border border-green-500/30">
-                          <div className="flex items-center justify-center space-x-2 mb-1">
-                            <Shield className="w-4 h-4 text-green-500" />
-                            <span className="text-xs text-muted-foreground">Smart Wallet (ZeroDev)</span>
-                          </div>
-                          <p className="text-sm font-mono text-center">
-                            {(userData?.smartWalletAddress || smartAccountAddress)?.slice(0, 6)}...{(userData?.smartWalletAddress || smartAccountAddress)?.slice(-4)}
-                          </p>
-                          <p className="text-xs font-mono text-center text-muted-foreground mt-1 break-all">
-                            {userData?.smartWalletAddress || smartAccountAddress}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="p-3 glass-card rounded-lg border border-yellow-500/30">
-                          <p className="text-xs text-yellow-500 text-center">
-                            Smart wallet no disponible
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Motus Names - Identidad Descentralizada */}
-                      <div className="p-3 glass-card rounded-lg border border-iris-500/30 bg-gradient-to-br from-iris-500/10 to-mauve-500/10">
-                        <div className="flex items-center justify-center space-x-2 mb-2">
-                          <AtSign className="w-4 h-4 text-iris-500" />
-                          <span className="text-xs text-muted-foreground">Identidad Descentralizada</span>
-                        </div>
-                        
-                        {isLoadingMotusName ? (
-                          <div className="flex items-center justify-center py-2">
-                            <Loader className="w-4 h-4 animate-spin text-iris-500" />
-                          </div>
-                        ) : motusName ? (
-                          <>
-                            <p className="text-lg font-bold text-center text-iris-400 mb-2">
-                              {motusName}.motus
-                            </p>
-                            <p className="text-xs text-muted-foreground text-center mb-3">
-                              Tu nombre registrado en la blockchain
-                            </p>
-                            <CTAButton 
-                              size="sm" 
-                              variant="secondary"
-                              className="w-full"
-                              onClick={() => window.location.href = '/motus-names'}
-                            >
-                              <AtSign className="w-4 h-4 mr-2" />
-                              Gestionar Nombres
-                            </CTAButton>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm text-center mb-3">
-                              Registra tu nombre <span className="font-bold text-iris-400">.motus</span>
-                            </p>
-                            <CTAButton 
-                              size="sm" 
-                              className="w-full"
-                              onClick={() => window.location.href = '/motus-names'}
-                            >
-                              <AtSign className="w-4 h-4 mr-2" />
-                              Registrar Nombre
-                            </CTAButton>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            <div className="flex-1 min-w-0 w-full" role="region" aria-live="polite">
+              <ProfileSettingsNav
+                layout="scroll"
+                role={userData?.role}
+                activeId={activeProfileSection}
+                onSectionChange={handleProfileSectionChange}
+                className="lg:hidden"
+              />
+              <ProfileSectionHeader sectionId={activeProfileSection} />
 
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-mauve-500">-</div>
-                      <div className="text-sm text-muted-foreground">Sesiones</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-mauve-500">-</div>
-                      <div className="text-sm text-muted-foreground">Cursos</div>
-                    </div>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            </div>
+              {activeProfileSection === 'perfil-cuenta' && authenticated && userData && (
+                <div className="space-y-6">
+                  <MotusAccountCard
+                    userId={userData.id}
+                    email={userData.email || waapEmail}
+                    role={userData.role}
+                    displayName={displayName !== 'Usuario MotusDAO' ? displayName : undefined}
+                    onEditPersonalData={() => {
+                      handleProfileSectionChange('perfil-personal')
+                      setIsEditing(true)
+                    }}
+                  />
+                  <GlassCard className="p-6 border border-white/15">
+                    <MatrixColorSelector />
+                  </GlassCard>
+                </div>
+              )}
 
-            {/* Profile Form */}
-            <div className="lg:col-span-2">
+              {activeProfileSection === 'perfil-personal' && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -1128,8 +1013,14 @@ export default function PerfilPage() {
                       />
                     </div>
 
+                    <ProfileLanguagesSelector
+                      value={profileData.languages}
+                      onChange={handleLanguagesChange}
+                      disabled={!isEditing}
+                    />
+
                     <div>
-                      <label className="block text-sm font-medium mb-2">Idioma Preferido</label>
+                      <label className="block text-sm font-medium mb-2">Idioma de la interfaz</label>
                       <select
                         value={profileData.language}
                         onChange={(e) => handleInputChange('language', e.target.value)}
@@ -1140,41 +1031,43 @@ export default function PerfilPage() {
                         <option value="en">English</option>
                         <option value="pt">Português</option>
                       </select>
-                    </div>
-
-                    {/* Matrix Color Customization */}
-                    <div className="pt-4 border-t border-white/10">
-                      <MatrixColorSelector />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Distinto de los idiomas en los que te comunicas (arriba).
+                      </p>
                     </div>
                   </form>
                 </GlassCard>
               </motion.div>
-
-              <div className="mt-8 space-y-8">
-                <LinkedWalletsPanel />
-                <WalletBalancesCard />
-              </div>
-
-              {(userData?.role === 'usuario' || userData?.role === 'psm') && (
-                <div className="mt-8">
-                  <SpeiPaymentCard />
-                </div>
               )}
 
-              {userData?.role === 'psm' && (
-                <div className="mt-8 space-y-6">
+              {activeProfileSection === 'perfil-wallets' && <LinkedWalletsPanel />}
+
+              {activeProfileSection === 'perfil-motus' && (
+                <MotusNamesPanel
+                  accountMotusName={userData?.motusName}
+                  accountPrimaryEoa={userData?.eoaAddress}
+                  smartWalletAddress={userData?.smartWalletAddress ?? smartAccountAddress ?? undefined}
+                />
+              )}
+
+              {activeProfileSection === 'perfil-saldos' && <WalletBalancesCard />}
+
+              {activeProfileSection === 'perfil-spei' &&
+                (userData?.role === 'usuario' || userData?.role === 'psm') && <SpeiPaymentCard />}
+
+              {activeProfileSection === 'perfil-stripe' && userData?.role === 'psm' && (
+                <div className="space-y-6">
                   <StripeConnectCard />
                   <StripeEarningsCard />
                 </div>
               )}
 
-              {/* Match Information */}
-              {(userData?.role === 'usuario' || userData?.role === 'psm') && (
+              {activeProfileSection === 'perfil-terapia' &&
+                (userData?.role === 'usuario' || userData?.role === 'psm') && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
-                  className="mt-8"
                 >
                   <GlassCard className="p-8">
                     <h3 className="text-2xl font-bold mb-6 flex items-center">
@@ -1626,11 +1519,11 @@ export default function PerfilPage() {
                 </motion.div>
               )}
 
+              {activeProfileSection === 'perfil-membresias' && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.45 }}
-                className="mt-8"
               >
                 <GlassCard className="p-8">
                   <h3 className="text-2xl font-bold mb-6 flex items-center">
@@ -1712,60 +1605,61 @@ export default function PerfilPage() {
                   )}
                 </GlassCard>
               </motion.div>
+              )}
 
-              {/* Settings */}
+              {activeProfileSection === 'perfil-preferencias' && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5 }}
-                className="mt-8"
               >
                 <GlassCard className="p-8">
-                  <h3 className="text-2xl font-bold mb-6 flex items-center">
+                  <h3 className="text-2xl font-bold mb-2 flex items-center">
                     <Settings className="w-6 h-6 mr-3 text-mauve-500" />
-                    Configuración
+                    Preferencias
                   </h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Ajustes generales del Hub. Algunos enlaces llevan a políticas públicas; el cambio
+                    de rol requiere soporte hasta que esté automatizado.
+                  </p>
 
-                  <div className="space-y-6">
-                    {/* Role Preference */}
-                    <div className="flex items-center justify-between p-4 glass-card rounded-lg">
-                      <div>
-                        <h4 className="font-semibold">Rol Preferido</h4>
-                        <p className="text-sm text-muted-foreground">Cambia entre Usuario y PSM</p>
+                  <div className="space-y-4">
+                    {PROFILE_PREFERENCE_ITEMS.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 glass-card rounded-lg"
+                      >
+                        <div className="max-w-xl">
+                          <h4 className="font-semibold">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                            {item.description}
+                          </p>
+                        </div>
+                        {item.id === 'rol' ? (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm capitalize">{userData?.role || role}</span>
+                            <CTAButton variant="secondary" size="sm" disabled title="Próximamente">
+                              Cambiar
+                            </CTAButton>
+                          </div>
+                        ) : item.id === 'privacidad' ? (
+                          <CTAButton variant="secondary" size="sm" asChild className="shrink-0">
+                            <Link href="/privacy">
+                              <Shield className="w-4 h-4 mr-2" />
+                              Ver políticas
+                            </Link>
+                          </CTAButton>
+                        ) : (
+                          <CTAButton variant="secondary" size="sm" disabled title="Próximamente" className="shrink-0">
+                            Configurar
+                          </CTAButton>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm capitalize">{userData?.role || role}</span>
-                        <CTAButton variant="secondary" size="sm">
-                          Cambiar
-                        </CTAButton>
-                      </div>
-                    </div>
-
-                    {/* Privacy Settings */}
-                    <div className="flex items-center justify-between p-4 glass-card rounded-lg">
-                      <div>
-                        <h4 className="font-semibold">Privacidad</h4>
-                        <p className="text-sm text-muted-foreground">Controla la visibilidad de tu perfil</p>
-                      </div>
-                      <CTAButton variant="secondary" size="sm">
-                        <Shield className="w-4 h-4 mr-2" />
-                        Configurar
-                      </CTAButton>
-                    </div>
-
-                    {/* Notifications */}
-                    <div className="flex items-center justify-between p-4 glass-card rounded-lg">
-                      <div>
-                        <h4 className="font-semibold">Notificaciones</h4>
-                        <p className="text-sm text-muted-foreground">Gestiona tus preferencias de notificación</p>
-                      </div>
-                      <CTAButton variant="secondary" size="sm">
-                        Configurar
-                      </CTAButton>
-                    </div>
+                    ))}
                   </div>
                 </GlassCard>
               </motion.div>
+              )}
             </div>
           </div>
         </div>
