@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ADNBackdrop } from '@/components/three/ADNBackdrop'
 import FloatingLines from '@/components/three/FloatingLines'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -24,6 +24,7 @@ import {
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { trackCta } from '@/lib/track-cta'
+import { trackTofuExplore } from '@/lib/track-funnel'
 
 const featuredApps = [
   {
@@ -61,15 +62,26 @@ export default function Home() {
   const { authenticated, login } = useWallet()
   const { isCompleted } = useOnboardingStore()
   const [showRolePicker, setShowRolePicker] = useState(false)
+  const [awaitingRolePicker, setAwaitingRolePicker] = useState(false)
 
-  const handleStart = async () => {
-    trackCta('Comenzar Ahora', { location: 'hero' })
-    try {
-      await login()
+  useEffect(() => {
+    if (authenticated && awaitingRolePicker) {
       setShowRolePicker(true)
-    } catch (error) {
-      console.error('[Home] login failed:', error)
+      setAwaitingRolePicker(false)
     }
+  }, [authenticated, awaitingRolePicker])
+
+  const handleExplorePsychat = () => {
+    trackTofuExplore('Probar Psychat', 'hero', '/psychat')
+  }
+
+  const handleLogin = () => {
+    trackCta('Iniciar sesión', { location: 'hero' })
+    setAwaitingRolePicker(true)
+    void login().catch((error) => {
+      console.error('[Home] login failed:', error)
+      setAwaitingRolePicker(false)
+    })
   }
 
   return (
@@ -118,31 +130,83 @@ export default function Home() {
                   inteligencia artificial y atención profesional para tu bienestar.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                  <CTAButton 
-                    size="lg" 
-                    glow 
-                    className="group"
-                    onClick={() => {
-                      void handleStart()
-                    }}
-                  >
-                    Comenzar Ahora
-                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </CTAButton>
-                  
-                  <Link
-                    href="/docs"
-                    onClick={() => trackCta('Documentación', { location: 'hero', href: '/docs' })}
-                  >
-                    <CTAButton variant="secondary" size="lg">
-                      <FileText className="w-5 h-5 mr-2" />
-                      Documentación
+                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center flex-wrap">
+                  <Link href="/psychat" onClick={handleExplorePsychat}>
+                    <CTAButton size="lg" glow className="group w-full sm:w-auto">
+                      Probar Psychat
+                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                     </CTAButton>
                   </Link>
+                  <Link
+                    href="/psicoterapia"
+                    onClick={() => trackTofuExplore('Ver terapeutas', 'hero', '/psicoterapia')}
+                  >
+                    <CTAButton variant="secondary" size="lg" className="w-full sm:w-auto">
+                      Ver terapeutas
+                    </CTAButton>
+                  </Link>
+                  <CTAButton
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={() => void handleLogin()}
+                  >
+                    Iniciar sesión
+                  </CTAButton>
                 </div>
               </GlassCard>
             </motion.div>
+          </div>
+        </Section>
+      )}
+
+      {!authenticated && (
+        <Section className="relative z-10">
+          <div className="container mx-auto px-6 max-w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.15 }}
+              className="text-center mb-10"
+            >
+              <GradientText as="h2" className="text-3xl md:text-4xl font-bold mb-3">
+                Explora sin cuenta
+              </GradientText>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                Psychat, directorio de profesionales y academia pública. Inicia sesión solo cuando quieras guardar progreso o pagar.
+              </p>
+            </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredApps.map((app, index) => {
+                const Icon = app.icon
+                return (
+                  <motion.div
+                    key={app.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 + index * 0.08 }}
+                  >
+                    <Link
+                      href={app.href}
+                      onClick={() => trackTofuExplore(app.title, 'home_guest_apps', app.href)}
+                    >
+                      <GlassCard hover className="h-full p-6 group cursor-pointer">
+                        <div className="text-center">
+                          <div
+                            className={`w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-r ${app.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
+                          >
+                            <Icon className="w-8 h-8 text-white" />
+                          </div>
+                          <h3 className="text-xl font-semibold mb-2">{app.title}</h3>
+                          <p className="text-muted-foreground text-sm">{app.description}</p>
+                        </div>
+                      </GlassCard>
+                    </Link>
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
         </Section>
       )}

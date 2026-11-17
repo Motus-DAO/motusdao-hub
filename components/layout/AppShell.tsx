@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { useUIStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { MottyWidget } from '@/components/motty/MottyWidget'
+import { MotusLoginModalHost } from '@/components/auth/MotusLoginModalHost'
+import { PwaInstallHint } from '@/components/funnel/PwaInstallHint'
 import { ActiveRoleSync } from '@/components/auth/ActiveRoleSync'
 import { SidebarWrapper } from './SidebarWrapper'
 import { Topbar } from './Topbar'
@@ -62,6 +64,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       {/* Motty FAB — separate from MotusAI; same pattern as academia.motusdao.org */}
       <MottyWidget />
+      <MotusLoginModalHost />
+      <PwaInstallHint />
     </div>
   )
 }
