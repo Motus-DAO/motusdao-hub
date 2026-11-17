@@ -36,6 +36,7 @@ import { authFetch } from '@/lib/auth/client'
 import { isWalletLinkModeActive } from '@/lib/auth/wallet-link-mode'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { ProfileAccessGate } from '@/components/auth/ProfileAccessGate'
+import { MotusLoginModal } from '@/components/auth/MotusLoginModal'
 import { StripeConnectCard } from '@/components/payments/StripeConnectCard'
 import { StripeEarningsCard } from '@/components/payments/StripeEarningsCard'
 import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
@@ -45,7 +46,6 @@ import {
   PROFILE_WALLET_READY_TIMEOUT_MS,
   profileLoadErrorMessage,
   resolveProfileAccessGate,
-  sessionBelongsToWallet,
   type ProfileLoadErrorKind,
 } from '@/lib/auth/hub-session'
 import { motusNameService } from '@/lib/motus-name-service'
@@ -116,7 +116,7 @@ export default function PerfilPage() {
   const router = useRouter()
   
   // WaaP authentication hooks (replaces Privy)
-  const { authenticated, user, ready, login } = useWallet()
+  const { authenticated, user, ready } = useWallet()
   const { wallets } = useWallets()
   const {
     sessionState,
@@ -137,6 +137,7 @@ export default function PerfilPage() {
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [showLoginModal, setShowLoginModal] = useState(false)
   const [walletTimedOut, setWalletTimedOut] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -355,18 +356,6 @@ export default function PerfilPage() {
 
         const data = await response.json()
         if (cancelled) return
-
-        if (
-          !isWalletLinkModeActive() &&
-          data.user?.eoaAddress &&
-          eoaAddress &&
-          !sessionBelongsToWallet(data.user.eoaAddress, eoaAddress)
-        ) {
-          setUserData(null)
-          setProfileData(EMPTY_PROFILE)
-          setIsLoading(false)
-          return
-        }
 
         if (data.profile) {
           setProfileData({
@@ -776,24 +765,34 @@ export default function PerfilPage() {
 
   if (accessGate !== 'ready') {
     return (
-      <ProfileAccessGate
-        kind={accessGate}
-        errorMessage={error}
-        errorKind={errorKind}
-        onLogin={() => {
-          if (authenticated) {
-            void signInSiwe()
-            return
-          }
-          void login()
-        }}
-        onRetry={() => {
-          setError(null)
-          setErrorKind(null)
-          setIsLoading(true)
-          void refreshSession()
-        }}
-      />
+      <>
+        <ProfileAccessGate
+          kind={accessGate}
+          errorMessage={error}
+          errorKind={errorKind}
+          onLogin={() => {
+            if (authenticated) {
+              void signInSiwe()
+              return
+            }
+            setShowLoginModal(true)
+          }}
+          onRetry={() => {
+            setError(null)
+            setErrorKind(null)
+            setIsLoading(true)
+            void refreshSession()
+          }}
+        />
+        <MotusLoginModal
+          isOpen={showLoginModal}
+          onClose={() => {
+            setShowLoginModal(false)
+            void refreshSession()
+          }}
+          location="perfil"
+        />
+      </>
     )
   }
 

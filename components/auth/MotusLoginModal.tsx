@@ -204,11 +204,8 @@ export function MotusLoginModal({
           {thirdwebEnabled ? (
             <button
               type="button"
-              disabled={loading}
-              onClick={() => {
-                setProvider(alternate)
-                setUsedAlternate(true)
-              }}
+              disabled={loading || !ready}
+              onClick={() => void runConnect(alternate, true)}
               className="text-sm text-mauve-300 hover:text-mauve-200 underline underline-offset-2 disabled:opacity-40"
             >
               Probar con {providerLabel(alternate)}
