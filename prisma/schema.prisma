@@ -737,8 +737,23 @@ model User {
   sessionsAsPSM         Session[]          @relation("sessions_psmIdTousers")
   sessionsAsUser        Session[]          @relation("sessions_userIdTousers")
   sessionTransferEvents SessionTransferEvent[] @relation("session_transfer_actor")
+  linkedWallets         LinkedWallet[]
 
   @@map("users")
+}
+
+model LinkedWallet {
+  id         String    @id @default(cuid())
+  userId     String
+  address    String    @unique
+  label      String?
+  isPrimary  Boolean   @default(false)
+  linkedAt   DateTime  @default(now())
+  lastUsedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("linked_wallets")
 }
 
 enum TrainingPayoutStatus {

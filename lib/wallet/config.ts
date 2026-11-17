@@ -1,22 +1,20 @@
-export type ConfiguredWalletProvider = 'waap' | 'privy' | 'thirdweb'
+export type ConfiguredWalletProvider = 'waap' | 'thirdweb'
 
-const VALID_PROVIDERS = new Set<ConfiguredWalletProvider>(['waap', 'privy', 'thirdweb'])
+const VALID_PROVIDERS = new Set<ConfiguredWalletProvider>(['waap', 'thirdweb'])
 
 /**
  * Active wallet vendor for the client bundle.
- * Set `NEXT_PUBLIC_WALLET_PROVIDER=privy` or `thirdweb` to A/B against WaaP (default).
+ * Set `NEXT_PUBLIC_WALLET_PROVIDER=thirdweb` for full-tree debug; default `waap`.
  */
 export function getConfiguredWalletProvider(): ConfiguredWalletProvider {
   const raw = process.env.NEXT_PUBLIC_WALLET_PROVIDER?.toLowerCase()
+  if (raw === 'privy') {
+    return 'waap'
+  }
   if (raw && VALID_PROVIDERS.has(raw as ConfiguredWalletProvider)) {
     return raw as ConfiguredWalletProvider
   }
   return 'waap'
-}
-
-export function getPrivyAppId(): string | undefined {
-  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim()
-  return appId || undefined
 }
 
 export function getThirdwebClientId(): string | undefined {

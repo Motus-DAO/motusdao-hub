@@ -5,6 +5,7 @@ import {
   parseAuthIdentityFromSearchParams,
   authIdentityLookupConditions,
 } from '@/lib/auth/identity'
+import { findUserForSignerAddress } from '@/lib/auth/linked-wallets'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +28,31 @@ export async function GET(request: NextRequest) {
         { error: 'Email, wallet address, user id, or session is required' },
         { status: 400 }
       )
+    }
+
+    if (eoaAddress) {
+      const bySigner = await findUserForSignerAddress(eoaAddress)
+      if (bySigner) {
+        const full = await prisma.user.findFirst({
+          where: { id: bySigner.id, deletedAt: null },
+          select: {
+            id: true,
+            email: true,
+            registrationCompleted: true,
+            onboardingStatus: true,
+            role: true,
+          },
+        })
+        if (full) {
+          return NextResponse.json({
+            registered: true,
+            registrationCompleted: full.registrationCompleted,
+            onboardingStatus: full.onboardingStatus,
+            role: full.role,
+            userId: full.id,
+          })
+        }
+      }
     }
 
     const identityFilters = [

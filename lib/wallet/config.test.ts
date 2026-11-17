@@ -47,9 +47,9 @@ describe('getConfiguredWalletProvider', () => {
     assert.equal(getConfiguredWalletProvider(), 'waap')
   })
 
-  it('still accepts privy during I1', () => {
+  it('maps legacy privy env to waap', () => {
     process.env.NEXT_PUBLIC_WALLET_PROVIDER = 'privy'
-    assert.equal(getConfiguredWalletProvider(), 'privy')
+    assert.equal(getConfiguredWalletProvider(), 'waap')
   })
 })
 

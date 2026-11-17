@@ -11,6 +11,7 @@ import { SESSION_COOKIE_NAME } from '@/lib/auth/constants'
 import { handleAuthError, AuthError } from '@/lib/auth/errors'
 import { verifySiweLogin } from '@/lib/auth/verify-siwe'
 import { buildAuthIdentityUpdate } from '@/lib/auth/identity'
+import { findUserForSignerAddress } from '@/lib/auth/linked-wallets'
 
 const verifySchema = z.object({
   message: z.string().min(1),
@@ -32,19 +33,7 @@ export async function POST(request: NextRequest) {
       throw new AuthError(401, 'Invalid or expired nonce')
     }
 
-    const user = await prisma.user.findFirst({
-      where: {
-        eoaAddress: { equals: address, mode: 'insensitive' },
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        role: true,
-        isPlatformAdmin: true,
-        authProvider: true,
-        authProviderId: true,
-      },
-    })
+    const user = await findUserForSignerAddress(address)
 
     if (
       user &&

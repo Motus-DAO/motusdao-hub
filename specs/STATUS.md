@@ -126,8 +126,7 @@ Detalle: [spec](./celo-attribution.md).
 
 | Trabajo | Qué falta | Riesgo |
 |---------|-----------|--------|
-| **Identity I1 — Thirdweb** | Vercel: client id + fallback env; prod `migrate deploy`; QA enlace **「o usar otra wallet」** + SIWE misma EOA | WaaP default; hidden Thirdweb en onboarding/topbar |
-| **Identity I2–I5** | `LinkedWallet`, link UI, retirar Privy, hardening — ver [spec](./identity-waap-thirdweb-siwe-multilink.md) | Schema + muchas superficies Privy |
+| **Identity multi-wallet (I2–I4)** | Vercel: `migrate deploy` `20261117082000_linked_wallets`; QA vincular 2ª wallet en `/perfil` + login con ambas | [spec](./identity-waap-thirdweb-siwe-multilink.md) SHIPPED |
 | **Psychat PSM slice 1** | Validar en producción que el deploy incluye `4f04131`; actualizar el header del spec | El spec dice READY; el código ya está en `main` |
 | **Psychat PSM slice 2** | Bloquear el proxy RootRouter para rol PSM; verificar banner de error 502 | El botón de reporte ya existe, pero el proxy sigue disponible para PSM |
 | **Psychat usuario slice 3** | QA en prod tras merge `9f1c22b` (prompt + `roleReady`) | Código en `main`; confirmar que ya no fuerza JSON en cada turno |
@@ -145,9 +144,7 @@ Detalle: [spec](./celo-attribution.md).
 
 ## 4. Next (orden recomendado)
 
-1. **Auth / identidad:** I1 Thirdweb **shipped** en rama; siguiente **I2** (`LinkedWallet`). Spec:
-   [identity-waap-thirdweb-siwe-multilink.md](./identity-waap-thirdweb-siwe-multilink.md).
-   Thirdweb client id compartido con Lab-Avril-Life (`env.example`). Rollback: tag `identity-baseline-pre-waap-multiwallet-2026-11-17`.
+1. **Founding MKT** — [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md) (identidad I1–I4 **shipped**; ver [spec](./identity-waap-thirdweb-siwe-multilink.md)).
 2. **Founding allowlist (MKT):** implementar desde [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md)
    (spec only; sin código aún).
 3. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.

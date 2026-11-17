@@ -1,6 +1,6 @@
 # Identity · WaaP + Thirdweb fallback · SIWE multi-wallet
 
-**Status:** **active SDD** — **I1 shipped** on `main` @ `f053200`; I2–I5 pending  
+**Status:** **SHIPPED** (program complete on `main` post I5); slices I1–I4 + I1b done; I5 docs in this commit  
 **Surface:** Hub MotusDAO (`NEXT_PUBLIC_APP_URL`)  
 **Last updated:** 2026-11-17  
 **Rollback:** tag `identity-baseline-pre-waap-multiwallet-2026-11-17` → `9f1c22b` (docs-only delta on `main` after tag: `b6bfe01`)
@@ -143,9 +143,9 @@ Cada slice = un PR a `feat/waap-thirdweb-siwe-multilink`; merge a `main` solo co
 2. **Given** `NEXT_PUBLIC_WALLET_PROVIDER=thirdweb` y client id válido, **when** usuario conecta y hace SIWE, **then** sesión igual que WaaP (mismo cookie + verify).
 3. **Negative:** **given** thirdweb sin client id, **when** build/prod boot, **then** error claro en dev o fallback documentado (no silent blank).
 
-### Slice I2 — `LinkedWallet` + verify por address
+### Slice I2 — `LinkedWallet` + verify por address — **SHIPPED**
 
-**Entrega:** migración Prisma, backfill, verify/login lookup, `GET /api/auth/wallets`.
+**Entrega:** `LinkedWallet` + migración `20261117082000_linked_wallets`, backfill, `findUserForSignerAddress`, `GET /api/auth/wallets`.
 
 **Criterios:**
 
@@ -153,9 +153,9 @@ Cada slice = un PR a `feat/waap-thirdweb-siwe-multilink`; merge a `main` solo co
 2. **Given** SIWE con address linkada, **when** verify, **then** `sub` = mismo `userId` aunque `User.eoaAddress` ya no sea la única fuente.
 3. **Negative:** **given** address ya linkada a otro user, **when** link POST, **then** 409.
 
-### Slice I3 — Link / unlink UI mínima + step-up
+### Slice I3 — Link / unlink UI mínima + step-up — **SHIPPED**
 
-**Entrega:** settings o perfil: listar wallets; añadir con SIWE; quitar secundaria.
+**Entrega:** `LinkedWalletsPanel` en `/perfil`; `POST link|unlink|set-primary` con `verifySiweStepUp`.
 
 **Criterios:**
 
@@ -163,9 +163,9 @@ Cada slice = un PR a `feat/waap-thirdweb-siwe-multilink`; merge a `main` solo co
 2. **Given** una sola wallet, **when** unlink, **then** 400.
 3. **Given** `registrationCompleted`, **when** intento `set-primary` sin admin, **then** 403 (regla D5).
 
-### Slice I4 — Retire Privy
+### Slice I4 — Retire Privy — **SHIPPED**
 
-**Entrega:** eliminar wrappers Privy, dependencia `@privy-io/*`, env `NEXT_PUBLIC_PRIVY_*`, scripts `sync-privy-id`, admin sync UI; actualizar `auth-provider-agnostic.md` header **SUPERSEDED**.
+**Entrega:** Privy tree removed; `@privy-io/react-auth` dropped; `NEXT_PUBLIC_WALLET_PROVIDER` = `waap`|`thirdweb` only (legacy `privy` → `waap`). Columna `privyId` en DB read-only.
 
 **Criterios:**
 

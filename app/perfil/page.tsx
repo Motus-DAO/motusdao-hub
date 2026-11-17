@@ -53,6 +53,7 @@ import { useRouter } from 'next/navigation'
 import { asStringArray } from '@/lib/prisma-json'
 import Link from 'next/link'
 import { PatientSharedSummariesPanel } from '@/components/clinical-summary/PatientSharedSummariesPanel'
+import { LinkedWalletsPanel } from '@/components/profile/LinkedWalletsPanel'
 
 interface ProfileData {
   nombre: string
@@ -1135,6 +1136,10 @@ export default function PerfilPage() {
                   </form>
                 </GlassCard>
               </motion.div>
+
+              <div className="mt-8">
+                <LinkedWalletsPanel />
+              </div>
 
               {(userData?.role === 'usuario' || userData?.role === 'psm') && (
                 <div className="mt-8">

@@ -36,7 +36,7 @@ export interface PaymentResult {
  * @param wallet - The WaaP wallet to use
  * @param allWallets - Optional: all available wallets to identify best wallet
  */
-export async function createPrivyWalletClient(
+export async function createEoaWalletClient(
   wallet: WaaPWallet, 
   allWallets?: WaaPWallet[]
 ) {
@@ -91,7 +91,7 @@ export async function sendCELOPayment(
   allWallets?: WaaPWallet[]
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createPrivyWalletClient(wallet, allWallets)
+    const walletClient = await createEoaWalletClient(wallet, allWallets)
     const amountInWei = parseUnits(params.amount, 18) // CELO has 18 decimals
 
     console.log('🔄 Sending CELO transaction via WaaP EOA...')
@@ -125,7 +125,7 @@ export async function sendStablecoinPayment(
   params: PaymentParams
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createPrivyWalletClient(wallet)
+    const walletClient = await createEoaWalletClient(wallet)
     
     const tokenAddress = CELO_STABLE_TOKENS[params.currency as keyof typeof CELO_STABLE_TOKENS]
     if (!tokenAddress) {
@@ -186,7 +186,7 @@ export async function sendUnsignedEvmTx(
   options?: { wait?: boolean }
 ): Promise<PaymentResult> {
   try {
-    const walletClient = await createPrivyWalletClient(wallet)
+    const walletClient = await createEoaWalletClient(wallet)
     const hash = await walletClient.sendTransaction({
       to: tx.to as Address,
       data: tx.data as Hex,

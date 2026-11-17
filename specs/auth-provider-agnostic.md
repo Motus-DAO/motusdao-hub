@@ -1,6 +1,6 @@
 # Auth Provider Agnostic — Slice A/B
 
-> Status: **SHIPPED** on `main` at `ccdea1f` · WaaP/Privy env toggle `96fa36c` · Owner: product + eng · Slice size: ≤1 day
+> Status: **SUPERSEDED** by [identity-waap-thirdweb-siwe-multilink.md](./identity-waap-thirdweb-siwe-multilink.md) (Privy retired I4). Historical reference only.
 >
 > Purpose: introduce a wallet/auth facade so app code depends on a provider-agnostic interface (`useWallet`) instead of vendor-specific hooks (`useWaaP`).
 

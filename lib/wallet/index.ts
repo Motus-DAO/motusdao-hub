@@ -12,8 +12,8 @@ export type { WalletAuthProvider } from './provider'
 export type { WalletInfo, WalletProviderId, WalletUser } from './types'
 export {
   getConfiguredWalletProvider,
-  getPrivyAppId,
   getThirdwebClientId,
+  getThirdwebPasskeyDomain,
   getWalletConnectProjectId,
   isThirdwebFallbackEnabled,
 } from './config'
@@ -24,7 +24,7 @@ export {
 } from './client-identity'
 
 function resolveProviderId(
-  configuredProvider: 'waap' | 'privy' | 'thirdweb',
+  configuredProvider: 'waap' | 'thirdweb',
   wallets: WalletInfo[]
 ): WalletProviderId {
   if (wallets.some((wallet) => wallet.walletClientType === 'thirdweb')) {
@@ -38,7 +38,7 @@ function resolveProviderId(
 
 export function useWallet(): WalletAuthState & {
   providerId: WalletProviderId
-  configuredProvider: 'waap' | 'privy' | 'thirdweb'
+  configuredProvider: 'waap' | 'thirdweb'
   setupError?: string | null
 } {
   const ctx = useWalletContext()
