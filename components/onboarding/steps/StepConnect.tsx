@@ -18,6 +18,7 @@ import { useWallet, useWallets, getWalletIdentity } from '@/lib/wallet'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import { ThirdwebFallbackLink } from '@/components/wallet/ThirdwebFallbackLink'
 import { useOnboardingStore, isValidCeloAddress } from '@/lib/onboarding-store'
 import { getConnectBlockers, onboardingBackButtonClass } from '@/lib/onboarding-ui'
 import { releaseHiddenWaapOverlayInput, releaseWaapOverlayInput } from '@/lib/wallet/waap-modal-recovery'
@@ -348,6 +349,8 @@ export function StepConnect({ onNext, onBack }: StepConnectProps) {
                 {isConnecting ? 'Conectando...' : ready ? 'Iniciar sesión' : 'Cargando...'}
               </span>
             </CTAButton>
+
+            <ThirdwebFallbackLink className="text-center" />
 
             <div className="text-center">
               <p className="text-sm text-muted-foreground">

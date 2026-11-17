@@ -15,6 +15,7 @@ export {
   getPrivyAppId,
   getThirdwebClientId,
   getWalletConnectProjectId,
+  isThirdwebFallbackEnabled,
 } from './config'
 export {
   getWalletIdentity,
@@ -26,6 +27,9 @@ function resolveProviderId(
   configuredProvider: 'waap' | 'privy' | 'thirdweb',
   wallets: WalletInfo[]
 ): WalletProviderId {
+  if (wallets.some((wallet) => wallet.walletClientType === 'thirdweb')) {
+    return 'thirdweb'
+  }
   if (wallets.some((wallet) => wallet.walletClientType === 'external')) {
     return 'external'
   }

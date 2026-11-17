@@ -126,7 +126,7 @@ Detalle: [spec](./celo-attribution.md).
 
 | Trabajo | Qué falta | Riesgo |
 |---------|-----------|--------|
-| **Identity I1 — Thirdweb adapter** | Merge a `main`, Vercel env + `prisma migrate deploy`; QA connect+SIWE con `NEXT_PUBLIC_WALLET_PROVIDER=thirdweb` | Default sigue `waap`; migración enum en prod |
+| **Identity I1 — Thirdweb** | Vercel: client id + fallback env; prod `migrate deploy`; QA enlace **「o usar otra wallet」** + SIWE misma EOA | WaaP default; hidden Thirdweb en onboarding/topbar |
 | **Identity I2–I5** | `LinkedWallet`, link UI, retirar Privy, hardening — ver [spec](./identity-waap-thirdweb-siwe-multilink.md) | Schema + muchas superficies Privy |
 | **Psychat PSM slice 1** | Validar en producción que el deploy incluye `4f04131`; actualizar el header del spec | El spec dice READY; el código ya está en `main` |
 | **Psychat PSM slice 2** | Bloquear el proxy RootRouter para rol PSM; verificar banner de error 502 | El botón de reporte ya existe, pero el proxy sigue disponible para PSM |

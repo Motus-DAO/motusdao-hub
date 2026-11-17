@@ -25,6 +25,20 @@ export function getThirdwebClientId(): string | undefined {
 }
 
 /**
+ * Hidden Thirdweb connect while `NEXT_PUBLIC_WALLET_PROVIDER` stays `waap` (default).
+ * Off when client id missing or `NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED=false`.
+ */
+export function isThirdwebFallbackEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED === 'false') {
+    return false
+  }
+  if (getConfiguredWalletProvider() !== 'waap') {
+    return false
+  }
+  return Boolean(getThirdwebClientId())
+}
+
+/**
  * WalletConnect Cloud project id. Silk/WaaP docs use
  * NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID; this repo historically used
  * NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID. Accept both.

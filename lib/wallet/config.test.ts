@@ -3,11 +3,13 @@ import { afterEach, describe, it } from 'node:test'
 import {
   getConfiguredWalletProvider,
   getThirdwebClientId,
+  isThirdwebFallbackEnabled,
 } from './config'
 
 const envKeys = [
   'NEXT_PUBLIC_WALLET_PROVIDER',
   'NEXT_PUBLIC_THIRDWEB_CLIENT_ID',
+  'NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED',
 ] as const
 
 function snapshotEnv(): Record<(typeof envKeys)[number], string | undefined> {
@@ -56,6 +58,31 @@ describe('getThirdwebClientId', () => {
     process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID = '  abc123  '
     try {
       assert.equal(getThirdwebClientId(), 'abc123')
+    } finally {
+      restoreEnv(snapshot)
+    }
+  })
+})
+
+describe('isThirdwebFallbackEnabled', () => {
+  it('is on for waap default with client id', () => {
+    const snapshot = snapshotEnv()
+    delete process.env.NEXT_PUBLIC_WALLET_PROVIDER
+    delete process.env.NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED
+    process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID = 'abc'
+    try {
+      assert.equal(isThirdwebFallbackEnabled(), true)
+    } finally {
+      restoreEnv(snapshot)
+    }
+  })
+
+  it('is off when explicitly disabled', () => {
+    const snapshot = snapshotEnv()
+    process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID = 'abc'
+    process.env.NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED = 'false'
+    try {
+      assert.equal(isThirdwebFallbackEnabled(), false)
     } finally {
       restoreEnv(snapshot)
     }

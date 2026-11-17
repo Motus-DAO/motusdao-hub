@@ -129,6 +129,10 @@ Rutas que hoy comparan `session.eoa` con body (`onboarding`, `faucet`, Ripio, et
 
 Cada slice = un PR a `feat/waap-thirdweb-siwe-multilink`; merge a `main` solo con gate verde + QA manual corto.
 
+### Slice I1b — Thirdweb fallback UI (WaaP default) — **SHIPPED**
+
+**Entrega:** con `NEXT_PUBLIC_WALLET_PROVIDER=waap`, enlace tenue **「o usar otra wallet」** (onboarding + topbar) abre modal Thirdweb; SIWE + misma `eoaAddress` → misma cuenta. Flag `NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED`.
+
 ### Slice I1 — Thirdweb adapter (sin quitar Privy aún) — **SHIPPED**
 
 **Entrega:** `thirdweb` en `getConfiguredWalletProvider()`; wrapper + bridge; `AuthProvider.thirdweb` en Prisma; `env.example` + migración `20261117040000_auth_provider_thirdweb`; tests `lib/wallet/config.test.ts`; dep `thirdweb@^5.121.1`.

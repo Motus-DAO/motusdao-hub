@@ -25,6 +25,7 @@ import { useSmartAccount } from '@/lib/contexts/ZeroDevSmartWalletProvider'
 import { identifyEmbeddedWallet } from '@/lib/wallet-utils'
 import { trackCta } from '@/lib/track-cta'
 import { logoutAppSession } from '@/lib/auth/client'
+import { ThirdwebFallbackLink } from '@/components/wallet/ThirdwebFallbackLink'
 
 export function Topbar() {
   const { 
@@ -464,19 +465,22 @@ export function Topbar() {
               )}
             </div>
           ) : (
-            <button
-              onClick={handleLogin}
-              disabled={!ready}
-              className="btn-primary flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-            >
-              <Wallet className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="font-medium hidden sm:inline">
-                {ready ? 'Inicia Sesión' : 'Cargando...'}
-              </span>
-              <span className="font-medium sm:hidden">
-                {ready ? 'Inicia' : '...'}
-              </span>
-            </button>
+            <div className="flex flex-col items-end gap-0.5">
+              <button
+                onClick={handleLogin}
+                disabled={!ready}
+                className="btn-primary flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+              >
+                <Wallet className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="font-medium hidden sm:inline">
+                  {ready ? 'Inicia Sesión' : 'Cargando...'}
+                </span>
+                <span className="font-medium sm:hidden">
+                  {ready ? 'Inicia' : '...'}
+                </span>
+              </button>
+              <ThirdwebFallbackLink className="pr-1" />
+            </div>
           )}
         </div>
       </div>
