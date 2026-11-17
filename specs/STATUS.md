@@ -146,19 +146,18 @@ Detalle: [spec](./celo-attribution.md).
 
 ## 4. Next (orden recomendado)
 
-1. **Funnel F0–F1** — [funnel-open-market-tofu.md](./funnel-open-market-tofu.md) (**LOCKED**): mercado abierto PSM + TOFU sin muro de login; hint PWA; **antes** de empujar founding a frío.
-2. **Identity I6 Safari** — [identity-safari-connect-routing.md](./identity-safari-connect-routing.md): login en iPhone Safari → Thirdweb directo (evitar iframe Human congelado); Human sigue en desktop / link en Perfil. *(Modal global login en AppShell alinea con F1.)*
+1. **Identity I6 Safari** — [identity-safari-connect-routing.md](./identity-safari-connect-routing.md): login en iPhone Safari → Thirdweb directo (evitar iframe Human congelado); Human sigue en desktop / link en Perfil. *(Modal global login en AppShell alinea con F1.)*
 3. **Founding MKT M1** — [founding-allowlist-usuario-psm.md](./founding-allowlist-usuario-psm.md) (identidad I1–I4 **shipped**; leaderboard público + modal; **después** de F1 para que la lista no sea el primer muro).
-4. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.
-5. **Verificar el deploy de este refresh en Vercel.** Antes de estos fixes, `main` no pasaba
+3. **Cerrar Psychat PSM slice 2** (proxy RootRouter PSM). Slice 3 usuario mergeado — validar en prod.
+4. **Verificar el deploy de este refresh en Vercel.** Antes de estos fixes, `main` no pasaba
    `tsc`/`build`; confirmar nav `ActiveRoleSync` y Psychat en producción.
-6. **Revisar los headers de Academia** y moverlos a IMPLEMENTED/SHIPPED con la fecha del commit,
+5. **Revisar los headers de Academia** y moverlos a IMPLEMENTED/SHIPPED con la fecha del commit,
    para que el índice no diga DRAFT sobre flujo en producción.
-7. **Decidir `/supervision` y `/mis-usuarios`:** implementarlos con datos reales o quitarlos del
+6. **Decidir `/supervision` y `/mis-usuarios`:** implementarlos con datos reales o quitarlos del
    nav PSM. Hoy son mock con datos de 2024.
 8. **Política de migraciones:** `db:deploy` usa `prisma db push`; no hay paso `migrate deploy` en
    el deploy. Decidir y documentar antes del próximo cambio de schema.
-9. **Ripio:** activar con credenciales partner o esconder el proveedor con
+8. **Ripio:** activar con credenciales partner o esconder el proveedor con
    `NEXT_PUBLIC_RIPIO_RAMPS_ENABLED=false`. No dejar un botón de on/off-ramp en mock sin aviso.
 
 ---
@@ -252,6 +251,18 @@ El flujo Ripio → WaaP se probó antes del cambio (10 wMXN recibidos); falta la
 Detalle y rollback: [celo-attribution.md](./celo-attribution.md).
 
 ---
+
+### Addendum — funnel open-market TOFU (2026-11-17)
+
+| Commit | Entrega |
+|--------|---------|
+| `09d4f59` | SDD [funnel-open-market-tofu.md](./funnel-open-market-tofu.md) |
+| `ad90708` | Modal global de login (Safari → Thirdweb) |
+| `3362890` | F1: home explore + PWA hint |
+| `6434f9b` | F2–F3: handoff `/psicoterapia` + Psychat invitado (`/api/chat/guest`) |
+| `6824b2c` | F4: PostHog `funnel_step` |
+
+Tags: rollback **`funnel-baseline-pre-open-market-2026-11-17`** (`7cf8806`) · shipped **`funnel-shipped-open-market-2026-11-17`** (`6824b2c`).
 
 ### Addendum — nav + Psychat + founding spec (2026-11-17)
 
