@@ -24,6 +24,17 @@ export function getThirdwebClientId(): string | undefined {
   return clientId || undefined
 }
 
+/** WebAuthn RP id; defaults to hostname from NEXT_PUBLIC_APP_URL (prod). Local uses browser host. */
+export function getThirdwebPasskeyDomain(): string | undefined {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (!appUrl) return undefined
+  try {
+    return new URL(appUrl).hostname
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Hidden Thirdweb connect while `NEXT_PUBLIC_WALLET_PROVIDER` stays `waap` (default).
  * Off when client id missing or `NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED=false`.

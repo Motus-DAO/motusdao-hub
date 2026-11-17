@@ -10,6 +10,7 @@ const envKeys = [
   'NEXT_PUBLIC_WALLET_PROVIDER',
   'NEXT_PUBLIC_THIRDWEB_CLIENT_ID',
   'NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED',
+  'NEXT_PUBLIC_APP_URL',
 ] as const
 
 function snapshotEnv(): Record<(typeof envKeys)[number], string | undefined> {
@@ -58,6 +59,19 @@ describe('getThirdwebClientId', () => {
     process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID = '  abc123  '
     try {
       assert.equal(getThirdwebClientId(), 'abc123')
+    } finally {
+      restoreEnv(snapshot)
+    }
+  })
+})
+
+describe('getThirdwebPasskeyDomain', () => {
+  it('parses hostname from NEXT_PUBLIC_APP_URL', async () => {
+    const { getThirdwebPasskeyDomain } = await import('./config')
+    const snapshot = snapshotEnv()
+    process.env.NEXT_PUBLIC_APP_URL = 'https://hub.example.org/path'
+    try {
+      assert.equal(getThirdwebPasskeyDomain(), 'hub.example.org')
     } finally {
       restoreEnv(snapshot)
     }

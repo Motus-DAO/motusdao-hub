@@ -2,7 +2,18 @@ import { createThirdwebClient } from 'thirdweb'
 import { defineChain } from 'thirdweb/chains'
 import { createWallet, inAppWallet, type Wallet } from 'thirdweb/wallets'
 import { celoMainnet } from '@/lib/celo'
-import { getThirdwebClientId, getWalletConnectProjectId } from '@/lib/wallet/config'
+import {
+  getThirdwebClientId,
+  getThirdwebPasskeyDomain,
+  getWalletConnectProjectId,
+} from '@/lib/wallet/config'
+
+/** Shown in Thirdweb Connect modal (in-app wallet). */
+export const HUB_THIRDWEB_INAPP_AUTH_OPTIONS = [
+  'email',
+  'passkey',
+  'google',
+] as const
 
 export const THIRDWEB_SETUP_MESSAGE =
   'NEXT_PUBLIC_THIRDWEB_CLIENT_ID is required when NEXT_PUBLIC_WALLET_PROVIDER=thirdweb'
@@ -36,8 +47,10 @@ export function tryCreateHubThirdwebClient(): ReturnType<typeof createThirdwebCl
 export function getThirdwebConnectWallets(): Wallet[] {
   const wallets: Wallet[] = [
     inAppWallet({
+      executionMode: { mode: 'EOA' },
       auth: {
-        options: ['email', 'google'],
+        options: [...HUB_THIRDWEB_INAPP_AUTH_OPTIONS],
+        passkeyDomain: getThirdwebPasskeyDomain(),
       },
     }),
     createWallet('io.metamask'),

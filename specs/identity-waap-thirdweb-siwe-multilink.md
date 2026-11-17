@@ -131,7 +131,7 @@ Cada slice = un PR a `feat/waap-thirdweb-siwe-multilink`; merge a `main` solo co
 
 ### Slice I1b — Thirdweb fallback UI (WaaP default) — **SHIPPED**
 
-**Entrega:** con `NEXT_PUBLIC_WALLET_PROVIDER=waap`, enlace tenue **「o usar otra wallet」** (onboarding + topbar) abre modal Thirdweb; SIWE + misma `eoaAddress` → misma cuenta. Flag `NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED`.
+**Entrega:** con `NEXT_PUBLIC_WALLET_PROVIDER=waap`, enlace tenue **「o usar otra wallet」** (onboarding + topbar) abre modal Thirdweb; SIWE + misma `eoaAddress` → misma cuenta. Flag `NEXT_PUBLIC_THIRDWEB_FALLBACK_ENABLED`. In-app auth: **email, passkey, google** (EOA mode; `passkeyDomain` desde `NEXT_PUBLIC_APP_URL`).
 
 ### Slice I1 — Thirdweb adapter (sin quitar Privy aún) — **SHIPPED**
 
