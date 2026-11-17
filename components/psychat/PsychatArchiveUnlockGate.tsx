@@ -8,7 +8,7 @@ import { usePsychatArchiveKeyContext } from '@/components/psychat/PsychatArchive
 
 /** Modal sobre el chat cuando la copia cifrada está activada pero falta firma de archivo. */
 export function PsychatArchiveUnlockGate() {
-  const { unlock, state, unlockError, optIn, loadingOptIn, setArchiveOptIn } =
+  const { unlock, state, unlockError, optIn, loadingOptIn, setArchiveOptIn, eoaAddress } =
     usePsychatArchiveKeyContext()
   const unlocking = state === 'unlocking'
 
@@ -27,9 +27,12 @@ export function PsychatArchiveUnlockGate() {
             {unlocking ? 'Esperando firma en tu wallet…' : 'Copia activada — falta tu firma'}
           </p>
           <p className="text-xs text-muted-foreground leading-snug">
-            Firma con tu wallet para cifrar y guardar (llave distinta a la bitácora). Hasta entonces el chat está
-            bloqueado.
+            Firma con la wallet conectada ahora para cifrar y guardar (llave distinta a la bitácora). La copia queda
+            ligada a esa dirección EOA: otra wallet vinculada a la misma cuenta no puede desbloquearla.
           </p>
+          {eoaAddress ? (
+            <p className="font-mono text-[10px] text-muted-foreground break-all">{eoaAddress}</p>
+          ) : null}
         </div>
       </div>
 

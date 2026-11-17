@@ -460,10 +460,15 @@ body {
 
 /* Scroll inside fixed drawers (iOS): do not put overflow on backdrop-filter ancestors. */
 .drawer-scroll-y {
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  /* iOS Chrome: promote scroll layer off backdrop-filter ancestors */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: scroll-position;
 }
 
 .app-main-offset {
