@@ -22,8 +22,9 @@ For a future auditor: **order and non-goals stay as in SDD-chat-data**; each row
 | **3** — [chat-data-slice-3-consented-summary-fhir.md](./chat-data-slice-3-consented-summary-fhir.md) | FHIR second exit | **SHIPPED** — consented summary, DocumentReference, PSM panel |
 | **4** — [chat-data-slice-4-training-copy-consent.md](./chat-data-slice-4-training-copy-consent.md) | Training yes + payment | **SHIPPED** — readable copy, consent, compensation recorded |
 | **5** — [chat-data-slice-5-rootrouter-enclave.md](./chat-data-slice-5-rootrouter-enclave.md) | Proxy + session TEE + always-on | **SHIPPED** fase 1 @ `06b9523`; **Phala LOCKED** for fase 2–3 enclave ([decision doc](../docs/architecture/psychat-enclave-phala-decision.md)) |
+| **6** — [chat-data-slice-6-account-wallet-data-key.md](./chat-data-slice-6-account-wallet-data-key.md) | Data key mode (cuenta vs wallet) | **LOCKED SDD** · Psychat archive + bitácora · provider-agnostic default |
 
-**Do not reorder:** 1 before 2 (reuse format); 3 after 1–2; 4 after aviso (done); 5 last.
+**Do not reorder:** 1 before 2 (reuse format); 3 after 1–2; 4 after aviso (done); 5 last; **6 after multilink (I2–I4)** — slices 1–5 unchanged.
 
 ## Perfil / intake
 
