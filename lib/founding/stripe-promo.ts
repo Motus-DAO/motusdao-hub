@@ -11,12 +11,7 @@ export async function createFoundingStripePromotionCode(
     throw new Error('Stripe no está configurado.')
   }
 
-  const couponId = resolveFoundingCouponId(entry.role, entry.tier)
-  if (!couponId) {
-    throw new Error(
-      `Falta cupón Stripe para ${entry.role} tier ${entry.tier} (env STRIPE_FOUNDING_COUPON_*).`
-    )
-  }
+  const couponId = await resolveFoundingCouponId(entry.role, entry.tier)
 
   const prefix = codePrefixForRole(entry.role)
   const code =

@@ -985,3 +985,13 @@ model FoundingWaitlistAudit {
   @@index([role, deletedAt])
   @@map("founding_waitlist_audit")
 }
+
+model FoundingStripeCouponTemplate {
+  role      FoundingWaitlistRole
+  tier      FoundingWaitlistTier
+  couponId  String
+  createdAt DateTime             @default(now())
+
+  @@id([role, tier])
+  @@map("founding_stripe_coupon_templates")
+}

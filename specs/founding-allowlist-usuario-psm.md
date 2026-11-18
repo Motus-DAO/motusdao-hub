@@ -129,7 +129,7 @@ Se crean **seis** cupones `duration: once` (o env override), con metadata distin
 
 ### 5.1 Entry
 
-- Modal founding (marketing / landing / post-intro): paso **elegir rol** → **Usuario** o **Profesional**.
+- **Modal founding** (paridad Lab — `components/founding/founding-waitlist-modal.tsx`): teaser → **elegir rol** → register → wallet → `.motus` → done / tabla. Host: `FoundingWaitlistModalHost` en `AppShell`; `/founding` abre el mismo modal. Auto-prompt home: `NEXT_PUBLIC_FOUNDING_WAITLIST_PROMPT=true`.
 - Copy ES primero; EN opcional (`locale` en fila).
 - Campos: display name, email (privado), opcionales intake (solo usuarios: mood/use case; PSM: especialidad o harness si se desea v1).
 

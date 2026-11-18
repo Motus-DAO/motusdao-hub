@@ -5,6 +5,7 @@ import { useUIStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { MottyWidget } from '@/components/motty/MottyWidget'
 import { MotusLoginModalHost } from '@/components/auth/MotusLoginModalHost'
+import { FoundingWaitlistModalHost } from '@/components/founding/FoundingWaitlistModalHost'
 import { PwaInstallHint } from '@/components/funnel/PwaInstallHint'
 import { ActiveRoleSync } from '@/components/auth/ActiveRoleSync'
 import { SidebarWrapper } from './SidebarWrapper'
@@ -80,6 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Motty FAB — separate from MotusAI; same pattern as academia.motusdao.org */}
       <MottyWidget />
       <MotusLoginModalHost />
+      <FoundingWaitlistModalHost />
       <PwaInstallHint />
     </div>
   )

@@ -51,6 +51,11 @@ interface UIState {
   openLoginModal: (location?: string) => Promise<void>
   closeLoginModal: (reason?: 'cancelled') => void
   completeLoginModal: () => void
+
+  /** Founding allowlist modal (Lab parity). */
+  foundingModalOpen: boolean
+  setFoundingModalOpen: (open: boolean) => void
+  openFoundingModal: () => void
 }
 
 export const useUIStore = create<UIState>()(
@@ -106,6 +111,10 @@ export const useUIStore = create<UIState>()(
         waiter?.resolve()
         set({ loginModalOpen: false, loginModalWaiter: null })
       },
+
+      foundingModalOpen: false,
+      setFoundingModalOpen: (foundingModalOpen) => set({ foundingModalOpen }),
+      openFoundingModal: () => set({ foundingModalOpen: true }),
     }),
     {
       name: 'motusdao-ui-storage',
