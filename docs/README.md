@@ -35,6 +35,13 @@ User + engineering index: **[chat-data/README.md](./chat-data/README.md)**
 User guide: [guides/psychat-memoria-contexto-es.md](./guides/psychat-memoria-contexto-es.md) ·
 App: `/psychat/memoria-contexto`
 
+## Brand & GTM (`docs/brand/`)
+
+| Doc | Purpose |
+|-----|---------|
+| [brand/README.md](./brand/README.md) | Index: messaging vs specs vs legal |
+| [brand/public-messaging-playbook.md](./brand/public-messaging-playbook.md) | Web + campaigns: resistencia, prueba, gasolina, claims |
+
 ## Compliance (`docs/compliance/`)
 
 Legal sources for `/privacy`, `/terms`, `/cookies`, `/subprocesadores`, plus beta debt:
