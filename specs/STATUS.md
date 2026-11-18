@@ -3,7 +3,7 @@
 > **Único doc de estado.** El detalle vive en los specs; la taxonomía y las fases viven en
 > [platform-harmonize.md](./platform-harmonize.md). No dupliques tablas de estado en otros docs.
 >
-> **Última verificación:** 2026-11-17 · `main` @ `f053200` (identity I1) · Owner: product + eng.
+> **Última verificación:** 2026-11-17 · `main` @ `e60d23e` (chat-data slice 6 SDD) · Owner: product + eng.
 >
 > Planes: [SDD-safety-plan](../docs/specs/SDD-safety-plan.md) ·
 > [SDD-chat-data](../docs/specs/SDD-chat-data.md) ·
