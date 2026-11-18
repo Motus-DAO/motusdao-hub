@@ -1,3 +1,4 @@
+import type { DataKeyAadInput } from '@/lib/account-data-key/mode'
 import { authFetch } from '@/lib/auth/client'
 import {
   decryptSafeNotesPayload,
@@ -39,7 +40,7 @@ export async function fetchBitacoraEntries(userId: string): Promise<ApiEntry[]> 
 
 export async function hydrateBitacoraEntries(
   userId: string,
-  eoaAddress: string,
+  aad: DataKeyAadInput,
   key: CryptoKey
 ): Promise<BitacoraEntryView[]> {
   const rows = await fetchBitacoraEntries(userId)
@@ -48,7 +49,7 @@ export async function hydrateBitacoraEntries(
   for (const row of rows) {
     if (row.needsMigration || row.iv == null) {
       const legacy = parseLegacyPlaintextRow(row.ciphertext)
-      const encrypted = await encryptSafeNotesPayload(key, eoaAddress, legacy)
+      const encrypted = await encryptSafeNotesPayload(key, aad, legacy)
       await authFetch('/api/bitacora', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -69,12 +70,7 @@ export async function hydrateBitacoraEntries(
       continue
     }
 
-    const payload = await decryptSafeNotesPayload(
-      key,
-      eoaAddress,
-      row.ciphertext,
-      row.iv
-    )
+    const payload = await decryptSafeNotesPayload(key, aad, row.ciphertext, row.iv)
     views.push({
       id: row.id,
       kind: payload.kind,
@@ -91,7 +87,7 @@ export async function hydrateBitacoraEntries(
 
 export async function saveBitacoraEntry(
   userId: string,
-  eoaAddress: string,
+  aad: DataKeyAadInput,
   key: CryptoKey,
   input: {
     content: string
@@ -112,7 +108,7 @@ export async function saveBitacoraEntry(
     mood,
     tags: input.tags,
   }
-  const encrypted = await encryptSafeNotesPayload(key, eoaAddress, payload)
+  const encrypted = await encryptSafeNotesPayload(key, aad, payload)
 
   if (input.id) {
     const res = await authFetch('/api/bitacora', {
@@ -148,12 +144,20 @@ export async function deleteBitacoraEntry(id: string): Promise<void> {
 
 export async function buildBitacoraExportFile(
   userId: string,
-  eoaAddress: string
+  eoaAddress: string,
+  meta?: {
+    dataKeyMode?: 'account' | 'wallet'
+    dataKeyVersion?: number
+    walletEoa?: string | null
+  }
 ) {
   const { buildSafeNotesExportFile } = await import('@/lib/safe-notes/export-format')
   const rows = await fetchBitacoraEntries(userId)
   return buildSafeNotesExportFile({
     eoaAddress,
+    dataKeyMode: meta?.dataKeyMode,
+    dataKeyVersion: meta?.dataKeyVersion,
+    walletEoa: meta?.walletEoa ?? null,
     entries: rows.map((row) => ({
       id: row.id,
       ciphertext: row.ciphertext,

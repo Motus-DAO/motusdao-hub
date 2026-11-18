@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { handleAuthError, requireSession } from '@/lib/auth/session'
 import { assertValidStoredCiphertext } from '@/lib/safe-notes/crypto'
 import { hasStoredPsychatArchiveConsent } from '@/lib/auth/psychat-archive-consent'
-import { PSYCHAT_ARCHIVE_KEY_VERSION } from '@/lib/psychat-archive/constants'
+import { validatePutKeyVersion } from '@/lib/account-data-key/validate-api-key'
+import type { DataKeyMode } from '@prisma/client'
 import {
   handleClinicalAuditError,
   recordClinicalAccess,
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
         ciphertext: row.ciphertext,
         iv: row.iv,
         keyVersion: row.keyVersion,
+        dataKeyMode: row.dataKeyMode,
         updatedAt: row.updatedAt,
       },
     })
@@ -69,14 +71,30 @@ export async function PUT(request: NextRequest) {
       ciphertext?: string
       iv?: string
       keyVersion?: number
+      dataKeyMode?: DataKeyMode
     }
 
     if (!body.ciphertext || !body.iv) {
       return NextResponse.json({ error: 'ciphertext and iv are required' }, { status: 400 })
     }
-    if (body.keyVersion !== undefined && body.keyVersion !== PSYCHAT_ARCHIVE_KEY_VERSION) {
-      return NextResponse.json({ error: 'Unsupported key version' }, { status: 400 })
+
+    const owner = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        dataKeyMode: true,
+        dataKeyVersion: true,
+        dataKeyWalletEoa: true,
+      },
+    })
+    if (!owner) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+    const keyCheck = validatePutKeyVersion(owner, body.keyVersion)
+    if (!keyCheck.ok) {
+      return NextResponse.json({ error: keyCheck.error }, { status: 400 })
+    }
+    const storedKeyVersion = body.keyVersion ?? keyCheck.expected
+    const storedMode = body.dataKeyMode ?? owner.dataKeyMode ?? undefined
 
     try {
       assertValidStoredCiphertext(body.ciphertext, body.iv)
@@ -91,12 +109,14 @@ export async function PUT(request: NextRequest) {
           userId: session.userId!,
           ciphertext: body.ciphertext!,
           iv: body.iv!,
-          keyVersion: PSYCHAT_ARCHIVE_KEY_VERSION,
+          keyVersion: storedKeyVersion,
+          dataKeyMode: storedMode ?? null,
         },
         update: {
           ciphertext: body.ciphertext!,
           iv: body.iv!,
-          keyVersion: PSYCHAT_ARCHIVE_KEY_VERSION,
+          keyVersion: storedKeyVersion,
+          dataKeyMode: storedMode ?? null,
         },
       })
       await recordClinicalAccess(

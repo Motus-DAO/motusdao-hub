@@ -174,6 +174,9 @@ export async function GET(request: NextRequest) {
           mnsRegisteredAt: user.mnsRegisteredAt,
           profileNftTxHash: user.profileNftTxHash,
           profileNftTokenURI: user.profileNftTokenURI,
+          dataKeyMode: user.dataKeyMode,
+          dataKeyVersion: user.dataKeyVersion,
+          dataKeyWalletEoa: user.dataKeyWalletEoa,
           createdAt: user.createdAt
         },
         patientProfile: user.patient,
@@ -198,6 +201,9 @@ export async function GET(request: NextRequest) {
         mnsRegisteredAt: user.mnsRegisteredAt,
         profileNftTxHash: user.profileNftTxHash,
         profileNftTokenURI: user.profileNftTokenURI,
+        dataKeyMode: user.dataKeyMode,
+        dataKeyVersion: user.dataKeyVersion,
+        dataKeyWalletEoa: user.dataKeyWalletEoa,
         createdAt: user.createdAt
       },
       patientProfile: user.patient,

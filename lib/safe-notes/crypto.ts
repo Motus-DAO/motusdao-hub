@@ -1,4 +1,7 @@
 import { normalizeSignature } from '@/lib/auth/verify-siwe'
+import type { DataKeyAadInput } from '@/lib/account-data-key/mode'
+import { ACCOUNT_DATA_KEY_VERSION } from '@/lib/account-data-key/constants'
+import { buildAccountDataUnlockMessage } from '@/lib/account-data-key/unlock-message'
 import {
   SAFE_NOTES_GCM_IV_BYTES,
   SAFE_NOTES_KEY_VERSION,
@@ -72,22 +75,53 @@ export async function deriveSafeNotesAesKeyFromSignature(
   )
 }
 
+/** Account mode: canonical unlock message is identical for every linked wallet (AAD = userId). */
+export async function deriveAccountDataAesKey(userId: string): Promise<CryptoKey> {
+  const message = buildAccountDataUnlockMessage(userId)
+  const msgBytes = new TextEncoder().encode(message)
+  const hash = await getSubtle().digest('SHA-256', asBufferSource(msgBytes))
+  return getSubtle().importKey(
+    'raw',
+    hash,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
 export function safeNotesAad(eoaAddress: string): Uint8Array {
   return new TextEncoder().encode(eoaAddress.toLowerCase())
 }
 
+export function accountDataAad(userId: string): Uint8Array {
+  return new TextEncoder().encode(userId)
+}
+
+export function resolveDataKeyAad(aad: DataKeyAadInput): Uint8Array {
+  if (aad.mode === 'account') {
+    return accountDataAad(aad.userId)
+  }
+  return safeNotesAad(aad.eoaAddress)
+}
+
+function storedKeyVersionForAad(aad: DataKeyAadInput): number {
+  return aad.mode === 'account' ? ACCOUNT_DATA_KEY_VERSION : SAFE_NOTES_KEY_VERSION
+}
+
 export async function encryptSafeNotesPayload(
   key: CryptoKey,
-  eoaAddress: string,
+  aad: DataKeyAadInput | string,
   payload: SafeNotesPayload
 ): Promise<{ ciphertext: string; iv: string; keyVersion: number }> {
+  const aadInput: DataKeyAadInput =
+    typeof aad === 'string' ? { mode: 'wallet', eoaAddress: aad } : aad
   const iv = crypto.getRandomValues(new Uint8Array(SAFE_NOTES_GCM_IV_BYTES))
   const plain = new TextEncoder().encode(serializeSafeNotesPayload(payload))
   const cipherBuf = await getSubtle().encrypt(
     {
       name: 'AES-GCM',
       iv: asBufferSource(iv),
-      additionalData: asBufferSource(safeNotesAad(eoaAddress)),
+      additionalData: asBufferSource(resolveDataKeyAad(aadInput)),
     },
     key,
     plain
@@ -95,16 +129,18 @@ export async function encryptSafeNotesPayload(
   return {
     ciphertext: bytesToBase64(new Uint8Array(cipherBuf)),
     iv: bytesToBase64(iv),
-    keyVersion: SAFE_NOTES_KEY_VERSION,
+    keyVersion: storedKeyVersionForAad(aadInput),
   }
 }
 
 export async function decryptSafeNotesPayload(
   key: CryptoKey,
-  eoaAddress: string,
+  aad: DataKeyAadInput | string,
   ciphertextB64: string,
   ivB64: string
 ): Promise<SafeNotesPayload> {
+  const aadInput: DataKeyAadInput =
+    typeof aad === 'string' ? { mode: 'wallet', eoaAddress: aad } : aad
   const iv = base64ToBytes(ivB64)
   if (iv.length !== SAFE_NOTES_GCM_IV_BYTES) {
     throw new Error('Invalid IV length')
@@ -114,7 +150,7 @@ export async function decryptSafeNotesPayload(
     {
       name: 'AES-GCM',
       iv: asBufferSource(iv),
-      additionalData: asBufferSource(safeNotesAad(eoaAddress)),
+      additionalData: asBufferSource(resolveDataKeyAad(aadInput)),
     },
     key,
     asBufferSource(cipherBytes)

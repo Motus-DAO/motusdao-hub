@@ -4,7 +4,7 @@
 export const BITACORA_DISCLOSURE_TITLE = 'Espacio cifrado personal'
 
 export const BITACORA_DISCLOSURE_LEAD =
-  'Guarda notas, secretos, reflexiones o registros emocionales — todo se cifra en tu navegador antes de guardarse. No sustituye expediente clínico (NOM-004). MotusDAO y otros usuarios del Hub no pueden leer el contenido; solo la wallet que desbloquea este espacio.'
+  'Guarda notas, secretos, reflexiones o registros emocionales — todo se cifra en tu navegador antes de guardarse. No sustituye expediente clínico (NOM-004). MotusDAO y otros usuarios del Hub no pueden leer el contenido. Por defecto puedes usar modo cuenta Motus (cualquier wallet vinculada, misma llave que el archivo Psychat) o solo esta wallet (avanzado).'
 
 export const BITACORA_DISCLOSURE_RECOVERY =
   'Si pierdes acceso a esa wallet o rechazas la firma de desbloqueo, no hay recuperación del contenido. Motus puede conservar metadatos (fecha e identificador de entrada), no el cuerpo en claro.'

@@ -1,3 +1,4 @@
+import type { DataKeyMode } from '@/lib/account-data-key/constants'
 import {
   SAFE_NOTES_KEY_VERSION,
   SAFE_NOTES_PURPOSE,
@@ -20,15 +21,22 @@ export type SafeNotesExportFile = {
   version: typeof SAFE_NOTES_EXPORT_VERSION
   exportedAt: string
   purpose: typeof SAFE_NOTES_PURPOSE
-  keyVersion: typeof SAFE_NOTES_KEY_VERSION
+  keyVersion: number
   /** Lowercased EOA used as AES-GCM AAD when entries were written */
   eoaAddress: string
+  /** v2 metadata — absent on legacy wallet-only exports */
+  dataKeyMode?: DataKeyMode
+  dataKeyVersion?: number
+  walletEoa?: string | null
   keyRecipeDoc: '/docs/architecture/safe-notes-export.md'
   entries: SafeNotesExportEntry[]
 }
 
 export function buildSafeNotesExportFile(input: {
   eoaAddress: string
+  dataKeyMode?: DataKeyMode
+  dataKeyVersion?: number
+  walletEoa?: string | null
   entries: Array<{
     id: string
     ciphertext: string
@@ -43,8 +51,11 @@ export function buildSafeNotesExportFile(input: {
     version: SAFE_NOTES_EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
     purpose: SAFE_NOTES_PURPOSE,
-    keyVersion: SAFE_NOTES_KEY_VERSION,
+    keyVersion: input.dataKeyVersion ?? SAFE_NOTES_KEY_VERSION,
     eoaAddress: eoa,
+    dataKeyMode: input.dataKeyMode,
+    dataKeyVersion: input.dataKeyVersion,
+    walletEoa: input.walletEoa ?? null,
     keyRecipeDoc: '/docs/architecture/safe-notes-export.md',
     entries: input.entries
       .filter((e) => e.iv && e.ciphertext)

@@ -8,7 +8,7 @@ export const PSYCHAT_ARCHIVE_EXPORT_VERSION = 1 as const
 export const PSYCHAT_ARCHIVE_CHANGED_EVENT = 'motus-psychat-archive-changed' as const
 
 export const psychatArchiveOptInCopy =
-  'Guardar una copia cifrada de este chat en mi cuenta Motus (opcional; apagado por defecto). El equipo de la app no puede leer el texto — solo tú, con tu wallet.'
+  'Guardar una copia cifrada de este chat en mi cuenta Motus (opcional; apagado por defecto). El equipo de la app no puede leer el texto — solo tú, con una wallet vinculada (modo cuenta) o solo esta EOA (modo avanzado).'
 
 /** Plain-language labels (avoid “servidor” with clinicians). */
 export const psychatCopy = {

@@ -1,3 +1,4 @@
+import type { DataKeyAadInput } from '@/lib/account-data-key/mode'
 import {
   decryptSafeNotesPayload,
   deriveSafeNotesAesKeyFromSignature,
@@ -17,7 +18,7 @@ export { assertValidStoredCiphertext }
 
 export async function encryptPsychatArchivePayload(
   key: CryptoKey,
-  eoaAddress: string,
+  aad: DataKeyAadInput | string,
   payload: PsychatArchivePayload
 ): Promise<{ ciphertext: string; iv: string; keyVersion: number }> {
   const wrapped = {
@@ -27,16 +28,16 @@ export async function encryptPsychatArchivePayload(
     mood: 'neutral',
     tags: [] as string[],
   }
-  return encryptSafeNotesPayload(key, eoaAddress, wrapped)
+  return encryptSafeNotesPayload(key, aad, wrapped)
 }
 
 export async function decryptPsychatArchivePayload(
   key: CryptoKey,
-  eoaAddress: string,
+  aad: DataKeyAadInput | string,
   ciphertextB64: string,
   ivB64: string
 ): Promise<PsychatArchivePayload> {
-  const inner = await decryptSafeNotesPayload(key, eoaAddress, ciphertextB64, ivB64)
+  const inner = await decryptSafeNotesPayload(key, aad, ciphertextB64, ivB64)
   return parsePsychatArchivePayload(inner.content)
 }
 

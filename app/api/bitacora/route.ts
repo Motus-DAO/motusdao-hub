@@ -7,7 +7,7 @@ import {
   recordClinicalAccess,
 } from '@/lib/clinical-audit'
 import { assertValidStoredCiphertext } from '@/lib/safe-notes/crypto'
-import { SAFE_NOTES_KEY_VERSION } from '@/lib/safe-notes/constants'
+import { validatePutKeyVersion } from '@/lib/account-data-key/validate-api-key'
 
 function rejectLegacyPlaintextFields(body: Record<string, unknown>): NextResponse | null {
   if ('content' in body || 'mood' in body || 'tags' in body) {
@@ -39,9 +39,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (keyVersion !== undefined && keyVersion !== SAFE_NOTES_KEY_VERSION) {
-      return NextResponse.json({ error: 'Unsupported key version' }, { status: 400 })
+    const session = await requireSelfOrAdmin(request, userId)
+
+    const owner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        dataKeyMode: true,
+        dataKeyVersion: true,
+        dataKeyWalletEoa: true,
+      },
+    })
+    if (!owner) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+    const keyCheck = validatePutKeyVersion(owner, keyVersion)
+    if (!keyCheck.ok) {
+      return NextResponse.json({ error: keyCheck.error }, { status: 400 })
+    }
+    const storedKeyVersion = keyVersion ?? keyCheck.expected
 
     try {
       assertValidStoredCiphertext(ciphertext, iv)
@@ -49,15 +64,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid ciphertext or iv' }, { status: 400 })
     }
 
-    const session = await requireSelfOrAdmin(request, userId)
-
     const journalEntry = await prisma.$transaction(async (tx) => {
       const entry = await tx.journalEntry.create({
         data: {
           userId,
           ciphertext,
           iv,
-          keyVersion: SAFE_NOTES_KEY_VERSION,
+          keyVersion: storedKeyVersion,
         },
       })
       await recordClinicalAccess(
@@ -217,9 +230,24 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    if (keyVersion !== undefined && keyVersion !== SAFE_NOTES_KEY_VERSION) {
-      return NextResponse.json({ error: 'Unsupported key version' }, { status: 400 })
+    const { session, entry } = await requireJournalOwnerOrAdmin(request, id)
+
+    const owner = await prisma.user.findUnique({
+      where: { id: entry.userId },
+      select: {
+        dataKeyMode: true,
+        dataKeyVersion: true,
+        dataKeyWalletEoa: true,
+      },
+    })
+    if (!owner) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+    const keyCheck = validatePutKeyVersion(owner, keyVersion)
+    if (!keyCheck.ok) {
+      return NextResponse.json({ error: keyCheck.error }, { status: 400 })
+    }
+    const storedKeyVersion = keyVersion ?? keyCheck.expected
 
     try {
       assertValidStoredCiphertext(ciphertext, iv)
@@ -227,15 +255,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid ciphertext or iv' }, { status: 400 })
     }
 
-    const { session, entry } = await requireJournalOwnerOrAdmin(request, id)
-
     const updatedEntry = await prisma.$transaction(async (tx) => {
       const row = await tx.journalEntry.update({
         where: { id },
         data: {
           ciphertext,
           iv,
-          keyVersion: SAFE_NOTES_KEY_VERSION,
+          keyVersion: storedKeyVersion,
         },
       })
       await recordClinicalAccess(

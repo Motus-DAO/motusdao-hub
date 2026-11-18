@@ -29,7 +29,7 @@ Si toca la app, además `npm run build`. Si toca el schema, migración + nota de
 |-------|--------|-----------|
 | Seguridad clínica (safety 1–7) | **Shipped** | [specs](./safety-slice-1-therapy-rooms.md) · Oct 22–27 |
 | Portabilidad de datos (chat-data 1–5) | **Shipped** (fase 1 del enclave) | [roadmap](./chat-data-roadmap.md) · Oct 27–28 |
-| Portabilidad chat-data **6** (cuenta vs wallet) | **Next** — SDD locked, sin código | [slice 6](./chat-data-slice-6-account-wallet-data-key.md) |
+| Portabilidad chat-data **6** (cuenta vs wallet) | **In flight** — implementación CD6-1…5 en working tree; QA staging pendiente | [slice 6](./chat-data-slice-6-account-wallet-data-key.md) |
 | Academia + Stripe | **Shipped** / cobrando | [admin](./academy-admin-courses.md) · `862e2b6` |
 | Pagos (terapia + P2P) | **Stripe Connect dashboard + CLABE/P2P live**; Ripio mock; Textile wired | [README §Pagos](../README.md#payments-and-self-custody) · [CLABE](./therapy-payments-clabe-connect.md) · [Connect v2](./stripe-connect-therapy-v2.md) |
 | Psychat PSM (supervisor) | **In flight** — slice 3 cerrado en working tree; falta sign-off clínico del bloque "Conversación (A)" | [lock-in](./psychat-psm-supervisor-lockin.md) · `4f04131` |

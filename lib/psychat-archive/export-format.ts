@@ -1,3 +1,4 @@
+import type { DataKeyMode } from '@/lib/account-data-key/constants'
 import {
   PSYCHAT_ARCHIVE_EXPORT_FORMAT,
   PSYCHAT_ARCHIVE_EXPORT_VERSION,
@@ -20,6 +21,9 @@ export type PsychatArchiveExportFile = {
   purpose: typeof PSYCHAT_ARCHIVE_PURPOSE
   keyVersion: typeof PSYCHAT_ARCHIVE_KEY_VERSION
   eoaAddress: string
+  dataKeyMode?: DataKeyMode
+  dataKeyVersion?: number
+  walletEoa?: string | null
   keyRecipeDoc: '/docs/architecture/psychat-archive-export.md'
   snapshots: PsychatArchiveExportSnapshot[]
 }

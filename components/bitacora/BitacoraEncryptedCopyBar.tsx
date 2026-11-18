@@ -62,7 +62,7 @@ export function BitacoraEncryptedCopyBar({
       const exportFile = await readExportFile(file)
       exportFileRef.current = exportFile
       setFileName(file.name)
-      const entries = await previewExportEntries(exportFile, eoaAddress, key)
+      const entries = await previewExportEntries(exportFile, eoaAddress, key, userId)
       setPreview(entries)
     } catch (e) {
       exportFileRef.current = null

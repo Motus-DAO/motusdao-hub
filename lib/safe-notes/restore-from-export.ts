@@ -1,5 +1,6 @@
 import type { SafeNotesExportFile } from './export-format'
 import { parseSafeNotesExportFile } from './export-format'
+import { exportAadFromMetadata } from '@/lib/account-data-key/export-aad'
 import { decryptSafeNotesPayload } from './crypto'
 import { authFetch } from '@/lib/auth/client'
 import type { BitacoraEntryView } from './client-bitacora'
@@ -23,17 +24,21 @@ export function assertExportMatchesWallet(
 export async function previewExportEntries(
   exportFile: SafeNotesExportFile,
   eoaAddress: string,
-  key: CryptoKey
+  key: CryptoKey,
+  userId: string
 ): Promise<BitacoraEntryView[]> {
-  assertExportMatchesWallet(exportFile, eoaAddress)
+  if (exportFile.dataKeyMode !== 'account') {
+    assertExportMatchesWallet(exportFile, eoaAddress)
+  }
+  const aad = exportAadFromMetadata({
+    dataKeyMode: exportFile.dataKeyMode,
+    dataKeyVersion: exportFile.dataKeyVersion ?? exportFile.keyVersion,
+    eoaAddress: exportFile.eoaAddress,
+    userId,
+  })
   const views: BitacoraEntryView[] = []
   for (const row of exportFile.entries) {
-    const payload = await decryptSafeNotesPayload(
-      key,
-      eoaAddress,
-      row.ciphertext,
-      row.iv
-    )
+    const payload = await decryptSafeNotesPayload(key, aad, row.ciphertext, row.iv)
     views.push({
       id: row.id,
       kind: payload.kind,

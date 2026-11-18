@@ -61,7 +61,11 @@ export default function BitacoraRecuperarPage() {
       const exportFile = await readExportFile(file)
       exportFileRef.current = exportFile
       setFileName(file.name)
-      const entries = await previewExportEntries(exportFile, eoaAddress, key)
+      if (!userId) {
+        setError('Inicia sesión en el Hub.')
+        return
+      }
+      const entries = await previewExportEntries(exportFile, eoaAddress, key, userId)
       setPreview(entries)
     } catch (e) {
       exportFileRef.current = null

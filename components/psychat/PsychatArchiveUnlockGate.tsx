@@ -27,8 +27,8 @@ export function PsychatArchiveUnlockGate() {
             {unlocking ? 'Esperando firma en tu wallet…' : 'Copia activada — falta tu firma'}
           </p>
           <p className="text-xs text-muted-foreground leading-snug">
-            Firma con la wallet conectada ahora para cifrar y guardar (llave distinta a la bitácora). La copia queda
-            ligada a esa dirección EOA: otra wallet vinculada a la misma cuenta no puede desbloquearla.
+            Firma con la wallet conectada. En modo cuenta Motus, cualquier wallet vinculada puede abrir la misma copia
+            cifrada (misma preferencia que la bitácora). En modo solo-wallet, solo esa EOA puede desbloquearla.
           </p>
           {eoaAddress ? (
             <p className="font-mono text-[10px] text-muted-foreground break-all">{eoaAddress}</p>

@@ -33,6 +33,7 @@ import {
   type BitacoraEntryView,
 } from '@/lib/safe-notes/client-bitacora'
 import { downloadSafeNotesExport } from '@/lib/safe-notes/export-format'
+import { DataKeyModeChoiceModal } from '@/components/account-data-key/DataKeyModeChoiceModal'
 import {
   BITACORA_DISCLOSURE_LEAD,
   BITACORA_DISCLOSURE_RECOVERY,
@@ -95,8 +96,15 @@ export default function BitacoraPage() {
     unlockError,
     unlock,
     getKey,
+    getAadInput,
     isUnlocked,
+    needsModeChoice,
+    chooseDataKeyMode,
+    effectiveMode,
+    prefs,
+    refreshPrefs,
   } = useSafeNotesKey()
+  const [modeModalOpen, setModeModalOpen] = useState(false)
 
   const [userId, setUserId] = useState<string | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
@@ -133,13 +141,20 @@ export default function BitacoraPage() {
     })
   }, [sessionState])
 
+  useEffect(() => {
+    if (needsModeChoice && !modeModalOpen) {
+      setModeModalOpen(true)
+    }
+  }, [needsModeChoice, modeModalOpen])
+
   const loadEntries = useCallback(async () => {
     const key = getKey()
-    if (!userId || !eoaAddress || !key) return
+    const aad = getAadInput()
+    if (!userId || !key || !aad) return
     setIsLoading(true)
     setLoadError(null)
     try {
-      const hydrated = await hydrateBitacoraEntries(userId, eoaAddress, key)
+      const hydrated = await hydrateBitacoraEntries(userId, aad, key)
       setEntries(hydrated)
     } catch (error) {
       console.error('Failed to load entries:', error)
@@ -148,7 +163,7 @@ export default function BitacoraPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [userId, eoaAddress, getKey])
+  }, [userId, getKey, getAadInput])
 
   useEffect(() => {
     if (isUnlocked && userId) {
@@ -159,12 +174,13 @@ export default function BitacoraPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const key = getKey()
-    if (!userId || !eoaAddress || !key) return
+    const aad = getAadInput()
+    if (!userId || !key || !aad) return
     setIsSubmitting(true)
 
     try {
       const tags = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-      const saved = await saveBitacoraEntry(userId, eoaAddress, key, {
+      const saved = await saveBitacoraEntry(userId, aad, key, {
         id: editingEntry?.id,
         kind: formData.kind,
         title: formData.title,
@@ -253,7 +269,11 @@ export default function BitacoraPage() {
     if (!userId || !eoaAddress) return
     setIsExporting(true)
     try {
-      const file = await buildBitacoraExportFile(userId, eoaAddress)
+      const file = await buildBitacoraExportFile(userId, eoaAddress, {
+        dataKeyMode: effectiveMode,
+        dataKeyVersion: prefs?.dataKeyVersion,
+        walletEoa: prefs?.dataKeyWalletEoa,
+      })
       if (file.entries.length === 0) {
         alert('No hay entradas cifradas para exportar.')
         return
@@ -350,10 +370,29 @@ export default function BitacoraPage() {
                 size="lg"
                 glow
                 disabled={keyState === 'unlocking' || !eoaAddress}
-                onClick={() => void unlock()}
+                onClick={() => {
+                  if (needsModeChoice) {
+                    setModeModalOpen(true)
+                    return
+                  }
+                  void unlock()
+                }}
               >
                 {keyState === 'unlocking' ? 'Esperando firma…' : 'Firmar y desbloquear'}
               </CTAButton>
+              <DataKeyModeChoiceModal
+                open={modeModalOpen}
+                busy={keyState === 'unlocking'}
+                onChoose={(mode) => {
+                  void (async () => {
+                    const ok = await chooseDataKeyMode(mode)
+                    if (!ok) return
+                    setModeModalOpen(false)
+                    await refreshPrefs()
+                    await unlock()
+                  })()
+                }}
+              />
             </GlassCard>
           </div>
         </Section>

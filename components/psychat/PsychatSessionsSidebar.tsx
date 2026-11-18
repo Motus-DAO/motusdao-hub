@@ -37,6 +37,8 @@ export function PsychatSessionsSidebar({
     state: keyState,
     unlockError,
     getKey,
+    getAadInput,
+    userId,
   } = usePsychatArchiveKeyContext()
 
   const refreshServerMeta = useCallback(() => {
@@ -61,11 +63,12 @@ export function PsychatSessionsSidebar({
 
   const openServerCopy = async () => {
     const key = getKey()
-    if (!key || !eoaAddress) return
+    const aad = getAadInput()
+    if (!key || !aad) return
     setMenuError(null)
     setLoadingServer(true)
     try {
-      const payload = await loadPsychatArchiveFromServer(eoaAddress, key)
+      const payload = await loadPsychatArchiveFromServer(aad, key)
       if (!payload?.messages.length) {
         setMenuError('No hay copia guardada en tu cuenta Motus.')
         refreshServerMeta()
@@ -100,11 +103,16 @@ export function PsychatSessionsSidebar({
 
   const openFromFile = async (file: File) => {
     const key = getKey()
-    if (!key || !eoaAddress) return
+    if (!key || !eoaAddress || !userId) return
     setMenuError(null)
     try {
       const exportFile = await readPsychatArchiveExportFile(file)
-      const payload = await loadPsychatArchiveFromExportFile(exportFile, eoaAddress, key)
+      const payload = await loadPsychatArchiveFromExportFile(
+        exportFile,
+        eoaAddress,
+        userId,
+        key
+      )
       if (!payload?.messages.length) {
         setMenuError('El archivo no trae mensajes.')
         return

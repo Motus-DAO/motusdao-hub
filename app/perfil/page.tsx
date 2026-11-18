@@ -50,6 +50,7 @@ import { ProfileLanguagesSelector } from '@/components/profile/ProfileLanguagesS
 import Link from 'next/link'
 import { PatientSharedSummariesPanel } from '@/components/clinical-summary/PatientSharedSummariesPanel'
 import { LinkedWalletsPanel } from '@/components/profile/LinkedWalletsPanel'
+import { DataKeyPrivacySection } from '@/components/profile/DataKeyPrivacySection'
 import { WalletBalancesCard } from '@/components/profile/WalletBalancesCard'
 import { MotusNamesPanel } from '@/components/profile/MotusNamesPanel'
 import {
@@ -1030,7 +1031,19 @@ export default function PerfilPage() {
               </motion.div>
               )}
 
-              {activeProfileSection === 'perfil-wallets' && <LinkedWalletsPanel />}
+              {activeProfileSection === 'perfil-wallets' && (
+                <div className="space-y-8">
+                  <LinkedWalletsPanel />
+                  {userData?.id ? (
+                    <GlassCard className="p-6">
+                      <DataKeyPrivacySection
+                        userId={userData.id}
+                        eoaAddress={eoaAddress ?? userData.eoaAddress ?? null}
+                      />
+                    </GlassCard>
+                  ) : null}
+                </div>
+              )}
 
               {activeProfileSection === 'perfil-motus' && (
                 <MotusNamesPanel

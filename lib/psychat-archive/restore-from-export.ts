@@ -2,6 +2,7 @@ import { authFetch } from '@/lib/auth/client'
 import { notifyPsychatArchiveChanged } from '@/lib/psychat-archive/client'
 import type { PsychatArchiveExportFile } from './export-format'
 import { parsePsychatArchiveExportFile } from './export-format'
+import { exportAadFromMetadata } from '@/lib/account-data-key/export-aad'
 import { decryptPsychatArchivePayload } from './crypto'
 import type { PsychatArchivePayload } from './payload'
 
@@ -24,12 +25,21 @@ export function assertPsychatExportMatchesWallet(
 export async function previewPsychatArchiveExport(
   exportFile: PsychatArchiveExportFile,
   eoaAddress: string,
+  userId: string,
   key: CryptoKey
 ): Promise<PsychatArchivePayload | null> {
-  assertPsychatExportMatchesWallet(exportFile, eoaAddress)
+  if (exportFile.dataKeyMode !== 'account') {
+    assertPsychatExportMatchesWallet(exportFile, eoaAddress)
+  }
+  const aad = exportAadFromMetadata({
+    dataKeyMode: exportFile.dataKeyMode,
+    dataKeyVersion: exportFile.dataKeyVersion ?? exportFile.keyVersion,
+    eoaAddress: exportFile.eoaAddress,
+    userId,
+  })
   const row = exportFile.snapshots[0]
   if (!row) return null
-  return decryptPsychatArchivePayload(key, eoaAddress, row.ciphertext, row.iv)
+  return decryptPsychatArchivePayload(key, aad, row.ciphertext, row.iv)
 }
 
 export async function restorePsychatExportToAccount(

@@ -7,6 +7,7 @@ import { Section } from '@/components/ui/Section'
 import { GradientText } from '@/components/ui/GradientText'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { SiweSessionBanner } from '@/components/auth/SiweSessionBanner'
+import { fetchAppSession } from '@/lib/auth/client'
 import { useSiweSession } from '@/lib/auth/use-siwe-session'
 import { useWallet } from '@/lib/wallet'
 import { usePsychatArchiveKey } from '@/lib/psychat-archive/use-psychat-archive-key'
@@ -37,6 +38,12 @@ export default function PsychatArchivoRecuperarPage() {
   const exportFileRef = useRef<Awaited<ReturnType<typeof readPsychatArchiveExportFile>> | null>(
     null
   )
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isSessionReady) return
+    void fetchAppSession().then((s) => setUserId(s.userId))
+  }, [isSessionReady])
 
   const handleFile = async (file: File) => {
     setError(null)
@@ -51,7 +58,11 @@ export default function PsychatArchivoRecuperarPage() {
       const exportFile = await readPsychatArchiveExportFile(file)
       exportFileRef.current = exportFile
       setFileName(file.name)
-      const payload = await previewPsychatArchiveExport(exportFile, eoaAddress, key)
+      if (!userId) {
+        setError('Inicia sesión en el Hub.')
+        return
+      }
+      const payload = await previewPsychatArchiveExport(exportFile, eoaAddress, userId, key)
       if (!payload) {
         setError('El archivo no contiene copias guardadas.')
         return

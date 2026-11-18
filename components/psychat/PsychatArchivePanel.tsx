@@ -130,6 +130,9 @@ export function PsychatArchivePanel({
     state: keyState,
     unlockError,
     getKey,
+    getAadInput,
+    effectiveMode,
+    prefs,
     optIn,
     loadingOptIn,
     setArchiveOptIn,
@@ -149,16 +152,17 @@ export function PsychatArchivePanel({
   const persistMessages = useCallback(
     async (list: PsychatArchiveMessage[]) => {
       const key = getKey()
-      if (!optIn || !isUnlocked || !eoaAddress || !key || list.length === 0) return
+      const aad = getAadInput()
+      if (!optIn || !isUnlocked || !aad || !key || list.length === 0) return
       setSaveState('saving')
       try {
-        await upsertPsychatArchive(eoaAddress, key, list)
+        await upsertPsychatArchive(aad, key, list, effectiveMode)
         setSaveState('saved')
       } catch {
         setSaveState('error')
       }
     },
-    [optIn, isUnlocked, eoaAddress, getKey]
+    [optIn, isUnlocked, getKey, getAadInput, effectiveMode]
   )
 
   useEffect(() => {
@@ -198,7 +202,11 @@ export function PsychatArchivePanel({
     if (!eoaAddress) return
     setExporting(true)
     try {
-      const file = await buildPsychatArchiveExportFile(eoaAddress)
+      const file = await buildPsychatArchiveExportFile(eoaAddress, {
+        dataKeyMode: effectiveMode,
+        dataKeyVersion: prefs?.dataKeyVersion,
+        walletEoa: prefs?.dataKeyWalletEoa,
+      })
       if (file.snapshots.length === 0) {
         alert('Aún no hay copia en tu cuenta Motus. Chatea con la opción activada o guarda manualmente.')
         return

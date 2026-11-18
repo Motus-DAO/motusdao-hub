@@ -1,14 +1,14 @@
+import type { DataKeyAadInput } from '@/lib/account-data-key/mode'
+import type { DataKeyMode } from '@/lib/account-data-key/constants'
 import { authFetch } from '@/lib/auth/client'
 import {
   PSYCHAT_ARCHIVE_CHANGED_EVENT,
   PSYCHAT_ARCHIVE_EXPORT_FORMAT,
   PSYCHAT_ARCHIVE_EXPORT_VERSION,
+  PSYCHAT_ARCHIVE_KEY_VERSION,
   PSYCHAT_ARCHIVE_PURPOSE,
 } from '@/lib/psychat-archive/constants'
-import {
-  encryptPsychatArchivePayload,
-  PSYCHAT_ARCHIVE_KEY_VERSION,
-} from '@/lib/psychat-archive/crypto'
+import { encryptPsychatArchivePayload } from '@/lib/psychat-archive/crypto'
 import type { PsychatArchiveMessage } from '@/lib/psychat-archive/payload'
 
 export type PsychatArchiveApiRow = {
@@ -16,6 +16,7 @@ export type PsychatArchiveApiRow = {
   ciphertext: string
   iv: string
   keyVersion: number
+  dataKeyMode?: DataKeyMode | null
   updatedAt: string
 }
 
@@ -32,11 +33,12 @@ export async function fetchPsychatArchiveRow(): Promise<PsychatArchiveApiRow | n
 }
 
 export async function upsertPsychatArchive(
-  eoaAddress: string,
+  aad: DataKeyAadInput,
   key: CryptoKey,
-  messages: PsychatArchiveMessage[]
+  messages: PsychatArchiveMessage[],
+  dataKeyMode?: DataKeyMode
 ): Promise<void> {
-  const encrypted = await encryptPsychatArchivePayload(key, eoaAddress, {
+  const encrypted = await encryptPsychatArchivePayload(key, aad, {
     v: 1,
     savedAt: new Date().toISOString(),
     messages,
@@ -46,7 +48,8 @@ export async function upsertPsychatArchive(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ...encrypted,
-      keyVersion: PSYCHAT_ARCHIVE_KEY_VERSION,
+      keyVersion: encrypted.keyVersion,
+      dataKeyMode,
     }),
   })
   if (!res.ok) throw new Error('No se pudo guardar el archivo cifrado')
@@ -61,7 +64,14 @@ export async function deletePsychatArchiveOnServer(): Promise<void> {
   notifyPsychatArchiveChanged()
 }
 
-export async function buildPsychatArchiveExportFile(eoaAddress: string) {
+export async function buildPsychatArchiveExportFile(
+  eoaAddress: string,
+  meta?: {
+    dataKeyMode?: DataKeyMode
+    dataKeyVersion?: number
+    walletEoa?: string | null
+  }
+) {
   const row = await fetchPsychatArchiveRow()
   if (!row) {
     return {
@@ -71,6 +81,9 @@ export async function buildPsychatArchiveExportFile(eoaAddress: string) {
       purpose: PSYCHAT_ARCHIVE_PURPOSE,
       keyVersion: PSYCHAT_ARCHIVE_KEY_VERSION,
       eoaAddress: eoaAddress.toLowerCase(),
+      dataKeyMode: meta?.dataKeyMode,
+      dataKeyVersion: meta?.dataKeyVersion,
+      walletEoa: meta?.walletEoa ?? null,
       keyRecipeDoc: '/docs/architecture/psychat-archive-export.md',
       snapshots: [] as Array<{
         id: string
@@ -88,6 +101,9 @@ export async function buildPsychatArchiveExportFile(eoaAddress: string) {
     purpose: PSYCHAT_ARCHIVE_PURPOSE,
     keyVersion: row.keyVersion,
     eoaAddress: eoaAddress.toLowerCase(),
+    dataKeyMode: meta?.dataKeyMode ?? row.dataKeyMode ?? undefined,
+    dataKeyVersion: meta?.dataKeyVersion ?? row.keyVersion,
+    walletEoa: meta?.walletEoa ?? null,
     keyRecipeDoc: '/docs/architecture/psychat-archive-export.md',
     snapshots: [
       {
