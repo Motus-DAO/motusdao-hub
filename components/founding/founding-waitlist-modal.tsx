@@ -192,11 +192,10 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
+      if (loading) return
       if (step === 'register' || step === 'wallet' || step === 'mns') {
-        persistDraft(step === 'mns' ? 'mns' : step)
+        persistDraft(step)
       }
-      const blockClose = step === 'register' || step === 'wallet' || step === 'mns' || loading
-      if (blockClose) return
       if (step === 'teaser') {
         try {
           localStorage.setItem(FOUNDING_DISMISS_KEY, '1')
@@ -230,9 +229,8 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
     persistDraft('wallet')
   }
 
-  const blockOutsideClose =
-    step === 'register' || step === 'wallet' || step === 'mns' || loading
-  const showClose = step === 'teaser' || step === 'table' || step === 'done' || step === 'role'
+  const blockOutsideClose = loading
+  const showClose = !loading
 
   if (!open || !mounted) return null
 
@@ -410,6 +408,16 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
                 {mnsProgress || 'Registrando en la lista…'}
               </p>
             ) : null}
+            <CTAButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              disabled={loading}
+              onClick={() => void openLoginModal('founding-waitlist')}
+            >
+              {authenticated ? 'Reconectar wallet' : 'Conectar wallet'}
+            </CTAButton>
             <FoundingMnsFields
               walletAddress={walletAddress}
               disabled={loading}
@@ -417,6 +425,14 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
               onRegistered={onMnsRegistered}
             />
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
+            <button
+              type="button"
+              className="text-sm text-muted-foreground"
+              disabled={loading}
+              onClick={() => setStep('wallet')}
+            >
+              Atrás
+            </button>
           </div>
         ) : null}
 

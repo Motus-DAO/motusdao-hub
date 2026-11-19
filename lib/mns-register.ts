@@ -13,6 +13,7 @@ import {
   resolveEip1193SignerAddress,
   type Eip1193Like,
 } from '@/lib/wallet/eip1193-accounts'
+import { resolveSigningProvider } from '@/lib/auth/signing'
 import { appendAttributionData } from './attribution'
 import { MNS_ABI, MNS_CONTRACT_ADDRESS, motusNameService } from './motus-name-service'
 
@@ -299,8 +300,8 @@ export function formatWalletActionError(message: string): string {
     lower.includes('4100')
   ) {
     return (
-      'La wallet no autorizó la firma o la transacción. Acepta el popup de WaaP/Human Tech ' +
-      '(o recarga, vuelve a iniciar sesión e intenta de nuevo).'
+      'La wallet no autorizó la firma o la transacción. Acepta el popup de tu wallet ' +
+      '(WaaP, Rabby, MetaMask…) o recarga, vuelve a iniciar sesión e intenta de nuevo.'
     )
   }
 
@@ -378,6 +379,10 @@ export async function registerMotusNameWithWaaP(
  * - uses Celo-native gas/fee estimates (not Ethereum defaults)
  * - approves cUSD only when on-chain price > 0
  */
+function resolveOnChainSigner(signer: Eip1193Like): Eip1193Like {
+  return resolveSigningProvider(signer) as Eip1193Like
+}
+
 export async function registerMotusNameWithEip1193(
   name: string,
   targetAddress: Address,
@@ -386,10 +391,11 @@ export async function registerMotusNameWithEip1193(
   try {
     const normalizedName = name.replace('.motus', '')
     const client = getPublicClient()
+    const txSigner = resolveOnChainSigner(signer)
 
-    await ensureCeloNetwork(signer)
+    await ensureCeloNetwork(txSigner)
 
-    const from = await resolveEip1193SignerAddress(signer, targetAddress)
+    const from = await resolveEip1193SignerAddress(txSigner, targetAddress)
     if (!from) {
       return { success: false, error: 'No hay cuenta conectada. Inicia sesión primero.' }
     }
@@ -470,7 +476,7 @@ export async function registerMotusNameWithEip1193(
         })
 
         const approveTxHash = await sendWaaPTransaction(
-          signer,
+          txSigner,
           from,
           CELO_STABLE_TOKENS.USDm as Address,
           approveData
@@ -481,7 +487,7 @@ export async function registerMotusNameWithEip1193(
     }
 
     const txHash = await sendWaaPTransaction(
-      signer,
+      txSigner,
       from,
       MNS_CONTRACT_ADDRESS,
       registerData
