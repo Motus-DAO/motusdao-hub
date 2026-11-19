@@ -201,9 +201,15 @@ export async function ensureFoundingFaucetCeloForMns(
       txHash: body.txHash,
     }
   } catch (error) {
+    const raw =
+      error instanceof Error
+        ? error.message
+        : error && typeof error === 'object' && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : 'Error al solicitar CELO'
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al solicitar CELO',
+      error: formatWalletActionError(raw),
     }
   }
 }
@@ -259,7 +265,7 @@ function getPublicClient() {
   })
 }
 
-function normalizeWalletError(message: string): string {
+export function formatWalletActionError(message: string): string {
   const lower = message.toLowerCase()
 
   if (
@@ -335,11 +341,11 @@ async function waitForTransaction(txHash: string): Promise<void> {
 }
 
 function formatRegisterError(error: unknown): string {
-  if (error instanceof Error) return normalizeWalletError(error.message)
+  if (error instanceof Error) return formatWalletActionError(error.message)
   if (error && typeof error === 'object' && 'message' in error) {
-    return normalizeWalletError(String((error as { message: unknown }).message))
+    return formatWalletActionError(String((error as { message: unknown }).message))
   }
-  return normalizeWalletError(String(error))
+  return formatWalletActionError(String(error))
 }
 
 /** WaaP-only registration on Celo (no ZeroDev / Pimlico). */

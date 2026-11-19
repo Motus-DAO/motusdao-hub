@@ -205,7 +205,7 @@ export function syncWaapOverlayInput(
 ): boolean {
   if (typeof window === 'undefined') return false
   if (isWaapModalHoldingInput(diagnostics, now)) {
-    return restoreReleasedWaapOverlayInput()
+    return restoreWaapOverlayForWalletRequest()
   }
   if (!diagnostics) return releaseHiddenWaapOverlayInput()
   return releaseInactiveWaapOverlayInput()
@@ -244,7 +244,8 @@ function releaseInactiveWaapOverlayInput(): boolean {
   return released
 }
 
-function restoreReleasedWaapOverlayInput(): boolean {
+/** Undo Hub releasing the SDK shell so the next sign/send can show the wallet UI. */
+export function restoreWaapOverlayForWalletRequest(): boolean {
   let restored = false
   for (const element of findWaapOverlayElements()) {
     if (element.dataset.waapHubReleased !== 'true') continue
@@ -264,3 +265,6 @@ function restoreReleasedWaapOverlayInput(): boolean {
   }
   return restored
 }
+
+/** @alias restoreWaapOverlayForWalletRequest */
+export const prepareWaapOverlayForWalletRequest = restoreWaapOverlayForWalletRequest
