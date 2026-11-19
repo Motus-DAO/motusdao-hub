@@ -1,5 +1,11 @@
 import { SITE_URL } from '@/lib/constants'
 import type { FoundingWaitlistRole } from '@prisma/client'
+import {
+  buildMotusEmailCodeBlock,
+  buildMotusEmailDocument,
+  escapeHtml,
+  MOTUS_EMAIL_BRAND,
+} from '@/lib/motus-email-layout'
 
 export type FoundingPromoEmailInput = {
   role: FoundingWaitlistRole
@@ -33,45 +39,93 @@ export function buildFoundingPromoEmailContent(input: FoundingPromoEmailInput): 
   html: string
   text: string
 } {
-  const isEn = input.locale === 'en'
+  const es = input.locale === 'es'
   const cta = ctaUrl(input.role)
-  const product =
+  const name = escapeHtml(input.displayName)
+  const code = input.code
+
+  const product = es
+    ? input.role === 'user'
+      ? 'paquetes de crédito Psychat (5 o 10 USD)'
+      : 'cursos de pago en Academia'
+    : input.role === 'user'
+      ? 'Psychat credit packs (5 or 10 USD)'
+      : 'paid Academy courses'
+
+  const headline = es ? 'Tu código Founding Allowlist' : 'Your Founding Allowlist code'
+  const eyebrow =
     input.role === 'user'
-      ? isEn
-        ? 'Psychat credit packs (5 or 10 USD)'
-        : 'paquetes de crédito Psychat (5 o 10 USD)'
-      : isEn
-        ? 'paid Academy courses'
-        : 'cursos de pago en Academia'
+      ? es
+        ? 'Motus · Lista fundadora · Usuario'
+        : 'Motus · Founding allowlist · User'
+      : es
+        ? 'Motus · Lista fundadora · Profesional'
+        : 'Motus · Founding allowlist · Professional'
 
-  const intro = isEn
-    ? `Hi ${input.displayName}, your founding spot is #${input.position} with ${input.discountPercent}% off ${product}.`
-    : `Hola ${input.displayName}, tu lugar fundador es el #${input.position} con ${input.discountPercent}% de descuento en ${product}.`
+  const greeting = es ? `Hola ${name},` : `Hi ${name},`
+  const lead = es
+    ? `Tu posición es <strong style="color:${MOTUS_EMAIL_BRAND}">#${input.position}</strong> — <strong>${input.discountPercent}%</strong> de descuento en ${escapeHtml(product)}.`
+    : `Your position is <strong style="color:${MOTUS_EMAIL_BRAND}">#${input.position}</strong> — <strong>${input.discountPercent}% off</strong> ${escapeHtml(product)}.`
 
-  const steps = isEn
-    ? `Use this single-use code at Stripe Checkout:\n\n${input.code}\n\nSign in to MotusDAO Hub, start checkout, and paste the code when prompted.`
-    : `Usa este código de un solo uso en Stripe Checkout:\n\n${input.code}\n\nInicia sesión en MotusDAO Hub, abre el pago y pega el código cuando lo pida Stripe.`
+  const steps = es
+    ? 'Inicia sesión en MotusDAO Hub, abre el pago (Psychat o Academia) y pega el código cuando Stripe lo pida.'
+    : 'Sign in to MotusDAO Hub, start checkout (Psychat or Academy), and paste the code when Stripe asks.'
 
-  const legal = isEn
-    ? 'This discount does not replace clinical consent or PSM profile approval. Expiry follows campaign terms when set.'
-    : 'Este descuento no sustituye consentimientos clínicos ni la aprobación de perfil PSM. La vigencia sigue los términos de campaña cuando aplique.'
+  const codeLabel = es ? 'Código (un solo uso)' : 'Single-use code'
+  const ctaLabel = es ? 'Abrir el Hub' : 'Open Hub'
+  const foot = es
+    ? 'El descuento no sustituye consentimientos clínicos ni la aprobación de perfil PSM; la vigencia sigue los términos de campaña cuando aplique.'
+    : 'This discount does not replace clinical consent or PSM profile approval; validity follows campaign terms when set.'
 
-  const text = `${intro}\n\n${steps}\n\n${cta}\n\n${legal}`
+  const bodyHtml = `<p style="margin:0 0 12px;">${greeting}</p>
+<p style="margin:0 0 16px;">${lead}</p>
+<p style="margin:0;color:#d4d4d8;">${escapeHtml(steps)}</p>`
 
-  const html = `<!DOCTYPE html>
-<html lang="${input.locale}">
-<body style="margin:0;background:#0b0b12;font-family:Inter,system-ui,sans-serif;color:#f4f4f5;padding:24px;">
-  <div style="max-width:480px;margin:0 auto;background:linear-gradient(145deg,rgba(147,51,234,0.15),rgba(30,30,40,0.95));border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:28px;">
-    <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">${intro}</p>
-    <div style="background:#111;border-radius:12px;padding:16px;text-align:center;margin:16px 0;">
-      <code style="font-size:18px;letter-spacing:0.04em;color:#e9d5ff;">${input.code}</code>
-    </div>
-    <p style="font-size:13px;line-height:1.5;color:#a1a1aa;">${steps.replace(/\n/g, '<br/>')}</p>
-    <p style="margin:24px 0 0;"><a href="${cta}" style="display:inline-block;background:linear-gradient(90deg,#9333ea,#c026d3);color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600;">${isEn ? 'Open Hub' : 'Abrir el Hub'}</a></p>
-    <p style="font-size:11px;color:#71717a;margin-top:24px;">${legal}</p>
-  </div>
-</body>
-</html>`
+  const html = buildMotusEmailDocument({
+    lang: input.locale,
+    eyebrow,
+    title: headline,
+    bodyHtml,
+    codeBlockHtml: buildMotusEmailCodeBlock({ label: codeLabel, code }),
+    prefooterHtml: foot,
+    ctaHref: cta,
+    ctaLabel,
+    footLinkHref: cta,
+    footLinkLabel: SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+    signoff: 'MotusDAO Hub',
+  })
+
+  const text = es
+    ? `Hola ${input.displayName},
+
+Tu posición en la Motus Founding Allowlist es #${input.position} — ${input.discountPercent}% de descuento en ${product}.
+
+Código de un solo uso en Stripe Checkout:
+
+  ${code}
+
+${steps}
+
+${cta}
+
+${foot}
+
+— MotusDAO Hub`
+    : `Hi ${input.displayName},
+
+Your Motus Founding Allowlist position is #${input.position} — ${input.discountPercent}% off ${product}.
+
+Single-use Stripe Checkout code:
+
+  ${code}
+
+${steps}
+
+${cta}
+
+${foot}
+
+— MotusDAO Hub`
 
   return { html, text }
 }

@@ -5,6 +5,27 @@ export function supportMailPlumbingReady(): boolean {
   return on && Boolean(key)
 }
 
+/** Human hint when plumbing is off (admin founding / support mail). */
+export function supportMailNotReadyReason(): string {
+  const enabled = process.env.SUPPORT_MAIL_ENABLED?.trim().toLowerCase()
+  const on = enabled === '1' || enabled === 'true'
+  const hasKey = Boolean(process.env.RESEND_API_KEY?.trim())
+  const parts: string[] = []
+  if (!on) {
+    parts.push('SUPPORT_MAIL_ENABLED=true')
+  }
+  if (!hasKey) {
+    parts.push('RESEND_API_KEY=re_…')
+  }
+  const envHint =
+    process.env.VERCEL === '1'
+      ? 'en Vercel (Production) + redeploy'
+      : 'en .env.local y reinicia npm run dev'
+  return parts.length > 0
+    ? `Falta ${parts.join(' y ')} ${envHint}.`
+    : `Configura Resend ${envHint}.`
+}
+
 type ResendEmailPayload = {
   from: string
   to: string[]
@@ -37,6 +58,6 @@ export async function sendResendEmail(payload: ResendEmailPayload): Promise<void
 export function supportMailFromAddress(): string {
   return (
     process.env.SUPPORT_MAIL_FROM?.trim() ||
-    'MotusDAO <hola@motusdao.org>'
+    'MotusDAO <contact@motusdao.org>'
   )
 }

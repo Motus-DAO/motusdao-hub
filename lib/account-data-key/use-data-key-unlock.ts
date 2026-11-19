@@ -173,6 +173,19 @@ export function useDataKeyUnlock(scope: DataKeyUnlockScope) {
     [wipeKey]
   )
 
+  /** Wallet-derived AES key (v1). Used when migrating to/from wallet mode. */
+  const getWalletSignatureKey = useCallback(async (): Promise<CryptoKey | null> => {
+    if (!eoaAddress || !provider) return null
+    try {
+      const message = walletUnlockMessage(scope, eoaAddress)
+      const signature = await withSignTimeout(signSiweMessage(provider, message, eoaAddress))
+      return await deriveSafeNotesAesKeyFromSignature(signature)
+    } catch (error) {
+      if (isUserRejectedSignError(error)) return null
+      throw error
+    }
+  }, [eoaAddress, provider, scope])
+
   return {
     eoaAddress,
     userId,
@@ -189,6 +202,7 @@ export function useDataKeyUnlock(scope: DataKeyUnlockScope) {
     getAadInput,
     refreshPrefs,
     chooseDataKeyMode,
+    getWalletSignatureKey,
     isUnlocked: state === 'ready' && getKey() !== null,
   }
 }

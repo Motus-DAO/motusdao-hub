@@ -247,7 +247,7 @@ Plumbing nuevo en Hub (hoy sin Resend en repo): copiar contrato de `Lab-Avril-Li
 |----------|----------|--------|
 | `SUPPORT_MAIL_ENABLED` | sí (`1` / `true`) | Default **off** en dev |
 | `RESEND_API_KEY` | sí para envío real | `re_…` |
-| `SUPPORT_MAIL_FROM` | recomendado | ej. `MotusDAO <hola@motusdao.org>` (dominio verificado en Resend) |
+| `SUPPORT_MAIL_FROM` | recomendado | ej. `MotusDAO <contact@motusdao.org>` (dominio verificado en Resend) |
 | `SUPPORT_OPS_NOTIFY_EMAIL` | no | Ops copy en tickets futuros |
 | `FOUNDING_CODE_EXPIRES_AT_UNIX` | no | propagar a copy del pie de email si se usa |
 
@@ -268,7 +268,7 @@ Plumbing nuevo en Hub (hoy sin Resend en repo): copiar contrato de `Lab-Avril-Li
 
 ### Plantilla HTML/text
 
-- Misma estructura que `buildFoundingPromoEmailContent` (Lab): dark card, gradient strip, monospace code block, CTA button.
+- Shell compartido `lib/motus-email-layout.ts` (paridad Lab: tabla, gradient strip, code block, CTA). `color-scheme: light dark` + `@media (prefers-color-scheme: light)`.
 - Brand tokens Hub (púrpura Motus / glass), no cyan Avril.
 - **CTA URL:**
   - Usuario: `{SITE_URL}/psychat?from=founding-code`

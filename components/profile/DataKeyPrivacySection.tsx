@@ -17,6 +17,7 @@ export function DataKeyPrivacySection({ userId, eoaAddress }: Props) {
     isUnlocked,
     unlock,
     refreshPrefs,
+    getWalletSignatureKey,
   } = useDataKeyUnlock('safe-notes')
 
   return (
@@ -29,6 +30,7 @@ export function DataKeyPrivacySection({ userId, eoaAddress }: Props) {
       getKey={getKey}
       isUnlocked={isUnlocked}
       unlock={unlock}
+      getWalletSignatureKey={getWalletSignatureKey}
       onPrefsChange={refreshPrefs}
     />
   )

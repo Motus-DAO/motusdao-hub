@@ -20,6 +20,7 @@ type Props = {
   getKey: () => CryptoKey | null
   isUnlocked: boolean
   unlock: () => Promise<boolean>
+  getWalletSignatureKey: () => Promise<CryptoKey | null>
   onPrefsChange: () => Promise<unknown>
 }
 
@@ -32,6 +33,7 @@ export function DataKeyPrivacyPanel({
   getKey,
   isUnlocked,
   unlock,
+  getWalletSignatureKey,
   onPrefsChange,
 }: Props) {
   const [busy, setBusy] = useState(false)
@@ -46,22 +48,19 @@ export function DataKeyPrivacyPanel({
       setBusy(true)
       try {
         if (hasEncryptedData) {
-          if (!isUnlocked) {
-            const ok = await unlock()
-            if (!ok) {
-              setError('Necesitas firmar para descifrar y volver a cifrar tus datos.')
-              return
-            }
-          }
-          const key = getKey()
-          if (!key || !eoaAddress || !prefs) {
+          if (!eoaAddress || !prefs) {
             setError('Wallet o sesión incompleta.')
+            return
+          }
+          const walletSignatureKey = await getWalletSignatureKey()
+          if (!walletSignatureKey) {
+            setError('Necesitas firmar con tu wallet para descifrar y volver a cifrar.')
             return
           }
           await migrateDataKeyMode({
             userId,
             eoaAddress,
-            key,
+            walletSignatureKey,
             fromPrefs: prefs,
             targetMode: mode,
           })
@@ -80,7 +79,7 @@ export function DataKeyPrivacyPanel({
         setBusy(false)
       }
     },
-    [hasEncryptedData, isUnlocked, unlock, getKey, eoaAddress, prefs, userId, onPrefsChange]
+    [hasEncryptedData, eoaAddress, prefs, userId, getWalletSignatureKey, onPrefsChange]
   )
 
   if (prefsLoading) {

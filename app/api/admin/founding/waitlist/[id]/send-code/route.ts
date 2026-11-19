@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { guardAdmin } from '@/lib/auth/admin-route'
 import { prisma } from '@/lib/prisma'
 import { sendFoundingPromoCodeEmail } from '@/lib/founding/mail'
-import { supportMailPlumbingReady } from '@/lib/support-mail'
+import { supportMailNotReadyReason, supportMailPlumbingReady } from '@/lib/support-mail'
 
 const bodySchema = z.object({
   skipEmail: z.boolean().optional(),
@@ -34,7 +34,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!skipEmail) {
     if (!supportMailPlumbingReady()) {
       return NextResponse.json(
-        { error: 'Correo no configurado. Usa skipEmail o configura Resend.' },
+        {
+          error: `Correo no configurado. ${supportMailNotReadyReason()} O usa «Marcar enviado» (skipEmail).`,
+        },
         { status: 503 }
       )
     }

@@ -7,6 +7,7 @@ import {
 } from './mode'
 import {
   decryptSafeNotesPayload,
+  deriveAccountDataAesKey,
   encryptSafeNotesPayload,
 } from '@/lib/safe-notes/crypto'
 import {
@@ -18,10 +19,23 @@ import { fetchPsychatArchiveRow } from '@/lib/psychat-archive/client'
 import { fetchBitacoraEntries } from '@/lib/safe-notes/client-bitacora'
 import { patchDataKeyMode, type DataKeyPrefsResponse } from './profile-client'
 
+/** AES keys for wallet vs account mode differ; migration must decrypt/encrypt with the right pair. */
+export async function resolveMigrationCryptoKeys(params: {
+  userId: string
+  fromMode: DataKeyMode
+  targetMode: DataKeyMode
+  walletSignatureKey: CryptoKey
+}): Promise<{ fromKey: CryptoKey; toKey: CryptoKey }> {
+  const accountKey = await deriveAccountDataAesKey(params.userId)
+  const fromKey = params.fromMode === 'account' ? accountKey : params.walletSignatureKey
+  const toKey = params.targetMode === 'account' ? accountKey : params.walletSignatureKey
+  return { fromKey, toKey }
+}
+
 export async function migrateDataKeyMode(params: {
   userId: string
   eoaAddress: string
-  key: CryptoKey
+  walletSignatureKey: CryptoKey
   fromPrefs: DataKeyPrefsResponse
   targetMode: DataKeyMode
 }): Promise<void> {
@@ -45,19 +59,29 @@ export async function migrateDataKeyMode(params: {
     params.eoaAddress
   )
 
+  const { fromKey, toKey } = await resolveMigrationCryptoKeys({
+    userId: params.userId,
+    fromMode,
+    targetMode: params.targetMode,
+    walletSignatureKey: params.walletSignatureKey,
+  })
+
   const archiveRow = await fetchPsychatArchiveRow()
   if (archiveRow?.ciphertext && archiveRow.iv) {
-    const opened = await decryptPsychatArchivePayload(
-      params.key,
-      fromAad,
-      archiveRow.ciphertext,
-      archiveRow.iv
-    )
-    const reencrypted = await encryptPsychatArchivePayload(
-      params.key,
-      toAad,
-      opened as PsychatArchivePayload
-    )
+    let opened: PsychatArchivePayload
+    try {
+      opened = (await decryptPsychatArchivePayload(
+        fromKey,
+        fromAad,
+        archiveRow.ciphertext,
+        archiveRow.iv
+      )) as PsychatArchivePayload
+    } catch {
+      throw new Error(
+        'No se pudo descifrar el archivo Psychat con el modo actual. Usa la misma wallet con la que cifraste.'
+      )
+    }
+    const reencrypted = await encryptPsychatArchivePayload(toKey, toAad, opened)
     const res = await authFetch('/api/psychat/archive', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -75,13 +99,15 @@ export async function migrateDataKeyMode(params: {
   const entries = await fetchBitacoraEntries(params.userId)
   for (const row of entries) {
     if (!row.iv || !row.ciphertext) continue
-    const payload = await decryptSafeNotesPayload(
-      params.key,
-      fromAad,
-      row.ciphertext,
-      row.iv
-    )
-    const reencrypted = await encryptSafeNotesPayload(params.key, toAad, payload)
+    let payload: Awaited<ReturnType<typeof decryptSafeNotesPayload>>
+    try {
+      payload = await decryptSafeNotesPayload(fromKey, fromAad, row.ciphertext, row.iv)
+    } catch {
+      throw new Error(
+        'No se pudo descifrar la bitácora con el modo actual. Usa la misma wallet con la que cifraste.'
+      )
+    }
+    const reencrypted = await encryptSafeNotesPayload(toKey, toAad, payload)
     const res = await authFetch('/api/bitacora', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

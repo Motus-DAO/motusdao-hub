@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Loader2, X } from 'lucide-react'
 import { CTAButton } from '@/components/ui/CTAButton'
@@ -20,6 +20,7 @@ import {
   type FoundingModalStep,
   type FoundingWaitlistRole,
 } from '@/lib/founding/waitlist-modal-draft'
+import { getCeloExplorerUrl } from '@/lib/celo'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -29,6 +30,7 @@ const fieldClass =
 type PublicRow = {
   position: number
   publicName: string
+  mnsTxHash?: string | null
   discountPercent: number
   tier: string
   createdAt: string
@@ -85,15 +87,17 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
       const json = (await res.json()) as { entries?: PublicRow[] }
       const entries = json.entries ?? []
       setRows(
-        entries.map((e) => ({
-          position: e.position,
-          publicName: (e as { publicName?: string; displayName?: string }).publicName ||
-            (e as { displayName?: string }).displayName ||
-            '—',
-          discountPercent: e.discountPercent,
-          tier: e.tier,
-          createdAt: e.createdAt,
-        }))
+        entries.map((e) => {
+          const row = e as PublicRow & { displayName?: string }
+          return {
+            position: row.position,
+            publicName: row.publicName || row.displayName || '—',
+            mnsTxHash: row.mnsTxHash ?? null,
+            discountPercent: row.discountPercent,
+            tier: row.tier,
+            createdAt: row.createdAt,
+          }
+        })
       )
     } finally {
       setTableLoading(false)
@@ -228,10 +232,27 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
   if (!open || !mounted) return null
 
   const glassCard = cn(
-    'relative w-full max-w-lg rounded-3xl border p-5 sm:p-7 backdrop-blur-xl shadow-lg max-h-[min(640px,90svh)] overflow-y-auto',
-    theme === 'light' && 'border-black/10 bg-white/90',
-    theme === 'dark' && 'border-white/14 bg-background/95',
-    theme === 'matrix' && 'border-[var(--matrix-border)] bg-black/95'
+    'relative w-full max-w-lg max-h-[min(640px,90svh)] overflow-y-auto overscroll-contain rounded-3xl border p-5 sm:p-7 backdrop-blur-xl backdrop-saturate-150 shadow-lg',
+    theme === 'light' &&
+      'border-black/10 bg-white/60 shadow-[0_8px_40px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.55)]',
+    theme === 'dark' &&
+      'border-white/14 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.12)]',
+    theme === 'matrix' &&
+      'rounded-none border-[var(--matrix-border)] bg-black/90 shadow-[0_8px_24px_rgba(0,0,0,0.5),0_0_20px_rgba(0,255,65,0.1)]'
+  )
+
+  const tableShellClass = cn(
+    'max-h-[min(360px,50svh)] min-h-0 overflow-y-auto overscroll-contain rounded-lg border p-2',
+    theme === 'light' && 'border-black/10 bg-black/[0.03]',
+    theme === 'dark' && 'border-white/10 bg-black/25',
+    theme === 'matrix' && 'border-[var(--matrix-border)] bg-black/40'
+  )
+
+  const tableHeadClass = cn(
+    'sticky top-0 z-10 text-xs text-muted-foreground backdrop-blur-md',
+    theme === 'light' && 'bg-white/80',
+    theme === 'dark' && 'bg-white/[0.06]',
+    theme === 'matrix' && 'bg-black/85'
   )
 
   const title =
@@ -434,21 +455,25 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
             {tableLoading ? (
               <p className="text-sm text-muted-foreground">Cargando…</p>
             ) : (
-              <div className="max-h-[min(320px,40svh)] overflow-y-auto rounded-lg border border-border/50">
+              <FoundingTableShell className={tableShellClass}>
                 <table className="w-full text-left text-sm">
-                  <thead className="sticky top-0 bg-background/95 text-xs text-muted-foreground">
+                  <thead className={tableHeadClass}>
                     <tr>
-                      <th className="p-2">#</th>
-                      <th className="p-2">Nombre</th>
-                      <th className="p-2">%</th>
+                      <th className="py-1.5 pr-2 pl-1 font-mono text-xs">#</th>
+                      <th className="py-1.5 pr-2">Nombre</th>
+                      <th className="py-1.5 pr-1 text-right font-heading">%</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row) => (
-                      <tr key={row.position} className="border-t border-border/30">
-                        <td className="p-2">{row.position}</td>
-                        <td className="p-2">{row.publicName}</td>
-                        <td className="p-2">{row.discountPercent}%</td>
+                      <tr key={row.position} className="border-t border-white/5 text-sm">
+                        <td className="py-1.5 pr-2 pl-1 font-mono text-xs">{row.position}</td>
+                        <td className="max-w-[min(220px,42vw)] py-1.5 pr-2">
+                          <FoundingMotusCell publicName={row.publicName} mnsTxHash={row.mnsTxHash} />
+                        </td>
+                        <td className="py-1.5 pr-1 text-right font-heading text-mauve-400">
+                          {row.discountPercent}%
+                        </td>
                       </tr>
                     ))}
                     {rows.length === 0 ? (
@@ -460,7 +485,7 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
                     ) : null}
                   </tbody>
                 </table>
-              </div>
+              </FoundingTableShell>
             )}
             <button type="button" className="text-sm text-muted-foreground" onClick={() => setStep('teaser')}>
               Atrás
@@ -472,6 +497,41 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
   )
 
   return createPortal(content, document.body)
+}
+
+function FoundingTableShell({
+  className,
+  children,
+}: {
+  className: string
+  children: ReactNode
+}) {
+  return <div className={className}>{children}</div>
+}
+
+function FoundingMotusCell({
+  publicName,
+  mnsTxHash,
+}: {
+  publicName: string
+  mnsTxHash?: string | null
+}) {
+  const hash = mnsTxHash?.trim()
+  if (!hash) {
+    return <span className="font-medium text-foreground">{publicName}</span>
+  }
+  const href = getCeloExplorerUrl(hash, 'tx')
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Ver transacción de registro .motus en Celo Explorer"
+      className="inline-block max-w-full truncate font-medium text-mauve-400 underline decoration-mauve-400/50 underline-offset-[3px] transition-colors hover:text-mauve-300 hover:decoration-mauve-300"
+    >
+      {publicName}
+    </a>
+  )
 }
 
 export function useFoundingWaitlistPrompt(ready: boolean) {
