@@ -18,6 +18,7 @@ import {
   syncWaapOverlayInput,
 } from '@/lib/wallet/waap-modal-recovery'
 import { useUIStore } from '@/lib/store'
+import { shouldSkipWaapVerifiedEmailShare } from '@/lib/founding/waap-email-skip'
 
 // ============================================================================
 // TYPES - Compatible with Privy patterns for easier migration
@@ -450,6 +451,7 @@ export function WaaPProvider({ children }: WaaPProviderProps) {
         // Ask only for a new embedded session; cached emails never re-prompt.
         if (
           !restoredEmail &&
+          !shouldSkipWaapVerifiedEmailShare() &&
           isEmbeddedWaapLoginMethod(loginType) &&
           waap.requestEmail &&
           !emailRequestInFlightRef.current
