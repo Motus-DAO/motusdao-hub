@@ -9,6 +9,10 @@ import {
 } from 'viem'
 import { celoMainnet, CELO_STABLE_TOKENS } from './celo'
 import { buildCeloWaaPTransaction, ensureCeloNetwork } from './celo-waap'
+import {
+  resolveEip1193SignerAddress,
+  type Eip1193Like,
+} from '@/lib/wallet/eip1193-accounts'
 import { appendAttributionData } from './attribution'
 import { MNS_ABI, MNS_CONTRACT_ADDRESS, motusNameService } from './motus-name-service'
 
@@ -53,20 +57,12 @@ async function waitForCeloBalance(
   return (await getCeloBalance(address)) >= required
 }
 
-export async function resolveWaaPSigningAddress(): Promise<Address | null> {
-  const waap = getWaaP()
-  if (!waap) return null
-
-  try {
-    const accounts = (await waap.request({
-      method: 'eth_requestAccounts',
-      params: [],
-    })) as string[]
-
-    return accounts?.[0] ? (accounts[0] as Address) : null
-  } catch {
-    return null
-  }
+export async function resolveWaaPSigningAddress(
+  provider?: unknown
+): Promise<Address | null> {
+  const signer = (provider as Eip1193Like | undefined) ?? getWaaP()
+  if (!signer) return null
+  return resolveEip1193SignerAddress(signer)
 }
 
 /**
@@ -219,9 +215,7 @@ export interface WaaPRegisterResult {
   alreadyRegistered?: boolean
 }
 
-type WaaPLike = {
-  request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>
-}
+type WaaPLike = Eip1193Like
 
 const ERC20_ABI = [
   {
@@ -293,6 +287,17 @@ function normalizeWalletError(message: string): string {
     return 'Rechazaste la transacción en WaaP.'
   }
 
+  if (
+    lower.includes('not been authorized') ||
+    lower.includes('unauthorized') ||
+    lower.includes('4100')
+  ) {
+    return (
+      'La wallet no autorizó la firma o la transacción. Acepta el popup de WaaP/Human Tech ' +
+      '(o recarga, vuelve a iniciar sesión e intenta de nuevo).'
+    )
+  }
+
   if (lower.includes('transfer amount exceeds balance') || lower.includes('erc20')) {
     return 'No tienes suficiente cUSD para registrar el dominio.'
   }
@@ -301,7 +306,7 @@ function normalizeWalletError(message: string): string {
 }
 
 async function sendWaaPTransaction(
-  waap: WaaPLike,
+  signer: WaaPLike,
   from: Address,
   to: Address,
   data: `0x${string}`
@@ -315,7 +320,7 @@ async function sendWaaPTransaction(
     gasPrice: params.gasPrice,
   })
 
-  return (await waap.request({
+  return (await signer.request({
     method: 'eth_sendTransaction',
     params: [params],
   })) as string
@@ -329,45 +334,59 @@ async function waitForTransaction(txHash: string): Promise<void> {
   })
 }
 
+function formatRegisterError(error: unknown): string {
+  if (error instanceof Error) return normalizeWalletError(error.message)
+  if (error && typeof error === 'object' && 'message' in error) {
+    return normalizeWalletError(String((error as { message: unknown }).message))
+  }
+  return normalizeWalletError(String(error))
+}
+
 /** WaaP-only registration on Celo (no ZeroDev / Pimlico). */
 export async function registerMotusName(
   name: string,
-  targetAddress: Address
+  targetAddress: Address,
+  signer?: unknown
 ): Promise<WaaPRegisterResult> {
-  return registerMotusNameWithWaaP(name, targetAddress)
+  const active = (signer as Eip1193Like | undefined) ?? getWaaP()
+  if (!active) {
+    return {
+      success: false,
+      error: 'Wallet no disponible. Cierra el modal, inicia sesión de nuevo e inténtalo otra vez.',
+    }
+  }
+  return registerMotusNameWithEip1193(name, targetAddress, active)
 }
 
-/**
- * Direct registration on Celo via WaaP EOA:
- * - switches to Celo Mainnet
- * - uses Celo-native gas/fee estimates (not Ethereum defaults)
- * - approves cUSD only when on-chain price > 0
- */
+/** @deprecated use registerMotusName with explicit EIP-1193 provider */
 export async function registerMotusNameWithWaaP(
   name: string,
   targetAddress: Address
 ): Promise<WaaPRegisterResult> {
-  try {
-    const waap = getWaaP()
-    if (!waap) {
-      return { success: false, error: 'WaaP no está disponible (window.waap).' }
-    }
+  return registerMotusName(name, targetAddress)
+}
 
+/**
+ * Direct registration on Celo via EIP-1193 (WaaP context provider or window.waap):
+ * - switches to Celo Mainnet
+ * - uses Celo-native gas/fee estimates (not Ethereum defaults)
+ * - approves cUSD only when on-chain price > 0
+ */
+export async function registerMotusNameWithEip1193(
+  name: string,
+  targetAddress: Address,
+  signer: Eip1193Like
+): Promise<WaaPRegisterResult> {
+  try {
     const normalizedName = name.replace('.motus', '')
     const client = getPublicClient()
 
-    await ensureCeloNetwork(waap)
+    await ensureCeloNetwork(signer)
 
-    const accounts = (await waap.request({
-      method: 'eth_requestAccounts',
-      params: [],
-    })) as string[]
-
-    if (!accounts?.length) {
-      return { success: false, error: 'No hay cuenta WaaP conectada. Inicia sesión primero.' }
+    const from = await resolveEip1193SignerAddress(signer, targetAddress)
+    if (!from) {
+      return { success: false, error: 'No hay cuenta conectada. Inicia sesión primero.' }
     }
-
-    const from = accounts[0] as Address
 
     if (from.toLowerCase() !== targetAddress.toLowerCase()) {
       console.warn('[MNS] WaaP signing address differs from stored EOA:', {
@@ -445,7 +464,7 @@ export async function registerMotusNameWithWaaP(
         })
 
         const approveTxHash = await sendWaaPTransaction(
-          waap,
+          signer,
           from,
           CELO_STABLE_TOKENS.USDm as Address,
           approveData
@@ -456,7 +475,7 @@ export async function registerMotusNameWithWaaP(
     }
 
     const txHash = await sendWaaPTransaction(
-      waap,
+      signer,
       from,
       MNS_CONTRACT_ADDRESS,
       registerData
@@ -470,7 +489,7 @@ export async function registerMotusNameWithWaaP(
     }
   } catch (error) {
     console.error('[MNS register] Error:', error)
-    const msg = error instanceof Error ? error.message : String(error)
+    const msg = formatRegisterError(error)
 
     if (msg.toLowerCase().includes('name already taken')) {
       const owned = await motusNameService.isOwnedBy(
@@ -484,7 +503,7 @@ export async function registerMotusNameWithWaaP(
 
     return {
       success: false,
-      error: normalizeWalletError(msg),
+      error: msg,
     }
   }
 }

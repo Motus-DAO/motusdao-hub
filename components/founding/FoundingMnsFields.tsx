@@ -6,6 +6,7 @@ import type { Address } from 'viem'
 import { CTAButton } from '@/components/ui/CTAButton'
 import { motusNameService } from '@/lib/motus-name-service'
 import { useWalletProvider } from '@/lib/wallet'
+import { releaseWaapOverlayInput } from '@/lib/wallet/waap-modal-recovery'
 import {
   ensureFoundingFaucetCeloForMns,
   registerMotusName,
@@ -64,13 +65,15 @@ export function FoundingMnsFields({
         return
       }
 
-      const target = walletAddress as Address
-      const signing = (await resolveWaaPSigningAddress()) ?? target
-
       if (!providerReady || !provider) {
         setStatus('Wallet no lista. Espera un momento o vuelve a iniciar sesión.')
         return
       }
+
+      releaseWaapOverlayInput()
+
+      const target = walletAddress as Address
+      const signing = (await resolveWaaPSigningAddress(provider)) ?? target
 
       onProgress?.({ active: true, message: 'Solicitando CELO para gas (firma sin costo)…' })
       const faucet = await ensureFoundingFaucetCeloForMns(signing, provider)
@@ -79,8 +82,9 @@ export function FoundingMnsFields({
         return
       }
 
+      releaseWaapOverlayInput()
       onProgress?.({ active: true, message: 'Registra tu .motus en Celo (confirma en wallet)…' })
-      const reg = await registerMotusName(normalized, target)
+      const reg = await registerMotusName(normalized, signing, provider)
       if (!reg.success) {
         setStatus(reg.error || 'No se pudo registrar el nombre.')
         return

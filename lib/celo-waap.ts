@@ -1,12 +1,11 @@
 import type { Address, PublicClient } from 'viem'
+import type { Eip1193Like } from '@/lib/wallet/eip1193-accounts'
 import { celoMainnet } from './celo'
 
 export const CELO_CHAIN_ID = celoMainnet.id
 export const CELO_CHAIN_ID_HEX = '0xa4ec' as const
 
-type WaaPLike = {
-  request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>
-}
+type WaaPLike = Eip1193Like
 
 export type WaaPCeloTxParams = {
   from: Address
