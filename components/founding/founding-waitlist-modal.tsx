@@ -210,6 +210,12 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
     onOpenChange(next)
   }
 
+  const chooseRole = (next: FoundingWaitlistRole) => {
+    setError(null)
+    setRole(next)
+    setStep('register')
+  }
+
   const goContinueRegister = () => {
     setError(null)
     if (!displayName.trim() || displayName.trim().length < 2) {
@@ -311,27 +317,27 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
 
         {step === 'role' ? (
           <div className="mt-6 space-y-4">
+            <p className="text-center text-xs text-muted-foreground">
+              Elige una opción para abrir el formulario.
+            </p>
             <div className="flex gap-2">
               <CTAButton
                 type="button"
-                variant={role === 'user' ? 'primary' : 'secondary'}
+                variant="secondary"
                 className="flex-1"
-                onClick={() => setRole('user')}
+                onClick={() => chooseRole('user')}
               >
                 Soy usuario
               </CTAButton>
               <CTAButton
                 type="button"
-                variant={role === 'psm' ? 'primary' : 'secondary'}
+                variant="secondary"
                 className="flex-1"
-                onClick={() => setRole('psm')}
+                onClick={() => chooseRole('psm')}
               >
                 Soy profesional
               </CTAButton>
             </div>
-            <CTAButton type="button" className="w-full" onClick={() => setStep('register')}>
-              Continuar
-            </CTAButton>
             <button type="button" className="text-sm text-muted-foreground" onClick={() => setStep('teaser')}>
               Atrás
             </button>
