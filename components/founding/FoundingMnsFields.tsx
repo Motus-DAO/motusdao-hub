@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { Address } from 'viem'
 import { CTAButton } from '@/components/ui/CTAButton'
+import { bootstrapHubSessionIfNeeded, fetchAppSession } from '@/lib/auth/client'
 import { motusNameService } from '@/lib/motus-name-service'
+import { useWalletProvider } from '@/lib/wallet'
 import {
   ensureFaucetCeloForMns,
   registerMotusName,
@@ -36,6 +38,7 @@ export function FoundingMnsFields({
   onProgress,
   disabled,
 }: Props) {
+  const { provider, isReady: providerReady } = useWalletProvider()
   const [label, setLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -65,8 +68,27 @@ export function FoundingMnsFields({
       const target = walletAddress as Address
       const signing = (await resolveWaaPSigningAddress()) ?? target
 
+      if (!providerReady || !provider) {
+        setStatus('Wallet no lista. Espera un momento o vuelve a iniciar sesión.')
+        return
+      }
+
+      onProgress?.({ active: true, message: 'Verificando sesión del Hub…' })
+      const sessionOk = await bootstrapHubSessionIfNeeded({
+        waapProvider: provider,
+        authProvider: 'waap',
+        eoaAddress: walletAddress,
+      })
+      if (!sessionOk) {
+        setStatus('Confirma tu sesión (firma SIWE en la wallet). No cuesta gas.')
+        return
+      }
+
+      const session = await fetchAppSession()
+      const spendAddress = (session.eoaAddress ?? signing) as Address
+
       onProgress?.({ active: true, message: 'Solicitando CELO del faucet…' })
-      const faucet = await ensureFaucetCeloForMns(signing)
+      const faucet = await ensureFaucetCeloForMns(spendAddress)
       if (!faucet.success && !faucet.skipped) {
         setStatus(faucet.error || 'No se pudo obtener CELO.')
         return

@@ -104,9 +104,19 @@ export async function ensureFaucetCeloForMns(address: Address): Promise<FaucetRe
           }
         }
       }
+      const rawError =
+        typeof body.error === 'string'
+          ? body.error
+          : typeof body.message === 'string'
+            ? body.message
+            : 'Error al solicitar CELO del faucet'
+      const error =
+        rawError === 'Authentication required'
+          ? 'Sin sesión del Hub. Firma el mensaje SIWE (no cuesta gas) y vuelve a intentar.'
+          : rawError
       return {
         success: false,
-        error: body.error || body.message || 'Error al solicitar CELO del faucet',
+        error,
       }
     }
 

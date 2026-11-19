@@ -7,7 +7,8 @@ import { CTAButton } from '@/components/ui/CTAButton'
 import { GradientText } from '@/components/ui/GradientText'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/lib/store'
-import { useWallet, useWallets } from '@/lib/wallet'
+import { bootstrapHubSessionIfNeeded } from '@/lib/auth/client'
+import { useWallet, useWalletProvider, useWallets } from '@/lib/wallet'
 import { getEOAAddress } from '@/lib/wallet-utils'
 import { FoundingMnsFields } from '@/components/founding/FoundingMnsFields'
 import {
@@ -45,7 +46,9 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
   const { theme, openLoginModal } = useUIStore()
   const { authenticated } = useWallet()
   const { wallets } = useWallets()
+  const { provider, isReady: providerReady } = useWalletProvider()
   const walletAddress = getEOAAddress(wallets)
+  const [walletSessionBootstrapping, setWalletSessionBootstrapping] = useState(false)
 
   const [mounted, setMounted] = useState(false)
   const [step, setStep] = useState<FoundingModalStep>('teaser')
@@ -115,11 +118,41 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
   }, [open, step, loadTable])
 
   useEffect(() => {
-    if (step === 'wallet' && authenticated) {
-      setStep('mns')
-      persistDraft('mns')
+    if (step !== 'wallet' || !authenticated || !walletAddress || !providerReady || !provider) {
+      return
     }
-  }, [step, authenticated, persistDraft])
+
+    let cancelled = false
+    setWalletSessionBootstrapping(true)
+    setError(null)
+
+    void bootstrapHubSessionIfNeeded({
+      waapProvider: provider,
+      authProvider: 'waap',
+      eoaAddress: walletAddress,
+    })
+      .then((ok) => {
+        if (cancelled) return
+        if (ok) {
+          setStep('mns')
+          persistDraft('mns')
+        } else {
+          setError('Firma el mensaje de verificación en tu wallet para continuar (SIWE, sin gas).')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError('No se pudo verificar la sesión. Intenta de nuevo.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setWalletSessionBootstrapping(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [step, authenticated, walletAddress, providerReady, provider, persistDraft])
 
   const joinWaitlist = useCallback(
     async (mint: { mnsLabel: string; mnsTxHash: string }) => {
@@ -383,9 +416,19 @@ export function FoundingWaitlistModal({ open, onOpenChange }: Props) {
             <CTAButton
               type="button"
               className="w-full gap-2"
+              disabled={walletSessionBootstrapping}
               onClick={() => void openLoginModal('founding-waitlist')}
             >
-              Iniciar sesión con wallet
+              {walletSessionBootstrapping ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Verificando sesión…
+                </span>
+              ) : authenticated ? (
+                'Sesión conectada — confirma SIWE si tu wallet lo pide'
+              ) : (
+                'Iniciar sesión con wallet'
+              )}
             </CTAButton>
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
             <p className="text-[11px] text-muted-foreground text-center">
