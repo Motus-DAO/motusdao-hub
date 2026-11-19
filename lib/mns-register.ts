@@ -150,6 +150,68 @@ export async function ensureFaucetCeloForMns(address: Address): Promise<FaucetRe
   }
 }
 
+/** Founding waitlist: CELO via signed proof (Lab parity — no Hub SIWE session). */
+export async function ensureFoundingFaucetCeloForMns(
+  address: Address,
+  waapProvider: unknown
+): Promise<FaucetResult> {
+  const { claimFoundingFaucetCelo, signFoundingFaucetProof } = await import(
+    '@/lib/founding/faucet-client'
+  )
+
+  try {
+    const required = await getRequiredCeloForMnsRegistration()
+    const balance = await getCeloBalance(address)
+
+    if (balance >= required) {
+      return { success: true, skipped: true }
+    }
+
+    const proof = await signFoundingFaucetProof(address, waapProvider)
+    const body = await claimFoundingFaucetCelo(proof)
+
+    const ok = body.ok === true || body.success === true
+    if (!ok) {
+      return {
+        success: false,
+        error: typeof body.error === 'string' ? body.error : 'Error al solicitar CELO del faucet',
+      }
+    }
+
+    if (body.skipped) {
+      return { success: true, skipped: true }
+    }
+
+    if (body.txHash) {
+      const client = getPublicClient()
+      await client.waitForTransactionReceipt({
+        hash: body.txHash as `0x${string}`,
+        timeout: 90_000,
+      })
+
+      const funded = await waitForCeloBalance(address, required)
+      if (!funded) {
+        return {
+          success: false,
+          error:
+            'CELO enviado pero aún no visible en tu wallet. Espera unos segundos e intenta registrar de nuevo.',
+        }
+      }
+    }
+
+    return {
+      success: true,
+      amount: body.amount,
+      txHash: body.txHash,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al solicitar CELO',
+    }
+  }
+}
+
 export interface WaaPRegisterResult {
   success: boolean
   txHash?: string

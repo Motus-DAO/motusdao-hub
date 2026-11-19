@@ -995,3 +995,12 @@ model FoundingStripeCouponTemplate {
   @@id([role, tier])
   @@map("founding_stripe_coupon_templates")
 }
+
+model FoundingFaucetClaim {
+  wallet    String   @id
+  txHash    String?
+  amount    String?
+  claimedAt DateTime @default(now())
+
+  @@map("founding_faucet_claims")
+}
